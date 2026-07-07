@@ -15,11 +15,11 @@ export class TimeManager {
     this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.app.sceneManager.scene.add(this.ambientLight);
 
-    // 2. Directional Sun Light
+    // 2. Directional Sun Light (Optimized shadow map size for high FPS on Apple Silicon)
     this.sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
     this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
     this.sunLight.shadow.camera.near = 10;
     this.sunLight.shadow.camera.far = 500;
     const d = 150;
@@ -30,18 +30,9 @@ export class TimeManager {
     this.sunLight.shadow.bias = -0.0005;
     this.app.sceneManager.scene.add(this.sunLight);
 
-    // 3. Directional Moon Light (for night shadows and rim lighting)
+    // 3. Directional Moon Light (Disable shadow casting to save duplicate shadow pass overhead)
     this.moonLight = new THREE.DirectionalLight(0x88bbff, 0.0);
-    this.moonLight.castShadow = true;
-    this.moonLight.shadow.mapSize.width = 1024;
-    this.moonLight.shadow.mapSize.height = 1024;
-    this.moonLight.shadow.camera.near = 10;
-    this.moonLight.shadow.camera.far = 500;
-    this.moonLight.shadow.camera.left = -d;
-    this.moonLight.shadow.camera.right = d;
-    this.moonLight.shadow.camera.top = d;
-    this.moonLight.shadow.camera.bottom = -d;
-    this.moonLight.shadow.bias = -0.0005;
+    this.moonLight.castShadow = false;
     this.app.sceneManager.scene.add(this.moonLight);
   }
 
@@ -59,8 +50,6 @@ export class TimeManager {
 
   update(delta) {
     if (this.isPlaying) {
-      // 1 real second = 1 simulation minute at 1x speed (24 minutes for full day)
-      // At 15x speed, full day takes ~1.6 minutes
       const hoursPerSecond = (1.0 / 60.0) * this.speed;
       this.timeVal += hoursPerSecond * delta;
       if (this.timeVal >= 24.0) {
@@ -68,12 +57,10 @@ export class TimeManager {
       }
     }
 
-    // Update UI
     if (this.app.uiManager) {
       this.app.uiManager.updateTimeDisplay(this.timeVal);
     }
 
-    // Update Environment & Billboards
     if (this.app.environment) {
       this.app.environment.update(this.timeVal, delta);
     }
@@ -81,15 +68,11 @@ export class TimeManager {
       this.app.billboardCanvas.update(this.timeVal, delta);
     }
 
-    // Update Sun & Moon positions and intensities
     this.updateLighting();
-    
-    // Update city night lights (buildings, streetlamps, vehicle headlights)
     this.updateNightIllumination();
   }
 
   updateLighting() {
-    // Sun angle from 6:00 (0 rad) to 18:00 (PI rad)
     const sunAngle = ((this.timeVal - 6.0) / 24.0) * Math.PI * 2.0;
     const distance = 250;
 
@@ -102,16 +85,13 @@ export class TimeManager {
     this.moonLight.position.y = Math.sin(moonAngle) * distance;
     this.moonLight.position.z = -Math.sin(sunAngle * 0.5) * 80;
 
-    // Intensities
     if (this.timeVal >= 6.0 && this.timeVal < 18.0) {
-      // Daytime
       const elevation = Math.sin(((this.timeVal - 6.0) / 12.0) * Math.PI);
       this.sunLight.intensity = Math.max(0, elevation * 1.6);
       this.moonLight.intensity = 0;
       this.ambientLight.color.setHex(0xffffff);
       this.ambientLight.intensity = 0.4 + elevation * 0.3;
     } else {
-      // Nighttime
       this.sunLight.intensity = 0;
       let nightElev = 0;
       if (this.timeVal >= 18.0) {
@@ -126,7 +106,6 @@ export class TimeManager {
   }
 
   updateNightIllumination() {
-    // Calculate night factor: 0 during day (07:00 - 17:00), smoothly transitioning to 1 at night (18:00 - 06:00)
     let nightFactor = 0;
     if (this.timeVal >= 17.0 && this.timeVal <= 18.5) {
       nightFactor = (this.timeVal - 17.0) / 1.5;
@@ -144,11 +123,13 @@ export class TimeManager {
       }
     }
 
-    // 2. Streetlamp bulbs & spot lights
+    // 2. Streetlamp bulbs & high-perf volumetric cones
     if (this.app.cityBuilder && this.app.cityBuilder.streetlamps) {
       for (const lamp of this.app.cityBuilder.streetlamps) {
         lamp.bulb.material.emissiveIntensity = 2.0 * nightFactor;
-        lamp.light.intensity = 40.0 * nightFactor;
+        if (lamp.cone) {
+          lamp.cone.opacity = 0.18 * nightFactor;
+        }
       }
     }
 

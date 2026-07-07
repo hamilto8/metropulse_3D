@@ -36,7 +36,6 @@ export class CityBuilder {
   }
 
   createRoadGrid() {
-    // Grid settings: roads at x/z = -100, -50, 0, 50, 100
     const roadCoords = [-100, -50, 0, 50, 100];
     const roadWidth = 14;
     const sidewalkWidth = 4;
@@ -59,39 +58,41 @@ export class CityBuilder {
 
     // 1. Create Roads along X and Z
     for (const pos of roadCoords) {
-      // X-axis road
       const roadX = new THREE.Mesh(new THREE.PlaneGeometry(300, roadWidth), asphaltMat);
       roadX.rotation.x = -Math.PI / 2;
       roadX.position.set(0, 0.01, pos);
       roadX.receiveShadow = true;
       this.scene.add(roadX);
 
-      // Yellow dividing line X
       const lineX = new THREE.Mesh(new THREE.PlaneGeometry(280, 0.4), lineMat);
       lineX.rotation.x = -Math.PI / 2;
       lineX.position.set(0, 0.02, pos);
       this.scene.add(lineX);
 
-      // Z-axis road
       const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 300), asphaltMat);
       roadZ.rotation.x = -Math.PI / 2;
       roadZ.position.set(pos, 0.01, 0);
       roadZ.receiveShadow = true;
       this.scene.add(roadZ);
 
-      // Yellow dividing line Z
       const lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 280), lineMat);
       lineZ.rotation.x = -Math.PI / 2;
       lineZ.position.set(pos, 0.02, 0);
       this.scene.add(lineZ);
     }
 
-    // 2. Create Intersections & Crosswalks
+    // 2. Create Intersections & Crosswalks (Optimized with InstancedMesh to save 500 draw calls!)
+    const totalStripes = roadCoords.length * roadCoords.length * 4 * 5;
+    const stripeGeo = new THREE.PlaneGeometry(1.2, 3);
+    stripeGeo.rotateX(-Math.PI / 2);
+    const stripeInstanced = new THREE.InstancedMesh(stripeGeo, whiteLineMat, totalStripes);
+    let stripeIdx = 0;
+    const dummy = new THREE.Object3D();
+
     for (const x of roadCoords) {
       for (const z of roadCoords) {
         this.roadNetwork.intersections.push(new THREE.Vector3(x, 0, z));
 
-        // Create 4 crosswalk stripes around intersection
         const offsets = [
           { x: 0, z: roadWidth / 2 + 1.5, rot: 0 },
           { x: 0, z: -(roadWidth / 2 + 1.5), rot: 0 },
@@ -101,19 +102,20 @@ export class CityBuilder {
 
         for (const off of offsets) {
           for (let s = -4; s <= 4; s += 2) {
-            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 3), whiteLineMat);
-            stripe.rotation.x = -Math.PI / 2;
-            stripe.rotation.z = off.rot;
             if (off.rot === 0) {
-              stripe.position.set(x + s, 0.03, z + off.z);
+              dummy.position.set(x + s, 0.03, z + off.z);
             } else {
-              stripe.position.set(x + off.x, 0.03, z + s);
+              dummy.position.set(x + off.x, 0.03, z + s);
             }
-            this.scene.add(stripe);
+            dummy.rotation.set(0, off.rot, 0);
+            dummy.updateMatrix();
+            stripeInstanced.setMatrixAt(stripeIdx++, dummy.matrix);
           }
         }
       }
     }
+    stripeInstanced.count = stripeIdx;
+    this.scene.add(stripeInstanced);
 
     // 3. Create City Blocks (Sidewalk tiles + Plots)
     const blockCenters = [-75, -25, 25, 75];
@@ -121,18 +123,15 @@ export class CityBuilder {
       for (const bz of blockCenters) {
         const isPark = (bx === -75 && bz === -75);
 
-        // Sidewalk base block
         const sidewalkGeo = new THREE.BoxGeometry(blockSize + sidewalkWidth * 2, 0.4, blockSize + sidewalkWidth * 2);
         const sidewalk = new THREE.Mesh(sidewalkGeo, sidewalkMat);
         sidewalk.position.set(bx, 0.2, bz);
         sidewalk.receiveShadow = true;
         this.scene.add(sidewalk);
 
-        // Register sidewalk center as waypoint for pedestrians
         this.sidewalkNetwork.push(new THREE.Vector3(bx, 0.4, bz));
 
         if (!isPark) {
-          // Inner plot for building
           this.buildingPlots.push({
             x: bx,
             z: bz,
@@ -148,7 +147,6 @@ export class CityBuilder {
     const parkCenter = { x: -75, z: -75 };
     const parkSize = 32;
 
-    // Grass turf
     const grassGeo = new THREE.BoxGeometry(parkSize, 0.5, parkSize);
     const grassMat = new THREE.MeshStandardMaterial({
       color: 0x1b4d2e,
@@ -160,7 +158,6 @@ export class CityBuilder {
     grass.receiveShadow = true;
     this.scene.add(grass);
 
-    // Diagonal walking paths
     const pathMat = new THREE.MeshStandardMaterial({ color: 0x8c857b, roughness: 0.9 });
     const path1 = new THREE.Mesh(new THREE.PlaneGeometry(parkSize * 1.3, 3), pathMat);
     path1.rotation.x = -Math.PI / 2;
@@ -195,7 +192,6 @@ export class CityBuilder {
     water.position.set(parkCenter.x, 0.9, parkCenter.z);
     this.scene.add(water);
 
-    // Fountain center spout & neon ring
     const spoutGeo = new THREE.CylinderGeometry(1, 1.5, 3, 16);
     const spout = new THREE.Mesh(spoutGeo, poolMat);
     spout.position.set(parkCenter.x, 2.0, parkCenter.z);
@@ -228,7 +224,6 @@ export class CityBuilder {
   createTree(x, y, z) {
     const treeGroup = new THREE.Group();
 
-    // Trunk
     const trunkGeo = new THREE.CylinderGeometry(0.4, 0.6, 3, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.9 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -236,7 +231,6 @@ export class CityBuilder {
     trunk.castShadow = true;
     treeGroup.add(trunk);
 
-    // Foliage layers (low poly cones/dodecahedrons)
     const leavesMat = new THREE.MeshStandardMaterial({ color: 0x1e824c, roughness: 0.8 });
     const leaves1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.5, 1), leavesMat);
     leaves1.position.y = 3.5;
@@ -254,6 +248,7 @@ export class CityBuilder {
 
   createStreetFurniture() {
     // Add streetlamps along sidewalk edges
+    // High performance optimization: replace 120 THREE.SpotLight objects with volumetric light cones!
     const roadCoords = [-100, -50, 0, 50, 100];
     const lampMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
     const bulbMat = new THREE.MeshStandardMaterial({
@@ -261,6 +256,9 @@ export class CityBuilder {
       emissive: 0xffaa00,
       emissiveIntensity: 0 // Will turn on at night
     });
+
+    const coneGeo = new THREE.ConeGeometry(2.5, 7, 8, 1, true);
+    coneGeo.translate(0, -3.5, 0);
 
     const lampPositions = [];
     for (const r of roadCoords) {
@@ -277,38 +275,36 @@ export class CityBuilder {
     for (const lPos of lampPositions) {
       const lampGroup = new THREE.Group();
 
-      // Pole
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 8, 8), lampMat);
       pole.position.y = 4;
       pole.castShadow = true;
       lampGroup.add(pole);
 
-      // Arm
       const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 2.5), lampMat);
       arm.position.set(0, 7.8, 1.0);
       lampGroup.add(arm);
 
-      // Bulb
       const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), bulbMat.clone());
       bulb.position.set(0, 7.5, 2.0);
       lampGroup.add(bulb);
 
-      // Spot Light Cone (for night effect)
-      const spotLight = new THREE.SpotLight(0xffb84d, 0); // Start off
-      spotLight.position.set(0, 7.5, 2.0);
-      spotLight.target.position.set(0, 0, 2.0);
-      spotLight.angle = Math.PI / 5;
-      spotLight.penumbra = 0.5;
-      spotLight.distance = 25;
-      spotLight.castShadow = false; // Performance optimization
-      lampGroup.add(spotLight);
-      lampGroup.add(spotLight.target);
+      // High-perf volumetric cone (costs 0 GPU lighting evaluations!)
+      const coneMat = new THREE.MeshBasicMaterial({
+        color: 0xffb84d,
+        transparent: true,
+        opacity: 0, // Turn on at night
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const cone = new THREE.Mesh(coneGeo, coneMat);
+      cone.position.set(0, 7.5, 2.0);
+      lampGroup.add(cone);
 
       lampGroup.position.set(lPos.x, 0.4, lPos.z);
       lampGroup.rotation.y = lPos.rot;
       this.scene.add(lampGroup);
 
-      this.streetlamps.push({ bulb: bulb, light: spotLight });
+      this.streetlamps.push({ bulb: bulb, cone: coneMat });
     }
   }
 }

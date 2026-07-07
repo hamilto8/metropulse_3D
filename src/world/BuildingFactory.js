@@ -50,7 +50,6 @@ export class BuildingFactory {
       specialty = 'Quantum AI & Robotics';
       this.addSkyscraperDetails(group, w, height, d, color, 0x00f0ff);
       
-      // Add Ad Billboard
       const adMesh = this.billboardCanvas.createAdBillboard('NEOTECH', 20, 10);
       adMesh.position.set(0, height - 15, d / 2 + 0.6);
       group.add(adMesh);
@@ -112,7 +111,6 @@ export class BuildingFactory {
       specialty = 'City Communications & Broadcast';
       this.addSkyscraperDetails(group, w, height, d, color, 0xff0000);
 
-      // Add ticker billboard at mid height
       const tickerMesh = this.billboardCanvas.createClockTickerBillboard(26, 10);
       tickerMesh.position.set(0, 30, d / 2 + 0.6);
       group.add(tickerMesh);
@@ -122,7 +120,6 @@ export class BuildingFactory {
       this.addSkyscraperDetails(group, w, height, d, color, 0x00f0ff);
     }
 
-    // Register interactive building body for raycaster
     const baseBox = new THREE.Mesh(
       new THREE.BoxGeometry(w, height, d),
       new THREE.MeshStandardMaterial({ color: color, roughness: 0.5, metalness: 0.5 })
@@ -132,7 +129,6 @@ export class BuildingFactory {
     baseBox.receiveShadow = true;
     group.add(baseBox);
 
-    // Register to inspector HUD
     this.inspectorHud.registerObject(baseBox, {
       type: 'BUILDING',
       name: name,
@@ -167,36 +163,47 @@ export class BuildingFactory {
       group.add(rib);
     }
 
-    // 2. Window Grids (illuminated rooms at night)
+    // 2. Window Grids (Optimized with InstancedMesh to save ~3,000 draw calls!)
     const winMat = new THREE.MeshStandardMaterial({
       color: 0xffffd0,
       emissive: 0xffe080,
-      emissiveIntensity: 0, // Turned on at dusk
+      emissiveIntensity: 0,
       roughness: 0.2
     });
     this.nightLights.push({ mat: winMat, maxIntensity: 0.9 });
 
     const rows = Math.floor(height / 4);
     const cols = Math.floor(w / 4);
-    const winGeo = new THREE.PlaneGeometry(2, 2);
+    const maxWins = (rows - 1) * cols * 2;
+    
+    if (maxWins > 0) {
+      const winGeo = new THREE.PlaneGeometry(2, 2);
+      const winInstanced = new THREE.InstancedMesh(winGeo, winMat, maxWins);
+      let winIdx = 0;
+      const dummy = new THREE.Object3D();
 
-    // Front & Back faces
-    for (let r = 1; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (Math.random() > 0.3) { // 70% of rooms lit
-          const wx = -w / 2 + 3 + c * 4;
-          const wy = r * 4;
+      for (let r = 1; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (Math.random() > 0.3) {
+            const wx = -w / 2 + 3 + c * 4;
+            const wy = r * 4;
 
-          const winF = new THREE.Mesh(winGeo, winMat);
-          winF.position.set(wx, wy, d / 2 + 0.1);
-          group.add(winF);
+            // Front window
+            dummy.position.set(wx, wy, d / 2 + 0.1);
+            dummy.rotation.set(0, 0, 0);
+            dummy.updateMatrix();
+            winInstanced.setMatrixAt(winIdx++, dummy.matrix);
 
-          const winB = new THREE.Mesh(winGeo, winMat);
-          winB.rotation.y = Math.PI;
-          winB.position.set(wx, wy, -d / 2 - 0.1);
-          group.add(winB);
+            // Back window
+            dummy.position.set(wx, wy, -d / 2 - 0.1);
+            dummy.rotation.set(0, Math.PI, 0);
+            dummy.updateMatrix();
+            winInstanced.setMatrixAt(winIdx++, dummy.matrix);
+          }
         }
       }
+      winInstanced.count = winIdx;
+      group.add(winInstanced);
     }
 
     // 3. Rooftop antenna or spire
@@ -207,7 +214,6 @@ export class BuildingFactory {
       spire.position.set(0, height + 7.5, 0);
       group.add(spire);
 
-      // Red obstacle beacon light
       const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
       const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), beaconMat);
       beacon.position.set(0, height + 15.5, 0);
@@ -216,17 +222,15 @@ export class BuildingFactory {
   }
 
   addShopDetails(group, w, height, d, baseColor, neonColorHex, signText) {
-    // 1. Storefront Glass Canopy
     const canopyMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
     const canopy = new THREE.Mesh(new THREE.BoxGeometry(w + 2, 1, 4), canopyMat);
     canopy.position.set(0, 5, d / 2 + 2);
     group.add(canopy);
 
-    // 2. Glowing Neon Sign Bar
     const neonMat = new THREE.MeshStandardMaterial({
       color: neonColorHex,
       emissive: neonColorHex,
-      emissiveIntensity: 0 // Turned on at dusk
+      emissiveIntensity: 0
     });
     this.nightLights.push({ mat: neonMat, maxIntensity: 1.5 });
 
@@ -234,7 +238,6 @@ export class BuildingFactory {
     neonBar.position.set(0, 6.2, d / 2 + 0.5);
     group.add(neonBar);
 
-    // 3. Storefront windows (warm interior glow at night)
     const storeWinMat = new THREE.MeshStandardMaterial({
       color: 0xffeedd,
       emissive: 0xffeedd,

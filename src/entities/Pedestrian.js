@@ -40,7 +40,6 @@ export class Pedestrian {
     const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
     const head = new THREE.Mesh(headGeo, skinMat);
     head.position.y = 2.5;
-    head.castShadow = true;
     group.add(head);
 
     // Hair or hat

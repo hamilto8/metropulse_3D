@@ -132,7 +132,7 @@ export class Vehicle {
     for (const wPos of wheelPositions) {
       const wheel = new THREE.Mesh(wheelGeo, wheelMat);
       wheel.position.set(wPos.x, wheelRadius, wPos.z);
-      wheel.castShadow = true;
+      wheel.receiveShadow = false;
       group.add(wheel);
       this.wheels.push(wheel);
     }
