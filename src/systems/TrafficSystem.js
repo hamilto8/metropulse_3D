@@ -1,100 +1,114 @@
 import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
 
+class TrafficNode {
+  constructor(id, x, z) {
+    this.id = id;
+    this.pos = new THREE.Vector3(x, 0, z);
+    this.nextNodes = [];
+  }
+}
+
 export class TrafficSystem {
   constructor(app) {
     this.app = app;
     this.vehicles = [];
-    this.waypoints = [];
-    this.laneOffset = 3.5;
+    this.nodes = new Map();
     this.roadCoords = [-100, -50, 0, 50, 100];
+    this.laneOffset = 3.5; // Right-hand traffic lane center
 
     this.initWaypoints();
     this.spawnVehicles(24);
   }
 
   initWaypoints() {
-    // We will generate waypoint loops along the road grid
-    // For each intersection, there are 4 approaching waypoints and 4 departing waypoints
-    this.graph = new Map(); // key: "x,z", value: array of next waypoint coordinates
-
     const coords = this.roadCoords;
     const off = this.laneOffset;
 
-    // Build straight segments along X roads
-    for (const z of coords) {
-      // Eastbound (z + off)
-      for (let i = 0; i < coords.length; i++) {
-        const x = coords[i];
-        const nextX = coords[(i + 1) % coords.length];
-        const current = `${x},${z + off}`;
-        const next = `${nextX},${z + off}`;
-        if (!this.graph.has(current)) this.graph.set(current, []);
-        this.graph.get(current).push(new THREE.Vector3(nextX, 0, z + off));
-      }
-      // Westbound (z - off)
-      for (let i = coords.length - 1; i >= 0; i--) {
-        const x = coords[i];
-        const prevX = coords[(i - 1 + coords.length) % coords.length];
-        const current = `${x},${z - off}`;
-        const next = `${prevX},${z - off}`;
-        if (!this.graph.has(current)) this.graph.set(current, []);
-        this.graph.get(current).push(new THREE.Vector3(prevX, 0, z - off));
-      }
-    }
+    // 1. Create Approach (IN) and Depart (OUT) nodes for every intersection
+    for (const rx of coords) {
+      for (const rz of coords) {
+        // Eastbound (moving +X along Z = rz + off)
+        this.nodes.set(`EB_IN:${rx},${rz}`, new TrafficNode(`EB_IN:${rx},${rz}`, rx - 10, rz + off));
+        this.nodes.set(`EB_OUT:${rx},${rz}`, new TrafficNode(`EB_OUT:${rx},${rz}`, rx + 10, rz + off));
 
-    // Build straight segments along Z roads
-    for (const x of coords) {
-      // Northbound (x + off)
-      for (let i = 0; i < coords.length; i++) {
-        const z = coords[i];
-        const nextZ = coords[(i + 1) % coords.length];
-        const current = `${x + off},${z}`;
-        const next = `${x + off},${nextZ}`;
-        if (!this.graph.has(current)) this.graph.set(current, []);
-        this.graph.get(current).push(new THREE.Vector3(x + off, 0, nextZ));
-      }
-      // Southbound (x - off)
-      for (let i = coords.length - 1; i >= 0; i--) {
-        const z = coords[i];
-        const prevZ = coords[(i - 1 + coords.length) % coords.length];
-        const current = `${x - off},${z}`;
-        const next = `${x - off},${prevZ}`;
-        if (!this.graph.has(current)) this.graph.set(current, []);
-        this.graph.get(current).push(new THREE.Vector3(x - off, 0, prevZ));
+        // Westbound (moving -X along Z = rz - off)
+        this.nodes.set(`WB_IN:${rx},${rz}`, new TrafficNode(`WB_IN:${rx},${rz}`, rx + 10, rz - off));
+        this.nodes.set(`WB_OUT:${rx},${rz}`, new TrafficNode(`WB_OUT:${rx},${rz}`, rx - 10, rz - off));
+
+        // Southbound (moving +Z along X = rx - off)
+        this.nodes.set(`SB_IN:${rx},${rz}`, new TrafficNode(`SB_IN:${rx},${rz}`, rx - off, rz - 10));
+        this.nodes.set(`SB_OUT:${rx},${rz}`, new TrafficNode(`SB_OUT:${rx},${rz}`, rx - off, rz + 10));
+
+        // Northbound (moving -Z along X = rx + off)
+        this.nodes.set(`NB_IN:${rx},${rz}`, new TrafficNode(`NB_IN:${rx},${rz}`, rx + off, rz + 10));
+        this.nodes.set(`NB_OUT:${rx},${rz}`, new TrafficNode(`NB_OUT:${rx},${rz}`, rx + off, rz - 10));
       }
     }
 
-    // Add turning options at intersection crossings!
-    for (const x of coords) {
-      for (const z of coords) {
-        // At intersection (x, z), connect lanes
-        // From Eastbound (x, z+off) -> Northbound (x+off, z+off to nextZ) or Southbound (x-off, z+off)
-        const eb = `${x},${z + off}`;
-        if (this.graph.has(eb)) {
-          this.graph.get(eb).push(new THREE.Vector3(x + off, 0, z + 20)); // Right turn
-          this.graph.get(eb).push(new THREE.Vector3(x - off, 0, z - 20)); // Left turn
+    // 2. Connect straight road segments between consecutive intersections
+    for (let i = 0; i < coords.length - 1; i++) {
+      const c1 = coords[i];
+      const c2 = coords[i + 1];
+
+      for (const rz of coords) {
+        // Eastbound straight segment from c1 to c2
+        const ebOut = this.nodes.get(`EB_OUT:${c1},${rz}`);
+        const ebIn = this.nodes.get(`EB_IN:${c2},${rz}`);
+        if (ebOut && ebIn) ebOut.nextNodes.push(ebIn);
+
+        // Westbound straight segment from c2 to c1
+        const wbOut = this.nodes.get(`WB_OUT:${c2},${rz}`);
+        const wbIn = this.nodes.get(`WB_IN:${c1},${rz}`);
+        if (wbOut && wbIn) wbOut.nextNodes.push(wbIn);
+      }
+
+      for (const rx of coords) {
+        // Southbound straight segment from c1 to c2
+        const sbOut = this.nodes.get(`SB_OUT:${rx},${c1}`);
+        const sbIn = this.nodes.get(`SB_IN:${rx},${c2}`);
+        if (sbOut && sbIn) sbOut.nextNodes.push(sbIn);
+
+        // Northbound straight segment from c2 to c1
+        const nbOut = this.nodes.get(`NB_OUT:${rx},${c2}`);
+        const nbIn = this.nodes.get(`NB_IN:${rx},${c1}`);
+        if (nbOut && nbIn) nbOut.nextNodes.push(nbIn);
+      }
+    }
+
+    // 3. Connect turning rules inside every intersection
+    for (const rx of coords) {
+      for (const rz of coords) {
+        // From Eastbound Approach
+        const ebIn = this.nodes.get(`EB_IN:${rx},${rz}`);
+        if (ebIn) {
+          if (rx < 100) ebIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`)); // Straight
+          if (rz < 100) ebIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`)); // Right turn
+          if (rz > -100) ebIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`)); // Left turn
         }
 
-        // From Westbound (x, z-off)
-        const wb = `${x},${z - off}`;
-        if (this.graph.has(wb)) {
-          this.graph.get(wb).push(new THREE.Vector3(x - off, 0, z - 20));
-          this.graph.get(wb).push(new THREE.Vector3(x + off, 0, z + 20));
+        // From Westbound Approach
+        const wbIn = this.nodes.get(`WB_IN:${rx},${rz}`);
+        if (wbIn) {
+          if (rx > -100) wbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`)); // Straight
+          if (rz > -100) wbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`)); // Right turn
+          if (rz < 100) wbIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`)); // Left turn
         }
 
-        // From Northbound (x+off, z)
-        const nb = `${x + off},${z}`;
-        if (this.graph.has(nb)) {
-          this.graph.get(nb).push(new THREE.Vector3(x - 20, 0, z + off));
-          this.graph.get(nb).push(new THREE.Vector3(x + 20, 0, z - off));
+        // From Southbound Approach
+        const sbIn = this.nodes.get(`SB_IN:${rx},${rz}`);
+        if (sbIn) {
+          if (rz < 100) sbIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`)); // Straight
+          if (rx > -100) sbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`)); // Right turn
+          if (rx < 100) sbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`)); // Left turn
         }
 
-        // From Southbound (x-off, z)
-        const sb = `${x - off},${z}`;
-        if (this.graph.has(sb)) {
-          this.graph.get(sb).push(new THREE.Vector3(x + 20, 0, z - off));
-          this.graph.get(sb).push(new THREE.Vector3(x - 20, 0, z + off));
+        // From Northbound Approach
+        const nbIn = this.nodes.get(`NB_IN:${rx},${rz}`);
+        if (nbIn) {
+          if (rz > -100) nbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`)); // Straight
+          if (rx < 100) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`)); // Right turn
+          if (rx > -100) nbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`)); // Left turn
         }
       }
     }
@@ -108,7 +122,8 @@ export class TrafficSystem {
       'City Yellow Cab #88', 'Metro Police Cruiser #01', 'Neo Tech autonomous Sedan', 'Quantum Sport Coupe'
     ];
 
-    const allNodes = Array.from(this.graph.keys());
+    // Get all OUT nodes (starting positions at departures of intersections)
+    const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
 
     for (let i = 0; i < count; i++) {
       const typeIdx = i % types.length;
@@ -117,22 +132,16 @@ export class TrafficSystem {
       const name = `${names[typeIdx]} #${i + 10}`;
 
       const vehicle = new Vehicle(vType, color, name);
-      
-      // Pick random starting node
-      const nodeStr = allNodes[i % allNodes.length];
-      const [nx, nz] = nodeStr.split(',').map(Number);
-      vehicle.mesh.position.set(nx, 0, nz);
 
-      // Pick target waypoint
-      const possibleNexts = this.graph.get(nodeStr);
-      if (possibleNexts && possibleNexts.length > 0) {
-        vehicle.targetWaypoint = possibleNexts[Math.floor(Math.random() * possibleNexts.length)].clone();
-      } else {
-        vehicle.targetWaypoint = new THREE.Vector3(0, 0, 0);
+      // Pick a starting node
+      const startNode = outNodes[i % outNodes.length];
+      vehicle.mesh.position.copy(startNode.pos);
+      vehicle.currentNode = startNode;
+      vehicle.targetNode = startNode.nextNodes[0];
+
+      if (vehicle.targetNode) {
+        vehicle.mesh.lookAt(vehicle.targetNode.pos);
       }
-
-      // Initial orientation
-      vehicle.mesh.lookAt(vehicle.targetWaypoint);
 
       this.app.sceneManager.scene.add(vehicle.mesh);
       this.vehicles.push(vehicle);
@@ -140,7 +149,6 @@ export class TrafficSystem {
   }
 
   update(delta) {
-    // Check collisions and move vehicles
     for (let i = 0; i < this.vehicles.length; i++) {
       const v = this.vehicles[i];
       const pos = v.mesh.position;
@@ -151,78 +159,63 @@ export class TrafficSystem {
         if (i === j) continue;
         const other = this.vehicles[j];
         const dist = pos.distanceTo(other.mesh.position);
-        
-        // If other vehicle is within 10 units and roughly in front
+
         if (dist < 11) {
           const toOther = other.mesh.position.clone().sub(pos).normalize();
           const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(v.mesh.quaternion);
-          if (toOther.dot(forward) > 0.6) {
+          if (toOther.dot(forward) > 0.65) {
             isBlocked = true;
             break;
           }
         }
       }
 
-      // 2. Adjust target speed based on traffic
       if (isBlocked) {
         v.targetSpeed = 0;
       } else {
         v.targetSpeed = v.maxSpeed;
       }
 
-      // Smoothly accelerate or brake
       if (v.speed < v.targetSpeed) {
         v.speed = Math.min(v.targetSpeed, v.speed + v.acceleration * delta);
       } else if (v.speed > v.targetSpeed) {
-        v.speed = Math.max(v.targetSpeed, v.speed - v.acceleration * 1.5 * delta);
+        v.speed = Math.max(v.targetSpeed, v.speed - v.acceleration * 1.8 * delta);
       }
 
-      // 3. Move towards targetWaypoint
-      if (v.targetWaypoint) {
-        const distToWaypoint = pos.distanceTo(v.targetWaypoint);
-        if (distToWaypoint < 3.0) {
-          // Reached waypoint! Pick next node
-          const approxKey = `${Math.round(v.targetWaypoint.x / 3.5) * 3.5},${Math.round(v.targetWaypoint.z / 3.5) * 3.5}`;
-          
-          // Find best matching key in graph
-          let nextList = null;
-          for (const [k, list] of this.graph.entries()) {
-            const [kx, kz] = k.split(',').map(Number);
-            if (Math.abs(kx - v.targetWaypoint.x) < 5 && Math.abs(kz - v.targetWaypoint.z) < 5) {
-              nextList = list;
-              break;
-            }
-          }
-
-          if (nextList && nextList.length > 0) {
-            v.targetWaypoint = nextList[Math.floor(Math.random() * nextList.length)].clone();
+      // 2. Steer along road graph towards target node
+      if (v.targetNode) {
+        const distToTarget = pos.distanceTo(v.targetNode.pos);
+        if (distToTarget < 2.5) {
+          // Reached node! Pick next valid connected node along the road graph
+          v.currentNode = v.targetNode;
+          if (v.currentNode.nextNodes.length > 0) {
+            v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
           } else {
-            // Fallback loop back to center
-            v.targetWaypoint.set((Math.random() - 0.5) * 150, 0, (Math.random() - 0.5) * 150);
+            // Should never happen with our closed graph, but safety fallback
+            v.speed = 0;
           }
         }
 
-        // Calculate rotation towards waypoint
-        const dir = v.targetWaypoint.clone().sub(pos).normalize();
-        const targetAngle = Math.atan2(dir.x, dir.z);
-        
-        // Smooth rotation
-        let currentAngle = v.mesh.rotation.y;
-        let diff = targetAngle - currentAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        v.mesh.rotation.y += diff * 5.0 * delta;
+        if (v.targetNode) {
+          const dir = v.targetNode.pos.clone().sub(pos).normalize();
+          const targetAngle = Math.atan2(dir.x, dir.z);
 
-        // Advance position
-        const moveStep = v.speed * delta;
-        v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
-        v.mesh.position.y = 0; // Keep on road
+          let currentAngle = v.mesh.rotation.y;
+          let diff = targetAngle - currentAngle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          v.mesh.rotation.y += diff * 6.0 * delta;
+
+          const moveStep = v.speed * delta;
+          v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+          v.mesh.position.y = 0; // Strictly adhere to road surface
+        }
       }
 
-      // 4. Update vehicle animations & wheels
+      // 3. Update vehicle animations & wheels
       v.update(delta);
 
-      // 5. Check if police car passing near camera to trigger Doppler siren sound
+      // 4. Check Doppler siren sound for police cars
       if (v.isPolice && v.speed > 5 && this.app.audioSystem && this.app.audioSystem.isEnabled) {
         const camDist = pos.distanceTo(this.app.sceneManager.camera.position);
         if (camDist < 40 && Math.random() < 0.005) {

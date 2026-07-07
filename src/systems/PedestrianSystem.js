@@ -1,37 +1,96 @@
 import * as THREE from 'three';
 import { Pedestrian } from '../entities/Pedestrian.js';
 
+class SidewalkNode {
+  constructor(id, x, z, y = 0.4) {
+    this.id = id;
+    this.pos = new THREE.Vector3(x, y, z);
+    this.nextNodes = [];
+  }
+}
+
 export class PedestrianSystem {
   constructor(app) {
     this.app = app;
     this.pedestrians = [];
-    this.waypoints = [];
+    this.nodes = new Map();
+    this.sidewalkCoords = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
     
     this.initWaypoints();
     this.spawnPedestrians(36);
   }
 
   initWaypoints() {
-    // Generate sidewalk loops around blocks and Central Park
-    this.waypoints = [];
+    const coords = this.sidewalkCoords;
 
-    // Sidewalk edges around roads at x/z = -100, -50, 0, 50, 100
-    const roadCoords = [-100, -50, 0, 50, 100];
-    const offsets = [-9, 9]; // Sidewalk distance from road center
+    // 1. Create a grid of sidewalk intersection and corner nodes
+    for (const x of coords) {
+      for (const z of coords) {
+        const y = (x < -60 && z < -60) ? 0.7 : 0.4; // Elevated inside park area
+        this.nodes.set(`${x},${z}`, new SidewalkNode(`${x},${z}`, x, z, y));
+      }
+    }
 
-    for (const r of roadCoords) {
-      for (const off of offsets) {
-        for (let pos = -90; pos <= 90; pos += 15) {
-          this.waypoints.push(new THREE.Vector3(r + off, 0.4, pos));
-          this.waypoints.push(new THREE.Vector3(pos, 0.4, r + off));
+    // 2. Connect orthogonal neighbors (sidewalk edges along blocks and crosswalks across roads)
+    for (let i = 0; i < coords.length; i++) {
+      for (let j = 0; j < coords.length; j++) {
+        const current = this.nodes.get(`${coords[i]},${coords[j]}`);
+        if (!current) continue;
+
+        // Connect East neighbor (i + 1)
+        if (i < coords.length - 1) {
+          const east = this.nodes.get(`${coords[i + 1]},${coords[j]}`);
+          if (east) {
+            current.nextNodes.push(east);
+            east.nextNodes.push(current); // Bi-directional walking
+          }
+        }
+
+        // Connect South neighbor (j + 1)
+        if (j < coords.length - 1) {
+          const south = this.nodes.get(`${coords[i]},${coords[j + 1]}`);
+          if (south) {
+            current.nextNodes.push(south);
+            south.nextNodes.push(current); // Bi-directional walking
+          }
         }
       }
     }
 
-    // Add Central Park internal paths
-    for (let p = -88; p <= -62; p += 6) {
-      this.waypoints.push(new THREE.Vector3(p, 0.7, p));
-      this.waypoints.push(new THREE.Vector3(p, 0.7, -150 - p));
+    // 3. Add Central Park internal walking paths (in the NW quadrant: x and z between -100 and -50)
+    const parkNodes = [
+      new SidewalkNode('park_center', -75, -75, 0.7),
+      new SidewalkNode('park_n', -75, -91, 0.7),
+      new SidewalkNode('park_s', -75, -59, 0.7),
+      new SidewalkNode('park_w', -91, -75, 0.7),
+      new SidewalkNode('park_e', -59, -75, 0.7)
+    ];
+
+    for (const pn of parkNodes) {
+      this.nodes.set(pn.id, pn);
+    }
+
+    // Link park paths to sidewalk grid
+    this.linkBiDir('park_center', 'park_n');
+    this.linkBiDir('park_center', 'park_s');
+    this.linkBiDir('park_center', 'park_w');
+    this.linkBiDir('park_center', 'park_e');
+
+    this.linkBiDir('park_n', '-75,-91'); if (!this.nodes.has('-75,-91')) {
+      const n = new SidewalkNode('-75,-91', -75, -91, 0.7);
+      this.nodes.set('-75,-91', n);
+      this.linkBiDir('-75,-91', '-91,-91');
+      this.linkBiDir('-75,-91', '-59,-91');
+      this.linkBiDir('park_n', '-75,-91');
+    }
+  }
+
+  linkBiDir(id1, id2) {
+    const n1 = this.nodes.get(id1);
+    const n2 = this.nodes.get(id2);
+    if (n1 && n2) {
+      if (!n1.nextNodes.includes(n2)) n1.nextNodes.push(n2);
+      if (!n2.nextNodes.includes(n1)) n2.nextNodes.push(n1);
     }
   }
 
@@ -41,6 +100,8 @@ export class PedestrianSystem {
     const firstNames = ['Alex', 'Jordan', 'Elena', 'Marcus', 'Sophia', 'Liam', 'Chloe', 'David', 'Maya', 'Lucas', 'Zoe', 'Daniel'];
     const lastNames = ['V.', 'K.', 'M.', 'S.', 'R.', 'T.', 'L.', 'H.', 'W.', 'P.', 'B.', 'N.'];
 
+    const allNodes = Array.from(this.nodes.values()).filter(n => n.nextNodes.length > 0);
+
     for (let i = 0; i < count; i++) {
       const pType = types[i % types.length];
       const color = colors[i % colors.length];
@@ -49,34 +110,19 @@ export class PedestrianSystem {
       const name = `${fname} ${lname}`;
 
       const ped = new Pedestrian(pType, color, name);
-      
-      // Pick starting waypoint
-      const startWp = this.waypoints[Math.floor(Math.random() * this.waypoints.length)].clone();
-      ped.mesh.position.copy(startWp);
 
-      // Pick target waypoint
-      ped.targetWaypoint = this.pickNextWaypoint(startWp);
-      ped.mesh.lookAt(ped.targetWaypoint);
+      // Pick starting node
+      const startNode = allNodes[i % allNodes.length];
+      ped.mesh.position.copy(startNode.pos);
+      ped.currentNode = startNode;
+      ped.targetNode = startNode.nextNodes[Math.floor(Math.random() * startNode.nextNodes.length)];
+
+      if (ped.targetNode) {
+        ped.mesh.lookAt(ped.targetNode.pos);
+      }
 
       this.app.sceneManager.scene.add(ped.mesh);
       this.pedestrians.push(ped);
-    }
-  }
-
-  pickNextWaypoint(currentPos) {
-    // Find waypoints within 12 to 25 units distance
-    const candidates = [];
-    for (const wp of this.waypoints) {
-      const dist = currentPos.distanceTo(wp);
-      if (dist > 8 && dist < 26) {
-        candidates.push(wp);
-      }
-    }
-
-    if (candidates.length > 0) {
-      return candidates[Math.floor(Math.random() * candidates.length)].clone();
-    } else {
-      return this.waypoints[Math.floor(Math.random() * this.waypoints.length)].clone();
     }
   }
 
@@ -85,13 +131,11 @@ export class PedestrianSystem {
       const p = this.pedestrians[i];
       const pos = p.mesh.position;
 
-      // 1. Check avoidance with other pedestrians or vehicles
+      // 1. Check avoidance with nearby vehicles or pedestrians
       let isBlocked = false;
-
-      // Check nearby vehicles
       if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
         for (const v of this.app.trafficSystem.vehicles) {
-          if (pos.distanceTo(v.mesh.position) < 5.0 && v.speed > 1.0) {
+          if (pos.distanceTo(v.mesh.position) < 4.5 && v.speed > 1.0) {
             isBlocked = true;
             break;
           }
@@ -104,32 +148,42 @@ export class PedestrianSystem {
         p.targetSpeed = p.maxSpeed;
       }
 
-      // Smooth acceleration
       if (p.speed < p.targetSpeed) {
         p.speed = Math.min(p.targetSpeed, p.speed + 8 * delta);
       } else if (p.speed > p.targetSpeed) {
-        p.speed = Math.max(p.targetSpeed, p.speed - 12 * delta);
+        p.speed = Math.max(p.targetSpeed, p.speed - 14 * delta);
       }
 
-      // 2. Move towards waypoint
-      if (p.targetWaypoint) {
-        const dist = pos.distanceTo(p.targetWaypoint);
-        if (dist < 1.5) {
-          p.targetWaypoint = this.pickNextWaypoint(pos);
+      // 2. Move along sidewalk graph towards target node
+      if (p.targetNode) {
+        const dist = pos.distanceTo(p.targetNode.pos);
+        if (dist < 1.2) {
+          // Reached node! Pick next connected node along sidewalk (prefer not turning immediately back if possible)
+          const prevNode = p.currentNode;
+          p.currentNode = p.targetNode;
+          
+          let candidates = p.currentNode.nextNodes.filter(n => n !== prevNode);
+          if (candidates.length === 0) candidates = p.currentNode.nextNodes;
+          
+          if (candidates.length > 0) {
+            p.targetNode = candidates[Math.floor(Math.random() * candidates.length)];
+          }
         }
 
-        const dir = p.targetWaypoint.clone().sub(pos).normalize();
-        const targetAngle = Math.atan2(dir.x, dir.z);
-        
-        let currentAngle = p.mesh.rotation.y;
-        let diff = targetAngle - currentAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        p.mesh.rotation.y += diff * 6.0 * delta;
+        if (p.targetNode) {
+          const dir = p.targetNode.pos.clone().sub(pos).normalize();
+          const targetAngle = Math.atan2(dir.x, dir.z);
 
-        const moveStep = p.speed * delta;
-        p.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
-        p.mesh.position.y = pos.x < -60 && pos.z < -60 ? 0.7 : 0.4; // Slightly higher in park
+          let currentAngle = p.mesh.rotation.y;
+          let diff = targetAngle - currentAngle;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          p.mesh.rotation.y += diff * 7.0 * delta;
+
+          const moveStep = p.speed * delta;
+          p.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+          p.mesh.position.y = (pos.x < -60 && pos.z < -60) ? 0.7 : 0.4;
+        }
       }
 
       // 3. Update walk animation
