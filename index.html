@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MetroPulse 3D | Cyber-Modern Metropolis Simulation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Three.js Canvas Container -->
+      <div id="canvas-container"></div>
+
+      <!-- Top Header Bar -->
+      <header class="glass-panel top-header">
+        <div class="logo-area">
+          <div class="pulse-dot"></div>
+          <h1>METROPULSE <span class="badge">3D SIM</span></h1>
+        </div>
+        <div class="header-stats">
+          <div class="stat-item" title="Active Vehicles">
+            <span class="stat-icon">🚗</span>
+            <span id="stat-vehicles" class="stat-value">24</span>
+          </div>
+          <div class="stat-item" title="Active Pedestrians">
+            <span class="stat-icon">🚶</span>
+            <span id="stat-pedestrians" class="stat-value">36</span>
+          </div>
+          <div class="stat-item" title="Simulation FPS">
+            <span class="stat-icon">⚡</span>
+            <span id="stat-fps" class="stat-value">60 FPS</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Left Control Sidebar (Camera & Environment) -->
+      <aside class="glass-panel left-sidebar">
+        <div class="section-title">CAMERA PRESETS</div>
+        <div class="button-group">
+          <button class="icon-btn active" data-camera="birdseye" title="Bird's Eye View">
+            <span class="btn-icon">🚁</span>
+            <span class="btn-label">Bird's Eye</span>
+          </button>
+          <button class="icon-btn" data-camera="street" title="Street Level">
+            <span class="btn-icon">🏙️</span>
+            <span class="btn-label">Street Level</span>
+          </button>
+          <button class="icon-btn" data-camera="park" title="Central Park">
+            <span class="btn-icon">🌳</span>
+            <span class="btn-label">Central Park</span>
+          </button>
+          <button class="icon-btn" data-camera="downtown" title="Downtown Intersection">
+            <span class="btn-icon">🚦</span>
+            <span class="btn-label">Downtown</span>
+          </button>
+          <button class="icon-btn" data-camera="free" title="Free Orbit">
+            <span class="btn-icon">🌐</span>
+            <span class="btn-label">Free Orbit</span>
+          </button>
+        </div>
+
+        <div class="section-title">ATMOSPHERE</div>
+        <div class="button-group horizontal">
+          <button class="icon-btn active" data-weather="clear" title="Clear Weather">☀️ Clear</button>
+          <button class="icon-btn" data-weather="mist" title="Cyber Mist">🌫️ Mist</button>
+          <button class="icon-btn" data-weather="rain" title="Rainy Night">🌧️ Rain</button>
+        </div>
+
+        <div class="section-title">SFX SOUNDSCAPE</div>
+        <div class="audio-controls">
+          <button id="btn-mute" class="icon-btn audio-toggle" title="Toggle Audio (Click to enable audio)">
+            <span id="mute-icon">🔇</span>
+            <span id="mute-label">Enable SFX</span>
+          </button>
+          <div class="volume-slider-container">
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" disabled />
+          </div>
+        </div>
+      </aside>
+
+      <!-- Bottom Time of Day Slider Bar -->
+      <footer class="glass-panel bottom-time-bar">
+        <div class="time-display">
+          <div id="time-icon" class="time-icon">☀️</div>
+          <div class="time-info">
+            <span id="clock-display" class="clock-display">14:30</span>
+            <span id="time-phase" class="time-phase">AFTERNOON</span>
+          </div>
+        </div>
+
+        <div class="time-controls">
+          <button id="btn-time-play" class="play-btn" title="Play/Pause Time">⏸️</button>
+          <div class="slider-wrapper">
+            <span class="time-label">00:00</span>
+            <input type="range" id="time-slider" min="0" max="24" step="0.05" value="14.5" />
+            <span class="time-label">24:00</span>
+          </div>
+        </div>
+
+        <div class="speed-selector">
+          <button class="speed-btn" data-speed="0.5">0.5x</button>
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="5">5x</button>
+          <button class="speed-btn" data-speed="15">15x</button>
+        </div>
+      </footer>
+
+      <!-- Right Interactive Object Inspector HUD -->
+      <aside id="inspector-hud" class="glass-panel inspector-hud hidden">
+        <div class="inspector-header">
+          <span id="inspector-type" class="inspector-badge">BUILDING</span>
+          <button id="btn-close-inspector" class="close-btn">&times;</button>
+        </div>
+        <h2 id="inspector-title" class="inspector-title">NeoTech HQ</h2>
+        <div id="inspector-body" class="inspector-body">
+          <div class="info-row"><span class="info-label">Status:</span> <span class="info-val">Active</span></div>
+        </div>
+        <div class="inspector-actions">
+          <button id="btn-follow-target" class="action-btn primary hidden">👁️ Follow Camera</button>
+          <button id="btn-interact-sfx" class="action-btn secondary hidden">🔊 Trigger Honk/Siren</button>
+        </div>
+      </aside>
+
+      <!-- Quick Tips Overlay -->
+      <div class="quick-tips">
+        <span>💡 Tip: Click on cars, buildings, or pedestrians to inspect and follow!</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
