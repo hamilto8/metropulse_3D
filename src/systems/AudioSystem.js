@@ -9,14 +9,13 @@ export class AudioSystem {
     // Ambience state
     this.rumbleNode = null;
     this.rumbleGain = null;
+    this.windGain = null;
     this.trafficGain = null;
-    this.cricketGain = null;
     this.rainGain = null;
 
     // Timers for occasional procedural events
     this.birdTimer = 3.0;
-    this.cricketTimer = 0;
-    this.honkTimer = 6.0 + Math.random() * 8.0;
+    this.honkTimer = 8.0 + Math.random() * 10.0;
   }
 
   toggleAudio() {
@@ -49,7 +48,7 @@ export class AudioSystem {
   }
 
   startBackgroundAmbience() {
-    // 1. City Rumble (low pass brown noise)
+    // Generate buffer for natural noise
     const bufferSize = 2 * this.ctx.sampleRate;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
@@ -61,43 +60,70 @@ export class AudioSystem {
       output[i] *= 3.5; // Gain compensation
     }
 
-    const whiteNoise = this.ctx.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    whiteNoise.loop = true;
+    // 1. City Rumble (deep, soft background hum at 110Hz)
+    const rumbleNoise = this.ctx.createBufferSource();
+    rumbleNoise.buffer = noiseBuffer;
+    rumbleNoise.loop = true;
 
     const rumbleFilter = this.ctx.createBiquadFilter();
     rumbleFilter.type = 'lowpass';
-    rumbleFilter.frequency.value = 130;
+    rumbleFilter.frequency.value = 110;
 
     this.rumbleGain = this.ctx.createGain();
-    this.rumbleGain.gain.value = 0.22;
+    this.rumbleGain.gain.value = 0.20;
 
-    whiteNoise.connect(rumbleFilter);
+    rumbleNoise.connect(rumbleFilter);
     rumbleFilter.connect(this.rumbleGain);
     this.rumbleGain.connect(this.masterGain);
-    whiteNoise.start();
+    rumbleNoise.start();
 
-    // 2. Traffic Ambience (Tires & Engines Swishing / Undulating hiss)
+    // 2. Outdoor Wind Breeze (gentle, soothing white/pink noise breeze)
+    const windNoise = this.ctx.createBufferSource();
+    windNoise.buffer = noiseBuffer;
+    windNoise.loop = true;
+
+    const windFilter = this.ctx.createBiquadFilter();
+    windFilter.type = 'lowpass';
+    windFilter.frequency.value = 320; // Soft wind frequency
+
+    // LFO for slow wind gusts (0.1 Hz = 10 second cycle)
+    const windLfo = this.ctx.createOscillator();
+    windLfo.frequency.value = 0.1;
+    const windLfoGain = this.ctx.createGain();
+    windLfoGain.gain.value = 120; // Gently oscillate between 200Hz and 440Hz
+
+    windLfo.connect(windLfoGain);
+    windLfoGain.connect(windFilter.frequency);
+
+    this.windGain = this.ctx.createGain();
+    this.windGain.gain.value = 0.18; // Mild, relaxing outdoor breeze
+
+    windNoise.connect(windFilter);
+    windFilter.connect(this.windGain);
+    this.windGain.connect(this.masterGain);
+    windNoise.start();
+    windLfo.start();
+
+    // 3. Mild Traffic Ambience (undulating mid-low rumble of distant tires/engines)
+    const trafficNoise = this.ctx.createBufferSource();
+    trafficNoise.buffer = noiseBuffer;
+    trafficNoise.loop = true;
+
     const trafficFilter = this.ctx.createBiquadFilter();
     trafficFilter.type = 'bandpass';
-    trafficFilter.frequency.value = 550;
-    trafficFilter.Q.value = 1.2;
+    trafficFilter.frequency.value = 380;
+    trafficFilter.Q.value = 0.9;
 
-    // LFO to modulate traffic frequency (simulating cars passing by)
     const trafficLfo = this.ctx.createOscillator();
-    trafficLfo.frequency.value = 0.25; // 4-second cycle
+    trafficLfo.frequency.value = 0.2; // 5-second cycle for passing traffic
     const trafficLfoGain = this.ctx.createGain();
-    trafficLfoGain.gain.value = 220; // Sweep between 330Hz and 770Hz
+    trafficLfoGain.gain.value = 100; // Sweep smoothly around 280Hz - 480Hz
 
     trafficLfo.connect(trafficLfoGain);
     trafficLfoGain.connect(trafficFilter.frequency);
 
     this.trafficGain = this.ctx.createGain();
-    this.trafficGain.gain.value = 0.14;
-
-    const trafficNoise = this.ctx.createBufferSource();
-    trafficNoise.buffer = noiseBuffer;
-    trafficNoise.loop = true;
+    this.trafficGain.gain.value = 0.10;
 
     trafficNoise.connect(trafficFilter);
     trafficFilter.connect(this.trafficGain);
@@ -105,47 +131,21 @@ export class AudioSystem {
     trafficNoise.start();
     trafficLfo.start();
 
-    // 3. Continuous Cricket Drone for Nighttime
-    const cricketOsc = this.ctx.createOscillator();
-    cricketOsc.type = 'triangle';
-    cricketOsc.frequency.value = 4600;
-
-    const cricketLfo = this.ctx.createOscillator();
-    cricketLfo.frequency.value = 16; // 16 Hz chirping rate
-    const cricketLfoGain = this.ctx.createGain();
-    cricketLfoGain.gain.value = 0.08;
-
-    this.cricketGain = this.ctx.createGain();
-    this.cricketGain.gain.value = 0; // Off during day
-
-    cricketLfo.connect(cricketLfoGain);
-    cricketLfoGain.connect(this.cricketGain.gain);
-
-    cricketOsc.connect(this.cricketGain);
-    this.cricketGain.connect(this.masterGain);
-    cricketOsc.start();
-    cricketLfo.start();
-
-    // 4. Rain Weather SFX (Raindrops on asphalt and foliage)
-    const rainFilter = this.ctx.createBiquadFilter();
-    rainFilter.type = 'bandpass';
-    rainFilter.frequency.value = 1800;
-    rainFilter.Q.value = 0.7;
-
-    const rainHighPass = this.ctx.createBiquadFilter();
-    rainHighPass.type = 'highpass';
-    rainHighPass.frequency.value = 800;
-
-    this.rainGain = this.ctx.createGain();
-    this.rainGain.gain.value = 0; // Off unless raining
-
+    // 4. Mild Rain Weather SFX (soft, relaxing rain without harsh treble)
     const rainNoise = this.ctx.createBufferSource();
     rainNoise.buffer = noiseBuffer;
     rainNoise.loop = true;
 
+    const rainFilter = this.ctx.createBiquadFilter();
+    rainFilter.type = 'bandpass';
+    rainFilter.frequency.value = 1100; // Lowered center freq for warm rain sound
+    rainFilter.Q.value = 0.5;
+
+    this.rainGain = this.ctx.createGain();
+    this.rainGain.gain.value = 0; // Off unless raining
+
     rainNoise.connect(rainFilter);
-    rainFilter.connect(rainHighPass);
-    rainHighPass.connect(this.rainGain);
+    rainFilter.connect(this.rainGain);
     this.rainGain.connect(this.masterGain);
     rainNoise.start();
   }
@@ -153,41 +153,42 @@ export class AudioSystem {
   update(timeVal, delta) {
     if (!this.isEnabled || !this.ctx) return;
 
-    // 1. Adjust night vs day ambience gains
     const isNight = (timeVal >= 18.0 || timeVal < 6.0);
-    const targetCricketGain = isNight ? 0.06 : 0.0;
-    this.cricketGain.gain.setTargetAtTime(targetCricketGain, this.ctx.currentTime, 0.5);
-
-    // Traffic volume: louder during daytime rush hours, quieter late at night
     const isRushHour = (timeVal >= 7.0 && timeVal <= 9.5) || (timeVal >= 16.0 && timeVal <= 18.5);
-    let targetTrafficGain = isNight ? 0.06 : 0.14;
-    if (isRushHour) targetTrafficGain = 0.20;
+    const isRaining = this.app && this.app.environment && this.app.environment.weatherMode === 'rain';
+
+    // 1. Adjust Traffic volume: slightly louder during daytime rush hours, quieter at night
+    let targetTrafficGain = isNight ? 0.05 : 0.10;
+    if (isRushHour) targetTrafficGain = 0.15;
     this.trafficGain.gain.setTargetAtTime(targetTrafficGain, this.ctx.currentTime, 1.0);
 
-    // 2. Adjust Rain SFX based on weather mode
-    const isRaining = this.app && this.app.environment && this.app.environment.weatherMode === 'rain';
-    const targetRainGain = isRaining ? 0.22 : 0.0;
+    // 2. Adjust Wind Breeze: slightly breezier in clear daytime or mist
+    const targetWindGain = isRaining ? 0.12 : (isNight ? 0.15 : 0.20);
+    this.windGain.gain.setTargetAtTime(targetWindGain, this.ctx.currentTime, 1.0);
+
+    // 3. Adjust Rain SFX based on weather mode
+    const targetRainGain = isRaining ? 0.20 : 0.0;
     this.rainGain.gain.setTargetAtTime(targetRainGain, this.ctx.currentTime, 0.5);
 
-    // 3. Daytime birds
+    // 4. Daytime bird chirps (only in clear weather during day)
     if (!isNight && !isRaining) {
       this.birdTimer -= delta;
       if (this.birdTimer <= 0) {
         this.playBirdChirp();
-        this.birdTimer = 5.0 + Math.random() * 8.0;
+        this.birdTimer = 6.0 + Math.random() * 10.0;
       }
     }
 
-    // 4. Occasional Cars Honking in Traffic
+    // 5. Occasional Cars Honking in Traffic
     this.honkTimer -= delta;
     if (this.honkTimer <= 0) {
       this.playHonk(true); // Randomized pitch
       if (isRushHour) {
-        this.honkTimer = 5.0 + Math.random() * 7.0; // Frequent during rush hour
+        this.honkTimer = 6.0 + Math.random() * 8.0; // Frequent during rush hour
       } else if (isNight) {
-        this.honkTimer = 18.0 + Math.random() * 25.0; // Rare at night
+        this.honkTimer = 22.0 + Math.random() * 30.0; // Very rare at night
       } else {
-        this.honkTimer = 9.0 + Math.random() * 12.0;
+        this.honkTimer = 12.0 + Math.random() * 15.0;
       }
     }
   }
@@ -199,15 +200,15 @@ export class AudioSystem {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    const baseFreq = 2800 + Math.random() * 800;
+    const baseFreq = 2600 + Math.random() * 600;
     osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.linearRampToValueAtTime(baseFreq + 600, now + 0.08);
-    osc.frequency.linearRampToValueAtTime(baseFreq - 200, now + 0.16);
-    osc.frequency.linearRampToValueAtTime(baseFreq + 800, now + 0.25);
+    osc.frequency.linearRampToValueAtTime(baseFreq + 400, now + 0.08);
+    osc.frequency.linearRampToValueAtTime(baseFreq - 150, now + 0.16);
+    osc.frequency.linearRampToValueAtTime(baseFreq + 500, now + 0.25);
 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
-    gain.gain.linearRampToValueAtTime(0.05, now + 0.15);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.02); // Soft, non-intrusive chirp
+    gain.gain.linearRampToValueAtTime(0.02, now + 0.15);
     gain.gain.linearRampToValueAtTime(0, now + 0.28);
 
     osc.connect(gain);
@@ -227,17 +228,15 @@ export class AudioSystem {
     osc1.type = 'sawtooth';
     osc2.type = 'sawtooth';
 
-    // Slight randomization for different vehicle horn sizes (compact vs truck/bus)
-    const pitchShift = randomizePitch ? (Math.random() * 80 - 40) : 0;
+    const pitchShift = randomizePitch ? (Math.random() * 60 - 30) : 0;
     const freq1 = 330 + pitchShift; // E4 nominal
-    const freq2 = freq1 * 1.2589; // Classic minor seventh/major third interval detune
+    const freq2 = freq1 * 1.2589;
 
     osc1.frequency.setValueAtTime(freq1, now);
     osc2.frequency.setValueAtTime(freq2, now);
 
-    // Double honk probability (beep-beep!)
-    const isDoubleHonk = randomizePitch && Math.random() > 0.5;
-    const honkVol = randomizePitch ? 0.10 : 0.15; // Slightly softer for background ambient honks
+    const isDoubleHonk = randomizePitch && Math.random() > 0.6;
+    const honkVol = randomizePitch ? 0.08 : 0.12; // Mild, comfortable honk volume
 
     if (isDoubleHonk) {
       gain.gain.setValueAtTime(honkVol, now);
@@ -283,13 +282,13 @@ export class AudioSystem {
     osc.frequency.setValueAtTime(600, now);
 
     for (let t = 0; t < duration; t += 0.4) {
-      osc.frequency.linearRampToValueAtTime(1200, now + t + 0.2);
+      osc.frequency.linearRampToValueAtTime(1100, now + t + 0.2);
       osc.frequency.linearRampToValueAtTime(600, now + t + 0.4);
     }
 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + 0.1);
-    gain.gain.setValueAtTime(0.12, now + duration - 0.2);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.1);
+    gain.gain.setValueAtTime(0.08, now + duration - 0.2);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
     osc.connect(gain);
@@ -305,10 +304,10 @@ export class AudioSystem {
     const gain = this.ctx.createGain();
 
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(800, now);
-    osc.frequency.exponentialRampToValueAtTime(1400, now + 0.05);
+    osc.frequency.setValueAtTime(600, now);
+    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.05);
 
-    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.setValueAtTime(0.06, now);
     gain.gain.linearRampToValueAtTime(0, now + 0.06);
 
     osc.connect(gain);
