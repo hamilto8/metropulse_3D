@@ -23,7 +23,7 @@ class MetroPulseApp {
     this.sceneManager = new SceneManager(container);
 
     // 2. Audio System
-    this.audioSystem = new AudioSystem();
+    this.audioSystem = new AudioSystem(this);
 
     // 3. Raycaster / Inspector HUD
     this.inspectorHud = new InspectorHUD(this);
