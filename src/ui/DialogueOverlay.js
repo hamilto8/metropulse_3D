@@ -68,10 +68,13 @@ export class DialogueOverlay {
       startBtn.className = 'dialogue-choice-btn';
       startBtn.textContent = '🚕 Start Ride / Let\'s Go!';
       startBtn.addEventListener('click', () => {
+        // Capture both refs BEFORE calling hide(), which nulls them out.
         const mission = this.currentMission;
+        const missionSystem = this.missionSystem;
         this.hide();
-        if (this.missionSystem) {
-          this.missionSystem.startMission(mission, node);
+        // Now safe to call startMission with the captured refs.
+        if (missionSystem && mission) {
+          missionSystem.startMission(mission, node);
         }
       });
       this.choicesEl.appendChild(startBtn);
@@ -105,6 +108,8 @@ export class DialogueOverlay {
   /**
    * Hides the dialogue overlay and resets all state.
    * Notifies MissionSystem to start the re-trigger cooldown timer.
+   * IMPORTANT: After this returns, this.currentMission and this.missionSystem are null.
+   * Callers that need those refs must capture them BEFORE calling hide().
    */
   hide() {
     if (this.overlay) {

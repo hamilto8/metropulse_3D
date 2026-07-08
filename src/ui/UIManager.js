@@ -318,16 +318,8 @@ export class UIManager {
   }
 
   hideInspector() {
-    if (this.app && this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
-      this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
-      if (this.btnTakeControl) {
-        this.btnTakeControl.innerHTML = '🏎️ Take Control (Physics)';
-        this.btnTakeControl.classList.remove('active');
-      }
-    }
     this.selectedEntity = null;
     this.inspectorHud.classList.add('hidden');
-    this.app.sceneManager.stopFollowTarget();
   }
 
   updateInspectorLive() {

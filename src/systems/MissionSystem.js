@@ -35,6 +35,9 @@ export class MissionSystem {
     /** Cached dropoff position Vector3 — set on startMission, avoids per-frame allocation */
     this._dropoffPos = new THREE.Vector3();
 
+    /** Scratch Vector3 for per-frame arrow direction math — avoids allocation in hot path */
+    this._toDropoff = new THREE.Vector3();
+
     /** Prevents instant dialogue re-triggering loop when player closes/declines dialogue */
     this.triggerCooldown = 0;
 
@@ -243,18 +246,35 @@ export class MissionSystem {
     if (this._toastEl && this._toastEl.parentNode) {
       this._toastEl.parentNode.removeChild(this._toastEl);
     }
+
+    // Build DOM nodes safely using textContent (not innerHTML) to avoid XSS
     const toast = document.createElement('div');
     toast.className = 'payout-toast';
-    toast.innerHTML = `
-      <span class="payout-check">✅</span>
-      <span class="payout-label">Fare Complete!</span>
-      <span class="payout-passenger">${name} delivered</span>
-      <span class="payout-amount">+$${amount}</span>
-    `;
+
+    const check = document.createElement('span');
+    check.className = 'payout-check';
+    check.textContent = '\u2705'; // ✅
+
+    const label = document.createElement('span');
+    label.className = 'payout-label';
+    label.textContent = 'Fare Complete!';
+
+    const passenger = document.createElement('span');
+    passenger.className = 'payout-passenger';
+    passenger.textContent = `${name} delivered`;
+
+    const amountEl = document.createElement('span');
+    amountEl.className = 'payout-amount';
+    amountEl.textContent = `+$${amount}`;
+
+    toast.appendChild(check);
+    toast.appendChild(label);
+    toast.appendChild(passenger);
+    toast.appendChild(amountEl);
     document.body.appendChild(toast);
     this._toastEl = toast;
 
-    // Animate in
+    // Animate in on next paint
     requestAnimationFrame(() => toast.classList.add('payout-toast--visible'));
 
     // Auto-remove after 3.5 seconds
@@ -415,9 +435,10 @@ export class MissionSystem {
 
     // 7. Compute navigation compass arrow angle.
     //    Uses activeVehicle (not controlledVehicle) so it works when only following.
+    //    Reuses pre-allocated _toDropoff scratch vector to avoid per-frame allocation.
     if (this.hudArrowEl) {
-      const toDropoff = this._dropoffPos.clone().sub(vPos).normalize();
-      const angle = Math.atan2(toDropoff.x, toDropoff.z) - activeVehicle.mesh.rotation.y;
+      this._toDropoff.copy(this._dropoffPos).sub(vPos).normalize();
+      const angle = Math.atan2(this._toDropoff.x, this._toDropoff.z) - activeVehicle.mesh.rotation.y;
       this.hudArrowEl.style.transform = `rotate(${angle}rad)`;
     }
   }
