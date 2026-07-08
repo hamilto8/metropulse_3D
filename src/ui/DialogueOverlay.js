@@ -94,6 +94,9 @@ export class DialogueOverlay {
     if (this.overlay) {
       this.overlay.classList.add('hidden');
     }
+    if (this.missionSystem) {
+      this.missionSystem.triggerCooldown = 4.0;
+    }
     this.currentMission = null;
   }
 }

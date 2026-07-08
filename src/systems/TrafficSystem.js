@@ -187,15 +187,18 @@ export class TrafficSystem {
       return;
     }
 
-    const isForward = this.keys['w'] || this.keys['arrowup'];
-    const isReverse = this.keys['s'] || this.keys['arrowdown'];
-    const isLeft = this.keys['a'] || this.keys['arrowleft'];
-    const isRight = this.keys['d'] || this.keys['arrowright'];
+    const dialogueOpen = this.app.dialogueOverlay && this.app.dialogueOverlay.currentMission != null;
+    const isForward = !dialogueOpen && (this.keys['w'] || this.keys['arrowup']);
+    const isReverse = !dialogueOpen && (this.keys['s'] || this.keys['arrowdown']);
+    const isLeft = !dialogueOpen && (this.keys['a'] || this.keys['arrowleft']);
+    const isRight = !dialogueOpen && (this.keys['d'] || this.keys['arrowright']);
 
     const userMaxSpeed = v.maxSpeed * 1.35; // A bit faster for manual driving
 
     // 1. Acceleration / Braking / Reverse
-    if (isForward) {
+    if (dialogueOpen) {
+      v.speed = THREE.MathUtils.lerp(v.speed, 0, delta * 8);
+    } else if (isForward) {
       v.speed = Math.min(userMaxSpeed, v.speed + v.acceleration * 1.8 * delta);
     } else if (isReverse) {
       if (v.speed > 0) {

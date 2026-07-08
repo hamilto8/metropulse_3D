@@ -19,6 +19,9 @@ export class MissionSystem {
     this.timeRemaining = 0;
     this.payout = 0;
 
+    // Prevents instant dialogue re-triggering loop when player closes/declines dialogue
+    this.triggerCooldown = 0;
+
     // 3D Visual Objects
     this.pickupRings = [];
     this.destinationBeacon = null;
@@ -106,9 +109,7 @@ export class MissionSystem {
   }
 
   createDestinationBeacon(dropoff) {
-    if (this.destinationBeacon) {
-      this.scene.remove(this.destinationBeacon);
-    }
+    this.disposeBeacon(this.destinationBeacon);
 
     const group = new THREE.Group();
     group.position.set(dropoff.x, 0, dropoff.z);
@@ -137,6 +138,23 @@ export class MissionSystem {
 
     this.scene.add(group);
     this.destinationBeacon = group;
+  }
+
+  disposeBeacon(group) {
+    if (!group) return;
+    this.scene.remove(group);
+    group.traverse(child => {
+      if (child.isMesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      }
+    });
   }
 
   completeMission() {
@@ -179,7 +197,7 @@ export class MissionSystem {
 
   clearActiveMission() {
     if (this.destinationBeacon) {
-      this.scene.remove(this.destinationBeacon);
+      this.disposeBeacon(this.destinationBeacon);
       this.destinationBeacon = null;
     }
 
@@ -195,10 +213,16 @@ export class MissionSystem {
       }
     }
 
+    // Set a 4-second cooldown so player can drive away without re-triggering dialogue loop
+    this.triggerCooldown = 4.0;
     this.activeMission = null;
   }
 
   update(delta) {
+    if (this.triggerCooldown > 0) {
+      this.triggerCooldown -= delta;
+    }
+
     // 1. Animate pickup rings
     for (const r of this.pickupRings) {
       if (r.group.visible) {
@@ -212,12 +236,12 @@ export class MissionSystem {
     }
 
     const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-    if (!controlledVehicle) return;
+    if (!controlledVehicle || !controlledVehicle.mesh) return;
 
     const vPos = controlledVehicle.mesh.position;
 
     // 3. If NO active mission, check distance to pickup rings
-    if (!this.activeMission) {
+    if (!this.activeMission && this.triggerCooldown <= 0) {
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
         const dist = vPos.distanceTo(r.group.position);
@@ -233,6 +257,8 @@ export class MissionSystem {
     }
 
     // 4. ACTIVE MISSION: update timer & navigation HUD
+    if (!this.activeMission) return;
+
     this.timeRemaining -= delta;
     if (this.timeRemaining <= 0) {
       this.failMission();
