@@ -50,8 +50,8 @@
     "passengerName": "Lyra Pulse",
     "passengerRole": "Cyber-Synth DJ",
     "avatar": "🎧",
-    "pickup": { "x": 50, "z": 0, "district": "Arts & Theater Promenade" },
-    "dropoff": { "x": -100, "z": 80, "district": "Neon Club Arena" },
+    "pickup": { "x": 50, "z": 80, "district": "Arts & Theater Promenade" },
+    "dropoff": { "x": -100, "z": -50, "district": "Neon Club Arena" },
     "baseReward": 520,
     "timeLimit": 65,
     "dialogueTree": {
@@ -85,8 +85,8 @@
     "passengerName": "Dr. Aris Thorne",
     "passengerRole": "Quantum Physicist",
     "avatar": "🔬",
-    "pickup": { "x": -50, "z": 0, "district": "University Research Park" },
-    "dropoff": { "x": 210, "z": 50, "district": "Advanced Tech Labs" },
+    "pickup": { "x": -50, "z": -80, "district": "University Research Park" },
+    "dropoff": { "x": 260, "z": 50, "district": "Advanced Tech Labs" },
     "baseReward": 680,
     "timeLimit": 75,
     "dialogueTree": {
@@ -120,8 +120,8 @@
     "passengerName": "Elena Rostova",
     "passengerRole": "Architecture Enthusiast",
     "avatar": "📸",
-    "pickup": { "x": 0, "z": -50, "district": "Waterfront Harbor" },
-    "dropoff": { "x": 0, "z": 0, "district": "MetroPulse Central Spire" },
+    "pickup": { "x": -100, "z": 80, "district": "Waterfront Harbor" },
+    "dropoff": { "x": 50, "z": -50, "district": "MetroPulse Central Spire" },
     "baseReward": 380,
     "timeLimit": 60,
     "dialogueTree": {

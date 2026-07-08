@@ -1035,3 +1035,62 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   transform: translateX(4px);
 }
 
+/* ─── Payout Toast Notification ───────────────────────────────────────────── */
+.payout-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(30px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 20, 10, 0.82);
+  backdrop-filter: blur(18px) saturate(1.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.6);
+  border: 1.5px solid rgba(0, 255, 136, 0.4);
+  box-shadow:
+    0 0 28px rgba(0, 255, 136, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+
+  font-family: var(--font-sans);
+  color: #fff;
+  transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.payout-toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.payout-check {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.payout-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--success);
+  opacity: 0.8;
+}
+
+.payout-passenger {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.payout-amount {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffd700;
+  text-shadow: 0 0 14px rgba(255, 215, 0, 0.5);
+  letter-spacing: -0.02em;
+}

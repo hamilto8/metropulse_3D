@@ -1,11 +1,21 @@
 import * as THREE from 'three';
 import missionsData from '../data/missions.json';
 
+// ─── Named Constants ────────────────────────────────────────────────────────
+/** Radius at which driving/following a vehicle triggers a pickup dialogue (metres) */
+const MISSION_TRIGGER_RADIUS = 16.0;
+/** Radius from the dropoff position that counts as a completed delivery (metres) */
+const MISSION_COMPLETE_RADIUS = 10.5;
+
 /**
  * MissionSystem.js
  * Core mission logic engine for MetroPulse 3D Phase 3.
  * Manages interactive 3D pickup rings, destination holographic light beacons,
  * live timer countdowns, dynamic navigation arrows, and fare payouts.
+ *
+ * State machine:
+ *   IDLE → DIALOGUE_ACTIVE → IN_PROGRESS → COMPLETED | FAILED
+ *   Any state → IDLE (via cancelMission or clearActiveMission)
  */
 export class MissionSystem {
   constructor(app, dialogueOverlay) {
@@ -13,13 +23,19 @@ export class MissionSystem {
     this.scene = app.sceneManager.scene;
     this.dialogueOverlay = dialogueOverlay;
 
+    /** @type {'IDLE'|'DIALOGUE_ACTIVE'|'IN_PROGRESS'|'COMPLETED'|'FAILED'} */
+    this.state = 'IDLE';
+
     this.missions = missionsData;
     this.availableMissions = [...this.missions];
     this.activeMission = null;
     this.timeRemaining = 0;
     this.payout = 0;
 
-    // Prevents instant dialogue re-triggering loop when player closes/declines dialogue
+    /** Cached dropoff position Vector3 — set on startMission, avoids per-frame allocation */
+    this._dropoffPos = new THREE.Vector3();
+
+    /** Prevents instant dialogue re-triggering loop when player closes/declines dialogue */
     this.triggerCooldown = 0;
 
     // 3D Visual Objects
@@ -35,6 +51,9 @@ export class MissionSystem {
     this.hudFareEl = document.getElementById('mission-hud-fare');
     this.cancelBtn = document.getElementById('btn-cancel-mission');
 
+    // Payout toast element (injected dynamically)
+    this._toastEl = null;
+
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener('click', () => this.cancelMission());
     }
@@ -42,27 +61,31 @@ export class MissionSystem {
     this.initPickupBeacons();
   }
 
+  /**
+   * Spawns glowing cyan pickup rings on city streets for each available mission.
+   * Each ring is individually created (separate geometry + material) so that
+   * disposing one ring never corrupts the others.
+   */
   initPickupBeacons() {
-    // Create glowing pickup rings on the streets for available missions
-    const ringGeo = new THREE.TorusGeometry(4.2, 0.45, 12, 32);
-    ringGeo.rotateX(Math.PI / 2);
-
-    const ringMat = new THREE.MeshStandardMaterial({
-      color: 0x00f0ff,
-      emissive: 0x00f0ff,
-      emissiveIntensity: 1.2,
-      roughness: 0.2,
-      metalness: 0.8
-    });
-
     for (const mission of this.availableMissions) {
+      // Create unique geometry + material per ring to avoid shared-disposal bug
+      const ringGeo = new THREE.TorusGeometry(4.2, 0.45, 12, 32);
+      ringGeo.rotateX(Math.PI / 2);
+      const ringMat = new THREE.MeshStandardMaterial({
+        color: 0x00f0ff,
+        emissive: 0x00f0ff,
+        emissiveIntensity: 1.2,
+        roughness: 0.2,
+        metalness: 0.8
+      });
+
       const group = new THREE.Group();
       group.position.set(mission.pickup.x, 0.5, mission.pickup.z);
 
       const ringMesh = new THREE.Mesh(ringGeo, ringMat);
       group.add(ringMesh);
 
-      // Add a small floating light column indicator above ring
+      // Floating light column indicator above ring
       const colGeo = new THREE.CylinderGeometry(0.6, 0.6, 12, 16);
       const colMat = new THREE.MeshBasicMaterial({
         color: 0x00f0ff,
@@ -74,6 +97,7 @@ export class MissionSystem {
       group.add(colMesh);
 
       this.scene.add(group);
+
       const pickupEntity = {
         type: 'MISSION_PICKUP',
         name: `Taxi Pickup: ${mission.passengerName}`,
@@ -96,20 +120,36 @@ export class MissionSystem {
     }
   }
 
+  /**
+   * Triggers the passenger dialogue overlay for a given mission.
+   * Guards against re-triggering during cooldown or an active mission.
+   * @param {object} mission - The mission data object from missions.json
+   */
   triggerMissionDialogue(mission) {
     if (this.triggerCooldown > 0 || this.activeMission) return;
+    if (this.state === 'DIALOGUE_ACTIVE') return;
     if (this.dialogueOverlay && !this.dialogueOverlay.currentMission) {
+      this.state = 'DIALOGUE_ACTIVE';
       this.dialogueOverlay.showMissionDialogue(mission, this);
     }
   }
 
+  /**
+   * Starts the active mission after the player accepts a fare.
+   * @param {object} mission - Mission data
+   * @param {object} choiceNode - The accepted dialogue choice node (may contain rushBonus/timeLimitOverride)
+   */
   startMission(mission, choiceNode) {
     this.activeMission = mission;
+    this.state = 'IN_PROGRESS';
 
     // Determine time limit and reward
     this.timeRemaining = choiceNode.timeLimitOverride || mission.timeLimit || 60;
     const rushBonus = choiceNode.rushBonus || 0;
     this.payout = (mission.baseReward || 400) + rushBonus;
+
+    // Cache dropoff position to avoid per-frame Vector3 allocation
+    this._dropoffPos.set(mission.dropoff.x, 0, mission.dropoff.z);
 
     // Hide pickup ring for this mission
     const ringObj = this.pickupRings.find(r => r.mission.id === mission.id);
@@ -124,7 +164,7 @@ export class MissionSystem {
     if (this.hudEl) {
       this.hudEl.classList.remove('hidden');
       if (this.hudTitleEl) {
-        this.hudTitleEl.textContent = `${mission.passengerName} (${mission.dropoff.district || 'Destination'})`;
+        this.hudTitleEl.textContent = `${mission.passengerName} → ${mission.dropoff.district || 'Destination'}`;
       }
     }
 
@@ -133,6 +173,11 @@ export class MissionSystem {
     }
   }
 
+  /**
+   * Creates an 80-metre tall holographic green pillar at the dropoff location.
+   * Disposes any previously existing beacon to prevent GPU memory leaks.
+   * @param {{x: number, z: number, district: string}} dropoff
+   */
   createDestinationBeacon(dropoff) {
     this.disposeBeacon(this.destinationBeacon);
 
@@ -165,6 +210,11 @@ export class MissionSystem {
     this.destinationBeacon = group;
   }
 
+  /**
+   * Recursively disposes all geometries and materials in a Three.js Group,
+   * then removes it from the scene. Prevents GPU memory leaks.
+   * @param {THREE.Group|null} group
+   */
   disposeBeacon(group) {
     if (!group) return;
     this.scene.remove(group);
@@ -182,32 +232,72 @@ export class MissionSystem {
     });
   }
 
+  /**
+   * Shows a floating payout toast banner on screen for 3 seconds.
+   * Provides visual feedback in normal (non-Fun-Mode) play.
+   * @param {number} amount - Dollar amount earned
+   * @param {string} name - Passenger name
+   */
+  showPayoutToast(amount, name) {
+    // Remove any existing toast
+    if (this._toastEl && this._toastEl.parentNode) {
+      this._toastEl.parentNode.removeChild(this._toastEl);
+    }
+    const toast = document.createElement('div');
+    toast.className = 'payout-toast';
+    toast.innerHTML = `
+      <span class="payout-check">✅</span>
+      <span class="payout-label">Fare Complete!</span>
+      <span class="payout-passenger">${name} delivered</span>
+      <span class="payout-amount">+$${amount}</span>
+    `;
+    document.body.appendChild(toast);
+    this._toastEl = toast;
+
+    // Animate in
+    requestAnimationFrame(() => toast.classList.add('payout-toast--visible'));
+
+    // Auto-remove after 3.5 seconds
+    setTimeout(() => {
+      toast.classList.remove('payout-toast--visible');
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 400);
+    }, 3500);
+  }
+
+  /** Called when the player successfully delivers a passenger to the destination. */
   completeMission() {
     if (!this.activeMission) return;
+    this.state = 'COMPLETED';
 
     // Award fare to city treasury
     if (this.app && this.app.cityBuilder) {
       this.app.cityBuilder.treasury = (this.app.cityBuilder.treasury || 0) + this.payout;
     }
 
-    // Play completion sound and notification
+    // Show payout toast (always visible, regardless of Fun Mode)
+    this.showPayoutToast(this.payout, this.activeMission.passengerName);
+
+    // Play completion sound
     if (this.app.audioSystem) {
       this.app.audioSystem.playSiren(1.2);
     }
 
-    // Update Chyron or Alert
+    // Also update chyron in Fun Mode
     const newsEl = document.querySelector('.chyron-ticker-text span');
     if (newsEl) {
-      newsEl.textContent = `*** 🚖 FARE COMPLETED: Delivered ${this.activeMission.passengerName} to ${this.activeMission.dropoff.district}! EARNED $${this.payout} FOR METROPULSE TREASURY! *** ` + newsEl.textContent;
+      newsEl.textContent = `*** 🚖 FARE COMPLETED: Delivered ${this.activeMission.passengerName} to ${this.activeMission.dropoff.district}! EARNED $${this.payout}! *** ` + newsEl.textContent;
     }
 
     this.clearActiveMission();
   }
 
+  /** Called when the mission timer reaches zero before delivery. */
   failMission() {
     if (!this.activeMission) return;
+    this.state = 'FAILED';
 
-    // Show failure notice
     const newsEl = document.querySelector('.chyron-ticker-text span');
     if (newsEl) {
       newsEl.textContent = `*** ❌ FARE FAILED: Time ran out for ${this.activeMission.passengerName}! *** ` + newsEl.textContent;
@@ -216,10 +306,13 @@ export class MissionSystem {
     this.clearActiveMission();
   }
 
+  /** Called when the player manually cancels an active mission. */
   cancelMission() {
+    if (!this.activeMission) return;
     this.clearActiveMission();
   }
 
+  /** Resets all mission state, removes beacon, hides HUD, and starts cooldown timer. */
   clearActiveMission() {
     if (this.destinationBeacon) {
       this.disposeBeacon(this.destinationBeacon);
@@ -230,7 +323,7 @@ export class MissionSystem {
       this.hudEl.classList.add('hidden');
     }
 
-    // Re-show pickup ring
+    // Re-show pickup ring for the completed/failed/cancelled mission
     if (this.activeMission) {
       const ringObj = this.pickupRings.find(r => r.mission.id === this.activeMission.id);
       if (ringObj) {
@@ -238,11 +331,17 @@ export class MissionSystem {
       }
     }
 
-    // Set a 4-second cooldown so player can drive away without re-triggering dialogue loop
+    // 4-second cooldown so player can drive away without instantly re-triggering
     this.triggerCooldown = 4.0;
     this.activeMission = null;
+    this.state = 'IDLE';
   }
 
+  /**
+   * Main update loop — called once per animation frame.
+   * Animates rings, checks proximity triggers, updates HUD, and handles timer.
+   * @param {number} delta - Seconds since last frame
+   */
   update(delta) {
     if (this.triggerCooldown > 0) {
       this.triggerCooldown -= delta;
@@ -261,20 +360,21 @@ export class MissionSystem {
     }
 
     const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-    const followedVehicle = (this.app.sceneManager && this.app.sceneManager.followTarget && this.app.sceneManager.followTarget.type === 'VEHICLE') 
-      ? this.app.sceneManager.followTarget 
+    const followedVehicle = (this.app.sceneManager && this.app.sceneManager.followTarget && this.app.sceneManager.followTarget.type === 'VEHICLE')
+      ? this.app.sceneManager.followTarget
       : null;
     const activeVehicle = controlledVehicle || followedVehicle;
 
-    // 3. If NO active mission, check distance to pickup rings (generous 16m capture radius)
-    if (!this.activeMission && this.triggerCooldown <= 0) {
-      const vehiclesToCheck = activeVehicle ? [activeVehicle] : (this.app.trafficSystem ? this.app.trafficSystem.vehicles : []);
+    // 3. If IDLE, check distance to pickup rings (MISSION_TRIGGER_RADIUS capture zone)
+    if (this.state === 'IDLE' && this.triggerCooldown <= 0) {
+      const vehiclesToCheck = activeVehicle
+        ? [activeVehicle]
+        : (this.app.trafficSystem ? this.app.trafficSystem.vehicles : []);
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
         for (const v of vehiclesToCheck) {
           if (!v || !v.mesh) continue;
-          const dist = v.mesh.position.distanceTo(r.group.position);
-          if (dist < 16.0) {
+          if (v.mesh.position.distanceTo(r.group.position) < MISSION_TRIGGER_RADIUS) {
             this.triggerMissionDialogue(r.mission);
             break;
           }
@@ -282,31 +382,27 @@ export class MissionSystem {
       }
     }
 
+    // No active mission or active vehicle — nothing more to update
     if (!activeVehicle || !activeVehicle.mesh) return;
+    if (this.state !== 'IN_PROGRESS') return;
+
     const vPos = activeVehicle.mesh.position;
 
-    // 4. ACTIVE MISSION: update timer & navigation HUD
-    if (!this.activeMission) return;
-
+    // 4. ACTIVE MISSION: update countdown timer
     this.timeRemaining -= delta;
     if (this.timeRemaining <= 0) {
       this.failMission();
       return;
     }
 
-    const dropoffPos = new THREE.Vector3(
-      this.activeMission.dropoff.x,
-      0,
-      this.activeMission.dropoff.z
-    );
-    const distToDropoff = vPos.distanceTo(dropoffPos);
-
-    if (distToDropoff < 10.5) {
+    // 5. Check dropoff arrival using cached _dropoffPos
+    const distToDropoff = vPos.distanceTo(this._dropoffPos);
+    if (distToDropoff < MISSION_COMPLETE_RADIUS) {
       this.completeMission();
       return;
     }
 
-    // Update HUD elements
+    // 6. Update HUD elements
     if (this.hudDistEl) {
       this.hudDistEl.textContent = `${Math.round(distToDropoff)} m`;
     }
@@ -317,10 +413,11 @@ export class MissionSystem {
       this.hudFareEl.textContent = `$${this.payout}`;
     }
 
-    // Compute navigation arrow angle pointing from vehicle heading to destination
+    // 7. Compute navigation compass arrow angle.
+    //    Uses activeVehicle (not controlledVehicle) so it works when only following.
     if (this.hudArrowEl) {
-      const toDropoff = dropoffPos.clone().sub(vPos).normalize();
-      const angle = Math.atan2(toDropoff.x, toDropoff.z) - controlledVehicle.mesh.rotation.y;
+      const toDropoff = this._dropoffPos.clone().sub(vPos).normalize();
+      const angle = Math.atan2(toDropoff.x, toDropoff.z) - activeVehicle.mesh.rotation.y;
       this.hudArrowEl.style.transform = `rotate(${angle}rad)`;
     }
   }

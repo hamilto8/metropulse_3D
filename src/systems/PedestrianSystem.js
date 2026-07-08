@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Pedestrian } from '../entities/Pedestrian.js';
 
+/** Shared forward-axis vector — avoids per-frame allocation in 60-pedestrian movement loop */
+const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
+
 class SidewalkNode {
   constructor(id, x, z, y = 0.4) {
     this.id = id;
@@ -250,7 +253,7 @@ export class PedestrianSystem {
           p.mesh.rotation.y += diff * 7.0 * delta;
 
           const moveStep = p.speed * delta;
-          p.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+          p.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
           p.mesh.position.y = (pos.x < -60 && pos.z < -60) ? 0.7 : 0.4;
         }
       }

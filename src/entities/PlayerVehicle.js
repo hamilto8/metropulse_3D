@@ -85,11 +85,25 @@ export class PlayerVehicle {
   applyInput(keys, delta) {
     if (!keys || !this.chassisBody) return;
 
+    // Freeze controls while a dialogue modal is open (matches non-physics path in TrafficSystem)
+    const dialogueOpen = window.app?.dialogueOverlay?.currentMission != null;
+    if (dialogueOpen) {
+      // Apply natural braking — zero engine force, light brake on all wheels
+      for (let i = 0; i < 4; i++) {
+        this.raycastVehicle.applyEngineForce(0, i);
+        this.raycastVehicle.setBrake(80, i);
+      }
+      // Dampen angular velocity so car straightens out
+      this.chassisBody.angularVelocity.y *= 0.7;
+      return;
+    }
+
     const isForward = keys['w'] || keys['arrowup'];
     const isReverse = keys['s'] || keys['arrowdown'];
     const isLeft = keys['a'] || keys['arrowleft'];
     const isRight = keys['d'] || keys['arrowright'];
     const isHandbrake = keys[' '];
+
 
     // Calculate forward speed along vehicle forward vector (+Z local)
     const forwardVec = new CANNON.Vec3(0, 0, 1);

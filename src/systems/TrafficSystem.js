@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 
+/** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
+const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
+
 class TrafficNode {
   constructor(id, x, z) {
     this.id = id;
@@ -156,15 +159,15 @@ export class TrafficSystem {
           // 3. Trigger audio & horn only once per impact interval
           if (v.bumpCooldown <= 0) {
             v.bumpCooldown = 0.55;
-            if (this.app.audioSystem) {
-              this.app.audioSystem.playBump();
+            const audio = this.app?.audioSystem;
+            if (audio) {
+              audio.playBump();
+              const isPolice = other.isPolice;
               setTimeout(() => {
-                if (this.app.audioSystem) {
-                  if (other.isPolice) {
-                    this.app.audioSystem.playSiren(1.5);
-                  } else {
-                    this.app.audioSystem.playHonk(true);
-                  }
+                if (isPolice) {
+                  audio.playSiren(1.5);
+                } else {
+                  audio.playHonk(true);
                 }
               }, 80);
             }
@@ -233,7 +236,7 @@ export class TrafficSystem {
 
     // 3. Move vehicle along its orientation
     const moveStep = v.speed * delta;
-    v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+    v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
     v.mesh.position.y = 0;
 
     // 4. Solid Obstacle Collision Check (Buildings & Lamp Posts!)
@@ -323,15 +326,15 @@ export class TrafficSystem {
             v.bumpCooldown = 0.6; // Cooldown to prevent spamming
 
             // Play collision bump and the other car honking at you!
-            if (this.app.audioSystem) {
-              this.app.audioSystem.playBump();
+            const audio = this.app?.audioSystem;
+            if (audio) {
+              audio.playBump();
+              const isPolice = other.isPolice;
               setTimeout(() => {
-                if (this.app.audioSystem) {
-                  if (other.isPolice) {
-                    this.app.audioSystem.playSiren(1.5);
-                  } else {
-                    this.app.audioSystem.playHonk();
-                  }
+                if (isPolice) {
+                  audio.playSiren(1.5);
+                } else {
+                  audio.playHonk();
                 }
               }, 80); // Cinematic 80ms delay for driver reaction
             }
@@ -590,7 +593,7 @@ export class TrafficSystem {
           v.mesh.rotation.y += diff * 8.0 * delta;
 
           const moveStep = v.speed * delta;
-          v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+          v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
           v.mesh.position.y = 0;
         }
         v.update(delta);
@@ -666,7 +669,7 @@ export class TrafficSystem {
           v.mesh.rotation.y += diff * 6.0 * delta;
 
           const moveStep = v.speed * delta;
-          v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+          v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
           v.mesh.position.y = 0;
         }
       }
