@@ -131,6 +131,38 @@ export class PedestrianSystem {
     }
   }
 
+  knockDownPedestrian(p, knockDir) {
+    if (!p || p.knockedDown) return;
+    p.knockedDown = true;
+    p.knockdownTimer = 4.5; // Stay knocked down for 4.5 seconds before getting back up!
+    p.speed = 0;
+    p.targetSpeed = 0;
+
+    if (knockDir) {
+      p.mesh.position.addScaledVector(knockDir, 1.8);
+    }
+
+    // Fall on their butts onto the ground
+    p.mesh.rotation.x = -1.4; // Tilted back sitting on butt
+    p.mesh.rotation.z = (Math.random() - 0.5) * 0.4;
+    if (p.legL && p.legR) {
+      p.legL.rotation.x = -1.2; // Legs sticking forward
+      p.legR.rotation.x = -1.2;
+    }
+    if (p.armL && p.armR) {
+      p.armL.rotation.x = -0.8; // Arms thrown back/up
+      p.armR.rotation.x = -0.8;
+    }
+
+    if (!p.normalActivity) p.normalActivity = p.info['Activity'];
+    p.info['Activity'] = '💥 Knocked Down by Car!';
+    p.info['Mood'] = 'Dazed on Ground';
+
+    if (this.app && this.app.audioSystem) {
+      this.app.audioSystem.playBump();
+    }
+  }
+
   update(delta) {
     for (let i = 0; i < this.pedestrians.length; i++) {
       const p = this.pedestrians[i];
@@ -164,38 +196,11 @@ export class PedestrianSystem {
         for (const v of this.app.trafficSystem.vehicles) {
           const dist = pos.distanceTo(v.mesh.position);
           const hitDist = (v.vType === 'BUS' || v.vType === 'TRUCK') ? 3.8 : 2.6;
-          
+
           if (dist < hitDist && v.speed > 2.0) {
             // HIT BY A CAR!
-            p.knockedDown = true;
-            p.knockdownTimer = 3.5 + Math.random() * 2.0; // Temporarily on ground for a few seconds
-            p.speed = 0;
-            p.targetSpeed = 0;
-            
-            // Knock back: push pedestrian away from vehicle direction
             const pushDir = pos.clone().sub(v.mesh.position).normalize();
-            pos.add(pushDir.multiplyScalar(1.5));
-            
-            // Fall on their butts onto the ground
-            p.mesh.rotation.x = -1.4; // Tilted back sitting on butt
-            p.mesh.rotation.z = (Math.random() - 0.5) * 0.4;
-            if (p.legL && p.legR) {
-              p.legL.rotation.x = -1.2; // Legs sticking forward
-              p.legR.rotation.x = -1.2;
-            }
-            if (p.armL && p.armR) {
-              p.armL.rotation.x = -0.8; // Arms thrown back/up
-              p.armR.rotation.x = -0.8;
-            }
-            
-            if (!p.normalActivity) p.normalActivity = p.info['Activity'];
-            p.info['Activity'] = '💥 Knocked Down by Car!';
-            p.info['Mood'] = 'Dazed on Ground';
-            
-            // Play bump sound effect!
-            if (this.app.audioSystem) {
-              this.app.audioSystem.playBump();
-            }
+            this.knockDownPedestrian(p, pushDir);
             break;
           } else if (dist < 4.5 && v.speed > 1.0) {
             isBlocked = true;
