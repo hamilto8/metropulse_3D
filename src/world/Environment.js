@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 export class Environment {
-  constructor(scene) {
+  constructor(scene, app = null) {
     this.scene = scene;
+    this.app = app;
     this.weatherMode = 'clear';
     this.rainParticles = null;
     this.starfield = null;
@@ -60,17 +61,17 @@ export class Environment {
     const positions = new Float32Array(dropCount * 3);
 
     for (let i = 0; i < dropCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 250;
+      positions[i] = (Math.random() - 0.5) * 300;
       positions[i + 1] = Math.random() * 150;
-      positions[i + 2] = (Math.random() - 0.5) * 250;
+      positions[i + 2] = (Math.random() - 0.5) * 300;
     }
 
     rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.rainMat = new THREE.PointsMaterial({
-      color: 0x88ccff,
-      size: 0.6,
+      color: 0xaaaaee,
+      size: 0.8,
       transparent: true,
-      opacity: 0 // Start disabled
+      opacity: 0
     });
 
     this.rainParticles = new THREE.Points(rainGeo, this.rainMat);
@@ -81,22 +82,21 @@ export class Environment {
     this.weatherMode = mode;
     if (mode === 'clear') {
       this.scene.fog.density = 0.0035;
-      this.rainMat.opacity = 0;
+      if (this.rainMat) this.rainMat.opacity = 0;
     } else if (mode === 'mist') {
       this.scene.fog.density = 0.015;
-      this.rainMat.opacity = 0;
+      if (this.rainMat) this.rainMat.opacity = 0;
     } else if (mode === 'rain') {
       this.scene.fog.density = 0.008;
-      this.rainMat.opacity = 0.6;
+      if (this.rainMat) this.rainMat.opacity = 0.6;
     }
   }
 
   update(timeVal, delta) {
-    // 1. Update Sky & Fog Color based on time of day
-    // Colors for Dawn, Day, Dusk, Night
-    const nightColor = new THREE.Color(0x070913);
-    const dawnColor = new THREE.Color(0xff6a88);
-    const dayColor = new THREE.Color(0x3a88e9);
+    // 1. Sky & Fog color transitions based on time of day
+    const dayColor = new THREE.Color(0x3882f6); // Bright blue
+    const nightColor = new THREE.Color(0x070913); // Deep navy/black
+    const dawnColor = new THREE.Color(0xf69d3c); // Warm orange
     const duskColor = new THREE.Color(0xff5e62);
 
     let targetBg = new THREE.Color();
@@ -128,8 +128,16 @@ export class Environment {
       targetBg.lerp(new THREE.Color(0x1a222a), 0.6);
     }
 
-    this.scene.background.copy(targetBg);
-    this.scene.fog.color.copy(targetBg);
+    const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
+    if (isFunMode) {
+      targetBg.setHex(0x4a1205); // Fiery orange-red apocalyptic sky!
+      this.scene.background.copy(targetBg);
+      this.scene.fog.color.setHex(0x5a1806);
+      starOpacity = 0.35;
+    } else {
+      this.scene.background.copy(targetBg);
+      this.scene.fog.color.copy(targetBg);
+    }
     this.starMat.opacity = starOpacity;
 
     // 2. Position Moon in opposition to Sun

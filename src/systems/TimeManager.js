@@ -103,6 +103,17 @@ export class TimeManager {
       this.ambientLight.color.setHex(0x335588);
       this.ambientLight.intensity = 0.25;
     }
+
+    const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
+    if (isFunMode) {
+      this.ambientLight.color.setHex(0xff5533);
+      this.ambientLight.intensity = Math.max(0.6, this.ambientLight.intensity);
+      if (this.sunLight.intensity > 0) {
+        this.sunLight.color.setHex(0xff3311);
+      }
+    } else {
+      this.sunLight.color.setHex(0xffffff);
+    }
   }
 
   updateNightIllumination() {

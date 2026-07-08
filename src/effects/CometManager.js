@@ -119,9 +119,12 @@ export class CometManager {
           this.app.explosionManager.createMegaExplosion(impactPos);
         }
 
-        // 3. Impact Earth-shaking sound
+        // 3. Impact Earth-shaking sound & Camera vibration
         if (this.app.audioSystem && this.app.audioSystem.isEnabled) {
           this.app.audioSystem.playCometImpact();
+        }
+        if (this.app.sceneManager) {
+          this.app.sceneManager.earthquakeShake(3.0, 0.9);
         }
 
         // 4. Check building destruction! Any building within 24 units turns to rubble!

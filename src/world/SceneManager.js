@@ -41,9 +41,16 @@ export class SceneManager {
     this.targetLookAt = null;
     this.followTarget = null;
     this.followOffset = new THREE.Vector3(0, 8, -16);
+    this.shakeTimer = 0;
+    this.shakeIntensity = 0;
 
     this.initPresets();
     this.initResizeHandler();
+  }
+
+  earthquakeShake(intensity = 2.5, duration = 0.8) {
+    this.shakeIntensity = intensity;
+    this.shakeTimer = duration;
   }
 
   initPresets() {
@@ -58,11 +65,9 @@ export class SceneManager {
 
   setCameraPreset(mode) {
     this.stopFollowTarget();
-    const preset = this.presets[mode];
-    if (preset) {
-      this.targetCameraPos = preset.pos.clone();
-      this.targetLookAt = preset.target.clone();
-    }
+    if (!this.presets[mode]) return;
+    this.targetCameraPos = this.presets[mode].pos.clone();
+    this.targetLookAt = this.presets[mode].target.clone();
   }
 
   toggleFollowTarget(entity) {
@@ -75,6 +80,12 @@ export class SceneManager {
       this.targetLookAt = null;
       return true;
     }
+  }
+
+  startFollowTarget(target) {
+    this.targetCameraPos = null;
+    this.targetLookAt = null;
+    this.followTarget = target;
   }
 
   stopFollowTarget() {
@@ -112,11 +123,9 @@ export class SceneManager {
       this.camera.position.lerp(desiredCamPos, 0.08);
       this.controls.target.lerp(new THREE.Vector3(targetPos.x, targetPos.y + 2, targetPos.z), 0.1);
       this.controls.update();
-      return;
-    }
-
-    // 2. Camera Preset Transition Logic
-    if (this.targetCameraPos && this.targetLookAt) {
+      // Skip return here if we want to allow shake on top of follow
+    } else if (this.targetCameraPos && this.targetLookAt) {
+      // 2. Camera Preset Transition Logic
       this.camera.position.lerp(this.targetCameraPos, 0.05);
       this.controls.target.lerp(this.targetLookAt, 0.05);
 
@@ -130,6 +139,15 @@ export class SceneManager {
     }
 
     this.controls.update();
+
+    // 3. Earthquake / Impact Camera Shake
+    if (this.shakeTimer > 0) {
+      this.shakeTimer -= delta;
+      const shakeFactor = (this.shakeTimer / 0.8) * this.shakeIntensity;
+      this.camera.position.x += (Math.random() - 0.5) * shakeFactor;
+      this.camera.position.y += (Math.random() - 0.5) * shakeFactor;
+      this.camera.position.z += (Math.random() - 0.5) * shakeFactor;
+    }
   }
 
   render() {
