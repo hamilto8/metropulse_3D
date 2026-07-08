@@ -11,6 +11,7 @@ import { TimeManager } from './systems/TimeManager.js';
 import { TrafficSystem } from './systems/TrafficSystem.js';
 import { PedestrianSystem } from './systems/PedestrianSystem.js';
 import { AudioSystem } from './systems/AudioSystem.js';
+import { ExplosionManager } from './effects/ExplosionManager.js';
 
 import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
@@ -45,7 +46,9 @@ class MetroPulseApp {
     // 8. Time Manager (Day-night cycle & dynamic lighting)
     this.timeManager = new TimeManager(this);
 
-    // 9. Traffic Simulation
+    // 9. Traffic Simulation & Fun Mode
+    this.funMode = false;
+    this.explosionManager = new ExplosionManager(this.sceneManager.scene);
     this.trafficSystem = new TrafficSystem(this);
 
     // 10. Pedestrian Simulation
@@ -95,6 +98,7 @@ class MetroPulseApp {
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);
     this.pedestrianSystem.update(delta);
+    this.explosionManager.update(delta);
     this.audioSystem.update(this.timeManager.timeVal, delta);
     this.uiManager.updateInspectorLive();
 

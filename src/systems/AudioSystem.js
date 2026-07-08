@@ -315,4 +315,50 @@ export class AudioSystem {
     osc.start(now);
     osc.stop(now + 0.07);
   }
+
+  playExplosion() {
+    if (!this.isEnabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // 1. Noise burst with sweeping lowpass for the boom/rumble
+    const bufferSize = this.ctx.sampleRate * 1.5;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.35));
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(600, now);
+    filter.frequency.exponentialRampToValueAtTime(35, now + 1.2);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.55, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.4);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start(now);
+    noise.stop(now + 1.4);
+
+    // 2. Deep sub-bass punch (sine wave sweep)
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(25, now + 0.35);
+
+    const oscGain = this.ctx.createGain();
+    oscGain.gain.setValueAtTime(0.65, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.45);
+  }
 }

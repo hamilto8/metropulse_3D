@@ -25,6 +25,10 @@ export class UIManager {
     this.muteLabel = document.getElementById('mute-label');
     this.volumeSlider = document.getElementById('volume-slider');
     
+    // Fun Mode controls
+    this.btnFunMode = document.getElementById('btn-fun-mode');
+    this.funModeLabel = document.getElementById('fun-mode-label');
+    
     // Inspector HUD
     this.inspectorHud = document.getElementById('inspector-hud');
     this.inspectorType = document.getElementById('inspector-type');
@@ -107,6 +111,28 @@ export class UIManager {
       const vol = parseFloat(e.target.value);
       this.app.audioSystem.setVolume(vol);
     });
+
+    // Fun Mode toggle
+    if (this.btnFunMode) {
+      this.btnFunMode.addEventListener('click', () => {
+        this.app.funMode = !this.app.funMode;
+        if (this.app.funMode) {
+          this.btnFunMode.classList.add('active');
+          if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: MAYHEM! 🔥';
+          if (this.app.audioSystem && !this.app.audioSystem.isEnabled) {
+            this.app.audioSystem.toggleAudio();
+            this.btnMute.classList.add('active');
+            this.muteIcon.textContent = '🔊';
+            this.muteLabel.textContent = 'SFX Active';
+            this.volumeSlider.disabled = false;
+          }
+          if (this.app.audioSystem) this.app.audioSystem.playSiren(1.5);
+        } else {
+          this.btnFunMode.classList.remove('active');
+          if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: OFF';
+        }
+      });
+    }
 
     // Inspector Close
     this.btnCloseInspector.addEventListener('click', () => {
