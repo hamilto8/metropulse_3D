@@ -38,15 +38,15 @@ export class PhysicsWorld {
   }
 
   initGround() {
-    // Static ground plane at Y = 0
+    // Static ground slab at Y = -1 with thickness 2 (top surface exactly at Y = 0.0)
+    // CANNON.Box uses halfExtents, so (500, 1, 500) creates a 1000x2x1000 ground block
+    const groundShape = new CANNON.Box(new CANNON.Vec3(500, 1, 500));
     const groundBody = new CANNON.Body({
       type: CANNON.Body.STATIC,
       material: this.groundMaterial,
-      shape: new CANNON.Plane()
+      shape: groundShape
     });
-    // CANNON planes face +Z by default; rotate to face +Y
-    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-    groundBody.position.set(0, 0, 0);
+    groundBody.position.set(0, -1, 0);
     this.world.addBody(groundBody);
     this.groundBody = groundBody;
   }

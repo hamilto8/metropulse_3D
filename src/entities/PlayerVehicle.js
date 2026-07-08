@@ -17,23 +17,29 @@ export class PlayerVehicle {
       'Speed': '0 km/h'
     };
 
-    this.initPhysics(initialPosition || mesh.position, initialRotation || mesh.rotation);
+    const startPos = initialPosition || mesh.position;
+    const startRot = initialRotation || mesh.rotation;
+    this.initPhysics(startPos, startRot);
   }
 
   initPhysics(pos, rot) {
-    // 1. Chassis rigid body
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(1.1, 0.6, 2.1));
+    // 1. Chassis rigid body (box halfExtents: width 0.95m, height 0.45m, length 1.9m)
+    const chassisShape = new CANNON.Box(new CANNON.Vec3(0.95, 0.45, 1.9));
     this.chassisBody = new CANNON.Body({
-      mass: 1200,
+      mass: 1100,
       material: this.physicsWorld.wheelMaterial
     });
-    this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, 0.3, 0));
-    this.chassisBody.position.set(pos.x, pos.y + 1.2, pos.z);
+    this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, 0.2, 0));
+    
+    // Position chassis at Y = 1.05 so wheels rest precisely on road Y = 0.0
+    this.chassisBody.position.set(pos.x, 1.05, pos.z);
 
     if (rot) {
       const q = new THREE.Quaternion().setFromEuler(rot);
       this.chassisBody.quaternion.set(q.x, q.y, q.z, q.w);
     }
+    this.chassisBody.linearDamping = 0.15;
+    this.chassisBody.angularDamping = 0.25;
 
     // 2. Create RaycastVehicle
     this.raycastVehicle = new CANNON.RaycastVehicle({
@@ -43,44 +49,41 @@ export class PlayerVehicle {
       indexForwardAxis: 2
     });
 
-    const wheelOptions = {
-      radius: 0.48,
+    // Create distinct options object per wheel to prevent shared vector references
+    const createWheelOptions = (connectionPoint) => ({
+      radius: 0.42,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 42,
+      suspensionStiffness: 48,
       suspensionRestLength: 0.45,
-      frictionSlip: 5.0,
-      dampingRelaxation: 2.3,
-      dampingCompression: 4.4,
+      frictionSlip: 6.0,
+      dampingRelaxation: 2.8,
+      dampingCompression: 4.5,
       maxSuspensionForce: 100000,
-      rollInfluence: 0.08,
+      rollInfluence: 0.05,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
-      chassisConnectionPointLocal: new CANNON.Vec3(1, 0, 1),
-      maxSuspensionTravel: 0.3,
+      chassisConnectionPointLocal: connectionPoint,
+      maxSuspensionTravel: 0.28,
       customSlidingRotationalSpeed: -30,
       useCustomSlidingRotationalSpeed: true
-    };
+    });
 
     // Front Left (wheel 0)
-    wheelOptions.chassisConnectionPointLocal.set(0.95, 0.1, 1.4);
-    this.raycastVehicle.addWheel(wheelOptions);
+    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(0.9, -0.05, 1.35)));
 
     // Front Right (wheel 1)
-    wheelOptions.chassisConnectionPointLocal.set(-0.95, 0.1, 1.4);
-    this.raycastVehicle.addWheel(wheelOptions);
+    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-0.9, -0.05, 1.35)));
 
     // Rear Left (wheel 2)
-    wheelOptions.chassisConnectionPointLocal.set(0.95, 0.1, -1.4);
-    this.raycastVehicle.addWheel(wheelOptions);
+    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(0.9, -0.05, -1.35)));
 
     // Rear Right (wheel 3)
-    wheelOptions.chassisConnectionPointLocal.set(-0.95, 0.1, -1.4);
-    this.raycastVehicle.addWheel(wheelOptions);
+    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-0.9, -0.05, -1.35)));
 
     this.raycastVehicle.addToWorld(this.physicsWorld.world);
   }
 
   applyInput(keys, delta) {
-    if (!keys) return;
+    if (!keys || !this.chassisBody) return;
 
     const isForward = keys['w'] || keys['arrowup'];
     const isReverse = keys['s'] || keys['arrowdown'];
@@ -88,46 +91,60 @@ export class PlayerVehicle {
     const isRight = keys['d'] || keys['arrowright'];
     const isHandbrake = keys[' '];
 
-    const maxEngineForce = 3800;
-    const maxBrakeForce = 120;
-    const maxSteerVal = 0.52;
+    const maxEngineForce = 4200;
+    const maxBrakeForce = 140;
+    const maxSteerVal = 0.54;
 
     // Steering interpolation
     let targetSteering = 0;
     if (isLeft) targetSteering = maxSteerVal;
     if (isRight) targetSteering = -maxSteerVal;
-    this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 12.0);
+    this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 14.0);
 
     this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
     this.raycastVehicle.setSteeringValue(this.currentSteering, 1);
 
-    // Engine & Braking
+    // Calculate forward speed along vehicle forward vector (+Z local)
+    const forwardVec = new CANNON.Vec3(0, 0, 1);
+    this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
+    const currentForwardSpeed = this.chassisBody.velocity.dot(forwardVec);
+
     let engineForce = 0;
     let brakeForce = 0;
-
-    const currentForwardSpeed = this.chassisBody.velocity.dot(
-      this.chassisBody.quaternion.vmult(new CANNON.Vec3(0, 0, 1))
-    );
 
     if (isForward) {
       if (currentForwardSpeed < -1.5) {
         brakeForce = maxBrakeForce;
       } else {
         engineForce = maxEngineForce;
+        // Direct arcade acceleration assist to ensure immediate start from rest
+        const accelAssist = forwardVec.clone();
+        accelAssist.scale(18000 * delta, accelAssist);
+        this.chassisBody.applyForce(accelAssist, this.chassisBody.position);
       }
     } else if (isReverse) {
       if (currentForwardSpeed > 1.5) {
         brakeForce = maxBrakeForce;
       } else {
-        engineForce = -maxEngineForce * 0.65;
+        engineForce = -maxEngineForce * 0.7;
+        const revAssist = forwardVec.clone();
+        revAssist.scale(-12000 * delta, revAssist);
+        this.chassisBody.applyForce(revAssist, this.chassisBody.position);
       }
     }
 
     if (isHandbrake) {
-      brakeForce = maxBrakeForce * 1.8;
+      brakeForce = maxBrakeForce * 2.2;
     }
 
-    // Apply engine force to all 4 wheels (AWD responsive drive)
+    // Aerodynamic downforce to keep tires firmly planted on asphalt
+    const speed = this.chassisBody.velocity.length();
+    if (speed > 2) {
+      const downForce = new CANNON.Vec3(0, -180 * speed, 0);
+      this.chassisBody.applyForce(downForce, this.chassisBody.position);
+    }
+
+    // Apply engine and brake force to all 4 wheels
     for (let i = 0; i < 4; i++) {
       this.raycastVehicle.applyEngineForce(engineForce, i);
       this.raycastVehicle.setBrake(brakeForce, i);
@@ -137,9 +154,10 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
-    // Sync chassis transform to Three.js mesh
+    // Sync chassis transform to visual Three.js mesh
     this.mesh.position.copy(this.chassisBody.position);
-    this.mesh.position.y -= 0.35; // Align visual center with suspension
+    // Offset Y so wheels rest exactly on ground level (Y = 0)
+    this.mesh.position.y -= 0.55;
     this.mesh.quaternion.copy(this.chassisBody.quaternion);
 
     // Calculate Speed and Gear for HUD
@@ -156,10 +174,10 @@ export class PlayerVehicle {
     this.info['Speed'] = `${this.speedKmH} km/h (Gear ${this.gear})`;
   }
 
-  resetPosition(yOffset = 2.0) {
+  resetPosition(yOffset = 1.2) {
     if (!this.chassisBody) return;
     // Flip upright if rolled over
-    this.chassisBody.position.y += yOffset;
+    this.chassisBody.position.y = yOffset;
     const euler = new THREE.Euler(0, this.mesh.rotation.y, 0);
     const q = new THREE.Quaternion().setFromEuler(euler);
     this.chassisBody.quaternion.set(q.x, q.y, q.z, q.w);
