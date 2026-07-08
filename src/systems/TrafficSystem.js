@@ -123,18 +123,45 @@ export class TrafficSystem {
       v.speed = v.physicsVehicle.speedKmH;
       Object.assign(v.info, v.physicsVehicle.info);
 
-      // Check collision with other AI vehicles (bounce + honk)
-      for (const other of this.vehicles) {
-        if (other === v) continue;
-        if (v.mesh.position.distanceTo(other.mesh.position) < 4.8) {
-          const bounceDir = v.mesh.position.clone().sub(other.mesh.position).normalize();
-          if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
-            const pushForce = new CANNON.Vec3(bounceDir.x * 25000, 0, bounceDir.z * 25000);
-            v.physicsVehicle.chassisBody.applyForce(pushForce, new CANNON.Vec3(0, 0, 0));
-          }
-          if (this.app.audioSystem) {
-            this.app.audioSystem.playHonk();
-            this.app.audioSystem.playBump();
+      // Check collision with other AI vehicles (bounce + honk with cooldown to prevent stutter/hanging)
+      if (v.bumpCooldown > 0) {
+        v.bumpCooldown -= delta;
+      } else {
+        for (const other of this.vehicles) {
+          if (other === v) continue;
+          if (v.mesh.position.distanceTo(other.mesh.position) < 4.2) {
+            v.bumpCooldown = 0.65;
+            const bounceDir = v.mesh.position.clone().sub(other.mesh.position);
+            bounceDir.y = 0;
+            if (bounceDir.lengthSq() === 0) bounceDir.set(1, 0, 0);
+            bounceDir.normalize();
+
+            // 1. Bounce player vehicle away
+            if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
+              v.physicsVehicle.chassisBody.velocity.x += bounceDir.x * 6.5;
+              v.physicsVehicle.chassisBody.velocity.z += bounceDir.z * 6.5;
+            } else {
+              v.mesh.position.addScaledVector(bounceDir, 0.85);
+            }
+
+            // 2. Bounce computer-controlled vehicle away
+            other.mesh.position.addScaledVector(bounceDir, -0.85);
+            other.speed = -other.speed * 0.4;
+
+            // 3. AI car honks horn and plays bump sound
+            if (this.app.audioSystem) {
+              this.app.audioSystem.playBump();
+              setTimeout(() => {
+                if (this.app.audioSystem) {
+                  if (other.isPolice) {
+                    this.app.audioSystem.playSiren(1.5);
+                  } else {
+                    this.app.audioSystem.playHonk(true);
+                  }
+                }
+              }, 80);
+            }
+            break;
           }
         }
       }
