@@ -18,12 +18,27 @@ export class BuildingFactory {
       'BOBA_HAVEN',
       'GALAXY_CINEMA',
       'MART_247',
-      'METRO_TOWER'
+      'METRO_TOWER',
+      'ORBITAL_SYSTEMS',
+      'QUANTUM_DYNAMIC',
+      'VALKYRIE_MOTORS',
+      'SYNTH_LABS',
+      'NEXUS_PLAZA',
+      'CHRONO_BANK',
+      'AETHER_TOWER',
+      'SOLARIS_HOTEL',
+      'CYBER_DYNAMICS',
+      'HYPERION_SPA',
+      'TITAN_INDUSTRIES',
+      'OMNI_CORP',
+      'VORTEX_ENERGY',
+      'SILICON_SPIRE',
+      'ZENITH_TOWER'
     ];
 
     let bIdx = 0;
     for (const plot of plots) {
-      const bType = businessTypes[bIdx] || 'OFFICE';
+      const bType = businessTypes[bIdx % businessTypes.length] || 'OFFICE';
       this.createBuilding(plot, bType);
       bIdx++;
     }
@@ -58,34 +73,30 @@ export class BuildingFactory {
       height = 25;
       color = 0x1f102f;
       name = 'CyberCafe 24/7';
-      employees = 24;
-      specialty = 'Neural VR Gaming & Coffee';
-      this.addShopDetails(group, w, height, d, color, 0xff00ff, '☕ CYBER CAFE');
-
-      const adMesh = this.billboardCanvas.createAdBillboard('CYBERCAFE', 16, 8);
-      adMesh.position.set(0, height + 5, 0);
-      group.add(adMesh);
+      employees = 35;
+      specialty = 'High-Speed Quantum Gaming & Coffee';
+      this.addShopDetails(group, w, height, d, color, 0xff00ff, '☕ CYBERCAFE');
     } else if (type === 'APEX_BANK') {
-      height = 60;
-      color = 0x1c2321;
-      name = 'Apex Cyber Bank';
-      employees = 650;
-      specialty = 'Crypto Vaults & Financial AI';
-      this.addSkyscraperDetails(group, w, height, d, color, 0x00ffaa);
+      height = 85;
+      color = 0x112233;
+      name = 'Apex Financial Tower';
+      employees = 980;
+      specialty = 'Decentralized Crypto Banking';
+      this.addSkyscraperDetails(group, w, height, d, color, 0xffaa00);
     } else if (type === 'STARLIGHT_HOTEL') {
-      height = 45;
-      color = 0x2d1b2e;
-      name = 'Starlight Grand Hotel';
-      employees = 320;
-      specialty = 'Luxury Suites & Rooftop Bar';
-      this.addSkyscraperDetails(group, w, height, d, color, 0xff00a0);
+      height = 65;
+      color = 0x2d1a3e;
+      name = 'Starlight Grand Resort';
+      employees = 420;
+      specialty = 'Luxury Skyline Suites';
+      this.addSkyscraperDetails(group, w, height, d, color, 0xbf55ec);
     } else if (type === 'BOBA_HAVEN') {
       height = 20;
-      color = 0x311b3f;
-      name = 'Boba Haven Lounge';
+      color = 0x2e1a24;
+      name = 'Boba Haven Tea Bar';
       employees = 18;
-      specialty = 'Taro & Matcha Milk Tea';
-      this.addShopDetails(group, w, height, d, color, 0x00ff88, '🧋 BOBA HAVEN');
+      specialty = 'Synthetic Fruit Infusions';
+      this.addShopDetails(group, w, height, d, color, 0xff66bb, '🧋 BOBA HAVEN');
     } else if (type === 'GALAXY_CINEMA') {
       height = 35;
       color = 0x1a0f2e;
@@ -115,9 +126,64 @@ export class BuildingFactory {
       const tickerMesh = this.billboardCanvas.createClockTickerBillboard(26, 10);
       tickerMesh.position.set(0, 30, d / 2 + 0.6);
       group.add(tickerMesh);
+    } else if (type === 'ORBITAL_SYSTEMS') {
+      height = 105;
+      color = 0x091428;
+      name = 'Orbital Systems Spire';
+      employees = 1850;
+      specialty = 'Satellite Navigation & Deep Space AI';
+      this.addSkyscraperDetails(group, w, height, d, color, 0x00ffff);
+      const adMesh = this.billboardCanvas.createAdBillboard('NEOTECH', 22, 11);
+      adMesh.position.set(0, height - 18, d / 2 + 0.6);
+      group.add(adMesh);
+    } else if (type === 'QUANTUM_DYNAMIC') {
+      height = 88;
+      color = 0x1a1a2e;
+      name = 'Quantum Dynamics Tower';
+      employees = 1200;
+      specialty = 'Supercomputing & Particle Simulation';
+      this.addSkyscraperDetails(group, w, height, d, color, 0xe94560);
+    } else if (type === 'VALKYRIE_MOTORS') {
+      height = 70;
+      color = 0x16213e;
+      name = 'Valkyrie Motors Tower';
+      employees = 890;
+      specialty = 'Autonomous Flying Vehicle Engines';
+      this.addSkyscraperDetails(group, w, height, d, color, 0x0f3460);
+    } else if (type === 'SYNTH_LABS') {
+      height = 80;
+      color = 0x0f2027;
+      name = 'SynthLabs Biotech HQ';
+      employees = 1100;
+      specialty = 'Cybernetic Enhancement & Diagnostics';
+      this.addSkyscraperDetails(group, w, height, d, color, 0x203a43);
+    } else if (type === 'CHRONO_BANK') {
+      height = 92;
+      color = 0x1e1f26;
+      name = 'Chrono Bank Plaza';
+      employees = 1500;
+      specialty = 'Temporal Vaults & Secure Transfers';
+      this.addSkyscraperDetails(group, w, height, d, color, 0xf0a500);
+    } else if (type === 'AETHER_TOWER') {
+      height = 115;
+      color = 0x131313;
+      name = 'Aether Skyspire';
+      employees = 2400;
+      specialty = 'Atmospheric Energy Harvesting';
+      this.addSkyscraperDetails(group, w, height, d, color, 0x7f5a83);
+      const tickerMesh = this.billboardCanvas.createClockTickerBillboard(26, 10);
+      tickerMesh.position.set(0, height - 25, d / 2 + 0.6);
+      group.add(tickerMesh);
+    } else if (type === 'SOLARIS_HOTEL') {
+      height = 78;
+      color = 0x2c1b2d;
+      name = 'Solaris Waterfront Hotel';
+      employees = 650;
+      specialty = 'River-View Luxury Suites & Spa';
+      this.addSkyscraperDetails(group, w, height, d, color, 0xff6b6b);
     } else {
-      height = Math.floor(Math.random() * 40 + 30);
-      name = `Office Block #${Math.floor(Math.random() * 90 + 10)}`;
+      height = Math.floor(Math.random() * 45 + 40);
+      name = `East District Tower #${Math.floor(Math.random() * 90 + 10)}`;
       this.addSkyscraperDetails(group, w, height, d, color, 0x00f0ff);
     }
 

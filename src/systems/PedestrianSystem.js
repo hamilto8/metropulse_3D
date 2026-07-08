@@ -14,32 +14,34 @@ export class PedestrianSystem {
     this.app = app;
     this.pedestrians = [];
     this.nodes = new Map();
-    this.sidewalkCoords = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
+    this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319];
+    this.sidewalkCoordsZ = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
     
     this.initWaypoints();
-    this.spawnPedestrians(36);
+    this.spawnPedestrians(60);
   }
 
   initWaypoints() {
-    const coords = this.sidewalkCoords;
+    const coordsX = this.sidewalkCoordsX;
+    const coordsZ = this.sidewalkCoordsZ;
 
     // 1. Create a grid of sidewalk intersection and corner nodes
-    for (const x of coords) {
-      for (const z of coords) {
+    for (const x of coordsX) {
+      for (const z of coordsZ) {
         const y = (x < -60 && z < -60) ? 0.7 : 0.4; // Elevated inside park area
         this.nodes.set(`${x},${z}`, new SidewalkNode(`${x},${z}`, x, z, y));
       }
     }
 
-    // 2. Connect orthogonal neighbors (sidewalk edges along blocks and crosswalks across roads)
-    for (let i = 0; i < coords.length; i++) {
-      for (let j = 0; j < coords.length; j++) {
-        const current = this.nodes.get(`${coords[i]},${coords[j]}`);
+    // 2. Connect orthogonal neighbors (sidewalk edges along blocks, crosswalks, and river bridge sidewalks)
+    for (let i = 0; i < coordsX.length; i++) {
+      for (let j = 0; j < coordsZ.length; j++) {
+        const current = this.nodes.get(`${coordsX[i]},${coordsZ[j]}`);
         if (!current) continue;
 
         // Connect East neighbor (i + 1)
-        if (i < coords.length - 1) {
-          const east = this.nodes.get(`${coords[i + 1]},${coords[j]}`);
+        if (i < coordsX.length - 1) {
+          const east = this.nodes.get(`${coordsX[i + 1]},${coordsZ[j]}`);
           if (east) {
             current.nextNodes.push(east);
             east.nextNodes.push(current); // Bi-directional walking
@@ -47,8 +49,8 @@ export class PedestrianSystem {
         }
 
         // Connect South neighbor (j + 1)
-        if (j < coords.length - 1) {
-          const south = this.nodes.get(`${coords[i]},${coords[j + 1]}`);
+        if (j < coordsZ.length - 1) {
+          const south = this.nodes.get(`${coordsX[i]},${coordsZ[j + 1]}`);
           if (south) {
             current.nextNodes.push(south);
             south.nextNodes.push(current); // Bi-directional walking

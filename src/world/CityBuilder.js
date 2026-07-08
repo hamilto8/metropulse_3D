@@ -16,27 +16,45 @@ export class CityBuilder {
   build() {
     this.createGround();
     this.createRoadGrid();
+    this.createRiverAndBridge();
     this.createCentralPark();
     this.createStreetFurniture();
   }
 
   createGround() {
-    // Main dark base ground
-    const groundGeo = new THREE.PlaneGeometry(600, 600);
+    // 1. West Ground Plane
+    const westGeo = new THREE.PlaneGeometry(335, 800);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x0c0f1d,
       roughness: 0.9,
       metalness: 0.1
     });
-    const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.1;
-    ground.receiveShadow = true;
-    this.scene.add(ground);
+    const westGround = new THREE.Mesh(westGeo, groundMat);
+    westGround.rotation.x = -Math.PI / 2;
+    westGround.position.set(-32.5, -0.1, 0);
+    westGround.receiveShadow = true;
+    this.scene.add(westGround);
+
+    // 2. East Ground Plane
+    const eastGeo = new THREE.PlaneGeometry(265, 800);
+    const eastGround = new THREE.Mesh(eastGeo, groundMat);
+    eastGround.rotation.x = -Math.PI / 2;
+    eastGround.position.set(267.5, -0.1, 0);
+    eastGround.receiveShadow = true;
+    this.scene.add(eastGround);
+
+    // 3. River Basin Bottom
+    const basinGeo = new THREE.PlaneGeometry(50, 800);
+    const basinMat = new THREE.MeshStandardMaterial({ color: 0x05070f, roughness: 1.0 });
+    const basin = new THREE.Mesh(basinGeo, basinMat);
+    basin.rotation.x = -Math.PI / 2;
+    basin.position.set(160, -4.0, 0);
+    this.scene.add(basin);
   }
 
   createRoadGrid() {
-    const roadCoords = [-100, -50, 0, 50, 100];
+    const roadCoordsZ = [-100, -50, 0, 50, 100];
+    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
     const roadWidth = 14;
     const sidewalkWidth = 4;
     const blockSize = 50 - roadWidth;
@@ -56,41 +74,56 @@ export class CityBuilder {
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 }); // Yellow road dividing line
     const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xeeeeee }); // White crosswalks
 
-    // 1. Create Roads along X and Z
-    for (const pos of roadCoords) {
-      const roadX = new THREE.Mesh(new THREE.PlaneGeometry(300, roadWidth), asphaltMat);
-      roadX.rotation.x = -Math.PI / 2;
-      roadX.position.set(0, 0.01, pos);
-      roadX.receiveShadow = true;
-      this.scene.add(roadX);
+    // 1. Create Roads along X (West and East segments) and along Z
+    for (const posZ of roadCoordsZ) {
+      // West road segment (X: -150 to 115, center -17.5, width 265)
+      const roadWest = new THREE.Mesh(new THREE.PlaneGeometry(265, roadWidth), asphaltMat);
+      roadWest.rotation.x = -Math.PI / 2;
+      roadWest.position.set(-17.5, 0.01, posZ);
+      roadWest.receiveShadow = true;
+      this.scene.add(roadWest);
 
-      const lineX = new THREE.Mesh(new THREE.PlaneGeometry(280, 0.4), lineMat);
-      lineX.rotation.x = -Math.PI / 2;
-      lineX.position.set(0, 0.02, pos);
-      this.scene.add(lineX);
+      const lineWest = new THREE.Mesh(new THREE.PlaneGeometry(265, 0.4), lineMat);
+      lineWest.rotation.x = -Math.PI / 2;
+      lineWest.position.set(-17.5, 0.02, posZ);
+      this.scene.add(lineWest);
 
+      // East road segment (X: 205 to 360, center 282.5, width 155)
+      const roadEast = new THREE.Mesh(new THREE.PlaneGeometry(155, roadWidth), asphaltMat);
+      roadEast.rotation.x = -Math.PI / 2;
+      roadEast.position.set(282.5, 0.01, posZ);
+      roadEast.receiveShadow = true;
+      this.scene.add(roadEast);
+
+      const lineEast = new THREE.Mesh(new THREE.PlaneGeometry(155, 0.4), lineMat);
+      lineEast.rotation.x = -Math.PI / 2;
+      lineEast.position.set(282.5, 0.02, posZ);
+      this.scene.add(lineEast);
+    }
+
+    for (const posX of roadCoordsX) {
       const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 300), asphaltMat);
       roadZ.rotation.x = -Math.PI / 2;
-      roadZ.position.set(pos, 0.01, 0);
+      roadZ.position.set(posX, 0.01, 0);
       roadZ.receiveShadow = true;
       this.scene.add(roadZ);
 
       const lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 280), lineMat);
       lineZ.rotation.x = -Math.PI / 2;
-      lineZ.position.set(pos, 0.02, 0);
+      lineZ.position.set(posX, 0.02, 0);
       this.scene.add(lineZ);
     }
 
-    // 2. Create Intersections & Crosswalks (Optimized with InstancedMesh to save 500 draw calls!)
-    const totalStripes = roadCoords.length * roadCoords.length * 4 * 5;
+    // 2. Create Intersections & Crosswalks (Optimized with InstancedMesh)
+    const totalStripes = roadCoordsX.length * roadCoordsZ.length * 4 * 5;
     const stripeGeo = new THREE.PlaneGeometry(1.2, 3);
     stripeGeo.rotateX(-Math.PI / 2);
     const stripeInstanced = new THREE.InstancedMesh(stripeGeo, whiteLineMat, totalStripes);
     let stripeIdx = 0;
     const dummy = new THREE.Object3D();
 
-    for (const x of roadCoords) {
-      for (const z of roadCoords) {
+    for (const x of roadCoordsX) {
+      for (const z of roadCoordsZ) {
         this.roadNetwork.intersections.push(new THREE.Vector3(x, 0, z));
 
         const offsets = [
@@ -117,10 +150,11 @@ export class CityBuilder {
     stripeInstanced.count = stripeIdx;
     this.scene.add(stripeInstanced);
 
-    // 3. Create City Blocks (Sidewalk tiles + Plots)
-    const blockCenters = [-75, -25, 25, 75];
-    for (const bx of blockCenters) {
-      for (const bz of blockCenters) {
+    // 3. Create City Blocks (Sidewalk tiles + Plots for both West and East Districts)
+    const blockCentersX = [-75, -25, 25, 75, 235, 285];
+    const blockCentersZ = [-75, -25, 25, 75];
+    for (const bx of blockCentersX) {
+      for (const bz of blockCentersZ) {
         const isPark = (bx === -75 && bz === -75);
 
         const sidewalkGeo = new THREE.BoxGeometry(blockSize + sidewalkWidth * 2, 0.4, blockSize + sidewalkWidth * 2);
@@ -140,6 +174,152 @@ export class CityBuilder {
           });
         }
       }
+    }
+  }
+
+  createRiverAndBridge() {
+    // 1. Shimmering River Water Plane
+    const waterGeo = new THREE.PlaneGeometry(50, 800);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x082b42,
+      roughness: 0.15,
+      metalness: 0.8,
+      transparent: true,
+      opacity: 0.9
+    });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(160, -1.2, 0);
+    this.scene.add(water);
+
+    // 2. Concrete Riverbank Retaining Walls
+    const wallGeo = new THREE.BoxGeometry(3, 4.2, 800);
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a4052, roughness: 0.8 });
+    const wallWest = new THREE.Mesh(wallGeo, wallMat);
+    wallWest.position.set(133.5, -2.0, 0);
+    this.scene.add(wallWest);
+
+    const wallEast = new THREE.Mesh(wallGeo, wallMat);
+    wallEast.position.set(186.5, -2.0, 0);
+    this.scene.add(wallEast);
+
+    // 3. Grand Suspension Bridge at Z = 0
+    const bridgeGroup = new THREE.Group();
+
+    // Road Deck (X: 110 to 210, length 100)
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 18), deckMat);
+    deck.position.set(160, 0.5, 0);
+    deck.receiveShadow = true;
+    bridgeGroup.add(deck);
+
+    // Bridge dividing lines & sidewalks
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(160, 1.02, 0);
+    bridgeGroup.add(line);
+
+    const sideMat = new THREE.MeshStandardMaterial({ color: 0x333b4e });
+    const sideN = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
+    sideN.position.set(160, 1.1, -7.5);
+    bridgeGroup.add(sideN);
+
+    const sideS = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
+    sideS.position.set(160, 1.1, 7.5);
+    bridgeGroup.add(sideS);
+
+    // Suspension Towers (at X = 138 and X = 182)
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0xd9381e, roughness: 0.3, metalness: 0.6 });
+    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.5, 65, 12);
+
+    for (const tx of [138, 182]) {
+      const pN = new THREE.Mesh(pillarGeo, towerMat);
+      pN.position.set(tx, 32.5, -8);
+      pN.castShadow = true;
+      bridgeGroup.add(pN);
+
+      const pS = new THREE.Mesh(pillarGeo, towerMat);
+      pS.position.set(tx, 32.5, 8);
+      pS.castShadow = true;
+      bridgeGroup.add(pS);
+
+      // Cross beams
+      for (const ty of [25, 45, 62]) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 16), towerMat);
+        beam.position.set(tx, ty, 0);
+        bridgeGroup.add(beam);
+      }
+
+      // Tower beacon lights
+      const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
+      const bN = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), beaconMat);
+      bN.position.set(tx, 66, -8);
+      bridgeGroup.add(bN);
+      const bS = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), beaconMat);
+      bS.position.set(tx, 66, 8);
+      bridgeGroup.add(bS);
+    }
+
+    // Suspension Cables & Suspenders
+    const cableMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.3 });
+    for (const cz of [-8, 8]) {
+      // Main swooping cables (approximate with 4 line cylinder segments)
+      const points = [
+        new THREE.Vector3(110, 4, cz),
+        new THREE.Vector3(138, 65, cz),
+        new THREE.Vector3(160, 15, cz),
+        new THREE.Vector3(182, 65, cz),
+        new THREE.Vector3(210, 4, cz)
+      ];
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const dist = p1.distanceTo(p2);
+        const cGeo = new THREE.CylinderGeometry(0.4, 0.4, dist, 6);
+        const cMesh = new THREE.Mesh(cGeo, cableMat);
+        cMesh.position.copy(p1).add(p2).multiplyScalar(0.5);
+        cMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+        bridgeGroup.add(cMesh);
+      }
+
+      // Vertical suspenders every 8 units
+      for (let sx = 118; sx <= 202; sx += 8) {
+        if (Math.abs(sx - 138) < 3 || Math.abs(sx - 182) < 3) continue;
+        let cy = 15 + Math.pow((sx - 160) / 22, 2) * 50;
+        if (sx < 138) cy = 4 + ((sx - 110) / 28) * 61;
+        if (sx > 182) cy = 4 + ((210 - sx) / 28) * 61;
+        
+        const sLen = Math.max(1, cy - 1.0);
+        const sGeo = new THREE.CylinderGeometry(0.15, 0.15, sLen, 6);
+        const sMesh = new THREE.Mesh(sGeo, cableMat);
+        sMesh.position.set(sx, 1.0 + sLen / 2, cz);
+        bridgeGroup.add(sMesh);
+      }
+    }
+    this.scene.add(bridgeGroup);
+
+    // 4. Secondary Highway Truss Bridges at Z = -100, -50, 50, 100
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.5, roughness: 0.5 });
+    for (const bz of [-100, -50, 50, 100]) {
+      const bDeck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 16), deckMat);
+      bDeck.position.set(160, 0.5, bz);
+      bDeck.receiveShadow = true;
+      this.scene.add(bDeck);
+
+      const bLine = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
+      bLine.rotation.x = -Math.PI / 2;
+      bLine.position.set(160, 1.02, bz);
+      this.scene.add(bLine);
+
+      // Side rail trusses
+      const railN = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
+      railN.position.set(160, 2.0, bz - 7.5);
+      this.scene.add(railN);
+
+      const railS = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
+      railS.position.set(160, 2.0, bz + 7.5);
+      this.scene.add(railS);
     }
   }
 
@@ -249,7 +429,8 @@ export class CityBuilder {
   createStreetFurniture() {
     // Add streetlamps along sidewalk edges
     // High performance optimization: replace 120 THREE.SpotLight objects with volumetric light cones!
-    const roadCoords = [-100, -50, 0, 50, 100];
+    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
+    const roadCoordsZ = [-100, -50, 0, 50, 100];
     const lampMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
     const bulbMat = new THREE.MeshStandardMaterial({
       color: 0xffaa00,
@@ -261,11 +442,18 @@ export class CityBuilder {
     coneGeo.translate(0, -3.5, 0);
 
     const lampPositions = [];
-    for (const r of roadCoords) {
+    for (const r of roadCoordsX) {
       for (let pos = -85; pos <= 85; pos += 30) {
-        if (Math.abs(pos % 50) > 10) { // Don't block crosswalks
+        if (Math.abs(pos % 50) > 10) {
           lampPositions.push({ x: r + 8, z: pos, rot: -Math.PI / 2 });
           lampPositions.push({ x: r - 8, z: pos, rot: Math.PI / 2 });
+        }
+      }
+    }
+    for (const r of roadCoordsZ) {
+      for (let pos = -135; pos <= 335; pos += 30) {
+        if (pos > 115 && pos < 205) continue; // Skip river water gap (bridge has its own lighting)
+        if (Math.abs(pos % 50) > 10) {
           lampPositions.push({ x: pos, z: r + 8, rot: 0 });
           lampPositions.push({ x: pos, z: r - 8, rot: Math.PI });
         }

@@ -14,19 +14,21 @@ export class TrafficSystem {
     this.app = app;
     this.vehicles = [];
     this.nodes = new Map();
-    this.roadCoords = [-100, -50, 0, 50, 100];
+    this.roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
+    this.roadCoordsZ = [-100, -50, 0, 50, 100];
     this.laneOffset = 3.5; // Right-hand traffic lane center
 
     this.initWaypoints();
-    this.spawnVehicles(28);
+    this.spawnVehicles(48);
   }
 
   initWaypoints() {
-    const coords = this.roadCoords;
+    const coordsX = this.roadCoordsX;
+    const coordsZ = this.roadCoordsZ;
     const off = this.laneOffset;
 
-    for (const rx of coords) {
-      for (const rz of coords) {
+    for (const rx of coordsX) {
+      for (const rz of coordsZ) {
         this.nodes.set(`EB_IN:${rx},${rz}`, new TrafficNode(`EB_IN:${rx},${rz}`, rx - 10, rz + off));
         this.nodes.set(`EB_OUT:${rx},${rz}`, new TrafficNode(`EB_OUT:${rx},${rz}`, rx + 10, rz + off));
 
@@ -41,11 +43,12 @@ export class TrafficSystem {
       }
     }
 
-    for (let i = 0; i < coords.length - 1; i++) {
-      const c1 = coords[i];
-      const c2 = coords[i + 1];
+    // Link East-West streets across intersections and river bridge
+    for (let i = 0; i < coordsX.length - 1; i++) {
+      const c1 = coordsX[i];
+      const c2 = coordsX[i + 1];
 
-      for (const rz of coords) {
+      for (const rz of coordsZ) {
         const ebOut = this.nodes.get(`EB_OUT:${c1},${rz}`);
         const ebIn = this.nodes.get(`EB_IN:${c2},${rz}`);
         if (ebOut && ebIn) ebOut.nextNodes.push(ebIn);
@@ -54,8 +57,14 @@ export class TrafficSystem {
         const wbIn = this.nodes.get(`WB_IN:${c1},${rz}`);
         if (wbOut && wbIn) wbOut.nextNodes.push(wbIn);
       }
+    }
 
-      for (const rx of coords) {
+    // Link North-South streets
+    for (let i = 0; i < coordsZ.length - 1; i++) {
+      const c1 = coordsZ[i];
+      const c2 = coordsZ[i + 1];
+
+      for (const rx of coordsX) {
         const sbOut = this.nodes.get(`SB_OUT:${rx},${c1}`);
         const sbIn = this.nodes.get(`SB_IN:${rx},${c2}`);
         if (sbOut && sbIn) sbOut.nextNodes.push(sbIn);
@@ -66,11 +75,11 @@ export class TrafficSystem {
       }
     }
 
-    for (const rx of coords) {
-      for (const rz of coords) {
+    for (const rx of coordsX) {
+      for (const rz of coordsZ) {
         const ebIn = this.nodes.get(`EB_IN:${rx},${rz}`);
         if (ebIn) {
-          if (rx < 100) ebIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx < 310) ebIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
           if (rz < 100) ebIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`));
           if (rz > -100) ebIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
         }
@@ -86,13 +95,13 @@ export class TrafficSystem {
         if (sbIn) {
           if (rz < 100) sbIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`));
           if (rx > -100) sbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
-          if (rx < 100) sbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx < 310) sbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
         }
 
         const nbIn = this.nodes.get(`NB_IN:${rx},${rz}`);
         if (nbIn) {
           if (rz > -100) nbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
-          if (rx < 100) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx < 310) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
           if (rx > -100) nbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
         }
       }

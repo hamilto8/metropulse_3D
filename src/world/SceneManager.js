@@ -55,11 +55,12 @@ export class SceneManager {
 
   initPresets() {
     this.presets = {
-      birdseye: { pos: new THREE.Vector3(0, 220, 10), target: new THREE.Vector3(0, 0, 0) },
+      birdseye: { pos: new THREE.Vector3(80, 320, 15), target: new THREE.Vector3(80, 0, 0) },
       street: { pos: new THREE.Vector3(15, 3.5, 45), target: new THREE.Vector3(0, 2, -20) },
       park: { pos: new THREE.Vector3(-45, 12, -45), target: new THREE.Vector3(-60, 4, -60) },
       downtown: { pos: new THREE.Vector3(35, 18, 35), target: new THREE.Vector3(-10, 8, -10) },
-      free: { pos: new THREE.Vector3(100, 75, 100), target: new THREE.Vector3(0, 0, 0) }
+      bridge: { pos: new THREE.Vector3(160, 28, 65), target: new THREE.Vector3(160, 8, -15) },
+      free: { pos: new THREE.Vector3(160, 95, 130), target: new THREE.Vector3(80, 0, 0) }
     };
   }
 
