@@ -98,6 +98,9 @@ export class UIManager {
         btn.classList.add('active');
         const weatherMode = btn.dataset.weather;
         this.app.environment.setWeather(weatherMode);
+        if (this.app.physicsWorld) {
+          this.app.physicsWorld.setWeatherFriction(weatherMode);
+        }
       });
     });
 
@@ -175,7 +178,7 @@ export class UIManager {
         if (!isFollowing && this.selectedEntity.type === 'VEHICLE' && this.selectedEntity.userControlled) {
           this.app.trafficSystem.releaseControl(this.selectedEntity);
           if (this.btnTakeControl) {
-            this.btnTakeControl.innerHTML = '🎮 Take Control';
+            this.btnTakeControl.innerHTML = '🏎️ Take Control (Physics)';
             this.btnTakeControl.classList.remove('active');
           }
         }
@@ -188,7 +191,7 @@ export class UIManager {
         if (this.selectedEntity && this.selectedEntity.type === 'VEHICLE') {
           const ts = this.app.trafficSystem;
           const isNowControlled = ts.toggleUserControl(this.selectedEntity);
-          this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Control' : '🎮 Take Control';
+          this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
           // If taking control, automatically follow the vehicle!
@@ -282,7 +285,7 @@ export class UIManager {
       if (this.btnTakeControl) {
         this.btnTakeControl.classList.remove('hidden');
         const isControlled = (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle === entity && entity.userControlled);
-        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Control' : '🎮 Take Control';
+        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
         this.btnTakeControl.classList.toggle('active', isControlled);
       }
       this.btnInteractSfx.classList.remove('hidden');
@@ -297,7 +300,7 @@ export class UIManager {
     if (this.app && this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
       this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
       if (this.btnTakeControl) {
-        this.btnTakeControl.innerHTML = '🎮 Take Control';
+        this.btnTakeControl.innerHTML = '🏎️ Take Control (Physics)';
         this.btnTakeControl.classList.remove('active');
       }
     }

@@ -16,11 +16,15 @@ import { CometManager } from './effects/CometManager.js';
 
 import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
+import { PhysicsWorld } from './physics/PhysicsWorld.js';
 
 class MetroPulseApp {
   constructor() {
     const container = document.getElementById('canvas-container');
     
+    // 0. Physics World (cannon-es Phase 1 prototype)
+    this.physicsWorld = new PhysicsWorld();
+
     // 1. Core Scene & Camera
     this.sceneManager = new SceneManager(container);
 
@@ -98,6 +102,7 @@ class MetroPulseApp {
     }
 
     // Update simulation systems
+    this.physicsWorld.step(delta);
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);
     this.pedestrianSystem.update(delta);

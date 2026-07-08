@@ -102,15 +102,15 @@ export class SceneManager {
   }
 
   update(delta) {
-    // 1. Follow Target Logic
+    // 1. Follow Target Logic (Enhanced for Physics Action Mode)
     if (this.followTarget && this.followTarget.mesh) {
       const mesh = this.followTarget.mesh;
       const targetPos = mesh.position.clone();
-      
-      // Calculate offset based on vehicle/pedestrian rotation
       const rotation = mesh.rotation.y;
-      const distance = this.followTarget.type === 'VEHICLE' ? 18 : 8;
-      const height = this.followTarget.type === 'VEHICLE' ? 7 : 3.5;
+      
+      const isPhysicsCar = this.followTarget.physicsVehicle || this.followTarget.userControlled;
+      const distance = isPhysicsCar ? 16 : (this.followTarget.type === 'VEHICLE' ? 18 : 8);
+      const height = isPhysicsCar ? 5.5 : (this.followTarget.type === 'VEHICLE' ? 7 : 3.5);
       
       const offsetX = -Math.sin(rotation) * distance;
       const offsetZ = -Math.cos(rotation) * distance;
@@ -121,10 +121,20 @@ export class SceneManager {
         targetPos.z + offsetZ
       );
 
-      this.camera.position.lerp(desiredCamPos, 0.08);
-      this.controls.target.lerp(new THREE.Vector3(targetPos.x, targetPos.y + 2, targetPos.z), 0.1);
+      // Smooth lag-compensated lerp for arcade chase feel
+      const followSpeed = isPhysicsCar ? Math.min(1.0, delta * 8.5) : 0.08;
+      this.camera.position.lerp(desiredCamPos, followSpeed);
+      this.controls.target.lerp(new THREE.Vector3(targetPos.x, targetPos.y + 1.5, targetPos.z), followSpeed * 1.2);
+      
+      // Dynamic speed FOV widening for adrenaline rush
+      if (isPhysicsCar && this.followTarget.speed !== undefined) {
+        const speedRatio = Math.min(1.0, Math.abs(this.followTarget.speed) / 100);
+        const targetFov = 60 + speedRatio * 18;
+        this.camera.fov += (targetFov - this.camera.fov) * Math.min(1.0, delta * 6.0);
+        this.camera.updateProjectionMatrix();
+      }
+
       this.controls.update();
-      // Skip return here if we want to allow shake on top of follow
     } else if (this.targetCameraPos && this.targetLookAt) {
       // 2. Camera Preset Transition Logic
       this.camera.position.lerp(this.targetCameraPos, 0.05);

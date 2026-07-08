@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
+import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 
 class TrafficNode {
   constructor(id, x, z) {
@@ -58,6 +59,12 @@ export class TrafficSystem {
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
+
+      // Phase 1: Attach cannon-es PlayerVehicle if PhysicsWorld is available
+      if (this.app && this.app.physicsWorld) {
+        vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld);
+      }
+
       return true;
     }
   }
@@ -65,6 +72,13 @@ export class TrafficSystem {
   releaseControl(vehicle) {
     if (!vehicle) return;
     vehicle.userControlled = false;
+
+    // Clean up cannon-es physics vehicle
+    if (vehicle.physicsVehicle) {
+      vehicle.physicsVehicle.destroy();
+      vehicle.physicsVehicle = null;
+    }
+
     if (this.controlledVehicle === vehicle) {
       this.controlledVehicle = null;
     }
@@ -96,6 +110,20 @@ export class TrafficSystem {
 
   updateUserControlledVehicle(v, delta) {
     if (!this.keys) return;
+
+    // Check reset key 'r' to flip upright if rolled over
+    if (this.keys['r'] && v.physicsVehicle) {
+      v.physicsVehicle.resetPosition();
+    }
+
+    // Delegate to cannon-es physics vehicle if active
+    if (v.physicsVehicle) {
+      v.physicsVehicle.applyInput(this.keys, delta);
+      v.physicsVehicle.syncMesh();
+      v.speed = v.physicsVehicle.speedKmH;
+      Object.assign(v.info, v.physicsVehicle.info);
+      return;
+    }
 
     const isForward = this.keys['w'] || this.keys['arrowup'];
     const isReverse = this.keys['s'] || this.keys['arrowdown'];
