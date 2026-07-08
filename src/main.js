@@ -39,6 +39,7 @@ class MetroPulseApp {
 
     // 6. Build Skyscrapers & Commercial Businesses
     this.buildingFactory = new BuildingFactory(this.sceneManager.scene, this.billboardCanvas, this.inspectorHud);
+    this.buildingFactory.app = this;
     this.buildingFactory.buildAll(this.cityBuilder.buildingPlots);
 
     // 7. Environment (Sky, Moon, Stars, Weather)
@@ -104,6 +105,7 @@ class MetroPulseApp {
     this.cometManager.update(delta);
     this.audioSystem.update(this.timeManager.timeVal, delta);
     this.uiManager.updateInspectorLive();
+    this.uiManager.updateRealEstateTracker(delta);
 
     // Update camera controls and render
     this.sceneManager.update(delta);

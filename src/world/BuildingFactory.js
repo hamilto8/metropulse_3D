@@ -332,6 +332,10 @@ export class BuildingFactory {
     if (building.isDestroyed) return;
     building.isDestroyed = true;
 
+    if (this.app && this.app.uiManager) {
+      this.app.uiManager.onBuildingDestroyed();
+    }
+
     // Hide original building group
     building.group.visible = false;
 

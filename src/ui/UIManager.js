@@ -30,6 +30,14 @@ export class UIManager {
     this.funModeLabel = document.getElementById('fun-mode-label');
     this.newsChyron = document.getElementById('news-chyron');
     
+    // Real Estate Tracker (Satirical Crash Index)
+    this.reTracker = document.getElementById('real-estate-tracker');
+    this.reValueDisplay = document.getElementById('re-value-display');
+    this.reStatusDisplay = document.getElementById('re-status-display');
+    this.initialReValue = 4850000000; // $4.85 Billion
+    this.currentReValue = 4850000000;
+    this.targetReValue = 4850000000;
+    
     // Inspector HUD
     this.inspectorHud = document.getElementById('inspector-hud');
     this.inspectorType = document.getElementById('inspector-type');
@@ -127,6 +135,10 @@ export class UIManager {
           this.btnFunMode.classList.add('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: MAYHEM! 🔥';
           if (this.newsChyron) this.newsChyron.classList.remove('hidden');
+          if (this.reTracker) {
+            this.reTracker.classList.remove('hidden');
+            this.resetRealEstateValue();
+          }
           if (this.app.audioSystem && !this.app.audioSystem.isEnabled) {
             this.app.audioSystem.toggleAudio();
             this.btnMute.classList.add('active');
@@ -139,6 +151,8 @@ export class UIManager {
           this.btnFunMode.classList.remove('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: OFF';
           if (this.newsChyron) this.newsChyron.classList.add('hidden');
+          if (this.reTracker) this.reTracker.classList.add('hidden');
+          this.resetRealEstateValue();
           if (this.app.buildingFactory) {
             this.app.buildingFactory.restoreAllBuildings();
           }
@@ -306,5 +320,82 @@ export class UIManager {
       }
       idx++;
     }
+  }
+
+  onBuildingDestroyed() {
+    // Each destroyed building drops the real estate index!
+    const drop = Math.floor(Math.random() * 180000000 + 140000000);
+    this.targetReValue = Math.max(12000000, this.targetReValue - drop);
+  }
+
+  resetRealEstateValue() {
+    this.targetReValue = this.initialReValue;
+    this.currentReValue = this.initialReValue;
+    if (this.reValueDisplay) {
+      this.reValueDisplay.innerText = '$' + this.currentReValue.toLocaleString('en-US');
+      this.reValueDisplay.classList.remove('dropping', 'collapsed');
+    }
+    if (this.reStatusDisplay) {
+      this.reStatusDisplay.innerHTML = 'Market Status: <span class="accent-val" style="color: #10b981; font-weight: 700;">Speculative Bubble 🎈</span>';
+    }
+  }
+
+  updateRealEstateTracker(delta) {
+    if (!this.reTracker || this.reTracker.classList.contains('hidden')) return;
+
+    if (this.currentReValue > this.targetReValue) {
+      // Calculate drop rate: roll down smoothly over frames
+      const diff = this.currentReValue - this.targetReValue;
+      const step = Math.max(2500000, Math.ceil(diff * 5.0 * delta));
+      this.currentReValue = Math.max(this.targetReValue, this.currentReValue - step);
+
+      if (this.reValueDisplay) {
+        this.reValueDisplay.innerText = '$' + this.currentReValue.toLocaleString('en-US');
+        this.reValueDisplay.classList.add('dropping');
+      }
+
+      this.updateMarketStatusText();
+    } else {
+      if (this.reValueDisplay && this.reValueDisplay.classList.contains('dropping')) {
+        this.reValueDisplay.classList.remove('dropping');
+        this.reValueDisplay.innerText = '$' + this.currentReValue.toLocaleString('en-US');
+      }
+    }
+  }
+
+  updateMarketStatusText() {
+    if (!this.reStatusDisplay) return;
+    const val = this.currentReValue;
+    let statusText = 'Speculative Bubble 🎈';
+    let colorHex = '#10b981';
+    let collapsed = false;
+
+    if (val > 4000000000) {
+      statusText = 'Speculative Bubble 🎈';
+      colorHex = '#10b981';
+    } else if (val > 3200000000) {
+      statusText = 'Minor Market Correction 📉';
+      colorHex = '#facc15';
+    } else if (val > 2400000000) {
+      statusText = 'Panic Selling! 😱';
+      colorHex = '#fb923c';
+    } else if (val > 1500000000) {
+      statusText = 'Landlords Weeping! 😭';
+      colorHex = '#f87171';
+    } else if (val > 800000000) {
+      statusText = 'Total Market Collapse! 🔥';
+      colorHex = '#ef4444';
+      collapsed = true;
+    } else {
+      statusText = 'Apocalyptic Bargains! 🏚️';
+      colorHex = '#ff0055';
+      collapsed = true;
+    }
+
+    if (this.reValueDisplay) {
+      this.reValueDisplay.classList.toggle('collapsed', collapsed);
+    }
+
+    this.reStatusDisplay.innerHTML = `Market Status: <span style="color: ${colorHex}; font-weight: 700;">${statusText}</span>`;
   }
 }

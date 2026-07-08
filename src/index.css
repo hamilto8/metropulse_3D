@@ -422,9 +422,105 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
+/* Satirical Real Estate Value Tracker */
+.real-estate-tracker {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 290px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(15, 20, 35, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 71, 87, 0.4);
+  border-left: 4px solid #ff4757;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 71, 87, 0.2);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+  color: #fff;
+}
+
+.real-estate-tracker.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-20px) scale(0.95);
+}
+
+.re-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #a0aec0;
+}
+
+.re-badge {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 71, 87, 0.5);
+  font-size: 0.65rem;
+  animation: pulse-badge 1.5s infinite;
+}
+
+.re-title {
+  text-transform: uppercase;
+}
+
+.re-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: monospace, sans-serif;
+  color: #10b981;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+  line-height: 1.2;
+}
+
+.re-value.dropping {
+  color: #ff4757;
+  text-shadow: 0 0 15px rgba(255, 71, 87, 0.8);
+  animation: shake-value 0.15s infinite;
+}
+
+.re-value.collapsed {
+  color: #ff3333;
+  text-shadow: 0 0 20px rgba(255, 0, 0, 0.9);
+}
+
+.re-status {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+
+.re-status .accent-val {
+  font-weight: 700;
+  color: #00f0ff;
+}
+
+@keyframes shake-value {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-0.5deg); }
+  75% { transform: translateX(2px) rotate(0.5deg); }
+}
+
+@keyframes pulse-badge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* Right Inspector HUD */
 .inspector-hud {
-  top: 90px;
+  top: 135px;
   right: 20px;
   width: 280px;
   padding: 18px;
