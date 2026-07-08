@@ -80,9 +80,7 @@ export class SceneManager {
       this.stopFollowTarget();
       return false;
     } else {
-      this.followTarget = entity;
-      this.targetCameraPos = null;
-      this.targetLookAt = null;
+      this.startFollowTarget(entity);
       return true;
     }
   }

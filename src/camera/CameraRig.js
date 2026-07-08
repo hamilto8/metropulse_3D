@@ -143,6 +143,7 @@ export class CameraRig {
 
       this.camera.position.lerpVectors(this.startCamPos, pose.camPos, ease);
       this.controls.target.lerpVectors(this.startLookAt, pose.lookAt, ease);
+      this.camera.lookAt(this.controls.target);
 
       if (progress >= 1.0) {
         this.state = 'CHASE_MICRO';
@@ -153,6 +154,7 @@ export class CameraRig {
 
       this.camera.position.lerp(pose.camPos, followSpeed);
       this.controls.target.lerp(pose.lookAt, followSpeed * 1.25);
+      this.camera.lookAt(this.controls.target);
 
       // Dynamic Speed FOV Warp
       if (this.followTarget && this.followTarget.speed !== undefined) {
@@ -169,6 +171,7 @@ export class CameraRig {
 
       this.camera.position.lerpVectors(this.startCamPos, this.macroCamPos, ease);
       this.controls.target.lerpVectors(this.startLookAt, this.macroLookAt, ease);
+      this.camera.lookAt(this.controls.target);
 
       // Restore FOV to 60 during ascent
       this.currentFov += (60 - this.currentFov) * Math.min(1.0, delta * 8.0);
