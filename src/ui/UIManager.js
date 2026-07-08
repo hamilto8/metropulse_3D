@@ -37,6 +37,7 @@ export class UIManager {
     this.inspectorBody = document.getElementById('inspector-body');
     this.btnCloseInspector = document.getElementById('btn-close-inspector');
     this.btnFollowTarget = document.getElementById('btn-follow-target');
+    this.btnTakeControl = document.getElementById('btn-take-control');
     this.btnInteractSfx = document.getElementById('btn-interact-sfx');
     
     this.selectedEntity = null;
@@ -156,8 +157,35 @@ export class UIManager {
         const isFollowing = this.app.sceneManager.toggleFollowTarget(this.selectedEntity);
         this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
         this.btnFollowTarget.classList.toggle('active', isFollowing);
+
+        if (!isFollowing && this.selectedEntity.type === 'VEHICLE' && this.selectedEntity.userControlled) {
+          this.app.trafficSystem.releaseControl(this.selectedEntity);
+          if (this.btnTakeControl) {
+            this.btnTakeControl.innerHTML = '🎮 Take Control';
+            this.btnTakeControl.classList.remove('active');
+          }
+        }
       }
     });
+
+    // Take Control button (WASD / Arrows manual driving)
+    if (this.btnTakeControl) {
+      this.btnTakeControl.addEventListener('click', () => {
+        if (this.selectedEntity && this.selectedEntity.type === 'VEHICLE') {
+          const ts = this.app.trafficSystem;
+          const isNowControlled = ts.toggleUserControl(this.selectedEntity);
+          this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Control' : '🎮 Take Control';
+          this.btnTakeControl.classList.toggle('active', isNowControlled);
+
+          // If taking control, automatically follow the vehicle!
+          if (isNowControlled && this.app.sceneManager.followTarget !== this.selectedEntity) {
+            this.app.sceneManager.startFollowTarget(this.selectedEntity);
+            this.btnFollowTarget.innerHTML = '❌ Stop Following';
+            this.btnFollowTarget.classList.add('active');
+          }
+        }
+      });
+    }
 
     // Trigger SFX button
     this.btnInteractSfx.addEventListener('click', () => {
@@ -231,19 +259,34 @@ export class UIManager {
       this.btnFollowTarget.classList.remove('hidden');
       const isFollowing = (this.app.sceneManager.followTarget === entity);
       this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
+      this.btnFollowTarget.classList.toggle('active', isFollowing);
     } else {
       this.btnFollowTarget.classList.add('hidden');
     }
 
     if (entity.type === 'VEHICLE') {
+      if (this.btnTakeControl) {
+        this.btnTakeControl.classList.remove('hidden');
+        const isControlled = (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle === entity && entity.userControlled);
+        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Control' : '🎮 Take Control';
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
       this.btnInteractSfx.classList.remove('hidden');
       this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
     } else {
+      if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
       this.btnInteractSfx.classList.add('hidden');
     }
   }
 
   hideInspector() {
+    if (this.app && this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
+      this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
+      if (this.btnTakeControl) {
+        this.btnTakeControl.innerHTML = '🎮 Take Control';
+        this.btnTakeControl.classList.remove('active');
+      }
+    }
     this.selectedEntity = null;
     this.inspectorHud.classList.add('hidden');
     this.app.sceneManager.stopFollowTarget();

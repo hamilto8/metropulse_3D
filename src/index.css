@@ -559,6 +559,26 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.action-btn.accent {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.action-btn.accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.7);
+}
+
+.action-btn.accent.active {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.action-btn.accent.active:hover {
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.7);
+}
+
 .action-btn.hidden {
   display: none;
 }

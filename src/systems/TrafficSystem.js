@@ -20,6 +20,135 @@ export class TrafficSystem {
 
     this.initWaypoints();
     this.spawnVehicles(48);
+    this.initKeyboardControls();
+  }
+
+  initKeyboardControls() {
+    this.keys = {};
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+      this.keys[e.key.toLowerCase()] = true;
+
+      // Check Honk with Shift key when controlling a vehicle!
+      if (e.key === 'Shift' && this.controlledVehicle && !e.repeat) {
+        if (this.app.audioSystem) {
+          if (this.controlledVehicle.isPolice) {
+            this.app.audioSystem.playSiren(1.5);
+          } else {
+            this.app.audioSystem.playHonk();
+          }
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      this.keys[e.key.toLowerCase()] = false;
+    });
+  }
+
+  toggleUserControl(vehicle) {
+    if (!vehicle) return false;
+    if (vehicle.userControlled && this.controlledVehicle === vehicle) {
+      this.releaseControl(vehicle);
+      return false;
+    } else {
+      if (this.controlledVehicle && this.controlledVehicle !== vehicle) {
+        this.releaseControl(this.controlledVehicle);
+      }
+      vehicle.userControlled = true;
+      this.controlledVehicle = vehicle;
+      vehicle.info['Status'] = '🎮 USER CONTROLLED';
+      return true;
+    }
+  }
+
+  releaseControl(vehicle) {
+    if (!vehicle) return;
+    vehicle.userControlled = false;
+    if (this.controlledVehicle === vehicle) {
+      this.controlledVehicle = null;
+    }
+    vehicle.info['Status'] = 'Cruising';
+
+    const allNodesList = Array.from(this.nodes.values());
+    if (allNodesList.length > 0) {
+      let closestNode = allNodesList[0];
+      let minDist = vehicle.mesh.position.distanceTo(closestNode.pos);
+      for (const node of allNodesList) {
+        const dist = vehicle.mesh.position.distanceTo(node.pos);
+        if (dist < minDist) {
+          minDist = dist;
+          closestNode = node;
+        }
+      }
+      vehicle.currentNode = closestNode;
+      if (closestNode.nextNodes && closestNode.nextNodes.length > 0) {
+        vehicle.targetNode = closestNode.nextNodes[0];
+      } else {
+        vehicle.targetNode = closestNode;
+      }
+      if (vehicle.targetNode) {
+        vehicle.mesh.lookAt(vehicle.targetNode.pos);
+      }
+      vehicle.speed = Math.max(8, vehicle.speed);
+    }
+  }
+
+  updateUserControlledVehicle(v, delta) {
+    if (!this.keys) return;
+
+    const isForward = this.keys['w'] || this.keys['arrowup'];
+    const isReverse = this.keys['s'] || this.keys['arrowdown'];
+    const isLeft = this.keys['a'] || this.keys['arrowleft'];
+    const isRight = this.keys['d'] || this.keys['arrowright'];
+
+    const userMaxSpeed = v.maxSpeed * 1.35; // A bit faster for manual driving
+
+    // 1. Acceleration / Braking / Reverse
+    if (isForward) {
+      v.speed = Math.min(userMaxSpeed, v.speed + v.acceleration * 1.8 * delta);
+    } else if (isReverse) {
+      if (v.speed > 0) {
+        v.speed = Math.max(-12, v.speed - v.acceleration * 3.0 * delta); // Brake
+      } else {
+        v.speed = Math.max(-12, v.speed - v.acceleration * 1.5 * delta); // Reverse
+      }
+    } else {
+      // Natural engine deceleration / friction
+      if (v.speed > 0) {
+        v.speed = Math.max(0, v.speed - 9.0 * delta);
+      } else if (v.speed < 0) {
+        v.speed = Math.min(0, v.speed + 9.0 * delta);
+      }
+    }
+
+    // 2. Steering (Turning Left / Right when moving)
+    if (Math.abs(v.speed) > 0.2) {
+      const turnDir = v.speed > 0 ? 1 : -1;
+      const steerSpeed = 2.8 * delta * turnDir;
+      if (isLeft) {
+        v.mesh.rotation.y += steerSpeed;
+      }
+      if (isRight) {
+        v.mesh.rotation.y -= steerSpeed;
+      }
+    }
+
+    // 3. Move vehicle along its orientation
+    const moveStep = v.speed * delta;
+    v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
+    v.mesh.position.y = 0;
+
+    // 4. Check bump with other cars while manual driving
+    for (const other of this.vehicles) {
+      if (other === v) continue;
+      if (v.mesh.position.distanceTo(other.mesh.position) < 3.6 && Math.abs(v.speed) > 3.0) {
+        if (this.app.audioSystem && Math.random() < 0.25) {
+          this.app.audioSystem.playBump();
+          other.speed = 0; // Knock the AI car
+        }
+      }
+    }
   }
 
   initWaypoints() {
@@ -262,6 +391,13 @@ export class TrafficSystem {
           v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
           v.mesh.position.y = 0;
         }
+        v.update(delta);
+        continue;
+      }
+
+      // Handle User Controlled manual driving (WASD / Arrows)
+      if (v.userControlled) {
+        this.updateUserControlledVehicle(v, delta);
         v.update(delta);
         continue;
       }
