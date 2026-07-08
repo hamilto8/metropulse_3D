@@ -492,7 +492,7 @@ export class CityBuilder {
       lampGroup.rotation.y = lPos.rot;
       this.scene.add(lampGroup);
 
-      this.streetlamps.push({ bulb: bulb, cone: coneMat });
+      this.streetlamps.push({ bulb: bulb, cone: coneMat, group: lampGroup, pos: lampGroup.position });
     }
   }
 }

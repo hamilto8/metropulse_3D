@@ -143,7 +143,10 @@ export class TrafficSystem {
     v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
     v.mesh.position.y = 0;
 
-    // 4. Building Collision Check (prevent driving through buildings!)
+    // 4. Solid Obstacle Collision Check (Buildings & Lamp Posts!)
+    let hitObstacle = false;
+
+    // Check Buildings
     if (this.app.buildingFactory && this.app.buildingFactory.buildings) {
       const pos = v.mesh.position;
       for (const b of this.app.buildingFactory.buildings) {
@@ -155,7 +158,6 @@ export class TrafficSystem {
         const maxZ = b.plot.z + (b.plot.depth - 4) / 2 + 1.8;
 
         if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
-          // COLLISION WITH BUILDING!
           if (this.app.funMode && Math.abs(v.speed) > 14) {
             // In Fun Mode, high speed impact destroys building into rubble!
             this.app.buildingFactory.destroyBuilding(b);
@@ -166,30 +168,87 @@ export class TrafficSystem {
               this.app.sceneManager.triggerShake(0.35);
             }
             v.speed *= 0.3;
-            break;
           } else {
-            // Solid Building Wall Collision! Revert position and rotation so vehicle cannot penetrate building!
-            v.mesh.position.copy(oldPos);
-            v.mesh.rotation.y = oldRotY;
-
-            if (Math.abs(v.speed) > 2.0 && this.app.audioSystem && Math.random() < 0.4) {
-              this.app.audioSystem.playBump();
-            }
-
-            v.speed = -v.speed * 0.3; // Bounce back off wall
-            break;
+            hitObstacle = true;
           }
+          break;
         }
       }
     }
 
-    // 5. Check bump with other cars while manual driving
-    for (const other of this.vehicles) {
-      if (other === v) continue;
-      if (v.mesh.position.distanceTo(other.mesh.position) < 3.6 && Math.abs(v.speed) > 3.0) {
-        if (this.app.audioSystem && Math.random() < 0.25) {
-          this.app.audioSystem.playBump();
-          other.speed = 0; // Knock the AI car
+    // Check Lamp Posts
+    if (!hitObstacle && this.app.cityBuilder && this.app.cityBuilder.streetlamps) {
+      const pos = v.mesh.position;
+      for (const lamp of this.app.cityBuilder.streetlamps) {
+        if (lamp.pos && pos.distanceTo(lamp.pos) < 1.8) {
+          hitObstacle = true;
+          break;
+        }
+      }
+    }
+
+    if (hitObstacle) {
+      // Solid Obstacle Collision! Revert position and rotation so vehicle cannot penetrate wall or lamp post!
+      v.mesh.position.copy(oldPos);
+      v.mesh.rotation.y = oldRotY;
+
+      if (Math.abs(v.speed) > 2.0 && this.app.audioSystem && Math.random() < 0.4) {
+        this.app.audioSystem.playBump();
+      }
+
+      v.speed = -v.speed * 0.35; // Bounce back off obstacle
+    }
+
+    // 5. Check collision with other cars while manual driving (bounce effect + angry honk!)
+    if (v.bumpCooldown > 0) {
+      v.bumpCooldown -= delta;
+    } else {
+      for (const other of this.vehicles) {
+        if (other === v) continue;
+        if (v.mesh.position.distanceTo(other.mesh.position) < 3.8) {
+          if (this.app.funMode && Math.abs(v.speed) > 13) {
+            other.crashed = true;
+            other.crashTimer = 10.0;
+            if (this.app.audioSystem) this.app.audioSystem.playExplosion();
+            if (this.app.explosionManager) this.app.explosionManager.spawnExplosion(other.mesh.position.clone());
+            v.bumpCooldown = 0.5;
+          } else {
+            // CAR-TO-CAR COLLISION BOUNCE EFFECT!
+            const bumpDir = other.mesh.position.clone().sub(v.mesh.position);
+            bumpDir.y = 0;
+            if (bumpDir.lengthSq() === 0) bumpDir.set(1, 0, 0);
+            bumpDir.normalize();
+
+            // Knock both vehicles slightly away from each other
+            other.mesh.position.add(bumpDir.clone().multiplyScalar(0.85));
+            v.mesh.position.add(bumpDir.clone().multiplyScalar(-0.65));
+
+            // Bounce speed
+            other.speed = Math.sign(v.speed || 1) * Math.max(6, Math.abs(v.speed) * 0.5);
+            v.speed = -v.speed * 0.45; // Bounce player backward
+
+            v.bumpCooldown = 0.6; // Cooldown to prevent spamming
+
+            // Play collision bump and the other car honking at you!
+            if (this.app.audioSystem) {
+              this.app.audioSystem.playBump();
+              setTimeout(() => {
+                if (this.app.audioSystem) {
+                  if (other.isPolice) {
+                    this.app.audioSystem.playSiren(1.5);
+                  } else {
+                    this.app.audioSystem.playHonk();
+                  }
+                }
+              }, 80); // Cinematic 80ms delay for driver reaction
+            }
+
+            if (other.info) {
+              other.info['Status'] = 'Honking at Driver!';
+              other.info['Mood'] = 'Annoyed & Honking 😡';
+            }
+          }
+          break;
         }
       }
     }
