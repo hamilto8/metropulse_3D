@@ -614,6 +614,71 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   100% { box-shadow: 0 0 25px rgba(255, 0, 85, 0.8), 0 0 10px #ffcc00; }
 }
 
+/* Satirical News Chyron (Fun Mode) */
+.news-chyron {
+  position: absolute;
+  bottom: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(95%, 1100px);
+  background: linear-gradient(90deg, rgba(15, 5, 10, 0.95), rgba(45, 10, 20, 0.95), rgba(15, 5, 10, 0.95));
+  border: 2px solid #ff2a00;
+  border-radius: 8px;
+  box-shadow: 0 0 25px rgba(255, 42, 0, 0.6), inset 0 0 10px rgba(255, 0, 50, 0.4);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 20;
+  pointer-events: none;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.news-chyron.hidden {
+  display: none;
+}
+
+.chyron-badge {
+  background: #ff2a00;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 10px 16px;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+  animation: pulseChyronBadge 1s infinite alternate;
+  text-transform: uppercase;
+}
+
+@keyframes pulseChyronBadge {
+  0% { background: #ff2a00; color: #fff; }
+  100% { background: #ffcc00; color: #000; }
+}
+
+.chyron-ticker-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  position: relative;
+  padding: 8px 0;
+}
+
+.chyron-ticker-text {
+  display: flex;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffcc00;
+  text-shadow: 0 0 8px rgba(255, 204, 0, 0.8);
+  animation: scrollChyron 50s linear infinite;
+}
+
+@keyframes scrollChyron {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* Responsive adjustments */
 @media (max-width: 900px) {
   .left-sidebar {

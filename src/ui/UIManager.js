@@ -28,6 +28,7 @@ export class UIManager {
     // Fun Mode controls
     this.btnFunMode = document.getElementById('btn-fun-mode');
     this.funModeLabel = document.getElementById('fun-mode-label');
+    this.newsChyron = document.getElementById('news-chyron');
     
     // Inspector HUD
     this.inspectorHud = document.getElementById('inspector-hud');
@@ -92,25 +93,30 @@ export class UIManager {
     });
 
     // Audio toggle
-    this.btnMute.addEventListener('click', () => {
-      const enabled = this.app.audioSystem.toggleAudio();
-      if (enabled) {
-        this.btnMute.classList.add('active');
-        this.muteIcon.textContent = '🔊';
-        this.muteLabel.textContent = 'SFX Active';
-        this.volumeSlider.disabled = false;
-      } else {
-        this.btnMute.classList.remove('active');
-        this.muteIcon.textContent = '🔇';
-        this.muteLabel.textContent = 'Enable SFX';
-        this.volumeSlider.disabled = true;
-      }
-    });
+    if (this.btnMute) {
+      this.btnMute.addEventListener('click', () => {
+        if (this.app.audioSystem) {
+          const enabled = this.app.audioSystem.toggleAudio();
+          if (enabled) {
+            this.btnMute.classList.add('active');
+            this.muteIcon.textContent = '🔊';
+            this.muteLabel.textContent = 'SFX Active';
+            this.volumeSlider.disabled = false;
+          } else {
+            this.btnMute.classList.remove('active');
+            this.muteIcon.textContent = '🔇';
+            this.muteLabel.textContent = 'Enable SFX';
+            this.volumeSlider.disabled = true;
+          }
+        }
+      });
 
-    this.volumeSlider.addEventListener('input', (e) => {
-      const vol = parseFloat(e.target.value);
-      this.app.audioSystem.setVolume(vol);
-    });
+      this.volumeSlider.addEventListener('input', (e) => {
+        if (this.app.audioSystem) {
+          this.app.audioSystem.setVolume(parseFloat(e.target.value));
+        }
+      });
+    }
 
     // Fun Mode toggle
     if (this.btnFunMode) {
@@ -119,6 +125,7 @@ export class UIManager {
         if (this.app.funMode) {
           this.btnFunMode.classList.add('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: MAYHEM! 🔥';
+          if (this.newsChyron) this.newsChyron.classList.remove('hidden');
           if (this.app.audioSystem && !this.app.audioSystem.isEnabled) {
             this.app.audioSystem.toggleAudio();
             this.btnMute.classList.add('active');
@@ -130,6 +137,7 @@ export class UIManager {
         } else {
           this.btnFunMode.classList.remove('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: OFF';
+          if (this.newsChyron) this.newsChyron.classList.add('hidden');
           if (this.app.buildingFactory) {
             this.app.buildingFactory.restoreAllBuildings();
           }
