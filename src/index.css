@@ -425,9 +425,8 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
 /* Satirical Real Estate Value Tracker */
 .real-estate-tracker {
   position: absolute;
-  top: 50%;
+  bottom: 145px;
   right: 20px;
-  transform: translateY(-50%);
   width: 290px;
   padding: 14px 18px;
   border-radius: var(--radius-md);
@@ -447,7 +446,7 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
 .real-estate-tracker.hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translateY(-50%) translateX(30px) scale(0.95);
+  transform: translateY(20px) scale(0.95);
 }
 
 .re-header {
@@ -521,7 +520,7 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
 
 /* Right Inspector HUD */
 .inspector-hud {
-  top: 90px;
+  top: 70px;
   right: 20px;
   width: 280px;
   padding: 18px;
