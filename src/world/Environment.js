@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 
 export class Environment {
-  constructor(scene, app = null) {
+  constructor(scene, inspectorHud = null, app = null) {
     this.scene = scene;
+    this.inspectorHud = inspectorHud;
     this.app = app;
     this.weatherMode = 'clear';
     this.rainParticles = null;
     this.starfield = null;
     this.moon = null;
+    this.sun = null;
+    this.sunGlow = null;
 
     this.initSkyAndStars();
     this.initRain();
@@ -53,6 +56,52 @@ export class Environment {
     });
     this.moon = new THREE.Mesh(moonGeo, moonMat);
     this.scene.add(this.moon);
+
+    if (this.inspectorHud) {
+      this.inspectorHud.registerObject(this.moon, {
+        type: 'CELESTIAL BODY 🌙',
+        name: 'The Moon (Luna)',
+        info: {
+          'Surface Temp': '-130 °C to 120 °C 🌑',
+          'Distance': '384,400 km',
+          'Status': 'Nighttime Illumination ✨'
+        }
+      });
+    }
+
+    // 3. Sun
+    const sunGeo = new THREE.SphereGeometry(18, 32, 32);
+    const sunMat = new THREE.MeshStandardMaterial({
+      color: 0xffffaa,
+      emissive: 0xffaa00,
+      emissiveIntensity: 2.2,
+      roughness: 0.1
+    });
+    this.sun = new THREE.Mesh(sunGeo, sunMat);
+
+    // Soft glowing aura halo around the sun
+    const glowGeo = new THREE.SphereGeometry(26, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0xff8811,
+      transparent: true,
+      opacity: 0.35
+    });
+    this.sunGlow = new THREE.Mesh(glowGeo, glowMat);
+    this.sun.add(this.sunGlow);
+
+    this.scene.add(this.sun);
+
+    if (this.inspectorHud) {
+      this.inspectorHud.registerObject(this.sun, {
+        type: 'CELESTIAL BODY ☀️',
+        name: 'The Sun (Sol)',
+        info: {
+          'Surface Temp': '5,778 K (9,941 °F) 🔥',
+          'Distance': '149.6 Million km',
+          'Status': 'Rising & Setting in Sky 🌅'
+        }
+      });
+    }
   }
 
   initRain() {
@@ -140,15 +189,37 @@ export class Environment {
     }
     this.starMat.opacity = starOpacity;
 
-    // 2. Position Moon in opposition to Sun
+    // 2. Position Sun and Moon in opposition across the celestial dome
     const sunAngle = ((timeVal - 6.0) / 24.0) * Math.PI * 2.0;
     const moonAngle = sunAngle + Math.PI;
     const orbitRadius = 320;
     
-    this.moon.position.x = Math.cos(moonAngle) * orbitRadius;
-    this.moon.position.y = Math.sin(moonAngle) * orbitRadius;
-    this.moon.position.z = -50;
-    this.moon.visible = this.moon.position.y > -20;
+    if (this.moon) {
+      this.moon.position.x = Math.cos(moonAngle) * orbitRadius;
+      this.moon.position.y = Math.sin(moonAngle) * orbitRadius;
+      this.moon.position.z = -Math.sin(sunAngle * 0.5) * 80;
+      this.moon.visible = this.moon.position.y > -30;
+    }
+
+    if (this.sun) {
+      this.sun.position.x = Math.cos(sunAngle) * orbitRadius;
+      this.sun.position.y = Math.sin(sunAngle) * orbitRadius;
+      this.sun.position.z = Math.sin(sunAngle * 0.5) * 80;
+      this.sun.visible = this.sun.position.y > -30;
+
+      // Dynamic color transition based on altitude (sunrise/sunset horizon vs zenith midday)
+      if (this.sun.visible && this.sun.material) {
+        const altFactor = Math.min(1.0, Math.max(0.0, (this.sun.position.y + 20) / 160));
+        // Horizon: fiery orange-red (HSL 0.05, 1.0, 0.45), Midday: brilliant golden-yellow (HSL 0.14, 1.0, 0.65)
+        const hue = 0.04 + altFactor * 0.10;
+        const lightness = 0.45 + altFactor * 0.20;
+        this.sun.material.emissive.setHSL(hue, 1.0, lightness);
+        if (this.sunGlow && this.sunGlow.material) {
+          this.sunGlow.material.color.setHSL(hue, 1.0, lightness * 0.8);
+          this.sunGlow.material.opacity = 0.25 + (1.0 - altFactor) * 0.25; // Richer glow near the horizon!
+        }
+      }
+    }
 
     // 3. Update Rain Particle physics
     if (this.weatherMode === 'rain' && this.rainParticles) {

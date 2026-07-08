@@ -43,7 +43,7 @@ class MetroPulseApp {
     this.buildingFactory.buildAll(this.cityBuilder.buildingPlots);
 
     // 7. Environment (Sky, Moon, Stars, Weather)
-    this.environment = new Environment(this.sceneManager.scene);
+    this.environment = new Environment(this.sceneManager.scene, this.inspectorHud, this);
 
     // 8. Time Manager (Day-night cycle & dynamic lighting)
     this.timeManager = new TimeManager(this);
