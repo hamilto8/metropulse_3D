@@ -6,6 +6,7 @@ export class BuildingFactory {
     this.billboardCanvas = billboardCanvas;
     this.inspectorHud = inspectorHud;
     this.nightLights = []; // Store references to emissive window materials & neon signs
+    this.buildings = []; // Store building metadata and meshes for destruction in Fun Mode
   }
 
   buildAll(plots) {
@@ -58,25 +59,25 @@ export class BuildingFactory {
       color = 0x1f102f;
       name = 'CyberCafe 24/7';
       employees = 24;
-      specialty = 'Espresso & High-Speed Net';
-      this.addShopDetails(group, w, height, d, color, 0xff007f, '☕ CYBER CAFE');
+      specialty = 'Neural VR Gaming & Coffee';
+      this.addShopDetails(group, w, height, d, color, 0xff00ff, '☕ CYBER CAFE');
 
       const adMesh = this.billboardCanvas.createAdBillboard('CYBERCAFE', 16, 8);
       adMesh.position.set(0, height + 5, 0);
       group.add(adMesh);
     } else if (type === 'APEX_BANK') {
-      height = 55;
-      color = 0x2d3748;
-      name = 'Apex Bank Central';
+      height = 60;
+      color = 0x1c2321;
+      name = 'Apex Cyber Bank';
       employees = 650;
-      specialty = 'Global Financial Vault';
-      this.addSkyscraperDetails(group, w, height, d, color, 0xffb800);
+      specialty = 'Crypto Vaults & Financial AI';
+      this.addSkyscraperDetails(group, w, height, d, color, 0x00ffaa);
     } else if (type === 'STARLIGHT_HOTEL') {
-      height = 65;
-      color = 0x2a1b3d;
-      name = 'Starlight Hotel & Suites';
-      employees = 310;
-      specialty = '5-Star Luxury Hospitality';
+      height = 45;
+      color = 0x2d1b2e;
+      name = 'Starlight Grand Hotel';
+      employees = 320;
+      specialty = 'Luxury Suites & Rooftop Bar';
       this.addSkyscraperDetails(group, w, height, d, color, 0xff00a0);
     } else if (type === 'BOBA_HAVEN') {
       height = 20;
@@ -141,6 +142,17 @@ export class BuildingFactory {
     });
 
     this.scene.add(group);
+
+    this.buildings.push({
+      group: group,
+      baseBox: baseBox,
+      plot: plot,
+      type: type,
+      name: name,
+      height: height,
+      isDestroyed: false,
+      rubbleGroup: null
+    });
   }
 
   addSkyscraperDetails(group, w, height, d, baseColor, accentColorHex) {
@@ -248,5 +260,83 @@ export class BuildingFactory {
     const storeWin = new THREE.Mesh(new THREE.PlaneGeometry(w - 6, 3.5), storeWinMat);
     storeWin.position.set(0, 2.5, d / 2 + 0.1);
     group.add(storeWin);
+  }
+
+  destroyBuilding(building) {
+    if (building.isDestroyed) return;
+    building.isDestroyed = true;
+
+    // Hide original building group
+    building.group.visible = false;
+
+    // Create Rubble pile in its exact plot!
+    const rubbleGroup = new THREE.Group();
+    rubbleGroup.position.set(building.plot.x, 0, building.plot.z);
+
+    const w = building.plot.width - 6;
+    const d = building.plot.depth - 6;
+    const pieceCount = Math.floor(building.height * 0.5) + 12;
+
+    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
+    const burntMat = new THREE.MeshStandardMaterial({ color: 0x181818, roughness: 0.8 });
+    const rustMat = new THREE.MeshStandardMaterial({ color: 0x5a2a18, roughness: 0.85 });
+    const mats = [concreteMat, burntMat, rustMat];
+
+    for (let i = 0; i < pieceCount; i++) {
+      const pw = Math.random() * 5 + 2;
+      const ph = Math.random() * 4 + 1.5;
+      const pd = Math.random() * 5 + 2;
+      const piece = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, pd), mats[i % mats.length]);
+      
+      piece.position.set(
+        (Math.random() - 0.5) * w,
+        ph / 2 + Math.random() * 5,
+        (Math.random() - 0.5) * d
+      );
+      piece.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      piece.castShadow = true;
+      piece.receiveShadow = true;
+      rubbleGroup.add(piece);
+    }
+
+    // Glowing ember crater at base
+    const craterGeo = new THREE.PlaneGeometry(w + 2, d + 2);
+    const craterMat = new THREE.MeshBasicMaterial({ color: 0xff3300, transparent: true, opacity: 0.7 });
+    const crater = new THREE.Mesh(craterGeo, craterMat);
+    crater.rotation.x = -Math.PI / 2;
+    crater.position.y = 0.15;
+    rubbleGroup.add(crater);
+
+    this.scene.add(rubbleGroup);
+    building.rubbleGroup = rubbleGroup;
+
+    if (this.inspectorHud) {
+      this.inspectorHud.registerObject(rubbleGroup.children[0] || building.baseBox, {
+        type: 'DESTROYED BUILDING',
+        name: `${building.name} (Rubble)`,
+        info: {
+          'Status': 'DESTROYED BY COMET IMPACT 🔥',
+          'Condition': 'Total Rubble & Debris',
+          'Hazard Level': 'EXTREME'
+        }
+      });
+    }
+  }
+
+  restoreAllBuildings() {
+    for (const b of this.buildings) {
+      if (b.isDestroyed) {
+        b.isDestroyed = false;
+        b.group.visible = true;
+        if (b.rubbleGroup) {
+          this.scene.remove(b.rubbleGroup);
+          b.rubbleGroup = null;
+        }
+      }
+    }
   }
 }

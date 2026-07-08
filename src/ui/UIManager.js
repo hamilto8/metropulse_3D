@@ -130,6 +130,9 @@ export class UIManager {
         } else {
           this.btnFunMode.classList.remove('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: OFF';
+          if (this.app.buildingFactory) {
+            this.app.buildingFactory.restoreAllBuildings();
+          }
         }
       });
     }

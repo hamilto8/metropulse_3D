@@ -12,6 +12,7 @@ import { TrafficSystem } from './systems/TrafficSystem.js';
 import { PedestrianSystem } from './systems/PedestrianSystem.js';
 import { AudioSystem } from './systems/AudioSystem.js';
 import { ExplosionManager } from './effects/ExplosionManager.js';
+import { CometManager } from './effects/CometManager.js';
 
 import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
@@ -49,6 +50,7 @@ class MetroPulseApp {
     // 9. Traffic Simulation & Fun Mode
     this.funMode = false;
     this.explosionManager = new ExplosionManager(this.sceneManager.scene);
+    this.cometManager = new CometManager(this);
     this.trafficSystem = new TrafficSystem(this);
 
     // 10. Pedestrian Simulation
@@ -99,6 +101,7 @@ class MetroPulseApp {
     this.trafficSystem.update(delta);
     this.pedestrianSystem.update(delta);
     this.explosionManager.update(delta);
+    this.cometManager.update(delta);
     this.audioSystem.update(this.timeManager.timeVal, delta);
     this.uiManager.updateInspectorLive();
 

@@ -361,4 +361,70 @@ export class AudioSystem {
     osc.start(now);
     osc.stop(now + 0.45);
   }
+
+  playCometIncoming() {
+    if (!this.isEnabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(150, now + 1.2);
+
+    gain.gain.setValueAtTime(0.01, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 1.0);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 1.25);
+  }
+
+  playCometImpact() {
+    if (!this.isEnabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Massive thunderous roar
+    const bufferSize = this.ctx.sampleRate * 2.5;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.6));
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+    filter.frequency.exponentialRampToValueAtTime(30, now + 2.2);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.8, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 2.4);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+    noise.start(now);
+    noise.stop(now + 2.4);
+
+    // Deep sub-bass earthquake boom
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(20, now + 0.8);
+
+    const oscGain = this.ctx.createGain();
+    oscGain.gain.setValueAtTime(0.9, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.9);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.95);
+  }
 }

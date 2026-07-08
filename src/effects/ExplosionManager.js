@@ -82,6 +82,82 @@ export class ExplosionManager {
     });
   }
 
+  createMegaExplosion(pos) {
+    // 1. Giant expanding fireball sphere
+    const geom = new THREE.SphereGeometry(3.5, 16, 16);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xff3300,
+      transparent: true,
+      opacity: 1.0
+    });
+    const fireball = new THREE.Mesh(geom, mat);
+    fireball.position.copy(pos);
+    fireball.position.y += 4.0;
+    this.scene.add(fireball);
+
+    // 2. Giant inner white-yellow flash core
+    const coreGeom = new THREE.SphereGeometry(2.0, 16, 16);
+    const coreMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 1.0
+    });
+    const core = new THREE.Mesh(coreGeom, coreMat);
+    core.position.copy(pos);
+    core.position.y += 4.0;
+    this.scene.add(core);
+
+    // 3. Massive flying sparks/debris scatter
+    const sparkCount = 80;
+    const sparkGeom = new THREE.BufferGeometry();
+    const positions = new Float32Array(sparkCount * 3);
+    const velocities = [];
+
+    for (let i = 0; i < sparkCount; i++) {
+      positions[i * 3] = pos.x + (Math.random() - 0.5) * 4;
+      positions[i * 3 + 1] = pos.y + 4 + (Math.random() - 0.5) * 4;
+      positions[i * 3 + 2] = pos.z + (Math.random() - 0.5) * 4;
+
+      velocities.push(new THREE.Vector3(
+        (Math.random() - 0.5) * 75,
+        Math.random() * 55 + 15,
+        (Math.random() - 0.5) * 75
+      ));
+    }
+
+    sparkGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const sparkMat = new THREE.PointsMaterial({
+      color: 0xffaa00,
+      size: 2.2,
+      transparent: true,
+      opacity: 1.0
+    });
+    const sparks = new THREE.Points(sparkGeom, sparkMat);
+    this.scene.add(sparks);
+
+    // 4. Giant rising mushroom smoke cloud
+    const smokeGeom = new THREE.SphereGeometry(5.0, 16, 16);
+    const smokeMat = new THREE.MeshBasicMaterial({
+      color: 0x101014,
+      transparent: true,
+      opacity: 0.9
+    });
+    const smoke = new THREE.Mesh(smokeGeom, smokeMat);
+    smoke.position.copy(pos);
+    smoke.position.y += 4.0;
+    this.scene.add(smoke);
+
+    this.explosions.push({
+      fireball,
+      core,
+      sparks,
+      velocities,
+      smoke,
+      age: 0,
+      maxAge: 6.0
+    });
+  }
+
   update(delta) {
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       const exp = this.explosions[i];
