@@ -133,11 +133,11 @@ export class PlayerVehicle {
       } else {
         engineForce = maxEngineForce;
         brakeForce = 0;
-        // Apply forward thrust force (Newtons = kg * m/s^2, unscaled by delta)
+        // Apply forward thrust force at center of mass (relativePoint = 0,0,0)
         if (currentForwardSpeed < 42) { // Top speed ~150 km/h
           const thrust = forwardVec.clone();
           thrust.scale(32000, thrust); // 32,000 N -> ~29 m/s^2 acceleration
-          this.chassisBody.applyForce(thrust, this.chassisBody.position);
+          this.chassisBody.applyForce(thrust, new CANNON.Vec3(0, 0, 0));
         }
       }
     } else if (isReverse) {
@@ -149,7 +149,7 @@ export class PlayerVehicle {
         if (currentForwardSpeed > -18) {
           const revThrust = forwardVec.clone();
           revThrust.scale(-18000, revThrust);
-          this.chassisBody.applyForce(revThrust, this.chassisBody.position);
+          this.chassisBody.applyForce(revThrust, new CANNON.Vec3(0, 0, 0));
         }
       }
     } else {
@@ -166,17 +166,17 @@ export class PlayerVehicle {
       const rightVec = new CANNON.Vec3(1, 0, 0);
       this.chassisBody.quaternion.vmult(rightVec, rightVec);
       const lateralVel = this.chassisBody.velocity.dot(rightVec);
-      // Counteract sideways slide for clean arcade cornering (force unscaled by delta)
+      // Counteract sideways slide for clean arcade cornering
       const antiDrift = rightVec.clone();
       antiDrift.scale(-lateralVel * this.chassisBody.mass * 10.0, antiDrift);
-      this.chassisBody.applyForce(antiDrift, this.chassisBody.position);
+      this.chassisBody.applyForce(antiDrift, new CANNON.Vec3(0, 0, 0));
     }
 
-    // 4. Aerodynamic downforce
+    // 4. Aerodynamic downforce applied at center of mass
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
       const downForce = new CANNON.Vec3(0, -400 * speed, 0);
-      this.chassisBody.applyForce(downForce, this.chassisBody.position);
+      this.chassisBody.applyForce(downForce, new CANNON.Vec3(0, 0, 0));
     }
 
     for (let i = 0; i < 4; i++) {
