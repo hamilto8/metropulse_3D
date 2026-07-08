@@ -140,6 +140,9 @@ export class TrafficSystem {
       }
 
       this.app.sceneManager.scene.add(vehicle.mesh);
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(vehicle.mesh, vehicle);
+      }
       this.vehicles.push(vehicle);
     }
   }

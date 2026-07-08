@@ -124,6 +124,9 @@ export class PedestrianSystem {
       }
 
       this.app.sceneManager.scene.add(ped.mesh);
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(ped.mesh, ped);
+      }
       this.pedestrians.push(ped);
     }
   }
