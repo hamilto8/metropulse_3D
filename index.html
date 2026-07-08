@@ -161,6 +161,41 @@
             <span>*** 💥 CITY IN PANIC AS RAIN OF COMETS IMPACTS REAL ESTATE VALUES; MAYOR WARNS NOT TO PANIC: "THE STOCK MARKET WILL BOUNCE BACK!" *** MEGA-LANDLORD APEX CORP CHARGES EXTRA 20% RENT FOR "DIRECT METEOR VIEWING EXPERIENCE" *** ECONOMISTS CELEBRATE BUILDING DESTRUCTION: "CONSTRUCTION SECTOR BOOM WILL DRIVE Q3 GDP TO RECORD HEIGHTS!" *** BILLIONAIRES FLEE TO ORBITAL YACHTS WHILE TWEETING: "WE ARE ALL IN THIS TOGETHER! KEEP HUSTLING!" *** INFLATION REACHES 400% ON FIRE EXTINGUISHERS; CEO CALLS IT "DYNAMIC MARKET-DRIVEN PRICING" *** CITY COUNCIL REJECTS ASTEROID DEFENSE SHIELD: "WOULD INFRINGE ON COMET FREEDOM AND HARM THE FREE MARKET!" *** WORKERS REQUIRED TO REPORT TO OFFICE DESPITE APOCALYPSE: "REMOTE WORK REDUCES SYNERGY DURING EXTINCTION EVENTS!" &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
           </div>
         </div>
+      <!-- Mission HUD Top Navigation Bar -->
+      <div id="mission-hud" class="mission-hud hidden">
+        <div class="mission-hud-badge">🚖 ACTIVE FARE</div>
+        <div class="mission-hud-info">
+          <div class="mission-hud-title" id="mission-hud-title">Passenger Name</div>
+          <div class="mission-hud-target">
+            <span id="mission-hud-arrow" class="mission-arrow">⬆</span>
+            <span id="mission-hud-dist">0 m</span>
+          </div>
+        </div>
+        <div class="mission-hud-stats">
+          <div class="mission-hud-timer" id="mission-hud-timer">⏱️ 00s</div>
+          <div class="mission-hud-fare" id="mission-hud-fare">$0</div>
+        </div>
+        <button id="btn-cancel-mission" class="mission-cancel-btn" title="Cancel Mission">✕</button>
+      </div>
+
+      <!-- Dialogue Modal Overlay -->
+      <div id="dialogue-overlay" class="dialogue-overlay hidden">
+        <div class="dialogue-card">
+          <div class="dialogue-header">
+            <div class="dialogue-avatar" id="dialogue-avatar">👔</div>
+            <div class="dialogue-meta">
+              <div class="dialogue-speaker" id="dialogue-speaker">Marcus Vance</div>
+              <div class="dialogue-role" id="dialogue-role">Venture Capital Executive</div>
+            </div>
+            <button id="btn-close-dialogue" class="dialogue-close-btn">✕</button>
+          </div>
+          <div class="dialogue-body">
+            <p id="dialogue-text">Dialogue text goes here...</p>
+          </div>
+          <div class="dialogue-choices" id="dialogue-choices">
+            <!-- Choice buttons injected dynamically -->
+          </div>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/main.js"></script>

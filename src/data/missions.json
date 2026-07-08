@@ -1,0 +1,152 @@
+[
+  {
+    "id": "mission_executive",
+    "title": "Boardroom Emergency",
+    "passengerName": "Marcus Vance",
+    "passengerRole": "Venture Capital Executive",
+    "avatar": "👔",
+    "pickup": { "x": -45, "z": 65, "district": "Midtown Business District" },
+    "dropoff": { "x": 180, "z": -120, "district": "Financial Plaza Skyscraper" },
+    "baseReward": 450,
+    "timeLimit": 55,
+    "dialogueTree": {
+      "start": {
+        "text": "Driver, thank goodness! I have a board meeting at the Financial Plaza in less than a minute. If I'm late, the merger falls apart!",
+        "choices": [
+          {
+            "label": "Buckle up, Marcus! We're taking the express route. (+Rush Bonus)",
+            "next": "accept_rush"
+          },
+          {
+            "label": "Hop in, I'll get you there safely and smoothly.",
+            "next": "accept_standard"
+          },
+          {
+            "label": "Sorry pal, I'm off duty right now.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_rush": {
+        "text": "That's what I like to hear! Get me there in under 45 seconds and I'll throw in a $300 hazard bonus!",
+        "action": "START_MISSION",
+        "rushBonus": 300,
+        "timeLimitOverride": 45
+      },
+      "accept_standard": {
+        "text": "Much appreciated. Let's head for Financial Plaza — please keep the ride steady!",
+        "action": "START_MISSION",
+        "rushBonus": 0
+      },
+      "decline": {
+        "text": "Unbelievable! Good help is impossible to find in this metropolis...",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_cyberdj",
+    "title": "Headlining Set at Neon Club",
+    "passengerName": "Lyra Pulse",
+    "passengerRole": "Cyber-Synth DJ",
+    "avatar": "🎧",
+    "pickup": { "x": 120, "z": 40, "district": "Arts & Theater Promenade" },
+    "dropoff": { "x": -180, "z": 160, "district": "Neon Club Arena" },
+    "baseReward": 520,
+    "timeLimit": 65,
+    "dialogueTree": {
+      "start": {
+        "text": "Yo driver! My headlining set at the Neon Club starts soon and I've got my custom synth deck in the trunk. Ready to roll?",
+        "choices": [
+          {
+            "label": "Let's turn up the bass and blast across the city!",
+            "next": "accept_dj"
+          },
+          {
+            "label": "Can't take you right now, Lyra.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_dj": {
+        "text": "Legendary! Follow the glowing waypoint pillar. Let's make some noise!",
+        "action": "START_MISSION",
+        "rushBonus": 150
+      },
+      "decline": {
+        "text": "Aww man, the crowd is gonna be waiting...",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_scientist",
+    "title": "Classified Quantum Data",
+    "passengerName": "Dr. Aris Thorne",
+    "passengerRole": "Quantum Physicist",
+    "avatar": "🔬",
+    "pickup": { "x": -160, "z": -80, "district": "University Research Park" },
+    "dropoff": { "x": 220, "z": 140, "district": "Advanced Tech Labs" },
+    "baseReward": 680,
+    "timeLimit": 75,
+    "dialogueTree": {
+      "start": {
+        "text": "Keep your voice down... I am carrying a quantum drive with breakthrough energy grid simulations. We must reach Advanced Tech Labs immediately.",
+        "choices": [
+          {
+            "label": "Understood, Doctor. Full throttle to the Tech Labs.",
+            "next": "accept_science"
+          },
+          {
+            "label": "Sounds too risky for me.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_science": {
+        "text": "Excellent. Keep your eyes on the road and let's get moving!",
+        "action": "START_MISSION",
+        "rushBonus": 200
+      },
+      "decline": {
+        "text": "Very well. I will find another courier.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_tourist",
+    "title": "Skyline Grand Tour",
+    "passengerName": "Elena Rostova",
+    "passengerRole": "Architecture Enthusiast",
+    "avatar": "📸",
+    "pickup": { "x": 80, "z": -140, "district": "Waterfront Harbor" },
+    "dropoff": { "x": 10, "z": 10, "district": "MetroPulse Central Spire" },
+    "baseReward": 380,
+    "timeLimit": 60,
+    "dialogueTree": {
+      "start": {
+        "text": "Hello! I'm visiting MetroPulse to admire the skyscrapers. Could you take me to the Central Spire in the heart of downtown?",
+        "choices": [
+          {
+            "label": "With pleasure! Welcome to MetroPulse 3D.",
+            "next": "accept_tour"
+          },
+          {
+            "label": "Sorry, not taking fares right now.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_tour": {
+        "text": "Wonderful! Let's enjoy the view!",
+        "action": "START_MISSION",
+        "rushBonus": 100
+      },
+      "decline": {
+        "text": "Oh, no worries at all. Have a nice day!",
+        "action": "DECLINE"
+      }
+    }
+  }
+]

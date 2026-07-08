@@ -816,3 +816,222 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
     top: 80px;
   }
 }
+
+/* ==========================================
+   MISSION HUD & DIALOGUE OVERLAY (PHASE 3)
+========================================== */
+
+.mission-hud {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 8px 32px rgba(255, 204, 0, 0.25);
+  animation: slideDownHud 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideDownHud {
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.mission-hud-badge {
+  background: rgba(255, 204, 0, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.mission-hud-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mission-hud-title {
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.mission-hud-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.mission-arrow {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.mission-hud-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  padding-left: 16px;
+}
+
+.mission-hud-timer {
+  font-family: var(--font-mono);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.mission-hud-fare {
+  font-family: var(--font-mono);
+  color: #44ff88;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.mission-cancel-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.mission-cancel-btn:hover {
+  background: rgba(223, 0, 84, 0.6);
+}
+
+/* Dialogue Modal Overlay */
+.dialogue-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(10, 10, 18, 0.65);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeInModal 0.3s ease;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.dialogue-card {
+  background: var(--glass-bg);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  border-radius: 16px;
+  padding: 24px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.7), 0 0 40px rgba(0, 240, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dialogue-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 14px;
+}
+
+.dialogue-avatar {
+  font-size: 2.2rem;
+  background: rgba(0, 240, 255, 0.15);
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--primary);
+}
+
+.dialogue-meta {
+  flex: 1;
+}
+
+.dialogue-speaker {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dialogue-role {
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.dialogue-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.dialogue-close-btn:hover {
+  color: #fff;
+}
+
+.dialogue-body {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #f0f0f5;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  border-radius: 10px;
+  border-left: 3px solid var(--primary);
+}
+
+.dialogue-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.dialogue-choice-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dialogue-choice-btn:hover {
+  background: rgba(0, 240, 255, 0.2);
+  border-color: var(--primary);
+  transform: translateX(4px);
+}
+

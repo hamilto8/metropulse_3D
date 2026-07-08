@@ -16,7 +16,9 @@ import { CometManager } from './effects/CometManager.js';
 
 import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
+import { DialogueOverlay } from './ui/DialogueOverlay.js';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
+import { MissionSystem } from './systems/MissionSystem.js';
 
 class MetroPulseApp {
   constructor() {
@@ -84,6 +86,10 @@ class MetroPulseApp {
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
 
+    // 11.5 Phase 3 Mission Logic & Branching Dialogue Overlay
+    this.dialogueOverlay = new DialogueOverlay();
+    this.missionSystem = new MissionSystem(this, this.dialogueOverlay);
+
     // 12. Animation Loop Setup
     this.clock = new THREE.Clock();
     this.frameCount = 0;
@@ -129,6 +135,7 @@ class MetroPulseApp {
     this.explosionManager.update(delta);
     this.cometManager.update(delta);
     this.audioSystem.update(this.timeManager.timeVal, delta);
+    if (this.missionSystem) this.missionSystem.update(delta);
     this.uiManager.updateInspectorLive();
     this.uiManager.updateRealEstateTracker(delta);
 
