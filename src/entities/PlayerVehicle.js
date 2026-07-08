@@ -91,60 +91,88 @@ export class PlayerVehicle {
     const isRight = keys['d'] || keys['arrowright'];
     const isHandbrake = keys[' '];
 
-    const maxEngineForce = 4200;
-    const maxBrakeForce = 140;
-    const maxSteerVal = 0.54;
-
-    // Steering interpolation
-    let targetSteering = 0;
-    if (isLeft) targetSteering = maxSteerVal;
-    if (isRight) targetSteering = -maxSteerVal;
-    this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 14.0);
-
-    this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
-    this.raycastVehicle.setSteeringValue(this.currentSteering, 1);
-
     // Calculate forward speed along vehicle forward vector (+Z local)
     const forwardVec = new CANNON.Vec3(0, 0, 1);
     this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
     const currentForwardSpeed = this.chassisBody.velocity.dot(forwardVec);
 
+    const maxEngineForce = 4500;
+    const maxBrakeForce = 160;
+    const maxSteerVal = 0.55;
+
+    // 1. Crisp Steering Angle + Direct Arcade Yaw Torque
+    let targetSteering = 0;
+    if (isLeft) targetSteering = maxSteerVal;
+    if (isRight) targetSteering = -maxSteerVal;
+    this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 16.0);
+
+    this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
+    this.raycastVehicle.setSteeringValue(this.currentSteering, 1);
+
+    // Apply direct yaw response when moving so steering is accurate and responsive
+    if (Math.abs(currentForwardSpeed) > 0.5) {
+      const turnDir = currentForwardSpeed > 0 ? 1 : -1;
+      const turnRate = Math.min(2.8, Math.abs(currentForwardSpeed) * 0.16);
+      if (isLeft) {
+        this.chassisBody.angularVelocity.y = turnRate * turnDir;
+      } else if (isRight) {
+        this.chassisBody.angularVelocity.y = -turnRate * turnDir;
+      } else {
+        // Dampen angular velocity when not steering so the car tracks straight
+        this.chassisBody.angularVelocity.y *= 0.85;
+      }
+    }
+
+    // 2. Engine & Braking
     let engineForce = 0;
     let brakeForce = 0;
 
     if (isForward) {
-      if (currentForwardSpeed < -1.5) {
+      if (currentForwardSpeed < -1.0) {
         brakeForce = maxBrakeForce;
       } else {
         engineForce = maxEngineForce;
-        // Direct arcade acceleration assist to ensure immediate start from rest
-        const accelAssist = forwardVec.clone();
-        accelAssist.scale(18000 * delta, accelAssist);
-        this.chassisBody.applyForce(accelAssist, this.chassisBody.position);
+        // Direct forward thrust along current orientation
+        const thrust = forwardVec.clone();
+        thrust.scale(22000 * delta, thrust);
+        this.chassisBody.applyForce(thrust, this.chassisBody.position);
       }
     } else if (isReverse) {
-      if (currentForwardSpeed > 1.5) {
+      if (currentForwardSpeed > 1.0) {
         brakeForce = maxBrakeForce;
       } else {
-        engineForce = -maxEngineForce * 0.7;
-        const revAssist = forwardVec.clone();
-        revAssist.scale(-12000 * delta, revAssist);
-        this.chassisBody.applyForce(revAssist, this.chassisBody.position);
+        engineForce = -maxEngineForce * 0.75;
+        const revThrust = forwardVec.clone();
+        revThrust.scale(-14000 * delta, revThrust);
+        this.chassisBody.applyForce(revThrust, this.chassisBody.position);
       }
+    } else {
+      // Natural rolling resistance
+      brakeForce = 15;
     }
 
     if (isHandbrake) {
-      brakeForce = maxBrakeForce * 2.2;
+      brakeForce = maxBrakeForce * 2.5;
     }
 
-    // Aerodynamic downforce to keep tires firmly planted on asphalt
+    // 3. Lateral grip stabilization (prevents sideways ice-skating unless handbraking)
+    if (!isHandbrake && Math.abs(currentForwardSpeed) > 1.0) {
+      const rightVec = new CANNON.Vec3(1, 0, 0);
+      this.chassisBody.quaternion.vmult(rightVec, rightVec);
+      const lateralVel = this.chassisBody.velocity.dot(rightVec);
+      // Counteract sideways slide for clean arcade cornering
+      const antiDrift = rightVec.clone();
+      antiDrift.scale(-lateralVel * this.chassisBody.mass * 9.0 * delta, antiDrift);
+      this.chassisBody.applyForce(antiDrift, this.chassisBody.position);
+    }
+
+    // 4. Aerodynamic downforce
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
-      const downForce = new CANNON.Vec3(0, -180 * speed, 0);
+      const downForce = new CANNON.Vec3(0, -200 * speed, 0);
       this.chassisBody.applyForce(downForce, this.chassisBody.position);
     }
 
-    // Apply engine and brake force to all 4 wheels
     for (let i = 0; i < 4; i++) {
       this.raycastVehicle.applyEngineForce(engineForce, i);
       this.raycastVehicle.setBrake(brakeForce, i);
