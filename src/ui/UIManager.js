@@ -194,11 +194,15 @@ export class UIManager {
           this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
-          // If taking control, automatically follow the vehicle!
-          if (isNowControlled && this.app.sceneManager.followTarget !== this.selectedEntity) {
+          // Phase 2: Cinematic swoop transition to street level or ascend back to macro view
+          if (isNowControlled) {
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
+          } else {
+            this.app.sceneManager.stopFollowTarget();
+            this.btnFollowTarget.innerHTML = '🎯 Follow Target';
+            this.btnFollowTarget.classList.remove('active');
           }
         }
       });
