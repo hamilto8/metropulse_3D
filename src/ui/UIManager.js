@@ -208,16 +208,25 @@ export class UIManager {
       });
     }
 
-    // Trigger SFX button
+    // Trigger SFX / Interaction button
     this.btnInteractSfx.addEventListener('click', () => {
-      if (this.selectedEntity) {
-        if (this.selectedEntity.type === 'VEHICLE') {
-          if (this.selectedEntity.isPolice) {
-            this.app.audioSystem.playSiren(1.5);
-          } else {
-            this.app.audioSystem.playHonk();
-          }
+      if (!this.selectedEntity) return;
+
+      if (this.selectedEntity.type === 'VEHICLE') {
+        if (this.selectedEntity.isPolice) {
+          this.app.audioSystem.playSiren(1.5);
+        } else {
+          this.app.audioSystem.playHonk();
         }
+      } else if (this.selectedEntity.type === 'MISSION_PICKUP') {
+        this.app.missionSystem.triggerMissionDialogue(this.selectedEntity.mission);
+      } else if (this.selectedEntity.type === 'PEDESTRIAN') {
+        // Pedestrian interaction: wave / greet
+        this.selectedEntity.info['Action'] = 'Waved hello! 👋 "Hey driver!"';
+        if (this.app.audioSystem) {
+          this.app.audioSystem.playUIClick();
+        }
+        this.showInspector(this.selectedEntity);
       }
     });
   }
@@ -294,6 +303,14 @@ export class UIManager {
       }
       this.btnInteractSfx.classList.remove('hidden');
       this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
+    } else if (entity.type === 'PEDESTRIAN') {
+      if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
+      this.btnInteractSfx.classList.remove('hidden');
+      this.btnInteractSfx.innerHTML = '👋 Wave / Talk';
+    } else if (entity.type === 'MISSION_PICKUP') {
+      if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
+      this.btnInteractSfx.classList.remove('hidden');
+      this.btnInteractSfx.innerHTML = '🚖 Start Fare Dialogue';
     } else {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
       this.btnInteractSfx.classList.add('hidden');

@@ -74,7 +74,32 @@ export class MissionSystem {
       group.add(colMesh);
 
       this.scene.add(group);
+      const pickupEntity = {
+        type: 'MISSION_PICKUP',
+        name: `Taxi Pickup: ${mission.passengerName}`,
+        mission: mission,
+        info: {
+          Passenger: mission.passengerName,
+          Role: mission.passengerRole,
+          Destination: mission.dropoff.district,
+          Reward: `$${mission.baseReward}`,
+          Status: 'Click or Drive through ring to start!'
+        }
+      };
+
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(ringMesh, pickupEntity);
+        this.app.inspectorHud.registerObject(colMesh, pickupEntity);
+      }
+
       this.pickupRings.push({ mission, group, ringMesh });
+    }
+  }
+
+  triggerMissionDialogue(mission) {
+    if (this.triggerCooldown > 0 || this.activeMission) return;
+    if (this.dialogueOverlay && !this.dialogueOverlay.currentMission) {
+      this.dialogueOverlay.showMissionDialogue(mission, this);
     }
   }
 
@@ -236,25 +261,29 @@ export class MissionSystem {
     }
 
     const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-    if (!controlledVehicle || !controlledVehicle.mesh) return;
+    const followedVehicle = (this.app.sceneManager && this.app.sceneManager.followTarget && this.app.sceneManager.followTarget.type === 'VEHICLE') 
+      ? this.app.sceneManager.followTarget 
+      : null;
+    const activeVehicle = controlledVehicle || followedVehicle;
 
-    const vPos = controlledVehicle.mesh.position;
-
-    // 3. If NO active mission, check distance to pickup rings
+    // 3. If NO active mission, check distance to pickup rings (generous 16m capture radius)
     if (!this.activeMission && this.triggerCooldown <= 0) {
+      const vehiclesToCheck = activeVehicle ? [activeVehicle] : (this.app.trafficSystem ? this.app.trafficSystem.vehicles : []);
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
-        const dist = vPos.distanceTo(r.group.position);
-        if (dist < 7.5) {
-          // Trigger dialogue if overlay is not already shown
-          if (this.dialogueOverlay && !this.dialogueOverlay.currentMission) {
-            this.dialogueOverlay.showMissionDialogue(r.mission, this);
+        for (const v of vehiclesToCheck) {
+          if (!v || !v.mesh) continue;
+          const dist = v.mesh.position.distanceTo(r.group.position);
+          if (dist < 16.0) {
+            this.triggerMissionDialogue(r.mission);
+            break;
           }
-          break;
         }
       }
-      return;
     }
+
+    if (!activeVehicle || !activeVehicle.mesh) return;
+    const vPos = activeVehicle.mesh.position;
 
     // 4. ACTIVE MISSION: update timer & navigation HUD
     if (!this.activeMission) return;
