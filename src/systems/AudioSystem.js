@@ -12,10 +12,13 @@ export class AudioSystem {
     this.windGain = null;
     this.trafficGain = null;
     this.rainGain = null;
+    this.tornadoGain = null;
+    this.panicGain = null;
 
     // Timers for occasional procedural events
     this.birdTimer = 3.0;
     this.honkTimer = 8.0 + Math.random() * 10.0;
+    this.panicScreamTimer = 0;
   }
 
   toggleAudio() {
@@ -148,6 +151,66 @@ export class AudioSystem {
     rainFilter.connect(this.rainGain);
     this.rainGain.connect(this.masterGain);
     rainNoise.start();
+
+    // 5. Fun Mode Tornado Siren (Loud, ominous air raid wail)
+    const tornadoOsc1 = this.ctx.createOscillator();
+    const tornadoOsc2 = this.ctx.createOscillator();
+    tornadoOsc1.type = 'sawtooth';
+    tornadoOsc2.type = 'sawtooth';
+    tornadoOsc1.frequency.value = 440;
+    tornadoOsc2.frequency.value = 444; // Detuned for ominous chorus
+
+    const tornadoLfo = this.ctx.createOscillator();
+    tornadoLfo.frequency.value = 0.12; // ~8-second slow sweep cycle
+    const tornadoLfoGain = this.ctx.createGain();
+    tornadoLfoGain.gain.value = 180; // Smoothly wail between 260Hz and 620Hz
+
+    tornadoLfo.connect(tornadoLfoGain);
+    tornadoLfoGain.connect(tornadoOsc1.frequency);
+    tornadoLfoGain.connect(tornadoOsc2.frequency);
+
+    const tornadoFilter = this.ctx.createBiquadFilter();
+    tornadoFilter.type = 'lowpass';
+    tornadoFilter.frequency.value = 1500;
+
+    this.tornadoGain = this.ctx.createGain();
+    this.tornadoGain.gain.value = 0; // Off unless Fun Mode is active!
+
+    tornadoOsc1.connect(tornadoFilter);
+    tornadoOsc2.connect(tornadoFilter);
+    tornadoFilter.connect(this.tornadoGain);
+    this.tornadoGain.connect(this.masterGain);
+
+    tornadoOsc1.start();
+    tornadoOsc2.start();
+    tornadoLfo.start();
+
+    // 6. Crowd Panic Ambience (Frantic footsteps rumble & commotion)
+    const panicNoise = this.ctx.createBufferSource();
+    panicNoise.buffer = noiseBuffer;
+    panicNoise.loop = true;
+
+    const panicFilter = this.ctx.createBiquadFilter();
+    panicFilter.type = 'bandpass';
+    panicFilter.frequency.value = 700;
+    panicFilter.Q.value = 1.3;
+
+    const panicLfo = this.ctx.createOscillator();
+    panicLfo.frequency.value = 5.0; // Rapid footsteps/commotion rate
+    const panicLfoGain = this.ctx.createGain();
+    panicLfoGain.gain.value = 280;
+    panicLfo.connect(panicLfoGain);
+    panicLfoGain.connect(panicFilter.frequency);
+
+    this.panicGain = this.ctx.createGain();
+    this.panicGain.gain.value = 0; // Off unless Fun Mode is active!
+
+    panicNoise.connect(panicFilter);
+    panicFilter.connect(this.panicGain);
+    this.panicGain.connect(this.masterGain);
+
+    panicNoise.start();
+    panicLfo.start();
   }
 
   update(timeVal, delta) {
@@ -191,6 +254,44 @@ export class AudioSystem {
         this.honkTimer = 12.0 + Math.random() * 15.0;
       }
     }
+
+    // 6. Fun Mode Tornado Siren & Crowd Panic
+    const isFunMode = this.app && this.app.funMode;
+    const targetTornadoGain = isFunMode ? 0.22 : 0.0;
+    const targetPanicGain = isFunMode ? 0.16 : 0.0;
+
+    if (this.tornadoGain) this.tornadoGain.gain.setTargetAtTime(targetTornadoGain, this.ctx.currentTime, 0.5);
+    if (this.panicGain) this.panicGain.gain.setTargetAtTime(targetPanicGain, this.ctx.currentTime, 0.5);
+
+    if (isFunMode) {
+      this.panicScreamTimer -= delta;
+      if (this.panicScreamTimer <= 0) {
+        this.playPanicScream();
+        this.panicScreamTimer = 1.2 + Math.random() * 2.2;
+      }
+    }
+  }
+
+  playPanicScream() {
+    if (!this.isEnabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = Math.random() > 0.5 ? 'triangle' : 'sawtooth';
+    const baseFreq = 450 + Math.random() * 450;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq + (Math.random() * 350 - 100), now + 0.15);
+    osc.frequency.linearRampToValueAtTime(baseFreq - 150, now + 0.35);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.005, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + 0.38);
   }
 
   playBirdChirp() {

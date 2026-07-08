@@ -145,11 +145,12 @@ export class PedestrianSystem {
       if (isBlocked) {
         p.targetSpeed = 0;
       } else {
-        p.targetSpeed = p.maxSpeed;
+        const isFunMode = this.app && this.app.funMode;
+        p.targetSpeed = isFunMode ? p.maxSpeed * 3.0 : p.maxSpeed;
       }
 
       if (p.speed < p.targetSpeed) {
-        p.speed = Math.min(p.targetSpeed, p.speed + 8 * delta);
+        p.speed = Math.min(p.targetSpeed, p.speed + 12 * delta);
       } else if (p.speed > p.targetSpeed) {
         p.speed = Math.max(p.targetSpeed, p.speed - 14 * delta);
       }
