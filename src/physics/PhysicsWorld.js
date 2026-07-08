@@ -82,8 +82,8 @@ export class PhysicsWorld {
   }
 
   step(delta) {
-    // Fixed time step 1/60s with up to 3 sub-steps for stability
+    // Fixed time step 1/120s with up to 10 sub-steps to eliminate tunneling
     const dt = Math.min(delta, 0.1);
-    this.world.step(1 / 60, dt, 3);
+    this.world.step(1 / 120, dt, 10);
   }
 }

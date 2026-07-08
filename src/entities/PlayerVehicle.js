@@ -188,6 +188,12 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
+    // Safety check: ensure chassis never drops below road level
+    if (this.chassisBody.position.y < 0.3) {
+      this.chassisBody.position.y = 1.05;
+      this.chassisBody.velocity.y = Math.max(0, this.chassisBody.velocity.y);
+    }
+
     // Sync chassis transform to visual Three.js mesh
     this.mesh.position.copy(this.chassisBody.position);
     // Offset Y so wheels rest exactly on ground level (Y = 0)

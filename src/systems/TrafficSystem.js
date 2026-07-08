@@ -122,6 +122,34 @@ export class TrafficSystem {
       v.physicsVehicle.syncMesh();
       v.speed = v.physicsVehicle.speedKmH;
       Object.assign(v.info, v.physicsVehicle.info);
+
+      // Check collision with other AI vehicles (bounce + honk)
+      for (const other of this.vehicles) {
+        if (other === v) continue;
+        if (v.mesh.position.distanceTo(other.mesh.position) < 4.8) {
+          const bounceDir = v.mesh.position.clone().sub(other.mesh.position).normalize();
+          if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
+            const pushForce = new CANNON.Vec3(bounceDir.x * 25000, 0, bounceDir.z * 25000);
+            v.physicsVehicle.chassisBody.applyForce(pushForce, new CANNON.Vec3(0, 0, 0));
+          }
+          if (this.app.audioSystem) {
+            this.app.audioSystem.playHonk();
+            this.app.audioSystem.playBump();
+          }
+        }
+      }
+
+      // Check collision with pedestrians (knockback onto ground)
+      if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) {
+        for (const ped of this.app.pedestrianSystem.pedestrians) {
+          if (ped.knockedDown) continue;
+          if (v.mesh.position.distanceTo(ped.mesh.position) < 3.2) {
+            const knockDir = ped.mesh.position.clone().sub(v.mesh.position).normalize();
+            this.app.pedestrianSystem.knockDownPedestrian(ped, knockDir);
+          }
+        }
+      }
+
       return;
     }
 

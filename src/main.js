@@ -46,6 +46,26 @@ class MetroPulseApp {
     this.buildingFactory.app = this;
     this.buildingFactory.buildAll(this.cityBuilder.buildingPlots);
 
+    // Register static obstacle colliders in PhysicsWorld (Buildings & Lamp Posts)
+    for (const b of this.buildingFactory.buildings) {
+      if (b.plot) {
+        this.physicsWorld.addStaticBoxCollider(
+          new THREE.Vector3(b.plot.x, (b.height || 40) * 0.5, b.plot.z),
+          new THREE.Vector3(b.plot.width - 2, b.height || 40, b.plot.depth - 2)
+        );
+      }
+    }
+    if (this.cityBuilder && this.cityBuilder.streetlamps) {
+      for (const lamp of this.cityBuilder.streetlamps) {
+        if (lamp.pos) {
+          this.physicsWorld.addStaticBoxCollider(
+            new THREE.Vector3(lamp.pos.x, 3, lamp.pos.z),
+            new THREE.Vector3(1.6, 6, 1.6)
+          );
+        }
+      }
+    }
+
     // 7. Environment (Sky, Moon, Stars, Weather)
     this.environment = new Environment(this.sceneManager.scene, this.inspectorHud, this);
 
