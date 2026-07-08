@@ -81,6 +81,23 @@ export class PhysicsWorld {
     return boxBody;
   }
 
+  addKinematicBoxCollider(position, size) {
+    const halfExtents = new CANNON.Vec3(
+      (size.x || size.width || 1) * 0.5,
+      (size.y || size.height || 1) * 0.5,
+      (size.z || size.depth || 1) * 0.5
+    );
+    const boxShape = new CANNON.Box(halfExtents);
+    const boxBody = new CANNON.Body({
+      type: CANNON.Body.KINEMATIC,
+      material: this.obstacleMaterial,
+      shape: boxShape
+    });
+    boxBody.position.set(position.x, position.y, position.z);
+    this.world.addBody(boxBody);
+    return boxBody;
+  }
+
   step(delta) {
     // Fixed time step 1/120s with up to 10 sub-steps to eliminate tunneling
     const dt = Math.min(delta, 0.1);

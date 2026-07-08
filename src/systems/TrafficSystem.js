@@ -62,6 +62,9 @@ export class TrafficSystem {
 
       // Phase 1: Attach cannon-es PlayerVehicle if PhysicsWorld is available
       if (this.app && this.app.physicsWorld) {
+        if (vehicle.physicsBody) {
+          this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
+        }
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld);
       }
 
@@ -77,6 +80,9 @@ export class TrafficSystem {
     if (vehicle.physicsVehicle) {
       vehicle.physicsVehicle.destroy();
       vehicle.physicsVehicle = null;
+    }
+    if (vehicle.physicsBody && this.app && this.app.physicsWorld) {
+      this.app.physicsWorld.world.addBody(vehicle.physicsBody);
     }
 
     if (this.controlledVehicle === vehicle) {
@@ -123,32 +129,33 @@ export class TrafficSystem {
       v.speed = v.physicsVehicle.speedKmH;
       Object.assign(v.info, v.physicsVehicle.info);
 
-      // Check collision with other AI vehicles (bounce + honk with cooldown to prevent stutter/hanging)
+      // Check collision with other AI vehicles (ALWAYS push apart physically; guard audio with cooldown)
       if (v.bumpCooldown > 0) {
         v.bumpCooldown -= delta;
-      } else {
-        for (const other of this.vehicles) {
-          if (other === v) continue;
-          if (v.mesh.position.distanceTo(other.mesh.position) < 4.2) {
-            v.bumpCooldown = 0.65;
-            const bounceDir = v.mesh.position.clone().sub(other.mesh.position);
-            bounceDir.y = 0;
-            if (bounceDir.lengthSq() === 0) bounceDir.set(1, 0, 0);
-            bounceDir.normalize();
+      }
+      for (const other of this.vehicles) {
+        if (other === v) continue;
+        if (v.mesh.position.distanceTo(other.mesh.position) < 4.8) {
+          const bounceDir = v.mesh.position.clone().sub(other.mesh.position);
+          bounceDir.y = 0;
+          if (bounceDir.lengthSq() === 0) bounceDir.set(1, 0, 0);
+          bounceDir.normalize();
 
-            // 1. Bounce player vehicle away
-            if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
-              v.physicsVehicle.chassisBody.velocity.x += bounceDir.x * 6.5;
-              v.physicsVehicle.chassisBody.velocity.z += bounceDir.z * 6.5;
-            } else {
-              v.mesh.position.addScaledVector(bounceDir, 0.85);
-            }
+          // 1. Physically push/bounce player vehicle away
+          if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
+            v.physicsVehicle.chassisBody.velocity.x += bounceDir.x * 8.5;
+            v.physicsVehicle.chassisBody.velocity.z += bounceDir.z * 8.5;
+          } else {
+            v.mesh.position.addScaledVector(bounceDir, 1.1);
+          }
 
-            // 2. Bounce computer-controlled vehicle away
-            other.mesh.position.addScaledVector(bounceDir, -0.85);
-            other.speed = -other.speed * 0.4;
+          // 2. Physically push computer-controlled vehicle away
+          other.mesh.position.addScaledVector(bounceDir, -1.1);
+          other.speed = -Math.abs(other.speed || 10) * 0.45;
 
-            // 3. AI car honks horn and plays bump sound
+          // 3. Trigger audio & horn only once per impact interval
+          if (v.bumpCooldown <= 0) {
+            v.bumpCooldown = 0.55;
             if (this.app.audioSystem) {
               this.app.audioSystem.playBump();
               setTimeout(() => {
@@ -161,8 +168,8 @@ export class TrafficSystem {
                 }
               }, 80);
             }
-            break;
           }
+          break;
         }
       }
 
@@ -458,6 +465,12 @@ export class TrafficSystem {
       if (this.app.inspectorHud) {
         this.app.inspectorHud.registerObject(vehicle.mesh, vehicle);
       }
+      if (this.app.physicsWorld) {
+        vehicle.physicsBody = this.app.physicsWorld.addKinematicBoxCollider(
+          new THREE.Vector3(startNode.pos.x, 1.0, startNode.pos.z),
+          new THREE.Vector3(2.1, 1.2, 4.4)
+        );
+      }
       this.vehicles.push(vehicle);
     }
   }
@@ -657,6 +670,11 @@ export class TrafficSystem {
 
       // 3. Update vehicle animations & wheels
       v.update(delta);
+
+      if (v.physicsBody) {
+        v.physicsBody.position.set(v.mesh.position.x, v.mesh.position.y + 1.05, v.mesh.position.z);
+        v.physicsBody.quaternion.set(v.mesh.quaternion.x, v.mesh.quaternion.y, v.mesh.quaternion.z, v.mesh.quaternion.w);
+      }
 
       // 4. Check Doppler siren sound for normal police patrol
       if (v.isPolice && v.speed > 5 && !v.emergencyTarget && this.app.audioSystem && this.app.audioSystem.isEnabled) {
