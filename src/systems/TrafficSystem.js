@@ -122,6 +122,10 @@ export class TrafficSystem {
       }
     }
 
+    // Save previous state before movement/steering
+    const oldPos = v.mesh.position.clone();
+    const oldRotY = v.mesh.rotation.y;
+
     // 2. Steering (Turning Left / Right when moving)
     if (Math.abs(v.speed) > 0.2) {
       const turnDir = v.speed > 0 ? 1 : -1;
@@ -139,7 +143,47 @@ export class TrafficSystem {
     v.mesh.translateOnAxis(new THREE.Vector3(0, 0, 1), moveStep);
     v.mesh.position.y = 0;
 
-    // 4. Check bump with other cars while manual driving
+    // 4. Building Collision Check (prevent driving through buildings!)
+    if (this.app.buildingFactory && this.app.buildingFactory.buildings) {
+      const pos = v.mesh.position;
+      for (const b of this.app.buildingFactory.buildings) {
+        if (b.isDestroyed) continue; // Can drive over destroyed rubble
+
+        const minX = b.plot.x - (b.plot.width - 4) / 2 - 1.8;
+        const maxX = b.plot.x + (b.plot.width - 4) / 2 + 1.8;
+        const minZ = b.plot.z - (b.plot.depth - 4) / 2 - 1.8;
+        const maxZ = b.plot.z + (b.plot.depth - 4) / 2 + 1.8;
+
+        if (pos.x > minX && pos.x < maxX && pos.z > minZ && pos.z < maxZ) {
+          // COLLISION WITH BUILDING!
+          if (this.app.funMode && Math.abs(v.speed) > 14) {
+            // In Fun Mode, high speed impact destroys building into rubble!
+            this.app.buildingFactory.destroyBuilding(b);
+            if (this.app.audioSystem) {
+              this.app.audioSystem.playExplosion();
+            }
+            if (this.app.sceneManager) {
+              this.app.sceneManager.triggerShake(0.35);
+            }
+            v.speed *= 0.3;
+            break;
+          } else {
+            // Solid Building Wall Collision! Revert position and rotation so vehicle cannot penetrate building!
+            v.mesh.position.copy(oldPos);
+            v.mesh.rotation.y = oldRotY;
+
+            if (Math.abs(v.speed) > 2.0 && this.app.audioSystem && Math.random() < 0.4) {
+              this.app.audioSystem.playBump();
+            }
+
+            v.speed = -v.speed * 0.3; // Bounce back off wall
+            break;
+          }
+        }
+      }
+    }
+
+    // 5. Check bump with other cars while manual driving
     for (const other of this.vehicles) {
       if (other === v) continue;
       if (v.mesh.position.distanceTo(other.mesh.position) < 3.6 && Math.abs(v.speed) > 3.0) {
