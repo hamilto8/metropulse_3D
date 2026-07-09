@@ -861,7 +861,7 @@ export class TrafficSystem {
         const maxSpeedKmh = v.maxSpeed * 3.6;
         
         // Scale AI engines down slightly so they create atmosphere without overwhelming the user
-        this.app.audioSystem.updateEngineInstance(v.aiEngineSound, speedKmh, maxSpeedKmh, volumeMultiplier * 0.4);
+        this.app.audioSystem.updateEngineInstance(v.aiEngineSound, speedKmh, maxSpeedKmh, volumeMultiplier * 0.25);
       } else {
         if (v.aiEngineSound) {
           this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
