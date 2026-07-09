@@ -51,6 +51,14 @@ export class TrafficSystem {
         this.keys['e'] = false;
         this.exitControlledVehicle();
       }
+
+      // Check pedestrian actions (Talk / Hijack) with key E when controlling a pedestrian!
+      if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
+        const ps = this.app ? this.app.pedestrianSystem : null;
+        if (ps && ps.controlledPedestrian) {
+          ps.handlePedestrianActionKey();
+        }
+      }
     });
 
     window.addEventListener('keyup', (e) => {
