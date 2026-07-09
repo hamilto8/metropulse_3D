@@ -212,21 +212,42 @@ export class BillboardCanvas {
         ctx.fillText('AI • ROBOTICS • QUANTUM', canvas.width / 2, 290);
       }
     } else if (adName === 'CINEMA') {
-      ctx.fillStyle = '#1a0010';
+      // Dark cyberpunk theater backdrop
+      ctx.fillStyle = '#0f0212';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = '#ffb800';
-      ctx.font = 'bold 48px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('GALAXY CINEMA', canvas.width / 2, 90);
+      // Neon pink/cyan accent lines or border
+      ctx.strokeStyle = '#ff007f';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-      ctx.fillStyle = '#ff007f';
-      ctx.font = 'bold 52px sans-serif';
-      ctx.fillText('CYBER RUNNER 2099', canvas.width / 2, 190);
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 
+      // Header: Galaxy Cinema
       ctx.fillStyle = '#00f0ff';
-      ctx.font = '32px monospace';
-      ctx.fillText('NOW SHOWING IN INMERSE-3D', canvas.width / 2, 280);
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('✨ GALAXY CINEMA ✨', canvas.width / 2, 70);
+
+      // Movie Title: CYBER RUNNER 2099 (Fits perfectly at 40px!)
+      // Add neon glow layers
+      ctx.fillStyle = 'rgba(255, 0, 127, 0.45)';
+      ctx.font = '900 40px sans-serif';
+      ctx.fillText('CYBER RUNNER 2099', canvas.width / 2 + 3, 173);
+      ctx.fillStyle = '#ff007f';
+      ctx.fillText('CYBER RUNNER 2099', canvas.width / 2, 170);
+
+      // Subtitle: NOW SHOWING IN IMMERSIVE 3D (corrected spelling of IMMERSIVE)
+      ctx.fillStyle = '#ffcc00';
+      ctx.font = 'bold 22px monospace';
+      ctx.fillText('NOW SHOWING IN IMMERSIVE 3D', canvas.width / 2, 270);
+
+      // Decorative stars
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = '18px sans-serif';
+      ctx.fillText('★ ★ ★ ★ ★', canvas.width / 2, 320);
     }
 
     ctx.textAlign = 'left'; // Reset
