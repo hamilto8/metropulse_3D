@@ -275,9 +275,14 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
-    // Safety height based on vehicle type
-    const safetyY = this.vType === 'BUS' ? 2.5 : (this.vType === 'TRUCK' ? 1.8 : 1.05);
-    if (this.chassisBody.position.y < 0.3) {
+    // Safety height based on vehicle type and terrain height!
+    let terrainY = 0.0;
+    const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
+    if (terrainSystem) {
+      terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z) - 0.05;
+    }
+    const safetyY = terrainY + (this.vType === 'BUS' ? 2.5 : (this.vType === 'TRUCK' ? 1.8 : 1.05));
+    if (this.chassisBody.position.y < terrainY + 0.3) {
       this.chassisBody.position.y = safetyY;
       this.chassisBody.velocity.y = Math.max(0, this.chassisBody.velocity.y);
     }
@@ -303,7 +308,12 @@ export class PlayerVehicle {
 
   resetPosition() {
     if (!this.chassisBody) return;
-    const yOffset = this.vType === 'BUS' ? 2.8 : (this.vType === 'TRUCK' ? 2.2 : 1.2);
+    let terrainY = 0.0;
+    const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
+    if (terrainSystem) {
+      terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z) - 0.05;
+    }
+    const yOffset = terrainY + (this.vType === 'BUS' ? 2.8 : (this.vType === 'TRUCK' ? 2.2 : 1.2));
     this.chassisBody.position.y = yOffset;
     const euler = new THREE.Euler(0, this.mesh.rotation.y, 0);
     const q = new THREE.Quaternion().setFromEuler(euler);

@@ -19,7 +19,7 @@ export class TrafficSystem {
     this.app = app;
     this.vehicles = [];
     this.nodes = new Map();
-    this.roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
+    this.roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750];
     this.roadCoordsZ = [-100, -50, 0, 50, 100];
     this.laneOffset = 3.5; // Right-hand traffic lane center
 
@@ -746,7 +746,7 @@ export class TrafficSystem {
 
           const moveStep = v.speed * delta;
           v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-          v.mesh.position.y = 0;
+          v.mesh.position.y = this.app.pedestrianSystem ? this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z) - 0.05 : 0;
         }
         v.update(delta);
         continue;
@@ -884,7 +884,7 @@ export class TrafficSystem {
 
           const moveStep = v.speed * delta;
           v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-          v.mesh.position.y = 0;
+          v.mesh.position.y = this.app.pedestrianSystem ? this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z) - 0.05 : 0;
         }
       }
 

@@ -82,6 +82,7 @@ class MetroPulseApp {
 
     // 10. Pedestrian Simulation
     this.pedestrianSystem = new PedestrianSystem(this);
+    this.physicsWorld.terrainSystem = this.pedestrianSystem;
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);

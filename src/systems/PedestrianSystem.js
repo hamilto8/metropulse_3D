@@ -20,7 +20,7 @@ export class PedestrianSystem {
     this.talkingPedestrian = null;
     this.talkingBubbleText = '';
     this.talkingBubbleTimer = 0;
-    this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319];
+    this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319, 441, 459, 541, 559, 641, 659, 741, 759];
     this.sidewalkCoordsZ = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
     
     this.initWaypoints();
@@ -429,7 +429,7 @@ export class PedestrianSystem {
 
           const moveStep = p.speed * delta;
           p.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-          p.mesh.position.y = (pos.x < -60 && pos.z < -60) ? 0.7 : 0.4;
+          p.mesh.position.y = this.getTerrainHeight(pos.x, pos.z);
         }
       }
 
@@ -759,10 +759,34 @@ export class PedestrianSystem {
   }
 
   getTerrainHeight(x, z) {
-    // 1. Northwest Central Park region
+    // 1. Bridges over the rivers (first river X: 110 to 210, second river X: 380 to 420)
+    if (x > 110 && x < 210) {
+      for (const bz of [-100, -50, 0, 50, 100]) {
+        if (Math.abs(z - bz) < 9.0) {
+          return 1.0; // Top surface of the bridge decks
+        }
+      }
+    }
+    if (x > 380 && x < 420) {
+      for (const bz of [-100, -50, 0, 50, 100]) {
+        if (Math.abs(z - bz) < 9.0) {
+          return 1.0; // Top surface of the stone arch bridges
+        }
+      }
+    }
+
+    // 2. River Basin bottoms (-4.0)
+    if (x >= 135 && x <= 185) {
+      return -4.0;
+    }
+    if (x >= 380 && x <= 420) {
+      return -4.0;
+    }
+
+    // 3. Northwest Central Park region
     if (x < -60 && z < -60) return 0.7;
 
-    // 2. Main street blocks (sidewalks)
+    // 4. Main street blocks (sidewalks)
     const blockCentersX = [-75, -25, 25, 75, 235, 285];
     const blockCentersZ = [-75, -25, 25, 75];
     const size = 22.0; // Block half-width (36 block + 4 sidewalk on each side = 44 / 2 = 22)
@@ -775,7 +799,14 @@ export class PedestrianSystem {
       }
     }
 
-    // 3. Street/Asphalt level (offset slightly so feet align with floor)
+    // 5. Countryside rolling hills (X >= 420)
+    if (x >= 420) {
+      const factor = Math.min(1.0, (x - 420) / 100);
+      const hillHeight = (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 8 + Math.sin(x * 0.02) * 15) * factor;
+      return hillHeight + 0.05; // Base offset to align with street
+    }
+
+    // 6. Street/Asphalt level
     return 0.05;
   }
 

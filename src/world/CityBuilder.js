@@ -19,6 +19,38 @@ export class CityBuilder {
     this.createRiverAndBridge();
     this.createCentralPark();
     this.createStreetFurniture();
+    this.createCountrysideNature();
+  }
+
+  createCountrysideNature() {
+    // Scatter trees randomly across countryside hills (X: 440 to 800)
+    // Avoid Z values directly near the roads to prevent trees growing on the streets!
+    // The road Z coords are: -100, -50, 0, 50, 100
+    for (let i = 0; i < 90; i++) {
+      const x = 440 + Math.random() * 340;
+      const z = -350 + Math.random() * 700;
+
+      // Check distance to roads to avoid blocking streets
+      let nearRoad = false;
+      for (const rz of [-100, -50, 0, 50, 100]) {
+        if (Math.abs(z - rz) < 12.0) {
+          nearRoad = true;
+          break;
+        }
+      }
+      // Also avoid the road X coords (450, 550, 650, 750)
+      for (const rx of [450, 550, 650, 750]) {
+        if (Math.abs(x - rx) < 12.0) {
+          nearRoad = true;
+          break;
+        }
+      }
+
+      if (!nearRoad) {
+        const y = this.getHillHeight(x, z);
+        this.createTree(x, y - 0.2, z);
+      }
+    }
   }
 
   createGround() {
@@ -35,26 +67,87 @@ export class CityBuilder {
     westGround.receiveShadow = true;
     this.scene.add(westGround);
 
-    // 2. East Ground Plane
-    const eastGeo = new THREE.PlaneGeometry(265, 800);
+    // 2. East Ground Plane (Resized to end at X = 380: width 245, centered at 257.5)
+    const eastGeo = new THREE.PlaneGeometry(245, 800);
     const eastGround = new THREE.Mesh(eastGeo, groundMat);
     eastGround.rotation.x = -Math.PI / 2;
-    eastGround.position.set(267.5, -0.1, 0);
+    eastGround.position.set(257.5, -0.1, 0);
     eastGround.receiveShadow = true;
     this.scene.add(eastGround);
 
-    // 3. River Basin Bottom
+    // 3. First River Basin Bottom (X: 135 to 185)
     const basinGeo = new THREE.PlaneGeometry(50, 800);
     const basinMat = new THREE.MeshStandardMaterial({ color: 0x05070f, roughness: 1.0 });
     const basin = new THREE.Mesh(basinGeo, basinMat);
     basin.rotation.x = -Math.PI / 2;
     basin.position.set(160, -4.0, 0);
     this.scene.add(basin);
+
+    // 3.5 Second River Basin Bottom (X: 380 to 420, width 40, centered at 400)
+    const basinGeo2 = new THREE.PlaneGeometry(40, 800);
+    const basin2 = new THREE.Mesh(basinGeo2, basinMat);
+    basin2.rotation.x = -Math.PI / 2;
+    basin2.position.set(400, -4.0, 0);
+    this.scene.add(basin2);
+
+    // 4. Countryside Ground Plane with rolling hills (X: 420 to 820)
+    const countrysideGeo = new THREE.PlaneGeometry(400, 800, 50, 80);
+    const posAttr = countrysideGeo.attributes.position;
+    const colors = [];
+    const colorGrass = new THREE.Color(0x3b7a57); // Forest green
+    const colorDirt = new THREE.Color(0x705335);  // Rich dirt brown
+
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vz = posAttr.getY(i);
+      const worldX = 620 + vx;
+      const worldZ = vz;
+
+      // Hill height formula
+      const factor = Math.min(1.0, (worldX - 420) / 100);
+      const height = (Math.sin(worldX * 0.05) * Math.cos(worldZ * 0.04) * 8 + Math.sin(worldX * 0.02) * 15) * factor;
+      posAttr.setZ(i, height);
+
+      // Organic dirt patches based on noise formula
+      const noiseVal = Math.sin(worldX * 0.08) * Math.cos(worldZ * 0.06) + Math.sin(worldX * 0.03) * Math.cos(worldZ * 0.03);
+      const isDirt = noiseVal > 0.6 && worldX > 450;
+
+      const vertexColor = new THREE.Color();
+      if (isDirt) {
+        vertexColor.copy(colorDirt).multiplyScalar(0.9 + Math.random() * 0.2);
+      } else {
+        vertexColor.copy(colorGrass).multiplyScalar(0.9 + Math.random() * 0.2);
+      }
+      colors.push(vertexColor.r, vertexColor.g, vertexColor.b);
+    }
+
+    countrysideGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    countrysideGeo.computeVertexNormals();
+
+    const countrysideMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.95,
+      metalness: 0.05
+    });
+
+    const countrysideGround = new THREE.Mesh(countrysideGeo, countrysideMat);
+    countrysideGround.rotation.x = -Math.PI / 2;
+    countrysideGround.position.set(620, -0.1, 0);
+    countrysideGround.receiveShadow = true;
+    this.scene.add(countrysideGround);
+  }
+
+  getHillHeight(x, z) {
+    if (x >= 420) {
+      const factor = Math.min(1.0, (x - 420) / 100);
+      return (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 8 + Math.sin(x * 0.02) * 15) * factor;
+    }
+    return 0.0;
   }
 
   createRoadGrid() {
     const roadCoordsZ = [-100, -50, 0, 50, 100];
-    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
+    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750];
     const roadWidth = 14;
     const sidewalkWidth = 4;
     const blockSize = 50 - roadWidth;
@@ -88,29 +181,90 @@ export class CityBuilder {
       lineWest.position.set(-17.5, 0.02, posZ);
       this.scene.add(lineWest);
 
-      // East road segment (X: 205 to 360, center 282.5, width 155)
-      const roadEast = new THREE.Mesh(new THREE.PlaneGeometry(155, roadWidth), asphaltMat);
+      // East road segment (X: 205 to 380, center 292.5, width 175)
+      const roadEast = new THREE.Mesh(new THREE.PlaneGeometry(175, roadWidth), asphaltMat);
       roadEast.rotation.x = -Math.PI / 2;
-      roadEast.position.set(282.5, 0.01, posZ);
+      roadEast.position.set(292.5, 0.01, posZ);
       roadEast.receiveShadow = true;
       this.scene.add(roadEast);
 
-      const lineEast = new THREE.Mesh(new THREE.PlaneGeometry(155, 0.4), lineMat);
+      const lineEast = new THREE.Mesh(new THREE.PlaneGeometry(175, 0.4), lineMat);
       lineEast.rotation.x = -Math.PI / 2;
-      lineEast.position.set(282.5, 0.02, posZ);
+      lineEast.position.set(292.5, 0.02, posZ);
       this.scene.add(lineEast);
+
+      // Countryside horizontal roads (X: 420 to 800, center 610, width 380)
+      const countrySegs = 80;
+      const roadCountryGeo = new THREE.PlaneGeometry(380, roadWidth, countrySegs, 1);
+      const roadPos = roadCountryGeo.attributes.position;
+      for (let i = 0; i < roadPos.count; i++) {
+        const lx = roadPos.getX(i);
+        const wx = 610 + lx;
+        const h = this.getHillHeight(wx, posZ);
+        roadPos.setZ(i, h + 0.02);
+      }
+      roadCountryGeo.computeVertexNormals();
+      const roadCountry = new THREE.Mesh(roadCountryGeo, asphaltMat);
+      roadCountry.rotation.x = -Math.PI / 2;
+      roadCountry.position.set(610, 0, posZ);
+      roadCountry.receiveShadow = true;
+      this.scene.add(roadCountry);
+
+      const lineCountryGeo = new THREE.PlaneGeometry(380, 0.4, countrySegs, 1);
+      const linePos = lineCountryGeo.attributes.position;
+      for (let i = 0; i < linePos.count; i++) {
+        const lx = linePos.getX(i);
+        const wx = 610 + lx;
+        const h = this.getHillHeight(wx, posZ);
+        linePos.setZ(i, h + 0.03);
+      }
+      lineCountryGeo.computeVertexNormals();
+      const lineCountry = new THREE.Mesh(lineCountryGeo, lineMat);
+      lineCountry.rotation.x = -Math.PI / 2;
+      lineCountry.position.set(610, 0, posZ);
+      this.scene.add(lineCountry);
     }
 
     for (const posX of roadCoordsX) {
-      const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 300), asphaltMat);
-      roadZ.rotation.x = -Math.PI / 2;
-      roadZ.position.set(posX, 0.01, 0);
+      let roadZ;
+      let lineZ;
+      if (posX >= 450) {
+        // Create segmented road to follow hills
+        const segs = 60;
+        const roadZGeo = new THREE.PlaneGeometry(roadWidth, 300, 1, segs);
+        const posAttr = roadZGeo.attributes.position;
+        for (let i = 0; i < posAttr.count; i++) {
+          const lz = posAttr.getY(i);
+          const h = this.getHillHeight(posX, lz);
+          posAttr.setZ(i, h + 0.02);
+        }
+        roadZGeo.computeVertexNormals();
+        roadZ = new THREE.Mesh(roadZGeo, asphaltMat);
+        roadZ.rotation.x = -Math.PI / 2;
+        roadZ.position.set(posX, 0, 0);
+
+        const lineZGeo = new THREE.PlaneGeometry(0.4, 280, 1, segs);
+        const linePosAttr = lineZGeo.attributes.position;
+        for (let i = 0; i < linePosAttr.count; i++) {
+          const lz = linePosAttr.getY(i);
+          const h = this.getHillHeight(posX, lz);
+          linePosAttr.setZ(i, h + 0.03);
+        }
+        lineZGeo.computeVertexNormals();
+        lineZ = new THREE.Mesh(lineZGeo, lineMat);
+        lineZ.rotation.x = -Math.PI / 2;
+        lineZ.position.set(posX, 0, 0);
+      } else {
+        roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 300), asphaltMat);
+        roadZ.rotation.x = -Math.PI / 2;
+        roadZ.position.set(posX, 0.01, 0);
+
+        lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 280), lineMat);
+        lineZ.rotation.x = -Math.PI / 2;
+        lineZ.position.set(posX, 0.02, 0);
+      }
       roadZ.receiveShadow = true;
       this.scene.add(roadZ);
-
-      const lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 280), lineMat);
-      lineZ.rotation.x = -Math.PI / 2;
-      lineZ.position.set(posX, 0.02, 0);
       this.scene.add(lineZ);
     }
 
@@ -135,11 +289,11 @@ export class CityBuilder {
 
         for (const off of offsets) {
           for (let s = -4; s <= 4; s += 2) {
-            if (off.rot === 0) {
-              dummy.position.set(x + s, 0.03, z + off.z);
-            } else {
-              dummy.position.set(x + off.x, 0.03, z + s);
-            }
+            const targetX = x + (off.rot === 0 ? s : off.x);
+            const targetZ = z + (off.rot === 0 ? off.z : s);
+            const h = this.getHillHeight(targetX, targetZ);
+
+            dummy.position.set(targetX, h + 0.03, targetZ);
             dummy.rotation.set(0, off.rot, 0);
             dummy.updateMatrix();
             stripeInstanced.setMatrixAt(stripeIdx++, dummy.matrix);
@@ -321,6 +475,65 @@ export class CityBuilder {
       railS.position.set(160, 2.0, bz + 7.5);
       this.scene.add(railS);
     }
+
+    // --- COUNTRYSIDE RIVER AND BRIDGES ---
+    // 5. Countryside River Water Plane (X = 400)
+    const waterGeo2 = new THREE.PlaneGeometry(40, 800);
+    const water2 = new THREE.Mesh(waterGeo2, waterMat);
+    water2.rotation.x = -Math.PI / 2;
+    water2.position.set(400, -1.2, 0);
+    this.scene.add(water2);
+
+    // 6. Concrete Countryside Riverbank Retaining Walls
+    const wallGeo2 = new THREE.BoxGeometry(3, 4.2, 800);
+    const wallWest2 = new THREE.Mesh(wallGeo2, wallMat);
+    wallWest2.position.set(378.5, -2.0, 0);
+    this.scene.add(wallWest2);
+
+    const wallEast2 = new THREE.Mesh(wallGeo2, wallMat);
+    wallEast2.position.set(421.5, -2.0, 0);
+    this.scene.add(wallEast2);
+
+    // 7. Stone Arch Bridges across Countryside River (Z: -100, -50, 0, 50, 100)
+    for (const bz of [-100, -50, 0, 50, 100]) {
+      this.createSecondBridge(bz);
+    }
+  }
+
+  createSecondBridge(bz) {
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x3d312a, roughness: 0.9 }); // Dark rustic stone
+    const bridgeWidth = 14;
+
+    // Bridge Deck (X: 380 to 420, Y: 0.5, Z: bz)
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, bridgeWidth + 2), deckMat);
+    deck.position.set(400, 0.5, bz);
+    deck.receiveShadow = true;
+    this.scene.add(deck);
+
+    // Arch support
+    const archMat = new THREE.MeshStandardMaterial({ color: 0x4a433f, roughness: 0.8 });
+    const arch = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, bridgeWidth + 1.8, 16, 1, false, 0, Math.PI), archMat);
+    arch.rotation.z = Math.PI / 2;
+    arch.rotation.x = Math.PI / 2;
+    arch.position.set(400, -1.8, bz);
+    this.scene.add(arch);
+
+    // Stone side rails
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x5a534f, roughness: 0.8 });
+    const railN = new THREE.Mesh(new THREE.BoxGeometry(40, 1.5, 1.0), railMat);
+    railN.position.set(400, 1.3, bz - (bridgeWidth / 2 + 0.5));
+    this.scene.add(railN);
+
+    const railS = new THREE.Mesh(new THREE.BoxGeometry(40, 1.5, 1.0), railMat);
+    railS.position.set(400, 1.3, bz + (bridgeWidth / 2 + 0.5));
+    this.scene.add(railS);
+
+    // Add yellow divider lines on deck
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.4), lineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(400, 1.02, bz);
+    this.scene.add(line);
   }
 
   createCentralPark() {
