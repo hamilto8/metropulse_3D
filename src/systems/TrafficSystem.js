@@ -809,6 +809,66 @@ export class TrafficSystem {
         }
       }
     }
+
+    this.updateAmbientEngineAudio(delta);
+  }
+
+  updateAmbientEngineAudio(delta) {
+    if (!this.app || !this.app.audioSystem || !this.app.audioSystem.isEnabled || !this.app.audioSystem.ctx) {
+      // Clean up any active AI engine sounds
+      for (const v of this.vehicles) {
+        if (v.aiEngineSound) {
+          this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
+          v.aiEngineSound = null;
+        }
+      }
+      return;
+    }
+
+    const camera = this.app.sceneManager.camera;
+    if (!camera) return;
+
+    const camPos = camera.position;
+    const maxAudibleDist = 65.0; // Distance roll-off limit (meters)
+
+    for (const v of this.vehicles) {
+      if (v.userControlled) {
+        if (v.aiEngineSound) {
+          this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
+          v.aiEngineSound = null;
+        }
+        continue;
+      }
+
+      if (v.crashed || v.isParked) {
+        if (v.aiEngineSound) {
+          this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
+          v.aiEngineSound = null;
+        }
+        continue;
+      }
+
+      const dist = v.mesh.position.distanceTo(camPos);
+
+      if (dist < maxAudibleDist) {
+        const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
+
+        if (!v.aiEngineSound) {
+          v.aiEngineSound = this.app.audioSystem.createEngineInstance(v.vType);
+        }
+
+        const speedKmh = v.speed * 3.6;
+        const maxSpeedKmh = v.maxSpeed * 3.6;
+        
+        // Scale AI engines down slightly so they create atmosphere without overwhelming the user
+        this.app.audioSystem.updateEngineInstance(v.aiEngineSound, speedKmh, maxSpeedKmh, volumeMultiplier * 0.4);
+      } else {
+        if (v.aiEngineSound) {
+          this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
+          v.aiEngineSound = null;
+        }
+      }
+    }
   }
 
   spawnParkedVehicles() {

@@ -592,6 +592,23 @@ export class AudioSystem {
       this.engineAudio = null;
     }
   }
+
+  createEngineInstance(vType) {
+    if (!this.isEnabled || !this.ctx) return null;
+    return new EngineAudioNode(this, vType);
+  }
+
+  updateEngineInstance(instance, speedKmh, maxSpeedKmh, volumeMultiplier) {
+    if (instance) {
+      instance.updateSound(speedKmh, maxSpeedKmh, volumeMultiplier);
+    }
+  }
+
+  stopEngineInstance(instance) {
+    if (instance) {
+      instance.stop();
+    }
+  }
 }
 
 class EngineAudioNode {
@@ -708,7 +725,7 @@ class EngineAudioNode {
     this.gainNode.gain.setTargetAtTime(this.targetVolume, now, 0.2);
   }
 
-  updateSound(speedKmh, maxSpeedKmh) {
+  updateSound(speedKmh, maxSpeedKmh, volumeMultiplier = 1.0) {
     if (!this.ctx || !this.osc1) return;
     const now = this.ctx.currentTime;
     const ratio = Math.max(0, Math.min(1.0, speedKmh / (maxSpeedKmh || 30.0)));
@@ -720,13 +737,13 @@ class EngineAudioNode {
       this.osc2.frequency.setTargetAtTime(currentFreq + (this.vType === 'SPORTS' ? 2.5 : 0.5), now, 0.08);
     }
 
-    // Scale engine load volume based on speed ratio
-    const currentVol = this.targetVolume * (0.8 + ratio * 0.4);
+    // Scale engine load volume based on speed ratio and spatial attenuation multiplier
+    const currentVol = this.targetVolume * (0.8 + ratio * 0.4) * volumeMultiplier;
     
     // In Web Audio API, if we are modulating gain.gain directly with LFO, we must not override LFO values abruptly
     if (this.vType === 'BUS' && this.lfoGain) {
       // Slightly scale the chugging LFO gain instead of setting absolute gain
-      this.lfoGain.gain.setTargetAtTime(0.12 + ratio * 0.05, now, 0.1);
+      this.lfoGain.gain.setTargetAtTime((0.12 + ratio * 0.05) * volumeMultiplier, now, 0.1);
     } else {
       this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
     }
