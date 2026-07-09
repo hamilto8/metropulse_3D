@@ -64,6 +64,8 @@ export class BillboardCanvas {
   drawTicker(data) {
     const { ctx, canvas, scrollX, timeVal } = data;
     const isFunMode = this.app && this.app.funMode;
+    const env = this.app && this.app.environment;
+    const weatherMode = env ? env.weatherMode : 'clear';
     
     // Background
     ctx.fillStyle = isFunMode ? '#1e0208' : '#070c1e';
@@ -74,24 +76,24 @@ export class BillboardCanvas {
     ctx.lineWidth = 8;
     ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
 
-    // Header / Title
+    // Header / Title (repositioned & sized down to 28px to prevent overlapping)
     if (isFunMode) {
       ctx.fillStyle = '#ff0055';
-      ctx.font = 'bold 36px sans-serif';
-      ctx.fillText('METRO MAYHEM LIVE 🚨', 24, 50);
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText('METRO MAYHEM LIVE 🚨', 20, 52);
     } else {
       ctx.fillStyle = '#ff007f';
-      ctx.font = 'bold 36px sans-serif';
-      ctx.fillText('METRO NEWS LIVE', 24, 50);
+      ctx.font = 'bold 28px sans-serif';
+      ctx.fillText('METRO NEWS LIVE', 20, 52);
     }
 
-    // Digital Clock
+    // Digital Clock (repositioned to x=360 and sized down to 48px to prevent overlapping)
     const hours = Math.floor(timeVal);
     const minutes = Math.floor((timeVal - hours) * 60);
     const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
     ctx.fillStyle = isFunMode ? '#ffcc00' : '#00ff88';
-    ctx.font = 'bold 54px monospace';
-    ctx.fillText(timeStr, 340, 56);
+    ctx.font = 'bold 48px monospace';
+    ctx.fillText(timeStr, 360, 54);
 
     // Divider
     ctx.strokeStyle = isFunMode ? '#551122' : '#223355';
@@ -117,15 +119,38 @@ export class BillboardCanvas {
       ctx.fillStyle = '#85001a';
       ctx.fillRect(20, 190, canvas.width - 40, 46);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('WEATHER: COMET PRECIPITATION 🔥', 40, 222);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('WEATHER: COMET PRECIPITATION 🔥', canvas.width / 2, 213);
     } else {
-      ctx.fillStyle = '#7000ff';
+      let footerBg = '#7000ff';
+      let weatherText = 'WEATHER: CLEAR / CYBER ATMOSPHERE ☀️';
+      
+      if (weatherMode === 'mist') {
+        footerBg = '#4f5b66';
+        weatherText = 'WEATHER: CYBER MIST / FOGGY CLOUDS 🌫️';
+      } else if (weatherMode === 'rain') {
+        footerBg = '#1d3c5f';
+        weatherText = 'WEATHER: ACID RAIN / LIGHT METRO SHOWERS 🌧️';
+      } else if (weatherMode === 'thunderstorm') {
+        footerBg = '#5e0d7c';
+        weatherText = 'WEATHER: ELECTRICAL STORM / DANGER ⚡';
+      }
+      
+      ctx.fillStyle = footerBg;
       ctx.fillRect(20, 190, canvas.width - 40, 46);
+      
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 24px sans-serif';
-      ctx.fillText('WEATHER: CLEAR / CYBER ATMOSPHERE', 40, 222);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(weatherText.toUpperCase(), canvas.width / 2, 213);
     }
+
+    // Restore text alignment defaults
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
     data.texture.needsUpdate = true;
   }
