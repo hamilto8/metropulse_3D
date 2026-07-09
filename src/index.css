@@ -1,6 +1,7 @@
 :root {
   --bg-dark: #070913;
   --panel-bg: rgba(13, 18, 36, 0.65);
+  --glass-bg: rgba(13, 18, 36, 0.85);
   --panel-border: rgba(255, 255, 255, 0.12);
   --panel-glow: rgba(0, 240, 255, 0.15);
   
@@ -28,6 +29,11 @@
   margin: 0;
   padding: 0;
   user-select: none;
+}
+
+/* ─── Global Utility ──────────────────────────────────────────────────────── */
+.hidden {
+  display: none !important;
 }
 
 body, html {

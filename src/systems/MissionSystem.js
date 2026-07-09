@@ -386,18 +386,14 @@ export class MissionSystem {
     const activeVehicle = controlledVehicle || followedVehicle;
 
     // 3. If IDLE, check distance to pickup rings (MISSION_TRIGGER_RADIUS capture zone)
-    if (this.state === 'IDLE' && this.triggerCooldown <= 0) {
-      const vehiclesToCheck = activeVehicle
-        ? [activeVehicle]
-        : (this.app.trafficSystem ? this.app.trafficSystem.vehicles : []);
+    //    Only triggered when the PLAYER has an active vehicle (controlled or followed).
+    //    AI vehicles driving near rings must NOT auto-trigger dialogues for the player.
+    if (this.state === 'IDLE' && this.triggerCooldown <= 0 && activeVehicle) {
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
-        for (const v of vehiclesToCheck) {
-          if (!v || !v.mesh) continue;
-          if (v.mesh.position.distanceTo(r.group.position) < MISSION_TRIGGER_RADIUS) {
-            this.triggerMissionDialogue(r.mission);
-            break;
-          }
+        if (activeVehicle.mesh.position.distanceTo(r.group.position) < MISSION_TRIGGER_RADIUS) {
+          this.triggerMissionDialogue(r.mission);
+          break;
         }
       }
     }
