@@ -90,27 +90,108 @@ export class Pedestrian {
     // Scale down slightly for realistic proportions relative to cars
     group.scale.set(0.9, 0.9, 0.9);
 
+    // Build rain behaviors and procedural umbrella attachment
+    const r = Math.random();
+    if (r < 0.33) {
+      this.rainBehavior = 'SHIELD';
+    } else if (r < 0.67) {
+      this.rainBehavior = 'UMBRELLA';
+
+      const umbrellaGroup = new THREE.Group();
+
+      const shaftGeo = new THREE.CylinderGeometry(0.02, 0.02, 1.6, 4);
+      const shaftMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+      const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+      shaft.position.y = 0.8;
+      umbrellaGroup.add(shaft);
+
+      const colors = [0x00f0ff, 0xff007f, 0xffcc00, 0xef4444, 0x10b981, 0x8b5cf6, 0xf97316];
+      const canopyColor = colors[Math.floor(Math.random() * colors.length)];
+      const canopyGeo = new THREE.ConeGeometry(0.8, 0.35, 8);
+      const canopyMat = new THREE.MeshStandardMaterial({ color: canopyColor, roughness: 0.5 });
+      const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+      canopy.position.y = 1.6;
+      umbrellaGroup.add(canopy);
+
+      this.umbrella = umbrellaGroup;
+      this.umbrella.position.set(0, -0.8, 0);
+      this.umbrella.visible = false;
+      this.armL.add(this.umbrella);
+    } else {
+      this.rainBehavior = 'NORMAL';
+    }
+
     return group;
   }
 
-  update(delta) {
-    if (this.speed > 0.1) {
-      this.walkTimer += delta * (this.speed * 2.8);
-      const swing = Math.sin(this.walkTimer) * 0.6;
+  update(delta, isRaining = false) {
+    const swingFreq = this.speed * 2.8;
+    this.walkTimer += delta * Math.max(1.0, swingFreq);
+    const swing = Math.sin(this.walkTimer) * 0.65;
 
-      if (this.armL && this.armR && this.legL && this.legR) {
-        this.armL.rotation.x = swing;
-        this.armR.rotation.x = -swing;
+    if (this.armL && this.armR && this.legL && this.legR) {
+      if (this.speed > 0.1) {
         this.legL.rotation.x = -swing;
         this.legR.rotation.x = swing;
-      }
-    } else {
-      // Stand still
-      if (this.armL) {
-        this.armL.rotation.x *= 0.8;
-        this.armR.rotation.x *= 0.8;
+      } else {
         this.legL.rotation.x *= 0.8;
         this.legR.rotation.x *= 0.8;
+      }
+
+      if (isRaining) {
+        if (this.rainBehavior === 'SHIELD') {
+          // Shield head with both hands raised
+          this.armL.rotation.x = -2.6;
+          this.armL.rotation.z = -0.4;
+          this.armR.rotation.x = -2.6;
+          this.armR.rotation.z = 0.4;
+          if (this.umbrella) this.umbrella.visible = false;
+        } else if (this.rainBehavior === 'UMBRELLA') {
+          // Hold umbrella with left hand, right arm swings normally
+          this.armL.rotation.x = -1.25;
+          this.armL.rotation.z = -0.15;
+          if (this.umbrella) {
+            this.umbrella.visible = true;
+            this.umbrella.rotation.x = 1.25;
+            this.umbrella.rotation.z = 0.15;
+          }
+
+          if (this.speed > 0.1) {
+            this.armR.rotation.x = -swing;
+            this.armR.rotation.z *= 0.8;
+          } else {
+            this.armR.rotation.x *= 0.8;
+            this.armR.rotation.z *= 0.8;
+          }
+        } else {
+          // NORMAL: walk normally under rain
+          if (this.umbrella) this.umbrella.visible = false;
+          if (this.speed > 0.1) {
+            this.armL.rotation.x = swing;
+            this.armL.rotation.z *= 0.8;
+            this.armR.rotation.x = -swing;
+            this.armR.rotation.z *= 0.8;
+          } else {
+            this.armL.rotation.x *= 0.8;
+            this.armL.rotation.z *= 0.8;
+            this.armR.rotation.x *= 0.8;
+            this.armR.rotation.z *= 0.8;
+          }
+        }
+      } else {
+        // Clear weather: normal walking animations
+        if (this.umbrella) this.umbrella.visible = false;
+        if (this.speed > 0.1) {
+          this.armL.rotation.x = swing;
+          this.armL.rotation.z *= 0.8;
+          this.armR.rotation.x = -swing;
+          this.armR.rotation.z *= 0.8;
+        } else {
+          this.armL.rotation.x *= 0.8;
+          this.armL.rotation.z *= 0.8;
+          this.armR.rotation.x *= 0.8;
+          this.armR.rotation.z *= 0.8;
+        }
       }
     }
   }

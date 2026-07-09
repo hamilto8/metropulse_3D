@@ -170,6 +170,9 @@ export class PedestrianSystem {
   }
 
   update(delta) {
+    const weather = this.app.environment ? this.app.environment.weatherMode : 'clear';
+    const isRaining = (weather === 'rain' || weather === 'thunderstorm');
+
     // Update active speech bubble if any
     if (this.talkingBubbleTimer > 0) {
       this.talkingBubbleTimer -= delta;
@@ -318,7 +321,7 @@ export class PedestrianSystem {
       }
 
       // 3. Update walk animation
-      p.update(delta);
+      p.update(delta, isRaining);
     }
 
     // 4. Handle proximity checking for vehicles and pedestrians
