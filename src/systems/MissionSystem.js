@@ -286,6 +286,51 @@ export class MissionSystem {
     }, 3500);
   }
 
+  showFailureToast(reasonText, name) {
+    // Remove any existing toast
+    if (this._toastEl && this._toastEl.parentNode) {
+      this._toastEl.parentNode.removeChild(this._toastEl);
+    }
+
+    // Build DOM nodes safely using textContent (not innerHTML) to avoid XSS
+    const toast = document.createElement('div');
+    toast.className = 'payout-toast payout-toast--failed';
+
+    const check = document.createElement('span');
+    check.className = 'payout-check';
+    check.textContent = '❌';
+
+    const label = document.createElement('span');
+    label.className = 'payout-label payout-label--failed';
+    label.textContent = 'Mission Failed';
+
+    const passenger = document.createElement('span');
+    passenger.className = 'payout-passenger';
+    passenger.textContent = name ? `${name}'s ride cancelled.` : '';
+
+    const reasonEl = document.createElement('span');
+    reasonEl.className = 'payout-amount payout-amount--failed';
+    reasonEl.textContent = reasonText;
+
+    toast.appendChild(check);
+    toast.appendChild(label);
+    if (name) toast.appendChild(passenger);
+    toast.appendChild(reasonEl);
+    document.body.appendChild(toast);
+    this._toastEl = toast;
+
+    // Animate in on next paint
+    requestAnimationFrame(() => toast.classList.add('payout-toast--visible'));
+
+    // Auto-remove after 3.5 seconds
+    setTimeout(() => {
+      toast.classList.remove('payout-toast--visible');
+      setTimeout(() => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 400);
+    }, 3500);
+  }
+
   /** Called when the player successfully delivers a passenger to the destination. */
   completeMission() {
     if (!this.activeMission) return;
@@ -313,15 +358,30 @@ export class MissionSystem {
     this.clearActiveMission();
   }
 
-  /** Called when the mission timer reaches zero before delivery. */
-  failMission() {
+  /** Called when the mission fails (e.g. timeout or released vehicle control). */
+  failMission(reason = 'timeout') {
     if (!this.activeMission) return;
     this.state = 'FAILED';
 
+    let toastMsg = 'Time ran out!';
+    let tickerMsg = `*** ❌ FARE FAILED: Time ran out for ${this.activeMission.passengerName}! *** `;
+
+    if (reason === 'released') {
+      toastMsg = 'Released vehicle control!';
+      tickerMsg = `*** ❌ FARE FAILED: Released vehicle control during fare for ${this.activeMission.passengerName}! *** `;
+    }
+
     const newsEl = document.querySelector('.chyron-ticker-text span');
     if (newsEl) {
-      newsEl.textContent = `*** ❌ FARE FAILED: Time ran out for ${this.activeMission.passengerName}! *** ` + newsEl.textContent;
+      newsEl.textContent = tickerMsg + newsEl.textContent;
     }
+
+    // Play failed sound (honk twice detuned / sad)
+    if (this.app.audioSystem) {
+      this.app.audioSystem.playHonk(true);
+    }
+
+    this.showFailureToast(toastMsg, this.activeMission.passengerName);
 
     this.clearActiveMission();
   }

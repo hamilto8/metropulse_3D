@@ -93,6 +93,11 @@ export class TrafficSystem {
     }
     vehicle.info['Status'] = 'Cruising';
 
+    // If there is an active mission in progress, fail the mission
+    if (this.app && this.app.missionSystem && this.app.missionSystem.activeMission) {
+      this.app.missionSystem.failMission('released');
+    }
+
     const allNodesList = Array.from(this.nodes.values());
     if (allNodesList.length > 0) {
       let closestNode = allNodesList[0];

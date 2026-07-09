@@ -1100,3 +1100,22 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   text-shadow: 0 0 14px rgba(255, 215, 0, 0.5);
   letter-spacing: -0.02em;
 }
+
+/* Failed Toast modifier */
+.payout-toast--failed {
+  background: rgba(26, 8, 12, 0.85);
+  border-color: rgba(255, 0, 80, 0.4);
+  box-shadow:
+    0 0 28px rgba(255, 0, 80, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.payout-label--failed {
+  color: var(--secondary) !important;
+}
+
+.payout-amount--failed {
+  color: #ff5577 !important;
+  font-size: 1.1rem !important;
+  text-shadow: 0 0 10px rgba(255, 85, 119, 0.4) !important;
+}
