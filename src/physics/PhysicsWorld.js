@@ -55,6 +55,9 @@ export class PhysicsWorld {
     if (weatherMode === 'rain') {
       // Slick asphalt drifting in heavy rain!
       this.wheelGroundContact.friction = 0.28;
+    } else if (weatherMode === 'thunderstorm') {
+      // Drenched asphalt, super slick drifting storm!
+      this.wheelGroundContact.friction = 0.22;
     } else if (weatherMode === 'mist') {
       this.wheelGroundContact.friction = 0.55;
     } else {

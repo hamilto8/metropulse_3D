@@ -12,6 +12,14 @@ export class Environment {
     this.sun = null;
     this.sunGlow = null;
 
+    // Lightning and delayed thunder state
+    this.lightningTimer = 5.0 + Math.random() * 10.0;
+    this.flashIntensity = 0;
+    this.flashSequence = [];
+    this.flashAge = 0;
+    this.thunderTimer = -1;
+    this.thunderVolume = 1.0;
+
     this.initSkyAndStars();
     this.initRain();
   }
@@ -129,6 +137,10 @@ export class Environment {
 
   setWeather(mode) {
     this.weatherMode = mode;
+    this.flashIntensity = 0;
+    this.flashSequence = [];
+    this.thunderTimer = -1;
+
     if (mode === 'clear') {
       this.scene.fog.density = 0.0035;
       if (this.rainMat) this.rainMat.opacity = 0;
@@ -138,6 +150,10 @@ export class Environment {
     } else if (mode === 'rain') {
       this.scene.fog.density = 0.008;
       if (this.rainMat) this.rainMat.opacity = 0.6;
+    } else if (mode === 'thunderstorm') {
+      this.scene.fog.density = 0.012;
+      if (this.rainMat) this.rainMat.opacity = 0.85;
+      this.lightningTimer = 3.0 + Math.random() * 5.0; // Trigger lightning soon!
     }
   }
 
@@ -175,6 +191,63 @@ export class Environment {
       targetBg.lerp(new THREE.Color(0x112233), 0.5);
     } else if (this.weatherMode === 'rain') {
       targetBg.lerp(new THREE.Color(0x1a222a), 0.6);
+    } else if (this.weatherMode === 'thunderstorm') {
+      targetBg.lerp(new THREE.Color(0x0e1115), 0.75); // Dark stormy clouds
+    }
+
+    // Update delayed thunder timer
+    if (this.thunderTimer > 0) {
+      this.thunderTimer -= delta;
+      if (this.thunderTimer <= 0) {
+        this.thunderTimer = -1;
+        if (this.app && this.app.audioSystem) {
+          this.app.audioSystem.playThunder(this.thunderVolume);
+        }
+      }
+    }
+
+    // Update lightning flash sequence
+    if (this.weatherMode === 'thunderstorm') {
+      this.lightningTimer -= delta;
+      if (this.lightningTimer <= 0) {
+        // Trigger lightning strike!
+        const distance = 250 + Math.random() * 950; // distance (meters)
+        this.thunderTimer = distance / 343; // delayed sound w/ speed of sound
+        this.thunderVolume = Math.max(0.18, 1.0 - (distance - 250) / 950);
+
+        // Flash sequence wiggles
+        this.flashSequence = [
+          { time: 0.0, intensity: 1.0 },
+          { time: 0.06, intensity: 0.0 },
+          { time: 0.12, intensity: 0.8 },
+          { time: 0.22, intensity: 0.0 }
+        ];
+        if (Math.random() < 0.65) {
+          this.flashSequence.push({ time: 0.28, intensity: 0.5 });
+          this.flashSequence.push({ time: 0.36, intensity: 0.0 });
+        }
+        this.flashAge = 0;
+        this.lightningTimer = 7.0 + Math.random() * 14.0;
+      }
+
+      if (this.flashSequence.length > 0) {
+        this.flashAge += delta;
+        let activeIntensity = 0;
+        for (let i = 0; i < this.flashSequence.length; i++) {
+          if (this.flashAge >= this.flashSequence[i].time) {
+            activeIntensity = this.flashSequence[i].intensity;
+          }
+        }
+        this.flashIntensity = activeIntensity;
+
+        if (this.flashAge > this.flashSequence[this.flashSequence.length - 1].time) {
+          this.flashSequence = [];
+          this.flashIntensity = 0;
+        }
+      }
+    } else {
+      this.flashIntensity = 0;
+      this.flashSequence = [];
     }
 
     const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
@@ -184,8 +257,14 @@ export class Environment {
       this.scene.fog.color.setHex(0x5a1806);
       starOpacity = 0.35;
     } else {
-      this.scene.background.copy(targetBg);
-      this.scene.fog.color.copy(targetBg);
+      if (this.weatherMode === 'thunderstorm' && this.flashIntensity > 0) {
+        const flashColor = new THREE.Color(0xd0e8ff).lerp(targetBg, 1.0 - this.flashIntensity);
+        this.scene.background.copy(flashColor);
+        this.scene.fog.color.copy(flashColor);
+      } else {
+        this.scene.background.copy(targetBg);
+        this.scene.fog.color.copy(targetBg);
+      }
     }
     this.starMat.opacity = starOpacity;
 
@@ -222,11 +301,12 @@ export class Environment {
     }
 
     // 3. Update Rain Particle physics
-    if (this.weatherMode === 'rain' && this.rainParticles) {
+    if ((this.weatherMode === 'rain' || this.weatherMode === 'thunderstorm') && this.rainParticles) {
       const posAttr = this.rainParticles.geometry.attributes.position;
       const arr = posAttr.array;
+      const fallSpeed = this.weatherMode === 'thunderstorm' ? 170 : 120;
       for (let i = 1; i < arr.length; i += 3) {
-        arr[i] -= 120 * delta; // Fall speed
+        arr[i] -= fallSpeed * delta; // Fall speed
         if (arr[i] < 0) {
           arr[i] = 150; // Respawn at top
         }

@@ -114,6 +114,15 @@ export class TimeManager {
     } else {
       this.sunLight.color.setHex(0xffffff);
     }
+
+    // Apply lightning flash light override
+    const env = this.app.environment;
+    if (env && env.weatherMode === 'thunderstorm' && env.flashIntensity > 0) {
+      this.sunLight.intensity = Math.max(this.sunLight.intensity, env.flashIntensity * 3.5);
+      this.ambientLight.intensity = Math.max(this.ambientLight.intensity, env.flashIntensity * 1.8);
+      this.ambientLight.color.setHex(0xd0e8ff);
+      this.sunLight.color.setHex(0xffffff);
+    }
   }
 
   updateNightIllumination() {

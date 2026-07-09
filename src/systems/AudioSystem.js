@@ -218,7 +218,8 @@ export class AudioSystem {
 
     const isNight = (timeVal >= 18.0 || timeVal < 6.0);
     const isRushHour = (timeVal >= 7.0 && timeVal <= 9.5) || (timeVal >= 16.0 && timeVal <= 18.5);
-    const isRaining = this.app && this.app.environment && this.app.environment.weatherMode === 'rain';
+    const weatherMode = this.app && this.app.environment ? this.app.environment.weatherMode : 'clear';
+    const isRaining = (weatherMode === 'rain' || weatherMode === 'thunderstorm');
 
     // 1. Adjust Traffic volume: slightly louder during daytime rush hours, quieter at night
     let targetTrafficGain = isNight ? 0.05 : 0.10;
@@ -230,7 +231,7 @@ export class AudioSystem {
     this.windGain.gain.setTargetAtTime(targetWindGain, this.ctx.currentTime, 1.0);
 
     // 3. Adjust Rain SFX based on weather mode
-    const targetRainGain = isRaining ? 0.20 : 0.0;
+    const targetRainGain = (weatherMode === 'thunderstorm') ? 0.32 : (weatherMode === 'rain' ? 0.20 : 0.0);
     this.rainGain.gain.setTargetAtTime(targetRainGain, this.ctx.currentTime, 0.5);
 
     // 4. Daytime bird chirps (only in clear weather during day)
@@ -625,6 +626,68 @@ export class AudioSystem {
     if (instance) {
       instance.stop();
     }
+  }
+
+  playThunder(volumeScale = 1.0) {
+    if (!this.isEnabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // Create noise buffer for the thunder rumble
+    const bufferSize = this.ctx.sampleRate * 4.0; // 4 seconds duration
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let lastOut = 0.0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      // Brown noise approximation
+      output[i] = (lastOut + (0.05 * white)) / 1.05;
+      lastOut = output[i];
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(140, now);
+    filter.frequency.exponentialRampToValueAtTime(35, now + 3.5);
+
+    const gainNode = this.ctx.createGain();
+    // Immediate crack + rolling wiggles
+    gainNode.gain.setValueAtTime(0.01, now);
+    gainNode.gain.linearRampToValueAtTime(0.8 * volumeScale, now + 0.08); // sharp crack
+    
+    // Simulate rolling echoes/rumble using a wave of random wiggles
+    let time = 0.1;
+    while (time < 3.5) {
+      const rumbleAmp = (0.2 + Math.random() * 0.45) * Math.max(0, 1.0 - time / 3.5);
+      gainNode.gain.linearRampToValueAtTime(rumbleAmp * volumeScale, now + time);
+      time += 0.15 + Math.random() * 0.25;
+    }
+    gainNode.gain.setValueAtTime(gainNode.gain.value, now + 3.6);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 4.0);
+
+    noise.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    noise.start(now);
+    noise.stop(now + 4.05);
+
+    // Deep sub-bass sub impact (shakes the room)
+    const subOsc = this.ctx.createOscillator();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(45, now);
+    subOsc.frequency.exponentialRampToValueAtTime(22, now + 1.2);
+
+    const subGain = this.ctx.createGain();
+    subGain.gain.setValueAtTime(0.6 * volumeScale, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.masterGain);
+    subOsc.start(now);
+    subOsc.stop(now + 1.35);
   }
 }
 
