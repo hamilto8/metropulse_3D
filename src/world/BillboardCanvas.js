@@ -310,8 +310,27 @@ export class BillboardCanvas {
       }
 
       ctx.fillStyle = '#00f0ff';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText('DESTINATION: CYBER MOON BASE 🌌', canvas.width / 2, 310);
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('DESTINATION: CYBER MOON BASE 🌌', canvas.width / 2, 290);
+
+      // Ticker Background Bar (black bar at the bottom)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 324, canvas.width, 60);
+
+      // Yellow neon dividing line above the ticker
+      ctx.strokeStyle = '#ffb703';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 324);
+      ctx.lineTo(canvas.width, 324);
+      ctx.stroke();
+
+      // Scrolling text (left-aligned relative to scrollX)
+      ctx.fillStyle = '#ff007f'; // Neon pink for high contrast
+      ctx.font = 'bold 22px Courier New, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('★ Tapping the unexploited resources of the cosmos! ★ Metropulse Space Program: Exploiting the final frontier for maximum shareholder value ★', data.scrollX || 512, 355);
     }
 
     ctx.textAlign = 'left'; // Reset
@@ -329,10 +348,25 @@ export class BillboardCanvas {
         this.drawTicker(bb);
       } else if (bb.type === 'ad') {
         bb.timer += delta;
-        if (bb.timer > 2.0) {
-          bb.timer = 0;
-          bb.phase++;
+        if (bb.adName === 'SPACE_PROGRAM') {
+          if (bb.scrollX === undefined) {
+            bb.scrollX = 512;
+          }
+          bb.scrollX -= 70 * delta;
+          if (bb.scrollX < -1500) {
+            bb.scrollX = 512;
+          }
+          if (bb.timer > 2.0) {
+            bb.timer = 0;
+            bb.phase++;
+          }
           this.drawAd(bb);
+        } else {
+          if (bb.timer > 2.0) {
+            bb.timer = 0;
+            bb.phase++;
+            this.drawAd(bb);
+          }
         }
       }
     }

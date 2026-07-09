@@ -81,10 +81,10 @@ class MetroPulseApp {
       new THREE.Vector3(5.2, 55, 5.2)
     );
     // Space Billboard
-    const billboardCenterHeight = this.cityBuilder.getHillHeight(650, -160);
+    const billboardCenterHeight = this.cityBuilder.getHillHeight(622, -160);
     this.physicsWorld.addStaticBoxCollider(
-      new THREE.Vector3(650, billboardCenterHeight + 11.0, -160),
-      new THREE.Vector3(24, 22, 3)
+      new THREE.Vector3(622, billboardCenterHeight + 11.0, -160),
+      new THREE.Vector3(32, 22, 2)
     );
 
     // 7. Environment (Sky, Moon, Stars, Weather)

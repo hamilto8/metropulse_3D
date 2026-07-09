@@ -51,7 +51,7 @@ export class CityBuilder {
 
       // Avoid rocket launchpad and billboard areas
       const nearRocket = (x > 670 && x < 730 && z > -310 && z < -250);
-      const nearBillboardSpace = (x > 635 && x < 665 && z > -180 && z < -140);
+      const nearBillboardSpace = (x > 600 && x < 644 && z > -180 && z < -140);
       if (nearRocket || nearBillboardSpace) {
         continue;
       }
@@ -1068,23 +1068,30 @@ export class CityBuilder {
     centerGroup.add(rocketGroup);
     this.scene.add(centerGroup);
 
-    // 4. Large Nearby Electronic Space Billboard (facing South towards road at X = 650, Z = -160)
+    // 4. Large Nearby Electronic Space Billboard (Double-sided, parallel to road at X = 622, Z = -160)
     if (this.billboardCanvas) {
-      const billboardX = 650;
+      const billboardX = 622;
       const billboardZ = -160;
       const billboardY = this.getHillHeight(billboardX, billboardZ);
 
       const billboardGroup = new THREE.Group();
       billboardGroup.position.set(billboardX, billboardY, billboardZ);
-      billboardGroup.rotation.y = Math.PI; // Face South
+      billboardGroup.rotation.y = 0; // Front faces North, Back faces South
 
-      // Screen mesh using billboardCanvas system
-      const screenMesh = this.billboardCanvas.createAdBillboard('SPACE_PROGRAM', 32, 18);
-      screenMesh.position.y = 19;
-      screenMesh.castShadow = true;
-      billboardGroup.add(screenMesh);
+      // A. Front Screen mesh (facing North, Z = 0.08)
+      const screenMeshF = this.billboardCanvas.createAdBillboard('SPACE_PROGRAM', 32, 18);
+      screenMeshF.position.set(0, 19, 0.08);
+      screenMeshF.castShadow = true;
+      billboardGroup.add(screenMeshF);
 
-      // Support pillars
+      // B. Back Screen mesh (facing South, Z = -0.08, rotated Math.PI)
+      const screenMeshB = this.billboardCanvas.createAdBillboard('SPACE_PROGRAM', 32, 18);
+      screenMeshB.position.set(0, 19, -0.08);
+      screenMeshB.rotation.y = Math.PI;
+      screenMeshB.castShadow = true;
+      billboardGroup.add(screenMeshB);
+
+      // C. Support pillars on the left/right edges (no clipping)
       const pillarGeo = new THREE.CylinderGeometry(0.8, 0.8, 22, 8);
       const pillarMat = new THREE.MeshStandardMaterial({
         color: 0x1a1e29,
@@ -1092,20 +1099,27 @@ export class CityBuilder {
         metalness: 0.8
       });
       const pillarL = new THREE.Mesh(pillarGeo, pillarMat);
-      pillarL.position.set(-11, 10, -0.2);
+      pillarL.position.set(-16.2, 10, 0);
       pillarL.castShadow = true;
       billboardGroup.add(pillarL);
 
       const pillarR = new THREE.Mesh(pillarGeo, pillarMat);
-      pillarR.position.set(11, 10, -0.2);
+      pillarR.position.set(16.2, 10, 0);
       pillarR.castShadow = true;
       billboardGroup.add(pillarR);
 
-      // Add a structural truss connector behind screen
-      const trussGeo = new THREE.BoxGeometry(24, 2, 1.5);
-      const truss = new THREE.Mesh(trussGeo, pillarMat);
-      truss.position.set(0, 19, -0.5);
-      billboardGroup.add(truss);
+      // D. Top and bottom horizontal frame borders to sandwich the screens
+      const frameBarGeo = new THREE.BoxGeometry(32.4, 1.0, 1.2);
+      
+      const bottomBar = new THREE.Mesh(frameBarGeo, pillarMat);
+      bottomBar.position.set(0, 9.5, 0);
+      bottomBar.castShadow = true;
+      billboardGroup.add(bottomBar);
+
+      const topBar = new THREE.Mesh(frameBarGeo, pillarMat);
+      topBar.position.set(0, 28.5, 0);
+      topBar.castShadow = true;
+      billboardGroup.add(topBar);
 
       this.scene.add(billboardGroup);
     }
