@@ -166,15 +166,24 @@ h1 {
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  gap: 16px;
   max-height: calc(100vh - 220px);
-  overflow-y: auto;
+  overflow: visible; /* Prevent clipping of absolutely positioned toggle button */
 }
 
-.left-sidebar::-webkit-scrollbar {
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar {
   width: 4px;
 }
-.left-sidebar::-webkit-scrollbar-thumb {
+.sidebar-content::-webkit-scrollbar-thumb {
   background: var(--panel-border);
   border-radius: 4px;
 }
@@ -701,11 +710,19 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   z-index: 5;
   pointer-events: none;
   animation: fadeInOut 10s ease infinite;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeInOut {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.9; }
+}
+
+/* Hide quick-tips when top-header is collapsed */
+#top-header.collapsed ~ .quick-tips {
+  opacity: 0 !important;
+  pointer-events: none;
+  transform: translate(-50%, -20px) !important;
 }
 
 /* Fun Mode / Mayhem Toggle Styling */
