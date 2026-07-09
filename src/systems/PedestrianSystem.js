@@ -27,6 +27,7 @@ export class PedestrianSystem {
     this.spawnPedestrians(60);
     this.baseballBats = [];
     this.isWanted = false;
+    this.escapeTimer = 0;
     this.spawnBaseballBats();
 
     // Listen for attacks
@@ -231,21 +232,59 @@ export class PedestrianSystem {
       // Update police targets to track the player
       if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
         const policeVehicles = this.app.trafficSystem.vehicles.filter(v => v.isPolice && !v.crashed);
+        let minPoliceDist = Infinity;
+
         for (const pv of policeVehicles) {
           pv.emergencyTarget = playerPos.clone();
           pv.maxSpeed = 42;
           pv.targetSpeed = 42;
           pv.sirenTimer = 5.0; // Keep siren blaring!
           
-          // Arrest check
           const distToPlayer = pv.mesh.position.distanceTo(playerPos);
-          if (distToPlayer < 10.0) {
-            this.arrestPlayer();
-            break;
+          if (distToPlayer < minPoliceDist) {
+            minPoliceDist = distToPlayer;
+          }
+        }
+
+        // Arrest check: only arrest if police vehicle is right next to the player (< 3.0 meters)
+        if (minPoliceDist < 3.0) {
+          this.arrestPlayer();
+        } else {
+          // If the player is far away from all police cruisers (> 35 meters), let them escape over time
+          if (minPoliceDist > 35.0) {
+            this.escapeTimer += delta;
+            if (this.escapeTimer >= 8.0) {
+              // Successfully escaped!
+              this.isWanted = false;
+              this.escapeTimer = 0;
+              
+              // Reset police response
+              for (const pv of policeVehicles) {
+                pv.emergencyTarget = null;
+                pv.maxSpeed = 18;
+                pv.targetSpeed = 18;
+              }
+              
+              // Show notification on prompt
+              const prompt = document.getElementById('vehicle-enter-prompt');
+              if (prompt) {
+                prompt.innerHTML = '🚨 <span style="color:#00ff88; font-weight:700;">LOST THE COPS!</span> Wanted level cleared.';
+                prompt.classList.remove('hidden');
+                setTimeout(() => { prompt.classList.add('hidden'); }, 3000);
+              }
+            }
+          } else {
+            // Cops are nearby (between 3.0m and 35.0m), reset escape timer
+            this.escapeTimer = 0;
           }
         }
       }
+    } else {
+      this.escapeTimer = 0;
     }
+
+    // Always update wanted HUD
+    this.updateWantedHud();
 
     // Update active speech bubble if any
     if (this.talkingBubbleTimer > 0) {
@@ -982,5 +1021,33 @@ export class PedestrianSystem {
     setTimeout(() => {
       if (overlay) overlay.classList.add('hidden');
     }, 3000);
+  }
+
+  updateWantedHud() {
+    let hud = document.getElementById('wanted-hud');
+    if (!this.isWanted) {
+      if (hud) hud.classList.add('hidden');
+      return;
+    }
+
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.id = 'wanted-hud';
+      hud.className = 'wanted-hud';
+      document.body.appendChild(hud);
+    }
+
+    // Calculate how many seconds left to escape
+    const escapeProgress = Math.max(0, 8.0 - this.escapeTimer);
+    const progressPercent = Math.min(100, (this.escapeTimer / 8.0) * 100);
+
+    hud.innerHTML = `
+      <div class="wanted-title">🚨 WANTED 🚨</div>
+      <div class="wanted-subtitle">${this.escapeTimer > 0 ? `ESCAPING... (${escapeProgress.toFixed(1)}s)` : 'POLICE PURSUIT!'}</div>
+      <div class="wanted-bar-bg">
+        <div class="wanted-bar" style="width: ${progressPercent}%"></div>
+      </div>
+    `;
+    hud.classList.remove('hidden');
   }
 }
