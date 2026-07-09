@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
+import { Pedestrian } from '../entities/Pedestrian.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -43,6 +44,12 @@ export class TrafficSystem {
             this.app.audioSystem.playHonk();
           }
         }
+      }
+
+      // Check Exit Vehicle with key E when controlling a vehicle!
+      if ((e.key === 'e' || e.key === 'E') && this.controlledVehicle && !e.repeat) {
+        this.keys['e'] = false;
+        this.exitControlledVehicle();
       }
     });
 
@@ -130,6 +137,65 @@ export class TrafficSystem {
         vehicle.mesh.lookAt(vehicle.targetNode.pos);
       }
       vehicle.speed = Math.max(8, vehicle.speed);
+    }
+  }
+
+  exitControlledVehicle() {
+    const v = this.controlledVehicle;
+    if (!v) return;
+
+    let ped = v.driverPedestrian;
+    if (!ped) {
+      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
+      ped = new Pedestrian('CASUAL', pedColors[Math.floor(Math.random() * pedColors.length)], `Driver of ${v.name}`);
+      v.driverPedestrian = ped;
+    }
+
+    const pos = v.mesh.position.clone();
+    const rotY = v.mesh.rotation.y;
+
+    // Offset position to the left side of the vehicle
+    const offset = new THREE.Vector3(-1.8, 0.4, 0);
+    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
+    pos.add(offset);
+
+    if (this.app.pedestrianSystem) {
+      pos.y = this.app.pedestrianSystem.getTerrainHeight(pos.x, pos.z);
+    } else {
+      pos.y = 0.4;
+    }
+
+    ped.mesh.position.copy(pos);
+    ped.mesh.rotation.y = rotY;
+
+    // Make pedestrian visible/active in scene
+    this.app.sceneManager.scene.add(ped.mesh);
+    if (this.app.inspectorHud) {
+      this.app.inspectorHud.registerObject(ped.mesh, ped);
+    }
+
+    // Register inside PedestrianSystem update list
+    if (this.app.pedestrianSystem) {
+      // Ensure it is not added twice
+      if (!this.app.pedestrianSystem.pedestrians.includes(ped)) {
+        this.app.pedestrianSystem.pedestrians.push(ped);
+      }
+      this.app.pedestrianSystem.controlledPedestrian = ped;
+    }
+
+    ped.userControlled = true;
+    ped.info['Mood'] = '🎮 USER CONTROLLED';
+    ped.info['Activity'] = 'Walking streets';
+
+    // Release vehicle control (reverts it to AI/cruising flow)
+    this.releaseControl(v);
+
+    // Follow pedestrian camera
+    this.app.sceneManager.startFollowTarget(ped);
+
+    // Show inspector for pedestrian
+    if (this.app.uiManager) {
+      this.app.uiManager.showInspector(ped);
     }
   }
 
@@ -474,6 +540,10 @@ export class TrafficSystem {
       vehicle.emergencyTarget = null;
       vehicle.normalMaxSpeed = vehicle.maxSpeed;
 
+      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
+      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][i % 3];
+      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[i % pedColors.length], `Driver of ${name}`);
+
       const startNode = outNodes[i % outNodes.length];
       vehicle.mesh.position.copy(startNode.pos);
       vehicle.currentNode = startNode;
@@ -753,6 +823,10 @@ export class TrafficSystem {
       vehicle.isParked = true;
       vehicle.speed = 0;
       vehicle.info['Status'] = '🅿️ Parked';
+
+      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
+      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];
+      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[idx % pedColors.length], `Driver of ${name}`);
 
       vehicle.mesh.position.set(spot.x, 0, spot.z);
       vehicle.mesh.rotation.y = spot.ry;

@@ -369,7 +369,18 @@ export class PedestrianSystem {
 
         const success = this.app.trafficSystem.toggleUserControl(closestVehicle);
         if (success) {
+          closestVehicle.driverPedestrian = p;
           this.releaseControl(p);
+          
+          // Remove from 3D scene rendering
+          this.app.sceneManager.scene.remove(p.mesh);
+          
+          // Remove from active updates list
+          const index = this.pedestrians.indexOf(p);
+          if (index > -1) {
+            this.pedestrians.splice(index, 1);
+          }
+
           prompt.classList.add('hidden');
           
           this.app.sceneManager.startFollowTarget(closestVehicle);
