@@ -31,6 +31,8 @@ export class SceneManager {
 
     // Controls setup
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableKeys = false;
+    this.controls.keys = {};
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
     this.controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go below ground
@@ -122,7 +124,36 @@ export class SceneManager {
     const ts = this.app ? this.app.trafficSystem : null;
     const ps = this.app ? this.app.pedestrianSystem : null;
     const keys = ts ? ts.keys : null;
-    const isControlling = (ts && ts.controlledVehicle != null) || (ps && ps.controlledPedestrian != null);
+
+    let isVehControlled = false;
+    if (ts) {
+      if (ts.controlledVehicle != null) {
+        isVehControlled = true;
+      } else if (ts.vehicles) {
+        for (const v of ts.vehicles) {
+          if (v.userControlled) {
+            isVehControlled = true;
+            break;
+          }
+        }
+      }
+    }
+
+    let isPedControlled = false;
+    if (ps) {
+      if (ps.controlledPedestrian != null) {
+        isPedControlled = true;
+      } else if (ps.pedestrians) {
+        for (const p of ps.pedestrians) {
+          if (p.userControlled) {
+            isPedControlled = true;
+            break;
+          }
+        }
+      }
+    }
+
+    const isControlling = isVehControlled || isPedControlled;
 
     if (keys && !isControlling) {
       const isW = keys['w'] || keys['arrowup'];
