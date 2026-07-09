@@ -1,0 +1,6 @@
+- [x] Expand `missions.json` to include `"vehicleType"` fields and seed new missions for TAXI, POLICE, SPORTS, BUS, TRUCK, and SEDAN.
+- [x] Update `MissionSystem.js` to dynamically show/hide/filter pickup rings based on the active vehicle's type.
+- [x] Enhance `PlayerVehicle.js` to accept `vType` and scale rigid body size, mass, connections, and suspends for different vehicle models.
+- [x] Pass `vehicle.vType` to `PlayerVehicle` in `TrafficSystem.js`.
+- [x] Run `npm run build` to verify there are no compilation errors.
+- [x] Run dev server and trace control/mission flows.

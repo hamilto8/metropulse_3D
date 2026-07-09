@@ -427,8 +427,22 @@ export class MissionSystem {
       this.triggerCooldown -= delta;
     }
 
-    // 1. Animate pickup rings
+    const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+    const followedVehicle = (this.app.sceneManager && this.app.sceneManager.followTarget && this.app.sceneManager.followTarget.type === 'VEHICLE')
+      ? this.app.sceneManager.followTarget
+      : null;
+    const activeVehicle = controlledVehicle || followedVehicle;
+    const activeVType = activeVehicle ? activeVehicle.vType : null;
+
+    // 1. Dynamic visibility & rotation of pickup rings
     for (const r of this.pickupRings) {
+      if (this.state === 'IN_PROGRESS') {
+        r.group.visible = false;
+      } else {
+        // Show only matching vehicle types when driving, or show all when free-floating (no active vehicle)
+        r.group.visible = !activeVType || (r.mission.vehicleType === activeVType);
+      }
+
       if (r.group.visible) {
         r.ringMesh.rotation.z += 1.8 * delta;
       }
@@ -438,12 +452,6 @@ export class MissionSystem {
     if (this.destinationBeacon) {
       this.destinationBeacon.rotation.y += 1.5 * delta;
     }
-
-    const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-    const followedVehicle = (this.app.sceneManager && this.app.sceneManager.followTarget && this.app.sceneManager.followTarget.type === 'VEHICLE')
-      ? this.app.sceneManager.followTarget
-      : null;
-    const activeVehicle = controlledVehicle || followedVehicle;
 
     // 3. If IDLE, check distance to pickup rings (MISSION_TRIGGER_RADIUS capture zone)
     //    Only triggered when the PLAYER has an active vehicle (controlled or followed).

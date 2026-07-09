@@ -2,6 +2,7 @@
   {
     "id": "mission_executive",
     "title": "Boardroom Emergency",
+    "vehicleType": "TAXI",
     "passengerName": "Marcus Vance",
     "passengerRole": "Venture Capital Executive",
     "avatar": "👔",
@@ -47,6 +48,7 @@
   {
     "id": "mission_cyberdj",
     "title": "Headlining Set at Neon Club",
+    "vehicleType": "TAXI",
     "passengerName": "Lyra Pulse",
     "passengerRole": "Cyber-Synth DJ",
     "avatar": "🎧",
@@ -82,6 +84,7 @@
   {
     "id": "mission_scientist",
     "title": "Classified Quantum Data",
+    "vehicleType": "TAXI",
     "passengerName": "Dr. Aris Thorne",
     "passengerRole": "Quantum Physicist",
     "avatar": "🔬",
@@ -117,6 +120,7 @@
   {
     "id": "mission_tourist",
     "title": "Skyline Grand Tour",
+    "vehicleType": "TAXI",
     "passengerName": "Elena Rostova",
     "passengerRole": "Architecture Enthusiast",
     "avatar": "📸",
@@ -145,6 +149,377 @@
       },
       "decline": {
         "text": "Oh, no worries at all. Have a nice day!",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_police_robbery",
+    "title": "Bank Heist Response",
+    "vehicleType": "POLICE",
+    "passengerName": "Officer Sterling",
+    "passengerRole": "Police dispatcher",
+    "avatar": "👮",
+    "pickup": { "x": 0, "z": 0, "district": "Police Precinct Central" },
+    "dropoff": { "x": -50, "z": 50, "district": "Apex Bank Plaza" },
+    "baseReward": 750,
+    "timeLimit": 45,
+    "dialogueTree": {
+      "start": {
+        "text": "Officer, we have a Code 3! A bank heist is underway at the Apex Bank Plaza! Get there immediately to block the exit routes!",
+        "choices": [
+          {
+            "label": "Sirens on! I am responding at high speed. (+Rush Bonus)",
+            "next": "accept_sirens"
+          },
+          {
+            "label": "Copy that, proceeding carefully to coordinates.",
+            "next": "accept_normal"
+          },
+          {
+            "label": "Unable to assist, dispatch. Other duty.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_sirens": {
+        "text": "Cruiser dispatched! Watch out for traffic. Intercept the suspects!",
+        "action": "START_MISSION",
+        "rushBonus": 250,
+        "timeLimitOverride": 38
+      },
+      "accept_normal": {
+        "text": "Understood. Safe travels, get on scene as soon as you can.",
+        "action": "START_MISSION",
+        "rushBonus": 0
+      },
+      "decline": {
+        "text": "Cruiser off-line. Dispatching backup unit...",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_police_park",
+    "title": "Park Patrol Commotion",
+    "vehicleType": "POLICE",
+    "passengerName": "Dispatcher K.",
+    "passengerRole": "Precinct Operator",
+    "avatar": "👮",
+    "pickup": { "x": -100, "z": -50, "district": "North-West Boulevard" },
+    "dropoff": { "x": -50, "z": -100, "district": "Central Park North Gate" },
+    "baseReward": 500,
+    "timeLimit": 50,
+    "dialogueTree": {
+      "start": {
+        "text": "Attention all units, reports of suspicious activity and disturbance near the Central Park North Gate. Investigate code two.",
+        "choices": [
+          {
+            "label": "Acknowledged. Moving in to investigate the park area.",
+            "next": "accept"
+          },
+          {
+            "label": "Negative, busy with traffic patrol.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Copy. Secure the perimeter once on site.",
+        "action": "START_MISSION",
+        "rushBonus": 100
+      },
+      "decline": {
+        "text": "Understood. Stand by for next assignment.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_sports_trial",
+    "title": "Waterfront Time Trial",
+    "vehicleType": "SPORTS",
+    "passengerName": "Jax Racer",
+    "passengerRole": "Pro Circuit Sponsor",
+    "avatar": "🏎️",
+    "pickup": { "x": 210, "z": 0, "district": "Apex Trackline" },
+    "dropoff": { "x": -100, "z": 100, "district": "Waterfront Harbor" },
+    "baseReward": 900,
+    "timeLimit": 40,
+    "dialogueTree": {
+      "start": {
+        "text": "Alright racer, the sponsors are watching. Beat this time trial to the Waterfront Harbor and show us what this sports machine can do!",
+        "choices": [
+          {
+            "label": "Let's push this V6 to the limit! Let's go!",
+            "next": "accept_race"
+          },
+          {
+            "label": "Not racing today, my engine is cold.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_race": {
+        "text": "Timer starts now! GO, GO, GO!",
+        "action": "START_MISSION",
+        "rushBonus": 300,
+        "timeLimitOverride": 32
+      },
+      "decline": {
+        "text": "Disappointing. We need faster drivers on this team.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_sports_smuggle",
+    "title": "Contraband Courier",
+    "vehicleType": "SPORTS",
+    "passengerName": "Kai Neon",
+    "passengerRole": "Underground Fixer",
+    "avatar": "🕶️",
+    "pickup": { "x": 50, "z": -50, "district": "Downtown South" },
+    "dropoff": { "x": 260, "z": -100, "district": "Boba Haven Hideout" },
+    "baseReward": 850,
+    "timeLimit": 60,
+    "dialogueTree": {
+      "start": {
+        "text": "Yo. I need a very fast courier to transport this secure data pad to Boba Haven. No questions, no police sirens. You interested?",
+        "choices": [
+          {
+            "label": "Deal. Out of sight, top speed.",
+            "next": "accept_smuggle"
+          },
+          {
+            "label": "No way, too hot for me.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept_smuggle": {
+        "text": "Good. Dodge the patrols and make it fast.",
+        "action": "START_MISSION",
+        "rushBonus": 200
+      },
+      "decline": {
+        "text": "Whatever. I will find a sports driver who isn't chicken.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_bus_loop",
+    "title": "Waterfront Transit Route",
+    "vehicleType": "BUS",
+    "passengerName": "Transit Central",
+    "passengerRole": "Operations Dispatch",
+    "avatar": "🚌",
+    "pickup": { "x": 0, "z": 100, "district": "Transit Loop Start" },
+    "dropoff": { "x": 260, "z": 100, "district": "Waterfront Terminal" },
+    "baseReward": 400,
+    "timeLimit": 90,
+    "dialogueTree": {
+      "start": {
+        "text": "Operator, the shuttle schedule is running late! Please complete the Waterfront Route to pick up waiting commuters.",
+        "choices": [
+          {
+            "label": "Route accepted. Moving to pick up the passengers.",
+            "next": "accept"
+          },
+          {
+            "label": "End of shift. Heading to depot.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Drive safely, operator. Keep it on schedule.",
+        "action": "START_MISSION",
+        "rushBonus": 100
+      },
+      "decline": {
+        "text": "Acknowledged. Standing by at depot.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_bus_tour",
+    "title": "Downtown Sightseeing",
+    "vehicleType": "BUS",
+    "passengerName": "Clara Tour",
+    "passengerRole": "Tourism Organizer",
+    "avatar": "🗺️",
+    "pickup": { "x": -100, "z": 0, "district": "Arts Center Station" },
+    "dropoff": { "x": 50, "z": 0, "district": "Downtown Hub" },
+    "baseReward": 420,
+    "timeLimit": 80,
+    "dialogueTree": {
+      "start": {
+        "text": "Welcome bus driver! The tourists are aboard. Please take us safely through the downtown commercial strip to the central hub.",
+        "choices": [
+          {
+            "label": "All aboard! Let's begin the city tour.",
+            "next": "accept"
+          },
+          {
+            "label": "Sorry, bus is full or out of service.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Wonderful! Let's show them the skyline.",
+        "action": "START_MISSION",
+        "rushBonus": 50
+      },
+      "decline": {
+        "text": "Oh, we will wait for the next scheduled route.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_truck_delivery",
+    "title": "Steel Cargo Haul",
+    "vehicleType": "TRUCK",
+    "passengerName": "Logistics Bill",
+    "passengerRole": "Warehouse Coordinator",
+    "avatar": "🚛",
+    "pickup": { "x": -50, "z": 100, "district": "Harbor Warehouse" },
+    "dropoff": { "x": 100, "z": -50, "district": "Construction Yard" },
+    "baseReward": 600,
+    "timeLimit": 80,
+    "dialogueTree": {
+      "start": {
+        "text": "Hey driver, this truck is loaded with heavy structural steel. We need it delivered to the Construction Yard ASAP. Keep the cargo secure!",
+        "choices": [
+          {
+            "label": "Engage high gear, I'm on it.",
+            "next": "accept"
+          },
+          {
+            "label": "Too heavy for my rig today.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Excellent. Keep the speed steady on turns and head to the construction yard.",
+        "action": "START_MISSION",
+        "rushBonus": 150
+      },
+      "decline": {
+        "text": "Alright, looking for another freight operator.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_truck_goods",
+    "title": "Chilled Market Supply",
+    "vehicleType": "TRUCK",
+    "passengerName": "Supermarket Lead",
+    "passengerRole": "Supply chain Manager",
+    "avatar": "📦",
+    "pickup": { "x": 210, "z": 50, "district": "Distribution Center" },
+    "dropoff": { "x": 0, "z": -100, "district": "Mart 24/7 Supply" },
+    "baseReward": 550,
+    "timeLimit": 70,
+    "dialogueTree": {
+      "start": {
+        "text": "The cooling unit in this cargo truck is low on battery. Get these fresh food supplies to Mart 24/7 before they spoil!",
+        "choices": [
+          {
+            "label": "Fast express delivery, let's roll.",
+            "next": "accept"
+          },
+          {
+            "label": "Not hauling cold goods today.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Awesome. Move quickly before the cooling system fails!",
+        "action": "START_MISSION",
+        "rushBonus": 120
+      },
+      "decline": {
+        "text": "No worries, I'll find another dispatcher.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_sedan_grocery",
+    "title": "Aunt Sarah's Errand",
+    "vehicleType": "SEDAN",
+    "passengerName": "Aunt Sarah",
+    "passengerRole": "Family Elder",
+    "avatar": "👵",
+    "pickup": { "x": 100, "z": 0, "district": "Mart Plaza North" },
+    "dropoff": { "x": -50, "z": -50, "district": "West Residential Block" },
+    "baseReward": 300,
+    "timeLimit": 70,
+    "dialogueTree": {
+      "start": {
+        "text": "Oh, dear! I have so many heavy grocery bags from the market. Could you give me a lift back home to the West Residential Block?",
+        "choices": [
+          {
+            "label": "Of course, Aunt Sarah! Put them in the trunk, let's go.",
+            "next": "accept"
+          },
+          {
+            "label": "Sorry, I am late for another appointment.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "You are such a sweet soul. Thank you, let's head home!",
+        "action": "START_MISSION",
+        "rushBonus": 50
+      },
+      "decline": {
+        "text": "Oh, no problem. I'll ask one of the yellow taxis.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_sedan_testing",
+    "title": "Autopilot Diagnostic Run",
+    "vehicleType": "SEDAN",
+    "passengerName": "NeoTech Support",
+    "passengerRole": "QA Engineer",
+    "avatar": "💻",
+    "pickup": { "x": 50, "z": 50, "district": "NeoTech Corporate Annex" },
+    "dropoff": { "x": 310, "z": 50, "district": "Nexus Plaza Center" },
+    "baseReward": 350,
+    "timeLimit": 65,
+    "dialogueTree": {
+      "start": {
+        "text": "Hello, we need a manual diagnostic test drive of this Sedan to Nexus Plaza to check the sensory nodes. Ready to proceed?",
+        "choices": [
+          {
+            "label": "Ready to log system data.",
+            "next": "accept"
+          },
+          {
+            "label": "Calibration error. Not ready.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Telemetry log initiated. Safe drive to Nexus Plaza.",
+        "action": "START_MISSION",
+        "rushBonus": 80
+      },
+      "decline": {
+        "text": "Diagnostic cancelled. Rescheduling update.",
         "action": "DECLINE"
       }
     }

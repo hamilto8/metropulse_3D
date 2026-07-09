@@ -2,37 +2,92 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
 export class PlayerVehicle {
-  constructor(mesh, physicsWorld, initialPosition = null, initialRotation = null) {
+  constructor(mesh, physicsWorld, initialPosition = null, initialRotation = null, vType = 'SEDAN') {
     this.mesh = mesh;
     this.physicsWorld = physicsWorld;
     this.type = 'VEHICLE';
+    this.vType = vType;
     this.isPhysicsControlled = true;
     this.currentSteering = 0;
     this.speedKmH = 0;
     this.gear = 1;
     this.info = {
       'Status': '🏎️ PHYSICS ACTION MODE',
-      'Engine': 'Twin-Turbo V6 (cannon-es)',
-      'Drive': 'AWD RaycastVehicle',
+      'Engine': this.getEngineName(vType),
+      'Drive': this.getDriveType(vType),
       'Speed': '0 km/h'
     };
 
     const startPos = initialPosition || mesh.position;
     const startRot = initialRotation || mesh.rotation;
+    
+    // Set dynamic offsets
+    this.meshOffset = 0.55;
+    if (this.vType === 'SPORTS') this.meshOffset = 0.48;
+    else if (this.vType === 'TRUCK') this.meshOffset = 1.35;
+    else if (this.vType === 'BUS') this.meshOffset = 2.05;
+
     this.initPhysics(startPos, startRot);
   }
 
+  getEngineName(vType) {
+    switch (vType) {
+      case 'SPORTS': return 'High-Rev V8 Hybrid (cannon-es)';
+      case 'BUS': return 'Heavy-Duty Electric Drive';
+      case 'TRUCK': return 'High-Torque Turbodiesel';
+      case 'POLICE': return 'Interceptor V8 Supercharged';
+      default: return 'Twin-Turbo V6 (cannon-es)';
+    }
+  }
+
+  getDriveType(vType) {
+    switch (vType) {
+      case 'SPORTS': return 'RWD Performance Chassis';
+      case 'BUS': return '6x4 Transit Chassis';
+      case 'TRUCK': return 'Rear-Dual Heavy Duty';
+      case 'POLICE': return 'Pursuit-Tuned AWD';
+      default: return 'AWD RaycastVehicle';
+    }
+  }
+
   initPhysics(pos, rot) {
-    // 1. Chassis rigid body (box halfExtents: width 0.95m, height 0.45m, length 1.9m)
-    const chassisShape = new CANNON.Box(new CANNON.Vec3(0.95, 0.45, 1.9));
+    let mass = 1200;
+    let width = 2.0, height = 1.4, length = 4.2;
+    let wheelRadius = 0.4, suspensionRestLength = 0.45, suspensionStiffness = 48;
+    let maxSuspensionForce = 100000;
+    
+    if (this.vType === 'SPORTS') {
+      mass = 950;
+      width = 2.1; height = 1.1; length = 4.4;
+      wheelRadius = 0.45;
+      suspensionRestLength = 0.38;
+      suspensionStiffness = 65;
+    } else if (this.vType === 'BUS') {
+      mass = 4800;
+      width = 2.6; height = 3.2; length = 10.5;
+      wheelRadius = 0.6;
+      suspensionRestLength = 0.6;
+      suspensionStiffness = 120;
+      maxSuspensionForce = 350000;
+    } else if (this.vType === 'TRUCK') {
+      mass = 3500;
+      width = 2.4; height = 3.0; length = 7.5;
+      wheelRadius = 0.55;
+      suspensionRestLength = 0.55;
+      suspensionStiffness = 95;
+      maxSuspensionForce = 250000;
+    }
+
+    // 1. Chassis rigid body
+    const chassisShape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, length / 2));
     this.chassisBody = new CANNON.Body({
-      mass: 1100,
+      mass: mass,
       material: this.physicsWorld.wheelMaterial
     });
-    this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, 0.2, 0));
+    this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, height * 0.15, 0));
     
-    // Position chassis at Y = 1.05 so wheels rest precisely on road Y = 0.0
-    this.chassisBody.position.set(pos.x, 1.05, pos.z);
+    const initialY = pos.y > 0.5 ? pos.y : (wheelRadius + height * 0.5);
+    this.chassisBody.position.set(pos.x, initialY, pos.z);
 
     if (rot) {
       const q = new THREE.Quaternion().setFromEuler(rot);
@@ -49,16 +104,16 @@ export class PlayerVehicle {
       indexForwardAxis: 2
     });
 
-    // Create distinct options object per wheel to prevent shared vector references
-    const createWheelOptions = (connectionPoint) => ({
-      radius: 0.42,
+    // Create distinct options object per wheel
+    const createWheelOptions = (connectionPoint, radius) => ({
+      radius: radius,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 48,
-      suspensionRestLength: 0.45,
-      frictionSlip: 6.0,
+      suspensionStiffness: suspensionStiffness,
+      suspensionRestLength: suspensionRestLength,
+      frictionSlip: this.vType === 'SPORTS' ? 8.0 : 6.0,
       dampingRelaxation: 2.8,
       dampingCompression: 4.5,
-      maxSuspensionForce: 100000,
+      maxSuspensionForce: maxSuspensionForce,
       rollInfluence: 0.05,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: connectionPoint,
@@ -67,17 +122,34 @@ export class PlayerVehicle {
       useCustomSlidingRotationalSpeed: true
     });
 
-    // Front Left (wheel 0)
-    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(0.9, -0.05, 1.35)));
+    const wOffsetX = width * 0.45;
 
-    // Front Right (wheel 1)
-    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-0.9, -0.05, 1.35)));
-
-    // Rear Left (wheel 2)
-    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(0.9, -0.05, -1.35)));
-
-    // Rear Right (wheel 3)
-    this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-0.9, -0.05, -1.35)));
+    if (this.vType === 'BUS') {
+      // 6 wheels connection points
+      // Front axle
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, length * 0.38), wheelRadius));
+      
+      // Middle axle
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -length * 0.1), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -length * 0.1), wheelRadius));
+      
+      // Rear axle
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -length * 0.38), wheelRadius));
+    } else {
+      // 4 wheels connection points
+      const wOffsetZ = length * 0.35;
+      
+      // Front Left
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, wOffsetZ), wheelRadius));
+      // Front Right
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, wOffsetZ), wheelRadius));
+      // Rear Left
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -wOffsetZ), wheelRadius));
+      // Rear Right
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -wOffsetZ), wheelRadius));
+    }
 
     this.raycastVehicle.addToWorld(this.physicsWorld.world);
   }
@@ -85,15 +157,14 @@ export class PlayerVehicle {
   applyInput(keys, delta) {
     if (!keys || !this.chassisBody) return;
 
-    // Freeze controls while a dialogue modal is open (matches non-physics path in TrafficSystem)
+    // Freeze controls while a dialogue modal is open
     const dialogueOpen = window.app?.dialogueOverlay?.currentMission != null;
     if (dialogueOpen) {
-      // Apply natural braking — zero engine force, light brake on all wheels
-      for (let i = 0; i < 4; i++) {
+      const numWheels = this.raycastVehicle.wheelInfos.length;
+      for (let i = 0; i < numWheels; i++) {
         this.raycastVehicle.applyEngineForce(0, i);
         this.raycastVehicle.setBrake(80, i);
       }
-      // Dampen angular velocity so car straightens out
       this.chassisBody.angularVelocity.y *= 0.7;
       return;
     }
@@ -104,17 +175,16 @@ export class PlayerVehicle {
     const isRight = keys['d'] || keys['arrowright'];
     const isHandbrake = keys[' '];
 
-
     // Calculate forward speed along vehicle forward vector (+Z local)
     const forwardVec = new CANNON.Vec3(0, 0, 1);
     this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
     const currentForwardSpeed = this.chassisBody.velocity.dot(forwardVec);
 
-    const maxEngineForce = 4500;
-    const maxBrakeForce = 160;
-    const maxSteerVal = 0.55;
+    const maxEngineForce = this.vType === 'SPORTS' ? 6500 : (this.vType === 'BUS' ? 18000 : (this.vType === 'TRUCK' ? 12000 : 4500));
+    const maxBrakeForce = this.vType === 'BUS' ? 600 : (this.vType === 'TRUCK' ? 400 : 160);
+    const maxSteerVal = this.vType === 'BUS' ? 0.35 : (this.vType === 'TRUCK' ? 0.45 : 0.55);
 
-    // 1. Crisp Steering Angle + Direct Arcade Yaw Torque
+    // 1. Steering
     let targetSteering = 0;
     if (isLeft) targetSteering = maxSteerVal;
     if (isRight) targetSteering = -maxSteerVal;
@@ -132,7 +202,6 @@ export class PlayerVehicle {
       } else if (isRight) {
         this.chassisBody.angularVelocity.y = -turnRate * turnDir;
       } else {
-        // Dampen angular velocity when not steering so the car tracks straight
         this.chassisBody.angularVelocity.y *= 0.85;
       }
     }
@@ -147,10 +216,14 @@ export class PlayerVehicle {
       } else {
         engineForce = maxEngineForce;
         brakeForce = 0;
-        // Apply forward thrust force at center of mass (relativePoint = 0,0,0)
-        if (currentForwardSpeed < 42) { // Top speed ~150 km/h
+        
+        // Scale thrust dynamically with mass/type
+        const thrustForceVal = this.vType === 'SPORTS' ? 42000 : (this.vType === 'BUS' ? 120000 : (this.vType === 'TRUCK' ? 85000 : 32000));
+        const maxSpeedLimit = this.vType === 'SPORTS' ? 52 : (this.vType === 'BUS' ? 22 : (this.vType === 'TRUCK' ? 28 : 42));
+        
+        if (currentForwardSpeed < maxSpeedLimit) {
           const thrust = forwardVec.clone();
-          thrust.scale(32000, thrust); // 32,000 N -> ~29 m/s^2 acceleration
+          thrust.scale(thrustForceVal, thrust);
           this.chassisBody.applyForce(thrust, new CANNON.Vec3(0, 0, 0));
         }
       }
@@ -167,7 +240,6 @@ export class PlayerVehicle {
         }
       }
     } else {
-      // Natural rolling resistance
       brakeForce = 15;
     }
 
@@ -175,25 +247,26 @@ export class PlayerVehicle {
       brakeForce = maxBrakeForce * 2.5;
     }
 
-    // 3. Lateral grip stabilization (prevents sideways ice-skating unless handbraking)
+    // 3. Lateral grip stabilization
     if (!isHandbrake && Math.abs(currentForwardSpeed) > 1.0) {
       const rightVec = new CANNON.Vec3(1, 0, 0);
       this.chassisBody.quaternion.vmult(rightVec, rightVec);
       const lateralVel = this.chassisBody.velocity.dot(rightVec);
-      // Counteract sideways slide for clean arcade cornering
       const antiDrift = rightVec.clone();
-      antiDrift.scale(-lateralVel * this.chassisBody.mass * 10.0, antiDrift);
+      antiDrift.scale(-lateralVel * this.chassisBody.mass * (this.vType === 'SPORTS' ? 12.0 : 10.0), antiDrift);
       this.chassisBody.applyForce(antiDrift, new CANNON.Vec3(0, 0, 0));
     }
 
-    // 4. Aerodynamic downforce applied at center of mass
+    // 4. Aerodynamic downforce
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
-      const downForce = new CANNON.Vec3(0, -400 * speed, 0);
+      const downForceFactor = this.vType === 'SPORTS' ? -600 : (this.vType === 'BUS' ? -100 : (this.vType === 'TRUCK' ? -200 : -400));
+      const downForce = new CANNON.Vec3(0, downForceFactor * speed, 0);
       this.chassisBody.applyForce(downForce, new CANNON.Vec3(0, 0, 0));
     }
 
-    for (let i = 0; i < 4; i++) {
+    const numWheels = this.raycastVehicle.wheelInfos.length;
+    for (let i = 0; i < numWheels; i++) {
       this.raycastVehicle.applyEngineForce(engineForce, i);
       this.raycastVehicle.setBrake(brakeForce, i);
     }
@@ -202,16 +275,16 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
-    // Safety check: ensure chassis never drops below road level
+    // Safety height based on vehicle type
+    const safetyY = this.vType === 'BUS' ? 2.5 : (this.vType === 'TRUCK' ? 1.8 : 1.05);
     if (this.chassisBody.position.y < 0.3) {
-      this.chassisBody.position.y = 1.05;
+      this.chassisBody.position.y = safetyY;
       this.chassisBody.velocity.y = Math.max(0, this.chassisBody.velocity.y);
     }
 
     // Sync chassis transform to visual Three.js mesh
     this.mesh.position.copy(this.chassisBody.position);
-    // Offset Y so wheels rest exactly on ground level (Y = 0)
-    this.mesh.position.y -= 0.55;
+    this.mesh.position.y -= this.meshOffset;
     this.mesh.quaternion.copy(this.chassisBody.quaternion);
 
     // Calculate Speed and Gear for HUD
@@ -228,9 +301,9 @@ export class PlayerVehicle {
     this.info['Speed'] = `${this.speedKmH} km/h (Gear ${this.gear})`;
   }
 
-  resetPosition(yOffset = 1.2) {
+  resetPosition() {
     if (!this.chassisBody) return;
-    // Flip upright if rolled over
+    const yOffset = this.vType === 'BUS' ? 2.8 : (this.vType === 'TRUCK' ? 2.2 : 1.2);
     this.chassisBody.position.y = yOffset;
     const euler = new THREE.Euler(0, this.mesh.rotation.y, 0);
     const q = new THREE.Quaternion().setFromEuler(euler);

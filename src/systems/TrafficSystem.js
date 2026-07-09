@@ -68,7 +68,7 @@ export class TrafficSystem {
         if (vehicle.physicsBody) {
           this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
         }
-        vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld);
+        vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
       }
 
       return true;
