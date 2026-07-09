@@ -18,6 +18,7 @@ export class UIManager {
     // Camera and Weather controls
     this.cameraButtons = document.querySelectorAll('[data-camera]');
     this.weatherButtons = document.querySelectorAll('[data-weather]');
+    this.btnDynamicWeather = document.getElementById('btn-dynamic-weather');
     
     // Audio controls
     this.btnMute = document.getElementById('btn-mute');
@@ -94,6 +95,12 @@ export class UIManager {
     // Weather toggle
     this.weatherButtons.forEach(btn => {
       btn.addEventListener('click', () => {
+        // Turning on manual weather disables dynamic weather cycle
+        if (this.app.environment) {
+          this.app.environment.isDynamicWeather = false;
+          this.updateDynamicWeatherBtnState();
+        }
+
         this.weatherButtons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const weatherMode = btn.dataset.weather;
@@ -103,6 +110,22 @@ export class UIManager {
         }
       });
     });
+
+    // Dynamic Weather Cycle toggle
+    if (this.btnDynamicWeather) {
+      this.btnDynamicWeather.addEventListener('click', () => {
+        if (this.app.environment) {
+          const env = this.app.environment;
+          env.isDynamicWeather = !env.isDynamicWeather;
+          this.updateDynamicWeatherBtnState();
+
+          if (env.isDynamicWeather) {
+            // Immediate transition timer
+            env.weatherCycleTimer = 25.0 + Math.random() * 25.0;
+          }
+        }
+      });
+    }
 
     // Audio toggle
     if (this.btnMute) {
@@ -443,5 +466,26 @@ export class UIManager {
     }
 
     this.reStatusDisplay.innerHTML = `Market Status: <span style="color: ${colorHex}; font-weight: 700;">${statusText}</span>`;
+  }
+
+  updateDynamicWeatherBtnState() {
+    if (!this.btnDynamicWeather || !this.app.environment) return;
+    const active = this.app.environment.isDynamicWeather;
+    this.btnDynamicWeather.classList.toggle('active', active);
+    this.btnDynamicWeather.innerHTML = active ? '🔄 Dynamic Cycle: ON' : '🔄 Dynamic Cycle: OFF';
+  }
+
+  syncWeatherButtons(mode) {
+    if (!this.weatherButtons) return;
+    this.weatherButtons.forEach(btn => {
+      if (btn.dataset.weather === mode) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    if (this.app.physicsWorld) {
+      this.app.physicsWorld.setWeatherFriction(mode);
+    }
   }
 }

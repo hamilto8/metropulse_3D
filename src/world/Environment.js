@@ -20,6 +20,10 @@ export class Environment {
     this.thunderTimer = -1;
     this.thunderVolume = 1.0;
 
+    // Dynamic weather cycle state
+    this.isDynamicWeather = false;
+    this.weatherCycleTimer = 0;
+
     this.initSkyAndStars();
     this.initRain();
   }
@@ -158,6 +162,28 @@ export class Environment {
   }
 
   update(timeVal, delta) {
+    // Dynamic weather cycling
+    if (this.isDynamicWeather) {
+      this.weatherCycleTimer -= delta;
+      if (this.weatherCycleTimer <= 0) {
+        const modes = ['clear', 'mist', 'rain', 'thunderstorm'];
+        let nextModes = modes.filter(m => m !== this.weatherMode);
+        // Bias towards clear weather slightly so it doesn't storm non-stop
+        if (this.weatherMode !== 'clear' && Math.random() < 0.45) {
+          nextModes = ['clear'];
+        }
+        const newMode = nextModes[Math.floor(Math.random() * nextModes.length)];
+        this.setWeather(newMode);
+
+        if (this.app && this.app.uiManager) {
+          this.app.uiManager.syncWeatherButtons(newMode);
+        }
+
+        // Cycle every 25 to 50 seconds
+        this.weatherCycleTimer = 25.0 + Math.random() * 25.0;
+      }
+    }
+
     // 1. Sky & Fog color transitions based on time of day
     const dayColor = new THREE.Color(0x3882f6); // Bright blue
     const nightColor = new THREE.Color(0x070913); // Deep navy/black
