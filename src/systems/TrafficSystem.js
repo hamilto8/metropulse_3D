@@ -50,6 +50,7 @@ export class TrafficSystem {
       if ((e.key === 'e' || e.key === 'E') && this.controlledVehicle && !e.repeat) {
         this.keys['e'] = false;
         this.exitControlledVehicle();
+        return; // Prevent fall-through double trigger
       }
 
       // Check pedestrian actions (Talk / Hijack) with key E when controlling a pedestrian!

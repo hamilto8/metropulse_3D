@@ -528,24 +528,46 @@ export class PedestrianSystem {
     const camera = this.app.sceneManager.camera;
     if (!camera) return;
 
-    const tempV = new THREE.Vector3();
-    tempV.copy(this.talkingPedestrian.mesh.position);
-    tempV.y += 2.8; // Above pedestrian's head
-    
-    tempV.project(camera);
-    
+    // Ensure camera world matrix is fresh
+    camera.updateMatrixWorld();
+
+    const targetPos = new THREE.Vector3();
+    this.talkingPedestrian.mesh.getWorldPosition(targetPos);
+    targetPos.y += 2.8; // Position above the pedestrian's head
+
+    // Check mathematically if the target is in front of the camera plane
+    const toTarget = targetPos.clone().sub(camera.position);
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    const dot = toTarget.dot(camDir);
+
     const bubble = document.getElementById('pedestrian-speech-bubble');
-    if (bubble) {
-      if (tempV.z > 1.0) {
-        // Target is behind camera, hide bubble
+    if (!bubble) return;
+
+    if (dot <= 0.1) {
+      // Behind camera, hide bubble
+      bubble.classList.add('hidden');
+      return;
+    }
+
+    // Project world coordinates onto screen
+    targetPos.project(camera);
+
+    // NDC coordinates must be within visible viewport depth limits
+    if (targetPos.z > 1.0) {
+      bubble.classList.add('hidden');
+    } else {
+      const x = (targetPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (targetPos.y * -0.5 + 0.5) * window.innerHeight;
+
+      if (isNaN(x) || isNaN(y)) {
         bubble.classList.add('hidden');
-      } else {
-        const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
-        const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
-        bubble.style.left = `${x}px`;
-        bubble.style.top = `${y}px`;
-        bubble.classList.remove('hidden');
+        return;
       }
+
+      bubble.style.left = `${x}px`;
+      bubble.style.top = `${y}px`;
+      bubble.classList.remove('hidden');
     }
   }
 
