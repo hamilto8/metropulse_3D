@@ -356,13 +356,14 @@ export class PedestrianSystem {
         document.body.appendChild(prompt);
       }
       
-      prompt.innerHTML = `🏎️ Press <span style="color: #00f0ff;">[F]</span> or <span style="color: #00f0ff;">[Enter]</span> to Hijack ${closestVehicle.name.toUpperCase()}`;
+      prompt.innerHTML = `🏎️ Press <span style="color: #00f0ff;">[E]</span> to Hijack ${closestVehicle.name.toUpperCase()}`;
       prompt.classList.remove('hidden');
 
       const ts = this.app.trafficSystem;
       const keys = ts ? ts.keys : null;
-      if (keys && (keys['f'] || keys['enter'])) {
+      if (keys && (keys['e'] || keys['f'] || keys['enter'])) {
         // Hijack key pressed! Consume input to prevent duplicate hits
+        keys['e'] = false;
         keys['f'] = false;
         keys['enter'] = false;
 

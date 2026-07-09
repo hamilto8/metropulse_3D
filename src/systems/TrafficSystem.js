@@ -24,6 +24,7 @@ export class TrafficSystem {
 
     this.initWaypoints();
     this.spawnVehicles(48);
+    this.spawnParkedVehicles();
     this.initKeyboardControls();
   }
 
@@ -63,6 +64,12 @@ export class TrafficSystem {
       if (this.app && this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian) {
         this.app.pedestrianSystem.releaseControl(this.app.pedestrianSystem.controlledPedestrian);
       }
+      
+      // If the vehicle was parked, unpark it!
+      if (vehicle.isParked) {
+        vehicle.isParked = false;
+      }
+
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
@@ -520,6 +527,7 @@ export class TrafficSystem {
           const v1 = this.vehicles[i];
           const v2 = this.vehicles[j];
           if (v1.crashed || v2.crashed) continue;
+          if (v1.isParked && v2.isParked) continue;
 
           const dist = v1.mesh.position.distanceTo(v2.mesh.position);
           if (dist < 3.8) {
@@ -561,11 +569,17 @@ export class TrafficSystem {
       if (v.crashed) {
         v.crashTimer -= delta;
         if (v.crashTimer <= 0) {
-          // Clear accident and resume driving
+          // Clear accident and resume driving/parking
           v.crashed = false;
           v.mesh.rotation.z = 0;
-          v.speed = 12;
-          v.maxSpeed = v.normalMaxSpeed || 18;
+          if (v.isParked) {
+            v.speed = 0;
+            v.info['Status'] = '🅿️ Parked';
+          } else {
+            v.speed = 12;
+            v.maxSpeed = v.normalMaxSpeed || 18;
+            v.info['Status'] = 'Cruising';
+          }
           
           // Release any responding police cars
           for (const p of this.vehicles) {
@@ -575,6 +589,12 @@ export class TrafficSystem {
             }
           }
         }
+        v.update(delta);
+        continue;
+      }
+
+      // Handle Parked State
+      if (v.isParked) {
         v.update(delta);
         continue;
       }
@@ -699,5 +719,64 @@ export class TrafficSystem {
         }
       }
     }
+  }
+
+  spawnParkedVehicles() {
+    const types = ['SEDAN', 'SPORTS', 'TAXI', 'SEDAN'];
+    const colors = [0x555555, 0x00ff88, 0xffbb00, 0x0ea5e9, 0xef4444, 0x10b981];
+    const names = ['Cyber Cruiser', 'Apex GT', 'City Yellow Cab', 'Neo Tech Sedan'];
+
+    const spots = [
+      { x: 6.0, z: 25.0, ry: 0 },
+      { x: -6.0, z: -25.0, ry: Math.PI },
+      { x: 56.0, z: 30.0, ry: 0 },
+      { x: 44.0, z: -30.0, ry: Math.PI },
+      { x: 106.0, z: 15.0, ry: 0 },
+      { x: 94.0, z: -15.0, ry: Math.PI },
+      { x: 25.0, z: 6.0, ry: Math.PI / 2 },
+      { x: -25.0, z: -6.0, ry: -Math.PI / 2 },
+      { x: 20.0, z: 56.0, ry: Math.PI / 2 },
+      { x: -20.0, z: 44.0, ry: -Math.PI / 2 },
+      { x: 275.0, z: 6.0, ry: Math.PI / 2 },
+      { x: 245.0, z: -6.0, ry: -Math.PI / 2 }
+    ];
+
+    spots.forEach((spot, idx) => {
+      const typeIdx = idx % types.length;
+      const vType = types[typeIdx];
+      const color = colors[idx % colors.length];
+      const name = `${names[typeIdx]} (Parked) #${idx + 50}`;
+
+      const vehicle = new Vehicle(vType, color, name);
+      vehicle.crashed = false;
+      vehicle.crashTimer = 0;
+      vehicle.isParked = true;
+      vehicle.speed = 0;
+      vehicle.info['Status'] = '🅿️ Parked';
+
+      vehicle.mesh.position.set(spot.x, 0, spot.z);
+      vehicle.mesh.rotation.y = spot.ry;
+
+      this.app.sceneManager.scene.add(vehicle.mesh);
+      
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(vehicle.mesh, vehicle);
+      }
+      
+      if (this.app.physicsWorld) {
+        vehicle.physicsBody = this.app.physicsWorld.addKinematicBoxCollider(
+          new THREE.Vector3(spot.x, 1.05, spot.z),
+          new THREE.Vector3(2.1, 1.2, 4.4)
+        );
+        if (vehicle.physicsBody) {
+          vehicle.physicsBody.quaternion.setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            spot.ry
+          );
+        }
+      }
+
+      this.vehicles.push(vehicle);
+    });
   }
 }
