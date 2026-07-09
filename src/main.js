@@ -40,7 +40,7 @@ class MetroPulseApp {
     this.billboardCanvas = new BillboardCanvas(this);
 
     // 5. Build City Infrastructure
-    this.cityBuilder = new CityBuilder(this.sceneManager.scene, this.inspectorHud);
+    this.cityBuilder = new CityBuilder(this.sceneManager.scene, this.inspectorHud, this.billboardCanvas);
     this.cityBuilder.build();
 
     // 6. Build Skyscrapers & Commercial Businesses
@@ -67,6 +67,25 @@ class MetroPulseApp {
         }
       }
     }
+
+    // Register space launch facility & space billboard colliders
+    const rocketCenterHeight = this.cityBuilder.getHillHeight(700, -280);
+    // Launchpad
+    this.physicsWorld.addStaticBoxCollider(
+      new THREE.Vector3(700, rocketCenterHeight + 0.75, -280),
+      new THREE.Vector3(36, 1.5, 36)
+    );
+    // Launch Gantry Tower
+    this.physicsWorld.addStaticBoxCollider(
+      new THREE.Vector3(690, rocketCenterHeight + 27.5, -280),
+      new THREE.Vector3(5.2, 55, 5.2)
+    );
+    // Space Billboard
+    const billboardCenterHeight = this.cityBuilder.getHillHeight(650, -160);
+    this.physicsWorld.addStaticBoxCollider(
+      new THREE.Vector3(650, billboardCenterHeight + 11.0, -160),
+      new THREE.Vector3(24, 22, 3)
+    );
 
     // 7. Environment (Sky, Moon, Stars, Weather)
     this.environment = new Environment(this.sceneManager.scene, this.inspectorHud, this);

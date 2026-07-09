@@ -244,10 +244,74 @@ export class BillboardCanvas {
       ctx.font = 'bold 22px monospace';
       ctx.fillText('NOW SHOWING IN IMMERSIVE 3D', canvas.width / 2, 270);
 
-      // Decorative stars
+    } else if (adName === 'SPACE_PROGRAM') {
+      // Space Nebula Gradient
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, '#03071e');
+      grad.addColorStop(0.5, '#370617');
+      grad.addColorStop(1, '#03001e');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw grid lines
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < canvas.width; i += 64) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let j = 0; j < canvas.height; j += 64) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(canvas.width, j);
+        ctx.stroke();
+      }
+
+      // Title
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 32px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 12;
+      ctx.fillText('METROPULSE SPACE PROGRAM', canvas.width / 2, 70);
+
+      // Rocket Icon Silhouette
+      ctx.fillStyle = '#e53e3e';
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 110);
+      ctx.lineTo(canvas.width / 2 + 15, 140);
+      ctx.lineTo(canvas.width / 2 + 10, 170);
+      ctx.lineTo(canvas.width / 2 - 10, 170);
+      ctx.lineTo(canvas.width / 2 - 15, 140);
+      ctx.closePath();
+      ctx.fill();
+
+      // Flame
+      ctx.fillStyle = phase % 2 === 0 ? '#ff9f1c' : '#ff4d6d';
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2 - 8, 170);
+      ctx.lineTo(canvas.width / 2, 190);
+      ctx.lineTo(canvas.width / 2 + 8, 170);
+      ctx.closePath();
+      ctx.fill();
+
+      // Status text
+      if (phase % 2 === 0) {
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 28px monospace';
+        ctx.fillText('NEXT LAUNCH: T-MINUS 00:04:12', canvas.width / 2, 240);
+      } else {
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 28px monospace';
+        ctx.fillText('STATUS: PROPELLANT LOADING', canvas.width / 2, 240);
+      }
+
       ctx.fillStyle = '#00f0ff';
-      ctx.font = '18px sans-serif';
-      ctx.fillText('★ ★ ★ ★ ★', canvas.width / 2, 320);
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('DESTINATION: CYBER MOON BASE 🌌', canvas.width / 2, 310);
     }
 
     ctx.textAlign = 'left'; // Reset

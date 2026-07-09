@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 
 export class CityBuilder {
-  constructor(scene, inspectorHud) {
+  constructor(scene, inspectorHud, billboardCanvas) {
     this.scene = scene;
     this.inspectorHud = inspectorHud;
+    this.billboardCanvas = billboardCanvas;
     this.streetlamps = [];
     this.buildingPlots = [];
     this.roadNetwork = {
@@ -21,6 +22,7 @@ export class CityBuilder {
     this.createStreetFurniture();
     this.createCountrysideNature();
     this.createCountrysideSuburb();
+    this.createRocketCenter(700, -280);
   }
 
   createCountrysideNature() {
@@ -47,6 +49,13 @@ export class CityBuilder {
         }
       }
 
+      // Avoid rocket launchpad and billboard areas
+      const nearRocket = (x > 670 && x < 730 && z > -310 && z < -250);
+      const nearBillboardSpace = (x > 635 && x < 665 && z > -180 && z < -140);
+      if (nearRocket || nearBillboardSpace) {
+        continue;
+      }
+      
       if (!nearRoad) {
         const y = this.getHillHeight(x, z);
         this.createTree(x, y - 0.2, z);
@@ -873,6 +882,232 @@ export class CityBuilder {
       this.scene.add(lampGroup);
 
       this.streetlamps.push({ bulb: bulb, cone: coneMat, group: lampGroup, pos: lampGroup.position });
+    }
+  }
+
+  createRocketCenter(x, z) {
+    const centerGroup = new THREE.Group();
+    const terrainY = this.getHillHeight(x, z);
+    centerGroup.position.set(x, terrainY, z);
+
+    // 1. Concrete Launchpad (diameter 36, height 1.5)
+    const padGeo = new THREE.CylinderGeometry(18, 18, 1.5, 8);
+    const padMat = new THREE.MeshStandardMaterial({
+      color: 0x2b2d42,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const pad = new THREE.Mesh(padGeo, padMat);
+    pad.position.y = 0.75;
+    pad.receiveShadow = true;
+    pad.castShadow = true;
+    centerGroup.add(pad);
+
+    // Red safety border around pad
+    const borderGeo = new THREE.TorusGeometry(18, 0.4, 8, 24);
+    borderGeo.rotateX(Math.PI / 2);
+    const borderMat = new THREE.MeshBasicMaterial({ color: 0xef233c });
+    const border = new THREE.Mesh(borderGeo, borderMat);
+    border.position.y = 1.5;
+    centerGroup.add(border);
+
+    // 2. Launch Tower (Gantry) next to rocket (offset X = -10, Z = 0)
+    const towerHeight = 55;
+    const towerGroup = new THREE.Group();
+    towerGroup.position.set(-10, 0, 0);
+
+    // Main vertical beams (4 corner cylinders)
+    const beamMat = new THREE.MeshStandardMaterial({
+      color: 0xd90429, // Warning red steel
+      metalness: 0.8,
+      roughness: 0.3
+    });
+    const verticalBeamGeo = new THREE.CylinderGeometry(0.3, 0.3, towerHeight, 8);
+    const beamOffsets = [
+      { x: -2.5, z: -2.5 },
+      { x: 2.5, z: -2.5 },
+      { x: -2.5, z: 2.5 },
+      { x: 2.5, z: 2.5 }
+    ];
+    for (const offset of beamOffsets) {
+      const beam = new THREE.Mesh(verticalBeamGeo, beamMat);
+      beam.position.set(offset.x, towerHeight / 2, offset.z);
+      beam.castShadow = true;
+      beam.receiveShadow = true;
+      towerGroup.add(beam);
+    }
+
+    // Horizontal truss platforms every 8 units
+    const platformGeo = new THREE.BoxGeometry(5.2, 0.4, 5.2);
+    const platformMat = new THREE.MeshStandardMaterial({
+      color: 0x2b2d42,
+      roughness: 0.7,
+      metalness: 0.5
+    });
+    for (let h = 8; h <= towerHeight; h += 8) {
+      const platform = new THREE.Mesh(platformGeo, platformMat);
+      platform.position.set(0, h, 0);
+      platform.castShadow = true;
+      platform.receiveShadow = true;
+      towerGroup.add(platform);
+
+      // Add a yellow warning flashing beacon light at top platform corners
+      if (h === towerHeight) {
+        const beaconGeo = new THREE.SphereGeometry(0.5, 8, 8);
+        const beaconMat = new THREE.MeshBasicMaterial({ color: 0xffb703 });
+        const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+        beacon.position.set(2.5, h + 0.4, 2.5);
+        towerGroup.add(beacon);
+
+        const beacon2 = new THREE.Mesh(beaconGeo, beaconMat);
+        beacon2.position.set(-2.5, h + 0.4, -2.5);
+        towerGroup.add(beacon2);
+      }
+    }
+
+    // Diagonal support trusses
+    const diagGeo = new THREE.BoxGeometry(0.15, 9.2, 0.15);
+    const diagMat = new THREE.MeshStandardMaterial({ color: 0xd90429, roughness: 0.5 });
+    for (let h = 4; h < towerHeight; h += 8) {
+      const diag1 = new THREE.Mesh(diagGeo, diagMat);
+      diag1.position.set(0, h, -2.5);
+      diag1.rotation.z = Math.PI / 6;
+      towerGroup.add(diag1);
+
+      const diag2 = new THREE.Mesh(diagGeo, diagMat);
+      diag2.position.set(0, h, -2.5);
+      diag2.rotation.z = -Math.PI / 6;
+      towerGroup.add(diag2);
+    }
+
+    centerGroup.add(towerGroup);
+
+    // 3. Rocket (offset X = 0, Z = 0)
+    const rocketGroup = new THREE.Group();
+    rocketGroup.position.set(0, 1.5, 0); // Sit on top of launchpad base Y=1.5
+
+    const mainBodyMat = new THREE.MeshStandardMaterial({
+      color: 0xedf2f4,
+      roughness: 0.3,
+      metalness: 0.2
+    }); // Clean white rocket body
+    const detailMat = new THREE.MeshStandardMaterial({
+      color: 0xef233c,
+      roughness: 0.4,
+      metalness: 0.1
+    }); // Red nose/fins
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: 0x8d99ae,
+      metalness: 0.9,
+      roughness: 0.1
+    });
+
+    // Stage 1 (Booster): Height 25, Radius 3.2
+    const s1Geo = new THREE.CylinderGeometry(3.2, 3.2, 25, 16);
+    const s1 = new THREE.Mesh(s1Geo, mainBodyMat);
+    s1.position.y = 12.5;
+    s1.castShadow = true;
+    s1.receiveShadow = true;
+    rocketGroup.add(s1);
+
+    // Red ring divider
+    const ringGeo = new THREE.TorusGeometry(3.3, 0.2, 8, 24);
+    ringGeo.rotateX(Math.PI / 2);
+    const ring = new THREE.Mesh(ringGeo, detailMat);
+    ring.position.y = 25;
+    rocketGroup.add(ring);
+
+    // Stage 2: Height 15, Radius 2.8
+    const s2Geo = new THREE.CylinderGeometry(2.8, 2.8, 15, 16);
+    const s2 = new THREE.Mesh(s2Geo, mainBodyMat);
+    s2.position.y = 25 + 7.5;
+    s2.castShadow = true;
+    s2.receiveShadow = true;
+    rocketGroup.add(s2);
+
+    // Nose Cone: Height 8
+    const noseGeo = new THREE.ConeGeometry(2.8, 8, 16);
+    const nose = new THREE.Mesh(noseGeo, detailMat);
+    nose.position.y = 40 + 4;
+    nose.castShadow = true;
+    nose.receiveShadow = true;
+    rocketGroup.add(nose);
+
+    // 4 fins at bottom base (rotations 0, 90, 180, 270)
+    const finGeo = new THREE.BoxGeometry(0.3, 6.0, 3.2);
+    for (let i = 0; i < 4; i++) {
+      const finGroup = new THREE.Group();
+      finGroup.rotation.y = (i * Math.PI) / 2;
+      const fin = new THREE.Mesh(finGeo, detailMat);
+      fin.position.set(3.2 + 1.6, 3.0, 0);
+      fin.castShadow = true;
+      fin.receiveShadow = true;
+      finGroup.add(fin);
+      rocketGroup.add(finGroup);
+    }
+
+    // Engine bell nozzle
+    const nozzleGeo = new THREE.CylinderGeometry(1.5, 2.4, 2.0, 12, 1, true);
+    const nozzle = new THREE.Mesh(nozzleGeo, metalMat);
+    nozzle.position.y = -1.0;
+    nozzle.castShadow = true;
+    rocketGroup.add(nozzle);
+
+    // Thruster fiery particles / static glow cone
+    const flameGeo = new THREE.ConeGeometry(1.8, 5.0, 12);
+    flameGeo.rotateX(Math.PI);
+    const flameMat = new THREE.MeshBasicMaterial({
+      color: 0xff5722,
+      transparent: true,
+      opacity: 0.85
+    });
+    const flame = new THREE.Mesh(flameGeo, flameMat);
+    flame.position.y = -3.5;
+    rocketGroup.add(flame);
+
+    centerGroup.add(rocketGroup);
+    this.scene.add(centerGroup);
+
+    // 4. Large Nearby Electronic Space Billboard (facing South towards road at X = 650, Z = -160)
+    if (this.billboardCanvas) {
+      const billboardX = 650;
+      const billboardZ = -160;
+      const billboardY = this.getHillHeight(billboardX, billboardZ);
+
+      const billboardGroup = new THREE.Group();
+      billboardGroup.position.set(billboardX, billboardY, billboardZ);
+      billboardGroup.rotation.y = Math.PI; // Face South
+
+      // Screen mesh using billboardCanvas system
+      const screenMesh = this.billboardCanvas.createAdBillboard('SPACE_PROGRAM', 32, 18);
+      screenMesh.position.y = 19;
+      screenMesh.castShadow = true;
+      billboardGroup.add(screenMesh);
+
+      // Support pillars
+      const pillarGeo = new THREE.CylinderGeometry(0.8, 0.8, 22, 8);
+      const pillarMat = new THREE.MeshStandardMaterial({
+        color: 0x1a1e29,
+        roughness: 0.5,
+        metalness: 0.8
+      });
+      const pillarL = new THREE.Mesh(pillarGeo, pillarMat);
+      pillarL.position.set(-11, 10, -0.2);
+      pillarL.castShadow = true;
+      billboardGroup.add(pillarL);
+
+      const pillarR = new THREE.Mesh(pillarGeo, pillarMat);
+      pillarR.position.set(11, 10, -0.2);
+      pillarR.castShadow = true;
+      billboardGroup.add(pillarR);
+
+      // Add a structural truss connector behind screen
+      const trussGeo = new THREE.BoxGeometry(24, 2, 1.5);
+      const truss = new THREE.Mesh(trussGeo, pillarMat);
+      truss.position.set(0, 19, -0.5);
+      billboardGroup.add(truss);
+
+      this.scene.add(billboardGroup);
     }
   }
 }
