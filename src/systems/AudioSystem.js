@@ -573,4 +573,186 @@ export class AudioSystem {
     noise.start(now);
     noise.stop(now + 0.12);
   }
+
+  startEngineSound(vType) {
+    if (!this.isEnabled || !this.ctx) return;
+    this.stopEngineSound();
+    this.engineAudio = new EngineAudioNode(this, vType);
+  }
+
+  updateEngineSound(speedKmh, maxSpeedKmh) {
+    if (this.engineAudio) {
+      this.engineAudio.updateSound(speedKmh, maxSpeedKmh);
+    }
+  }
+
+  stopEngineSound() {
+    if (this.engineAudio) {
+      this.engineAudio.stop();
+      this.engineAudio = null;
+    }
+  }
+}
+
+class EngineAudioNode {
+  constructor(audioSystem, vType) {
+    this.audioSystem = audioSystem;
+    this.ctx = audioSystem.ctx;
+    this.vType = vType;
+
+    this.osc1 = null;
+    this.osc2 = null;
+    this.gainNode = null;
+    this.filterNode = null;
+    this.lfo = null;
+    this.lfoGain = null;
+
+    this.initSound();
+  }
+
+  initSound() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0, now);
+
+    this.filterNode = this.ctx.createBiquadFilter();
+
+    if (this.vType === 'SPORTS') {
+      // Aggressive detuned dual sawtooths with bandpass exhaust resonance
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'sawtooth';
+      this.osc2.type = 'sawtooth';
+      this.osc1.frequency.setValueAtTime(75, now);
+      this.osc2.frequency.setValueAtTime(77.5, now);
+
+      this.filterNode.type = 'bandpass';
+      this.filterNode.frequency.setValueAtTime(220, now);
+      this.filterNode.Q.value = 1.4;
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+      
+      this.baseFreq = 75;
+      this.maxFreq = 350;
+      this.targetVolume = 0.22;
+    } else if (this.vType === 'BUS') {
+      // Deep triangle diesel rumble with amplitude tremolo (LFO)
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'triangle';
+      this.osc2.type = 'sawtooth';
+      this.osc1.frequency.setValueAtTime(36, now);
+      this.osc2.frequency.setValueAtTime(37, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(120, now);
+
+      this.lfo = this.ctx.createOscillator();
+      this.lfo.frequency.value = 6.5;
+      this.lfoGain = this.ctx.createGain();
+      this.lfoGain.gain.value = 0.12;
+
+      this.lfo.connect(this.lfoGain);
+      this.lfoGain.connect(this.gainNode.gain);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 36;
+      this.maxFreq = 90;
+      this.targetVolume = 0.28;
+    } else if (this.vType === 'TRUCK') {
+      // Industrial heavy sawtooth lowpass rumble
+      this.osc1 = this.ctx.createOscillator();
+      this.osc1.type = 'sawtooth';
+      this.osc1.frequency.setValueAtTime(45, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(200, now);
+
+      this.osc1.connect(this.filterNode);
+
+      this.baseFreq = 45;
+      this.maxFreq = 120;
+      this.targetVolume = 0.24;
+    } else {
+      // Sedan, Taxi, Police: smooth standard hum
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'triangle';
+      this.osc2.type = 'sawtooth';
+      this.osc1.frequency.setValueAtTime(55, now);
+      this.osc2.frequency.setValueAtTime(55.5, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(280, now);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 55;
+      this.maxFreq = 200;
+      this.targetVolume = 0.18;
+    }
+
+    this.filterNode.connect(this.gainNode);
+    this.gainNode.connect(this.audioSystem.masterGain);
+
+    this.osc1.start(now);
+    if (this.osc2) this.osc2.start(now);
+    if (this.lfo) this.lfo.start(now);
+
+    this.gainNode.gain.setTargetAtTime(this.targetVolume, now, 0.2);
+  }
+
+  updateSound(speedKmh, maxSpeedKmh) {
+    if (!this.ctx || !this.osc1) return;
+    const now = this.ctx.currentTime;
+    const ratio = Math.max(0, Math.min(1.0, speedKmh / (maxSpeedKmh || 30.0)));
+
+    const currentFreq = this.baseFreq + (this.maxFreq - this.baseFreq) * ratio;
+
+    this.osc1.frequency.setTargetAtTime(currentFreq, now, 0.08);
+    if (this.osc2) {
+      this.osc2.frequency.setTargetAtTime(currentFreq + (this.vType === 'SPORTS' ? 2.5 : 0.5), now, 0.08);
+    }
+
+    // Scale engine load volume based on speed ratio
+    const currentVol = this.targetVolume * (0.8 + ratio * 0.4);
+    
+    // In Web Audio API, if we are modulating gain.gain directly with LFO, we must not override LFO values abruptly
+    if (this.vType === 'BUS' && this.lfoGain) {
+      // Slightly scale the chugging LFO gain instead of setting absolute gain
+      this.lfoGain.gain.setTargetAtTime(0.12 + ratio * 0.05, now, 0.1);
+    } else {
+      this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
+    }
+
+    const filterFreq = (this.vType === 'SPORTS' ? 220 : 150) + ratio * 450;
+    this.filterNode.frequency.setTargetAtTime(filterFreq, now, 0.08);
+  }
+
+  stop() {
+    if (!this.ctx || !this.osc1) return;
+    const now = this.ctx.currentTime;
+
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    setTimeout(() => {
+      try {
+        if (this.osc1) this.osc1.stop();
+        if (this.osc2) this.osc2.stop();
+        if (this.lfo) this.lfo.stop();
+      } catch (err) {
+        // already stopped
+      }
+      this.osc1 = null;
+      this.osc2 = null;
+      this.lfo = null;
+    }, 280);
+  }
 }

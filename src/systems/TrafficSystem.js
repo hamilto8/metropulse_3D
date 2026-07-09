@@ -97,6 +97,10 @@ export class TrafficSystem {
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
       }
 
+      if (this.app && this.app.audioSystem) {
+        this.app.audioSystem.startEngineSound(vehicle.vType);
+      }
+
       return true;
     }
   }
@@ -118,6 +122,10 @@ export class TrafficSystem {
       this.controlledVehicle = null;
     }
     vehicle.info['Status'] = 'Cruising';
+
+    if (this.app && this.app.audioSystem) {
+      this.app.audioSystem.stopEngineSound();
+    }
 
     // If there is an active mission in progress, fail the mission
     if (this.app && this.app.missionSystem && this.app.missionSystem.activeMission) {
@@ -221,6 +229,10 @@ export class TrafficSystem {
       v.physicsVehicle.syncMesh();
       v.speed = v.physicsVehicle.speedKmH;
       Object.assign(v.info, v.physicsVehicle.info);
+
+      if (this.app.audioSystem) {
+        this.app.audioSystem.updateEngineSound(v.speed, v.maxSpeed * 3.6);
+      }
 
       // Check collision with other AI vehicles (ALWAYS push apart physically; guard audio with cooldown)
       if (v.bumpCooldown > 0) {
