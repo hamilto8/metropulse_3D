@@ -76,6 +76,47 @@ export class CityBuilder {
     }
   }
 
+  createGabledRoofGeometry(width, height, depth) {
+    const geo = new THREE.BufferGeometry();
+    const w2 = width / 2;
+    const d2 = depth / 2;
+
+    // 6 vertices defining the triangular prism
+    const vertices = new Float32Array([
+      // Front Triangle
+      -w2, 0, d2,      // 0: left front bottom
+       w2, 0, d2,      // 1: right front bottom
+        0, height, d2, // 2: peak front
+
+      // Back Triangle
+      -w2, 0, -d2,     // 3: left back bottom
+       w2, 0, -d2,     // 4: right back bottom
+        0, height, -d2 // 5: peak back
+    ]);
+
+    // Triangle indices (12 triangles = 8 faces)
+    const indices = [
+      // Front face
+      0, 1, 2,
+      // Back face
+      4, 3, 5,
+      // Left slope
+      3, 0, 2,
+      3, 2, 5,
+      // Right slope
+      1, 4, 5,
+      1, 5, 2,
+      // Bottom face
+      3, 4, 1,
+      3, 1, 0
+    ];
+
+    geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
   createSuburbanHouse(x, z) {
     const houseGroup = new THREE.Group();
     const terrainY = this.getHillHeight(x, z);
@@ -101,17 +142,18 @@ export class CityBuilder {
     houseBody.receiveShadow = true;
     houseGroup.add(houseBody);
 
-    // 2. Gabled Roof (using a triangular prism / rotated Cylinder)
-    const roofGeo = new THREE.CylinderGeometry(0, Math.sqrt((wallWidth / 2 + 1) ** 2 + 4 ** 2), wallDepth + 1.2, 4, 1, false);
-    roofGeo.rotateY(Math.PI / 4);
+    // 2. Gabled Roof (using a perfect procedural triangular prism)
+    const roofWidth = wallWidth + 1.6;
+    const roofHeight = 3.5;
+    const roofDepth = wallDepth + 0.8;
+    const roofGeo = this.createGabledRoofGeometry(roofWidth, roofHeight, roofDepth);
     const roofMat = new THREE.MeshStandardMaterial({
       color: 0x5c3d2e, // Warm brown roof tiles
       roughness: 0.9,
       metalness: 0.1
     });
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.rotation.x = Math.PI / 2;
-    roof.position.y = wallHeight + 1.8;
+    roof.position.y = wallHeight;
     roof.castShadow = true;
     houseGroup.add(roof);
 
