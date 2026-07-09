@@ -3,7 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CameraRig } from '../camera/CameraRig.js';
 
 export class SceneManager {
-  constructor(container) {
+  constructor(app, container) {
+    this.app = app;
     this.container = container;
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x070913);
@@ -118,6 +119,72 @@ export class SceneManager {
   }
 
   update(delta) {
+    const ts = this.app ? this.app.trafficSystem : null;
+    const keys = ts ? ts.keys : null;
+    const isControlling = ts && ts.controlledVehicle != null;
+
+    if (keys && !isControlling) {
+      const isW = keys['w'] || keys['arrowup'];
+      const isS = keys['s'] || keys['arrowdown'];
+      const isA = keys['a'] || keys['arrowleft'];
+      const isD = keys['d'] || keys['arrowright'];
+      const isQ = keys['q'];
+      const isE = keys['e'];
+
+      if (isW || isS || isA || isD || isQ || isE) {
+        // If we are currently following a target or in a special camera mode, break the lock instantly
+        if (this.followTarget || (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO')) {
+          this.followTarget = null;
+          if (this.cameraRig) {
+            this.cameraRig.state = 'ORBIT_MACRO';
+          }
+          this.controls.enabled = true;
+          
+          const btnFollow = document.getElementById('btn-follow-target');
+          if (btnFollow) {
+            btnFollow.innerHTML = '👁️ Follow Camera';
+            btnFollow.classList.remove('active');
+          }
+        }
+
+        // Cancel active camera preset interpolation
+        this.targetCameraPos = null;
+        this.targetLookAt = null;
+
+        // Visual update to Camera Preset buttons: set "Free Orbit" active
+        const freeBtn = document.querySelector('[data-camera="free"]');
+        if (freeBtn && !freeBtn.classList.contains('active')) {
+          const cameraButtons = document.querySelectorAll('[data-camera]');
+          cameraButtons.forEach(b => b.classList.remove('active'));
+          freeBtn.classList.add('active');
+        }
+
+        // Project look vectors in 3D
+        const forward = new THREE.Vector3();
+        this.camera.getWorldDirection(forward);
+
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, this.camera.up).normalize();
+
+        const moveVec = new THREE.Vector3();
+        if (isW) moveVec.add(forward);
+        if (isS) moveVec.sub(forward);
+        if (isD) moveVec.add(right);
+        if (isA) moveVec.sub(right);
+        if (isE) moveVec.y += 1.0;
+        if (isQ) moveVec.y -= 1.0;
+
+        if (moveVec.lengthSq() > 0) {
+          moveVec.normalize();
+          const speed = (keys['shift'] ? 120 : 50) * delta;
+          moveVec.multiplyScalar(speed);
+
+          this.camera.position.add(moveVec);
+          this.controls.target.add(moveVec);
+        }
+      }
+    }
+
     // Phase 2: Delegate dynamic chase & cinematic swoops to CameraRig
     if (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO') {
       this.cameraRig.update(delta);

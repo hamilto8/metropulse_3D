@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
 export class BillboardCanvas {
-  constructor() {
+  constructor(app) {
+    this.app = app;
     this.billboards = [];
   }
 
@@ -62,31 +63,38 @@ export class BillboardCanvas {
 
   drawTicker(data) {
     const { ctx, canvas, scrollX, timeVal } = data;
+    const isFunMode = this.app && this.app.funMode;
     
     // Background
-    ctx.fillStyle = '#070c1e';
+    ctx.fillStyle = isFunMode ? '#1e0208' : '#070c1e';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Border glow
-    ctx.strokeStyle = '#00f0ff';
+    ctx.strokeStyle = isFunMode ? '#ef4444' : '#00f0ff';
     ctx.lineWidth = 8;
     ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
 
     // Header / Title
-    ctx.fillStyle = '#ff007f';
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillText('METRO NEWS LIVE', 24, 50);
+    if (isFunMode) {
+      ctx.fillStyle = '#ff0055';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('METRO MAYHEM LIVE 🚨', 24, 50);
+    } else {
+      ctx.fillStyle = '#ff007f';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('METRO NEWS LIVE', 24, 50);
+    }
 
     // Digital Clock
     const hours = Math.floor(timeVal);
     const minutes = Math.floor((timeVal - hours) * 60);
     const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    ctx.fillStyle = '#00ff88';
+    ctx.fillStyle = isFunMode ? '#ffcc00' : '#00ff88';
     ctx.font = 'bold 54px monospace';
     ctx.fillText(timeStr, 340, 56);
 
     // Divider
-    ctx.strokeStyle = '#223355';
+    ctx.strokeStyle = isFunMode ? '#551122' : '#223355';
     ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(20, 75);
@@ -96,15 +104,28 @@ export class BillboardCanvas {
     // Scrolling Ticker Text
     ctx.fillStyle = '#ffffff';
     ctx.font = '32px sans-serif';
-    const tickerText = "★ METROPULSE 3D SIMULATION ★ Traffic Flowing Smoothly ★ CyberCafe Offering 50% Off Espresso ★ NeoTech Stock Hits Record High ★ Starlight Hotel Booking Fast ★ Welcome to the Future!";
+    
+    let tickerText = "★ METROPULSE 3D SIMULATION ★ Traffic Flowing Smoothly ★ CyberCafe Offering 50% Off Espresso ★ NeoTech Stock Hits Record High ★ Starlight Hotel Booking Fast ★ Welcome to the Future!";
+    if (isFunMode) {
+      tickerText = "🚨 METEOR ALERT: COMET SHOWER DETECTED ★ KEEP PRODUCTIVE ★ Property Damage is Temporary, Profit is Eternal! ★ Real Estate Index Plunging: Buy The Dip! ★ Police Dispatching Heavy Enforcers To Secure Corporate Annexes ★ Stay Indoors and Consume ★ NeoTech Defence Drones Online ★";
+    }
+    
     ctx.fillText(tickerText, scrollX, 160);
 
     // Footer info
-    ctx.fillStyle = '#7000ff';
-    ctx.fillRect(20, 190, canvas.width - 40, 46);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillText('WEATHER: CLEAR / CYBER ATMOSPHERE', 40, 222);
+    if (isFunMode) {
+      ctx.fillStyle = '#85001a';
+      ctx.fillRect(20, 190, canvas.width - 40, 46);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('WEATHER: COMET PRECIPITATION 🔥', 40, 222);
+    } else {
+      ctx.fillStyle = '#7000ff';
+      ctx.fillRect(20, 190, canvas.width - 40, 46);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.fillText('WEATHER: CLEAR / CYBER ATMOSPHERE', 40, 222);
+    }
 
     data.texture.needsUpdate = true;
   }
@@ -131,21 +152,40 @@ export class BillboardCanvas {
       ctx.font = '36px sans-serif';
       ctx.fillText('⚡ FUEL YOUR BRAIN ⚡', canvas.width / 2, 280);
     } else if (adName === 'NEOTECH') {
-      ctx.fillStyle = '#031025';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const isFunMode = this.app && this.app.funMode;
+      if (isFunMode) {
+        ctx.fillStyle = '#1e0505';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = '#00f0ff';
-      ctx.font = 'bold 64px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('NEO TECH', canvas.width / 2, 130);
+        ctx.fillStyle = '#ff3366';
+        ctx.font = 'bold 64px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEO SHIELD', canvas.width / 2, 130);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '36px sans-serif';
-      ctx.fillText('BUILDING TOMORROW', canvas.width / 2, 200);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '36px sans-serif';
+        ctx.fillText('SECURITY COMBAT DRONES', canvas.width / 2, 200);
 
-      ctx.fillStyle = '#ffb800';
-      ctx.font = 'bold 38px monospace';
-      ctx.fillText('AI • ROBOTICS • QUANTUM', canvas.width / 2, 290);
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = 'bold 38px monospace';
+        ctx.fillText('PROTECTING CAPITAL NOW', canvas.width / 2, 290);
+      } else {
+        ctx.fillStyle = '#031025';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 64px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NEO TECH', canvas.width / 2, 130);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '36px sans-serif';
+        ctx.fillText('BUILDING TOMORROW', canvas.width / 2, 200);
+
+        ctx.fillStyle = '#ffb800';
+        ctx.font = 'bold 38px monospace';
+        ctx.fillText('AI • ROBOTICS • QUANTUM', canvas.width / 2, 290);
+      }
     } else if (adName === 'CINEMA') {
       ctx.fillStyle = '#1a0010';
       ctx.fillRect(0, 0, canvas.width, canvas.height);

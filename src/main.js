@@ -28,7 +28,7 @@ class MetroPulseApp {
     this.physicsWorld = new PhysicsWorld();
 
     // 1. Core Scene & Camera
-    this.sceneManager = new SceneManager(container);
+    this.sceneManager = new SceneManager(this, container);
 
     // 2. Audio System
     this.audioSystem = new AudioSystem(this);
@@ -37,7 +37,7 @@ class MetroPulseApp {
     this.inspectorHud = new InspectorHUD(this);
 
     // 4. Canvas Billboards
-    this.billboardCanvas = new BillboardCanvas();
+    this.billboardCanvas = new BillboardCanvas(this);
 
     // 5. Build City Infrastructure
     this.cityBuilder = new CityBuilder(this.sceneManager.scene, this.inspectorHud);
