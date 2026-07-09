@@ -201,7 +201,7 @@ export class Pedestrian {
       if (this.hasBaseballBat) {
         if (this.swingTimer > 0) {
           this.swingTimer -= delta;
-          const progress = Math.max(0, Math.min(1, (0.25 - this.swingTimer) / 0.25));
+          const progress = Math.max(0, Math.min(1, (0.3 - this.swingTimer) / 0.3));
           // Fast swing from back to front
           this.armR.rotation.x = -1.2 + progress * 2.8;
           this.armR.rotation.z = -0.3 + Math.sin(progress * Math.PI) * 0.5;

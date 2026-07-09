@@ -806,30 +806,55 @@ export class PedestrianSystem {
     if (!ped || !ped.hasBaseballBat) return;
     if (ped.swingTimer > 0) return; // Already swinging
 
-    ped.swingTimer = 0.25;
+    ped.swingTimer = 0.3;
 
-    // Play impact sound
+    // Play whoosh/swing sound
     if (this.app.audioSystem) {
       this.app.audioSystem.playSelect();
     }
 
-    // Hit detection: scan forward cone
-    const pedPos = ped.mesh.position;
-    const pedDir = new THREE.Vector3(0, 0, 1).applyQuaternion(ped.mesh.quaternion).normalize();
+    // Hit detection: use XZ-plane only to avoid Y-offset issues
+    const pedPos2D = new THREE.Vector2(ped.mesh.position.x, ped.mesh.position.z);
+    const pedFwd3D = new THREE.Vector3(0, 0, 1).applyQuaternion(ped.mesh.quaternion);
+    const pedDir2D = new THREE.Vector2(pedFwd3D.x, pedFwd3D.z).normalize();
 
-    // Check vehicle hits
+    let hitSomething = false;
+
+    // Check vehicle hits (range 5m on XZ plane, wide 180-degree cone)
     if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
       for (const v of this.app.trafficSystem.vehicles) {
         if (v.crashed) continue;
-        const dist = pedPos.distanceTo(v.mesh.position);
-        if (dist > 3.5) continue;
+        const vPos2D = new THREE.Vector2(v.mesh.position.x, v.mesh.position.z);
+        const dist = pedPos2D.distanceTo(vPos2D);
+        if (dist > 5.0) continue;
 
-        const toVeh = v.mesh.position.clone().sub(pedPos).normalize();
-        if (toVeh.dot(pedDir) < 0.3) continue; // Must be in front
+        const toVeh2D = vPos2D.clone().sub(pedPos2D).normalize();
+        const dot = pedDir2D.dot(toVeh2D);
+        if (dot < 0.0) continue; // Must be in front hemisphere
+
+        hitSomething = true;
 
         // Register hit
         v.batHits = (v.batHits || 0) + 1;
         v.info['Damage'] = '🏏 ' + v.batHits + '/3 hits';
+
+        // Visual feedback: flash vehicle body red briefly
+        if (v.mesh.children && v.mesh.children.length > 0) {
+          const body = v.mesh.children[0];
+          if (body && body.material) {
+            const origColor = body.material.color.getHex();
+            body.material.color.setHex(0xff2200);
+            setTimeout(() => { body.material.color.setHex(origColor); }, 150);
+          }
+        }
+
+        // Show hit count prompt
+        const prompt = document.getElementById('vehicle-enter-prompt');
+        if (prompt) {
+          prompt.innerHTML = `🏏 <span style="color:#ff4500;">HIT!</span> ${v.name} — <span style="color:#ffaa00;">${v.batHits}/3</span> hits`;
+          prompt.classList.remove('hidden');
+          setTimeout(() => { prompt.classList.add('hidden'); }, 1200);
+        }
 
         if (v.batHits >= 3 && !v.onFire) {
           v.onFire = true;
@@ -849,43 +874,64 @@ export class PedestrianSystem {
           // Dispatch police for destruction
           this.isWanted = true;
           if (this.app.trafficSystem) {
-            this.app.trafficSystem.dispatchPolice(pedPos.clone());
+            this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
           }
         }
         break; // Only hit one vehicle per swing
       }
     }
 
-    // Check NPC hits
-    for (const other of this.pedestrians) {
-      if (other === ped || other.knockedDown) continue;
-      const dist = pedPos.distanceTo(other.mesh.position);
-      if (dist > 3.0) continue;
+    // Check NPC hits (range 3.5m on XZ plane, wide 180-degree cone)
+    if (!hitSomething) {
+      for (const other of this.pedestrians) {
+        if (other === ped || other.knockedDown) continue;
+        const oPos2D = new THREE.Vector2(other.mesh.position.x, other.mesh.position.z);
+        const dist = pedPos2D.distanceTo(oPos2D);
+        if (dist > 3.5) continue;
 
-      const toNpc = other.mesh.position.clone().sub(pedPos).normalize();
-      if (toNpc.dot(pedDir) < 0.3) continue;
+        const toNpc2D = oPos2D.clone().sub(pedPos2D).normalize();
+        const dot = pedDir2D.dot(toNpc2D);
+        if (dot < 0.0) continue;
 
-      // NPC runs away in fear
-      other.info['Mood'] = '😱 TERRIFIED';
-      other.info['Activity'] = '🏃 Fleeing!';
-      other.maxSpeed = 12.0;
-      other.targetSpeed = 12.0;
-      other.speed = 10.0;
+        hitSomething = true;
 
-      // Face away from the player and run
-      const fleeDir = other.mesh.position.clone().sub(pedPos).normalize();
-      other.mesh.lookAt(
-        other.mesh.position.x + fleeDir.x * 10,
-        other.mesh.position.y,
-        other.mesh.position.z + fleeDir.z * 10
-      );
+        // NPC runs away in fear
+        other.info['Mood'] = '😱 TERRIFIED';
+        other.info['Activity'] = '🏃 Fleeing!';
+        other.maxSpeed = 12.0;
+        other.targetSpeed = 12.0;
+        other.speed = 10.0;
 
-      // Dispatch police for assault
-      this.isWanted = true;
-      if (this.app.trafficSystem) {
-        this.app.trafficSystem.dispatchPolice(pedPos.clone());
+        // Face away from the player and run
+        const fleeDir = other.mesh.position.clone().sub(ped.mesh.position);
+        fleeDir.y = 0;
+        fleeDir.normalize();
+        other.mesh.lookAt(
+          other.mesh.position.x + fleeDir.x * 10,
+          other.mesh.position.y,
+          other.mesh.position.z + fleeDir.z * 10
+        );
+
+        // Show hit prompt
+        const prompt = document.getElementById('vehicle-enter-prompt');
+        if (prompt) {
+          prompt.innerHTML = `🏏 <span style="color:#ff4500;">HIT!</span> ${other.name} is <span style="color:#ffaa00;">FLEEING!</span>`;
+          prompt.classList.remove('hidden');
+          setTimeout(() => { prompt.classList.add('hidden'); }, 1500);
+        }
+
+        // Dispatch police for assault
+        this.isWanted = true;
+        if (this.app.trafficSystem) {
+          this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
+        }
+        break; // Only hit one NPC per swing
       }
-      break; // Only hit one NPC per swing
+    }
+
+    // Play impact sound if we hit something
+    if (hitSomething && this.app.audioSystem) {
+      this.app.audioSystem.playExplosion();
     }
   }
 
