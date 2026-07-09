@@ -642,6 +642,7 @@ export class AudioSystem {
       // Brown noise approximation
       output[i] = (lastOut + (0.05 * white)) / 1.05;
       lastOut = output[i];
+      output[i] *= 6.5; // Gain compensation to make the noise loud and audible!
     }
 
     const noise = this.ctx.createBufferSource();
@@ -649,20 +650,20 @@ export class AudioSystem {
 
     const filter = this.ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(140, now);
+    filter.frequency.setValueAtTime(180, now); // Higher cutoff to allow mid rumble
     filter.frequency.exponentialRampToValueAtTime(35, now + 3.5);
 
     const gainNode = this.ctx.createGain();
     // Immediate crack + rolling wiggles
     gainNode.gain.setValueAtTime(0.01, now);
-    gainNode.gain.linearRampToValueAtTime(0.8 * volumeScale, now + 0.08); // sharp crack
+    gainNode.gain.linearRampToValueAtTime(0.9 * volumeScale, now + 0.08); // sharp crack
     
     // Simulate rolling echoes/rumble using a wave of random wiggles
     let time = 0.1;
     while (time < 3.5) {
-      const rumbleAmp = (0.2 + Math.random() * 0.45) * Math.max(0, 1.0 - time / 3.5);
+      const rumbleAmp = (0.25 + Math.random() * 0.5) * Math.max(0, 1.0 - time / 3.5);
       gainNode.gain.linearRampToValueAtTime(rumbleAmp * volumeScale, now + time);
-      time += 0.15 + Math.random() * 0.25;
+      time += 0.12 + Math.random() * 0.22;
     }
     gainNode.gain.setValueAtTime(gainNode.gain.value, now + 3.6);
     gainNode.gain.exponentialRampToValueAtTime(0.001, now + 4.0);
@@ -674,20 +675,26 @@ export class AudioSystem {
     noise.start(now);
     noise.stop(now + 4.05);
 
-    // Deep sub-bass sub impact (shakes the room)
+    // Deep chest-vibrating impact (audible on laptop speakers)
     const subOsc = this.ctx.createOscillator();
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(45, now);
-    subOsc.frequency.exponentialRampToValueAtTime(22, now + 1.2);
+    subOsc.type = 'triangle'; // triangle wave has rich harmonics for laptop speakers
+    subOsc.frequency.setValueAtTime(85, now); // start at 85Hz (clearly audible)
+    subOsc.frequency.exponentialRampToValueAtTime(28, now + 1.4); // sweep down to 28Hz
 
     const subGain = this.ctx.createGain();
-    subGain.gain.setValueAtTime(0.6 * volumeScale, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+    subGain.gain.setValueAtTime(0.7 * volumeScale, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
 
-    subOsc.connect(subGain);
+    // Filter the sub to keep it deep and prevent harshness
+    const subFilter = this.ctx.createBiquadFilter();
+    subFilter.type = 'lowpass';
+    subFilter.frequency.setValueAtTime(120, now);
+
+    subOsc.connect(subFilter);
+    subFilter.connect(subGain);
     subGain.connect(this.masterGain);
     subOsc.start(now);
-    subOsc.stop(now + 1.35);
+    subOsc.stop(now + 1.5);
   }
 }
 
