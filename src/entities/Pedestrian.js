@@ -9,6 +9,9 @@ export class Pedestrian {
     this.maxSpeed = type === 'JOGGER' ? 5.5 : (type === 'BUSINESS' ? 3.5 : 2.8);
     this.targetSpeed = this.maxSpeed;
     this.walkTimer = Math.random() * 10;
+    this.hasBaseballBat = false;
+    this.swingTimer = 0;
+    this.batMesh = null;
 
     this.info = {
       'Name': name,
@@ -193,6 +196,32 @@ export class Pedestrian {
           this.armR.rotation.z *= 0.8;
         }
       }
+      
+      // Override right arm animation if they have a baseball bat
+      if (this.hasBaseballBat) {
+        if (this.swingTimer > 0) {
+          this.swingTimer -= delta;
+          const progress = Math.max(0, Math.min(1, (0.25 - this.swingTimer) / 0.25));
+          // Fast swing from back to front
+          this.armR.rotation.x = -1.2 + progress * 2.8;
+          this.armR.rotation.z = -0.3 + Math.sin(progress * Math.PI) * 0.5;
+        } else {
+          // Carry pose
+          this.armR.rotation.x = -0.6;
+          this.armR.rotation.z = -0.15;
+        }
+      }
     }
+  }
+
+  attachBaseballBat() {
+    if (this.batMesh) return;
+    const batGeo = new THREE.CylinderGeometry(0.045, 0.02, 0.9, 8);
+    const batMat = new THREE.MeshStandardMaterial({ color: 0xc19a6b, roughness: 0.7 });
+    this.batMesh = new THREE.Mesh(batGeo, batMat);
+    // Position at the hand of the right arm (0, -0.8, 0)
+    this.batMesh.position.set(0, -0.75, 0.15);
+    this.batMesh.rotation.x = Math.PI / 2.2; // Tilt forward
+    this.armR.add(this.batMesh);
   }
 }

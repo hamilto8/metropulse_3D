@@ -680,6 +680,41 @@ export class TrafficSystem {
         v.update(delta);
         continue;
       }
+      // Handle vehicle on fire from baseball bat strikes
+      if (v.onFire) {
+        v.fireTimer -= delta;
+        // Flicker fire visual
+        if (v.fireMesh) {
+          v.fireMesh.material.opacity = 0.5 + Math.sin(Date.now() * 0.02) * 0.3;
+          const s = 1.0 + Math.sin(Date.now() * 0.01) * 0.25;
+          v.fireMesh.scale.set(s, s, s);
+        }
+        if (v.fireTimer <= 0) {
+          // EXPLODE!
+          v.onFire = false;
+          v.crashed = true;
+          v.crashTimer = 20.0;
+          v.speed = 0;
+          v.targetSpeed = 0;
+          v.info['Status'] = '💥 DESTROYED';
+          v.mesh.rotation.z = (Math.random() - 0.5) * 0.8;
+
+          if (v.fireMesh) {
+            v.mesh.remove(v.fireMesh);
+            v.fireMesh = null;
+          }
+          if (this.app.explosionManager) {
+            this.app.explosionManager.createExplosion(pos.clone());
+          }
+          if (this.app.audioSystem) {
+            this.app.audioSystem.playExplosion();
+          }
+          if (this.app.uiManager) {
+            this.app.uiManager.onBuildingDestroyed();
+          }
+          continue;
+        }
+      }
 
       // Handle Parked State
       if (v.isParked) {

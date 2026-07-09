@@ -25,6 +25,19 @@ export class PedestrianSystem {
     
     this.initWaypoints();
     this.spawnPedestrians(60);
+    this.baseballBats = [];
+    this.isWanted = false;
+    this.spawnBaseballBats();
+
+    // Listen for attacks
+    window.addEventListener('click', (e) => {
+      if (e.target.closest('header, aside, footer, button, input') || e.target.classList.contains('action-btn')) {
+        return;
+      }
+      if (this.controlledPedestrian && this.controlledPedestrian.hasBaseballBat) {
+        this.swingBaseballBat();
+      }
+    });
   }
 
   initWaypoints() {
@@ -172,6 +185,67 @@ export class PedestrianSystem {
   update(delta) {
     const weather = this.app.environment ? this.app.environment.weatherMode : 'clear';
     const isRaining = (weather === 'rain' || weather === 'thunderstorm');
+
+    // Update baseball bat pick-ups
+    const p = this.controlledPedestrian;
+    if (p && !p.hasBaseballBat && this.baseballBats) {
+      for (const bat of this.baseballBats) {
+        if (bat.pickedUp) continue;
+        const dist = p.mesh.position.distanceTo(bat.pos);
+        if (dist < 2.0) {
+          bat.pickedUp = true;
+          this.app.sceneManager.scene.remove(bat.mesh);
+          p.hasBaseballBat = true;
+          p.attachBaseballBat();
+
+          // Show pickup notice via the proximity prompt element
+          const prompt = document.getElementById('vehicle-enter-prompt');
+          if (prompt) {
+            prompt.innerHTML = '🏏 <span style="color: #00ff88; font-weight:700;">BASEBALL BAT EQUIPPED!</span> Left-Click to swing!';
+            prompt.classList.remove('hidden');
+            setTimeout(() => { prompt.classList.add('hidden'); }, 3000);
+          }
+          if (this.app.audioSystem) {
+            this.app.audioSystem.playSelect();
+          }
+          break;
+        }
+      }
+    }
+
+    // Animate active (uncollected) baseball bats
+    if (this.baseballBats) {
+      for (const bat of this.baseballBats) {
+        if (bat.pickedUp) continue;
+        bat.pulseTime += delta * 4.0;
+        const scale = 1.0 + Math.sin(bat.pulseTime) * 0.18;
+        bat.halo.scale.set(scale, scale, 1.0);
+        bat.mesh.rotation.y += 1.5 * delta;
+      }
+    }
+
+    // Handle wanted level/police pursuit and arrest check
+    if (this.isWanted && p) {
+      const playerPos = p.mesh.position;
+      
+      // Update police targets to track the player
+      if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
+        const policeVehicles = this.app.trafficSystem.vehicles.filter(v => v.isPolice && !v.crashed);
+        for (const pv of policeVehicles) {
+          pv.emergencyTarget = playerPos.clone();
+          pv.maxSpeed = 42;
+          pv.targetSpeed = 42;
+          pv.sirenTimer = 5.0; // Keep siren blaring!
+          
+          // Arrest check
+          const distToPlayer = pv.mesh.position.distanceTo(playerPos);
+          if (distToPlayer < 10.0) {
+            this.arrestPlayer();
+            break;
+          }
+        }
+      }
+    }
 
     // Update active speech bubble if any
     if (this.talkingBubbleTimer > 0) {
@@ -420,7 +494,23 @@ export class PedestrianSystem {
       prompt.innerHTML = `💬 Press <span style="color: #00f0ff;">[E]</span> to Talk to ${closestPed.name.toUpperCase()}`;
       prompt.classList.remove('hidden');
     } else {
-      if (prompt) {
+      // Check if near a baseball bat pickup
+      let nearBat = false;
+      if (p && !p.hasBaseballBat && this.baseballBats) {
+        for (const bat of this.baseballBats) {
+          if (bat.pickedUp) continue;
+          const dist = p.mesh.position.distanceTo(bat.pos);
+          if (dist < 4.0) {
+            nearBat = true;
+            if (prompt) {
+              prompt.innerHTML = '🏏 Walk over to pick up <span style="color: #00ff88;">BASEBALL BAT</span>';
+              prompt.classList.remove('hidden');
+            }
+            break;
+          }
+        }
+      }
+      if (!nearBat && prompt) {
         prompt.classList.add('hidden');
       }
     }
@@ -648,5 +738,203 @@ export class PedestrianSystem {
 
     // 3. Street/Asphalt level (offset slightly so feet align with floor)
     return 0.05;
+  }
+
+  spawnBaseballBats() {
+    const batPositions = [
+      { x: 12, z: 12 },
+      { x: -42, z: 55 },
+      { x: 95, z: -38 },
+      { x: 55, z: 95 },
+      { x: -95, z: 12 },
+      { x: 210, z: 55 },
+      { x: 265, z: -38 },
+      { x: 305, z: 95 },
+    ];
+
+    for (const bp of batPositions) {
+      const y = this.getTerrainHeight(bp.x, bp.z) + 0.5;
+      const group = new THREE.Group();
+      group.position.set(bp.x, y, bp.z);
+
+      // Bat model (wooden cylinder)
+      const batGeo = new THREE.CylinderGeometry(0.06, 0.03, 1.1, 8);
+      const batMat = new THREE.MeshStandardMaterial({
+        color: 0xc19a6b, roughness: 0.6, metalness: 0.1,
+        emissive: 0x6b4226, emissiveIntensity: 0.15
+      });
+      const batMesh = new THREE.Mesh(batGeo, batMat);
+      batMesh.rotation.z = Math.PI / 2; // Lay horizontally
+      batMesh.position.y = 0.15;
+      batMesh.castShadow = true;
+      group.add(batMesh);
+
+      // Glowing ground halo
+      const haloGeo = new THREE.RingGeometry(0.6, 1.2, 32);
+      const haloMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff88, transparent: true, opacity: 0.45,
+        side: THREE.DoubleSide
+      });
+      const halo = new THREE.Mesh(haloGeo, haloMat);
+      halo.rotation.x = -Math.PI / 2; // Lay flat on ground
+      halo.position.y = -0.15;
+      group.add(halo);
+
+      // Vertical glow pillar
+      const pillarGeo = new THREE.CylinderGeometry(0.15, 0.15, 3.0, 8);
+      const pillarMat = new THREE.MeshBasicMaterial({
+        color: 0x00ff88, transparent: true, opacity: 0.08
+      });
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      pillar.position.y = 1.2;
+      group.add(pillar);
+
+      this.app.sceneManager.scene.add(group);
+
+      this.baseballBats.push({
+        mesh: group,
+        halo: halo,
+        pos: new THREE.Vector3(bp.x, y, bp.z),
+        pickedUp: false,
+        pulseTime: Math.random() * 6.28
+      });
+    }
+  }
+
+  swingBaseballBat() {
+    const ped = this.controlledPedestrian;
+    if (!ped || !ped.hasBaseballBat) return;
+    if (ped.swingTimer > 0) return; // Already swinging
+
+    ped.swingTimer = 0.25;
+
+    // Play impact sound
+    if (this.app.audioSystem) {
+      this.app.audioSystem.playSelect();
+    }
+
+    // Hit detection: scan forward cone
+    const pedPos = ped.mesh.position;
+    const pedDir = new THREE.Vector3(0, 0, 1).applyQuaternion(ped.mesh.quaternion).normalize();
+
+    // Check vehicle hits
+    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
+      for (const v of this.app.trafficSystem.vehicles) {
+        if (v.crashed) continue;
+        const dist = pedPos.distanceTo(v.mesh.position);
+        if (dist > 3.5) continue;
+
+        const toVeh = v.mesh.position.clone().sub(pedPos).normalize();
+        if (toVeh.dot(pedDir) < 0.3) continue; // Must be in front
+
+        // Register hit
+        v.batHits = (v.batHits || 0) + 1;
+        v.info['Damage'] = '🏏 ' + v.batHits + '/3 hits';
+
+        if (v.batHits >= 3 && !v.onFire) {
+          v.onFire = true;
+          v.fireTimer = 5.0;
+          v.info['Status'] = '🔥 ON FIRE!';
+
+          // Add fire visual
+          const fireGeo = new THREE.SphereGeometry(1.2, 8, 8);
+          const fireMat = new THREE.MeshBasicMaterial({
+            color: 0xff4500, transparent: true, opacity: 0.7
+          });
+          const fireMesh = new THREE.Mesh(fireGeo, fireMat);
+          fireMesh.position.y = 2.0;
+          v.mesh.add(fireMesh);
+          v.fireMesh = fireMesh;
+
+          // Dispatch police for destruction
+          this.isWanted = true;
+          if (this.app.trafficSystem) {
+            this.app.trafficSystem.dispatchPolice(pedPos.clone());
+          }
+        }
+        break; // Only hit one vehicle per swing
+      }
+    }
+
+    // Check NPC hits
+    for (const other of this.pedestrians) {
+      if (other === ped || other.knockedDown) continue;
+      const dist = pedPos.distanceTo(other.mesh.position);
+      if (dist > 3.0) continue;
+
+      const toNpc = other.mesh.position.clone().sub(pedPos).normalize();
+      if (toNpc.dot(pedDir) < 0.3) continue;
+
+      // NPC runs away in fear
+      other.info['Mood'] = '😱 TERRIFIED';
+      other.info['Activity'] = '🏃 Fleeing!';
+      other.maxSpeed = 12.0;
+      other.targetSpeed = 12.0;
+      other.speed = 10.0;
+
+      // Face away from the player and run
+      const fleeDir = other.mesh.position.clone().sub(pedPos).normalize();
+      other.mesh.lookAt(
+        other.mesh.position.x + fleeDir.x * 10,
+        other.mesh.position.y,
+        other.mesh.position.z + fleeDir.z * 10
+      );
+
+      // Dispatch police for assault
+      this.isWanted = true;
+      if (this.app.trafficSystem) {
+        this.app.trafficSystem.dispatchPolice(pedPos.clone());
+      }
+      break; // Only hit one NPC per swing
+    }
+  }
+
+  arrestPlayer() {
+    if (!this.controlledPedestrian) return;
+
+    // Show arrested overlay
+    const overlay = document.getElementById('arrested-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+
+    // Play arrest sound
+    if (this.app.audioSystem) {
+      this.app.audioSystem.playExplosion();
+    }
+
+    // Clear wanted state
+    this.isWanted = false;
+
+    // Reset police targets
+    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
+      for (const v of this.app.trafficSystem.vehicles) {
+        if (v.isPolice) {
+          v.emergencyTarget = null;
+          v.maxSpeed = 18;
+          v.targetSpeed = 18;
+        }
+      }
+    }
+
+    // Remove baseball bat from pedestrian
+    const ped = this.controlledPedestrian;
+    ped.hasBaseballBat = false;
+    if (ped.batMesh) {
+      ped.armR.remove(ped.batMesh);
+      ped.batMesh = null;
+    }
+
+    // Release control of pedestrian
+    this.releaseControl(ped);
+
+    // Stop camera follow and reset to orbital view
+    this.app.sceneManager.stopFollowTarget();
+    if (this.app.uiManager) {
+      this.app.uiManager.hideInspector();
+    }
+
+    // Hide the overlay after 3 seconds
+    setTimeout(() => {
+      if (overlay) overlay.classList.add('hidden');
+    }, 3000);
   }
 }

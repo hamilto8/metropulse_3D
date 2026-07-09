@@ -1164,3 +1164,64 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
     transform: translate(-50%, -100%) scale(1.0);
   }
 }
+
+/* ─── Arrested Overlay ─────────────────────────────────────────────────────── */
+#arrested-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(13, 2, 2, 0.85);
+  backdrop-filter: blur(15px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  transition: opacity 0.4s ease;
+}
+
+#arrested-overlay.hidden {
+  display: none !important;
+}
+
+.arrested-banner {
+  text-align: center;
+  padding: 40px 80px;
+  background: rgba(220, 38, 38, 0.2);
+  border: 2px solid #ff3b30;
+  box-shadow: 0 0 50px rgba(255, 59, 48, 0.5);
+  border-radius: 16px;
+  animation: arrestedPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.arrested-banner h1 {
+  font-family: var(--font-sans);
+  font-size: 5rem;
+  font-weight: 900;
+  color: #ff3b30;
+  margin: 0 0 15px 0;
+  letter-spacing: 10px;
+  text-shadow: 0 0 25px rgba(255, 59, 48, 0.8);
+}
+
+.arrested-banner p {
+  font-family: var(--font-sans);
+  font-size: 1.3rem;
+  color: #ffb3b3;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+@keyframes arrestedPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.0);
+    opacity: 1;
+  }
+}
