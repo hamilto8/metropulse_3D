@@ -601,9 +601,6 @@ export class TrafficSystem {
       p.emergencyTarget = crashPos.clone();
       p.maxSpeed = 42; // High speed pursuit/response
       p.targetSpeed = 42;
-      if (this.app.audioSystem && this.app.audioSystem.isEnabled) {
-        this.app.audioSystem.playSiren(4.0);
-      }
     }
   }
 
@@ -801,11 +798,17 @@ export class TrafficSystem {
         v.physicsBody.quaternion.set(v.mesh.quaternion.x, v.mesh.quaternion.y, v.mesh.quaternion.z, v.mesh.quaternion.w);
       }
 
-      // 4. Check Doppler siren sound for normal police patrol
-      if (v.isPolice && v.speed > 5 && !v.emergencyTarget && this.app.audioSystem && this.app.audioSystem.isEnabled) {
-        const camDist = pos.distanceTo(this.app.sceneManager.camera.position);
-        if (camDist < 40 && Math.random() < 0.005) {
-          this.app.audioSystem.playSiren(2.0);
+      // 4. Update siren timers for police cars
+      if (v.isPolice) {
+        if (v.sirenTimer && v.sirenTimer > 0) {
+          v.sirenTimer -= delta;
+        }
+        
+        if (v.speed > 5 && !v.emergencyTarget && this.app.audioSystem && this.app.audioSystem.isEnabled) {
+          const camDist = pos.distanceTo(this.app.sceneManager.camera.position);
+          if (camDist < 40 && Math.random() < 0.003 && (!v.sirenTimer || v.sirenTimer <= 0)) {
+            v.sirenTimer = 6.0 + Math.random() * 4.0;
+          }
         }
       }
     }
@@ -815,11 +818,15 @@ export class TrafficSystem {
 
   updateAmbientEngineAudio(delta) {
     if (!this.app || !this.app.audioSystem || !this.app.audioSystem.isEnabled || !this.app.audioSystem.ctx) {
-      // Clean up any active AI engine sounds
+      // Clean up any active AI engine and siren sounds
       for (const v of this.vehicles) {
         if (v.aiEngineSound) {
           this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
           v.aiEngineSound = null;
+        }
+        if (v.spatialSiren) {
+          this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          v.spatialSiren = null;
         }
       }
       return;
@@ -833,9 +840,14 @@ export class TrafficSystem {
 
     for (const v of this.vehicles) {
       if (v.userControlled) {
+        // Player controlled vehicle handles its own sound, clean up AI engine/siren instances if any
         if (v.aiEngineSound) {
           this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
           v.aiEngineSound = null;
+        }
+        if (v.spatialSiren) {
+          this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          v.spatialSiren = null;
         }
         continue;
       }
@@ -845,11 +857,17 @@ export class TrafficSystem {
           this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
           v.aiEngineSound = null;
         }
+        if (v.spatialSiren) {
+          this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          v.spatialSiren = null;
+        }
         continue;
       }
 
       const dist = v.mesh.position.distanceTo(camPos);
+      const dopplerMultiplier = this.calculateDoppler(v, camPos);
 
+      // 1. Update AI engine audio
       if (dist < maxAudibleDist) {
         const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
 
@@ -860,15 +878,53 @@ export class TrafficSystem {
         const speedKmh = v.speed * 3.6;
         const maxSpeedKmh = v.maxSpeed * 3.6;
         
-        // Scale AI engines down slightly so they create atmosphere without overwhelming the user
-        this.app.audioSystem.updateEngineInstance(v.aiEngineSound, speedKmh, maxSpeedKmh, volumeMultiplier * 0.25);
+        // Scale AI engines back a bit, but slightly louder than before (* 0.40) as requested!
+        this.app.audioSystem.updateEngineInstance(v.aiEngineSound, speedKmh, maxSpeedKmh, volumeMultiplier * 0.40, dopplerMultiplier);
       } else {
         if (v.aiEngineSound) {
           this.app.audioSystem.stopEngineInstance(v.aiEngineSound);
           v.aiEngineSound = null;
         }
       }
+
+      // 2. Update police spatial siren audio
+      const hasActiveSiren = (v.isPolice && (v.emergencyTarget != null || (v.sirenTimer && v.sirenTimer > 0)));
+      if (hasActiveSiren && dist < maxAudibleDist) {
+        const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
+
+        if (!v.spatialSiren) {
+          v.spatialSiren = this.app.audioSystem.createSirenInstance();
+        }
+
+        this.app.audioSystem.updateSirenInstance(v.spatialSiren, dopplerMultiplier, volumeMultiplier * 0.65);
+      } else {
+        if (v.spatialSiren) {
+          this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          v.spatialSiren = null;
+        }
+      }
     }
+  }
+
+  calculateDoppler(v, camPos) {
+    const toCam = camPos.clone().sub(v.mesh.position);
+    const dist = toCam.length();
+    if (dist < 0.1) return 1.0;
+    toCam.normalize();
+
+    // AI velocity vector
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(v.mesh.quaternion);
+    const carVel = forward.multiplyScalar(v.speed);
+
+    // Component toward the camera
+    const speedTowardCam = carVel.dot(toCam);
+
+    // Physical Doppler shift formula using game speed of sound
+    const speedOfSound = 65.0; // scale factor
+    let doppler = speedOfSound / (speedOfSound - speedTowardCam);
+
+    // Clamp shift multiplier
+    return Math.max(0.65, Math.min(1.75, doppler));
   }
 
   spawnParkedVehicles() {

@@ -598,13 +598,30 @@ export class AudioSystem {
     return new EngineAudioNode(this, vType);
   }
 
-  updateEngineInstance(instance, speedKmh, maxSpeedKmh, volumeMultiplier) {
+  updateEngineInstance(instance, speedKmh, maxSpeedKmh, volumeMultiplier, dopplerMultiplier = 1.0) {
     if (instance) {
-      instance.updateSound(speedKmh, maxSpeedKmh, volumeMultiplier);
+      instance.updateSound(speedKmh, maxSpeedKmh, volumeMultiplier, dopplerMultiplier);
     }
   }
 
   stopEngineInstance(instance) {
+    if (instance) {
+      instance.stop();
+    }
+  }
+
+  createSirenInstance() {
+    if (!this.isEnabled || !this.ctx) return null;
+    return new SirenAudioNode(this);
+  }
+
+  updateSirenInstance(instance, dopplerMultiplier, volumeMultiplier) {
+    if (instance) {
+      instance.updateSound(dopplerMultiplier, volumeMultiplier);
+    }
+  }
+
+  stopSirenInstance(instance) {
     if (instance) {
       instance.stop();
     }
@@ -653,7 +670,7 @@ class EngineAudioNode {
       
       this.baseFreq = 70;
       this.maxFreq = 260;
-      this.targetVolume = 0.05;
+      this.targetVolume = 0.11;
     } else if (this.vType === 'BUS') {
       // Extremely deep lowpass diesel rumble with soft LFO tremolo
       this.osc1 = this.ctx.createOscillator();
@@ -669,7 +686,7 @@ class EngineAudioNode {
       this.lfo = this.ctx.createOscillator();
       this.lfo.frequency.value = 6.0;
       this.lfoGain = this.ctx.createGain();
-      this.lfoGain.gain.value = 0.04;
+      this.lfoGain.gain.value = 0.08;
 
       this.lfo.connect(this.lfoGain);
       this.lfoGain.connect(this.gainNode.gain);
@@ -679,7 +696,7 @@ class EngineAudioNode {
 
       this.baseFreq = 32;
       this.maxFreq = 75;
-      this.targetVolume = 0.07;
+      this.targetVolume = 0.14;
     } else if (this.vType === 'TRUCK') {
       // Soft deep lowpass sawtooth
       this.osc1 = this.ctx.createOscillator();
@@ -693,7 +710,7 @@ class EngineAudioNode {
 
       this.baseFreq = 40;
       this.maxFreq = 100;
-      this.targetVolume = 0.06;
+      this.targetVolume = 0.12;
     } else {
       // Sedan, Taxi, Police: smooth deep lowpass hum
       this.osc1 = this.ctx.createOscillator();
@@ -711,7 +728,7 @@ class EngineAudioNode {
 
       this.baseFreq = 50;
       this.maxFreq = 160;
-      this.targetVolume = 0.04;
+      this.targetVolume = 0.09;
     }
 
     this.filterNode.connect(this.gainNode);
@@ -724,16 +741,16 @@ class EngineAudioNode {
     this.gainNode.gain.setTargetAtTime(this.targetVolume, now, 0.2);
   }
 
-  updateSound(speedKmh, maxSpeedKmh, volumeMultiplier = 1.0) {
+  updateSound(speedKmh, maxSpeedKmh, volumeMultiplier = 1.0, dopplerMultiplier = 1.0) {
     if (!this.ctx || !this.osc1) return;
     const now = this.ctx.currentTime;
     const ratio = Math.max(0, Math.min(1.0, speedKmh / (maxSpeedKmh || 30.0)));
 
-    const currentFreq = this.baseFreq + (this.maxFreq - this.baseFreq) * ratio;
+    const currentFreq = (this.baseFreq + (this.maxFreq - this.baseFreq) * ratio) * dopplerMultiplier;
 
     this.osc1.frequency.setTargetAtTime(currentFreq, now, 0.08);
     if (this.osc2) {
-      this.osc2.frequency.setTargetAtTime(currentFreq + (this.vType === 'SPORTS' ? 1.5 : 0.4), now, 0.08);
+      this.osc2.frequency.setTargetAtTime(currentFreq + (this.vType === 'SPORTS' ? 1.5 : 0.4) * dopplerMultiplier, now, 0.08);
     }
 
     // Scale engine load volume based on speed ratio and spatial attenuation multiplier
@@ -741,12 +758,12 @@ class EngineAudioNode {
     
     // In Web Audio API, if we are modulating gain.gain directly with LFO, we must not override LFO values abruptly
     if (this.vType === 'BUS' && this.lfoGain) {
-      this.lfoGain.gain.setTargetAtTime((0.04 + ratio * 0.02) * volumeMultiplier, now, 0.1);
+      this.lfoGain.gain.setTargetAtTime((0.08 + ratio * 0.03) * volumeMultiplier, now, 0.1);
     } else {
       this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
     }
 
-    const filterFreq = (this.vType === 'SPORTS' ? 150 : 110) + ratio * 220;
+    const filterFreq = ((this.vType === 'SPORTS' ? 150 : 110) + ratio * 220) * dopplerMultiplier;
     this.filterNode.frequency.setTargetAtTime(filterFreq, now, 0.08);
   }
 
@@ -769,5 +786,79 @@ class EngineAudioNode {
       this.osc2 = null;
       this.lfo = null;
     }, 280);
+  }
+}
+
+class SirenAudioNode {
+  constructor(audioSystem) {
+    this.audioSystem = audioSystem;
+    this.ctx = audioSystem.ctx;
+
+    this.osc = null;
+    this.sweepOsc = null;
+    this.sweepGain = null;
+    this.gainNode = null;
+
+    this.initSound();
+  }
+
+  initSound() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0, now);
+
+    this.osc = this.ctx.createOscillator();
+    this.osc.type = 'triangle';
+
+    this.sweepOsc = this.ctx.createOscillator();
+    this.sweepOsc.frequency.value = 2.0; // 2Hz wail speed
+
+    this.sweepGain = this.ctx.createGain();
+    this.sweepGain.gain.value = 180; // wail frequency sweep amplitude
+
+    this.sweepOsc.connect(this.sweepGain);
+    this.sweepGain.connect(this.osc.frequency);
+
+    this.osc.frequency.setValueAtTime(450, now);
+
+    this.osc.connect(this.gainNode);
+    this.gainNode.connect(this.audioSystem.masterGain);
+
+    this.osc.start(now);
+    this.sweepOsc.start(now);
+
+    this.gainNode.gain.setTargetAtTime(0.35, now, 0.2); // fade in
+  }
+
+  updateSound(dopplerMultiplier, volumeMultiplier) {
+    if (!this.ctx || !this.osc) return;
+    const now = this.ctx.currentTime;
+
+    // Shift base pitch and sweep wail bounds with Doppler shift
+    const baseFreq = 450 * dopplerMultiplier;
+    this.osc.frequency.setTargetAtTime(baseFreq, now, 0.06);
+    this.sweepGain.gain.setTargetAtTime(180 * dopplerMultiplier, now, 0.06);
+
+    const currentVol = 0.35 * volumeMultiplier;
+    this.gainNode.gain.setTargetAtTime(currentVol, now, 0.08);
+  }
+
+  stop() {
+    if (!this.ctx || !this.osc) return;
+    const now = this.ctx.currentTime;
+
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    setTimeout(() => {
+      try {
+        if (this.osc) this.osc.stop();
+        if (this.sweepOsc) this.sweepOsc.stop();
+      } catch (e) {}
+      this.osc = null;
+      this.sweepOsc = null;
+    }, 220);
   }
 }
