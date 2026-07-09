@@ -59,6 +59,10 @@ export class TrafficSystem {
       if (this.controlledVehicle && this.controlledVehicle !== vehicle) {
         this.releaseControl(this.controlledVehicle);
       }
+      // Release control of any pedestrian to prevent conflicts
+      if (this.app && this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian) {
+        this.app.pedestrianSystem.releaseControl(this.app.pedestrianSystem.controlledPedestrian);
+      }
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       vehicle.info['Status'] = '🎮 USER CONTROLLED';

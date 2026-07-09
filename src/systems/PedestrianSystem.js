@@ -213,6 +213,49 @@ export class PedestrianSystem {
 
       if (p.knockedDown) continue;
 
+      if (p.userControlled) {
+        const ts = this.app.trafficSystem;
+        const keys = ts ? ts.keys : null;
+        
+        if (keys) {
+          const isW = keys['w'] || keys['arrowup'];
+          const isS = keys['s'] || keys['arrowdown'];
+          const isA = keys['a'] || keys['arrowleft'];
+          const isD = keys['d'] || keys['arrowright'];
+
+          // Rotate pedestrian
+          if (isA) p.mesh.rotation.y += 3.2 * delta;
+          if (isD) p.mesh.rotation.y -= 3.2 * delta;
+
+          // Determine target speed based on keys
+          let moveSpeed = 0;
+          if (isW) moveSpeed = p.maxSpeed;
+          if (isS) moveSpeed = -p.maxSpeed * 0.6; // Backwards movement is slower
+          
+          p.targetSpeed = moveSpeed;
+        }
+
+        // Interpolate speed
+        if (p.speed < p.targetSpeed) {
+          p.speed = Math.min(p.targetSpeed, p.speed + 16 * delta);
+        } else if (p.speed > p.targetSpeed) {
+          p.speed = Math.max(p.targetSpeed, p.speed - 16 * delta);
+        }
+
+        // Translate pedestrian
+        if (Math.abs(p.speed) > 0.05) {
+          const moveStep = p.speed * delta;
+          p.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
+        }
+
+        // Snapping elevation to current sidewalk, road, or park height
+        p.mesh.position.y = this.getTerrainHeight(pos.x, pos.z);
+
+        // Update leg/arm swing animations
+        p.update(delta);
+        continue;
+      }
+
       if (isBlocked) {
         p.targetSpeed = 0;
       } else {
@@ -261,5 +304,162 @@ export class PedestrianSystem {
       // 3. Update walk animation
       p.update(delta);
     }
+
+    // 4. Handle proximity checking for entering a vehicle
+    this.updateVehicleEntryCheck();
+  }
+
+  updateVehicleEntryCheck() {
+    if (!this.controlledPedestrian) {
+      const prompt = document.getElementById('vehicle-enter-prompt');
+      if (prompt) prompt.classList.add('hidden');
+      return;
+    }
+
+    const p = this.controlledPedestrian;
+    const pos = p.mesh.position;
+    
+    let closestVehicle = null;
+    let minDist = 3.5; // Vehicle boarding range (meters)
+
+    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
+      for (const v of this.app.trafficSystem.vehicles) {
+        const dist = pos.distanceTo(v.mesh.position);
+        if (dist < minDist) {
+          minDist = dist;
+          closestVehicle = v;
+        }
+      }
+    }
+
+    let prompt = document.getElementById('vehicle-enter-prompt');
+    if (closestVehicle) {
+      if (!prompt) {
+        prompt = document.createElement('div');
+        prompt.id = 'vehicle-enter-prompt';
+        prompt.style.position = 'fixed';
+        prompt.style.bottom = '15%';
+        prompt.style.left = '50%';
+        prompt.style.transform = 'translateX(-50%)';
+        prompt.style.padding = '12px 24px';
+        prompt.style.borderRadius = '24px';
+        prompt.style.background = 'rgba(7, 12, 30, 0.75)';
+        prompt.style.backdropFilter = 'blur(12px)';
+        prompt.style.border = '1px solid #ff007f';
+        prompt.style.color = '#fff';
+        prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
+        prompt.style.fontSize = '0.95rem';
+        prompt.style.fontWeight = 'bold';
+        prompt.style.boxShadow = '0 0 15px rgba(255, 0, 127, 0.4)';
+        prompt.style.zIndex = '1000';
+        prompt.style.pointerEvents = 'none';
+        document.body.appendChild(prompt);
+      }
+      
+      prompt.innerHTML = `🏎️ Press <span style="color: #00f0ff;">[F]</span> or <span style="color: #00f0ff;">[Enter]</span> to Hijack ${closestVehicle.name.toUpperCase()}`;
+      prompt.classList.remove('hidden');
+
+      const ts = this.app.trafficSystem;
+      const keys = ts ? ts.keys : null;
+      if (keys && (keys['f'] || keys['enter'])) {
+        // Hijack key pressed! Consume input to prevent duplicate hits
+        keys['f'] = false;
+        keys['enter'] = false;
+
+        const success = this.app.trafficSystem.toggleUserControl(closestVehicle);
+        if (success) {
+          this.releaseControl(p);
+          prompt.classList.add('hidden');
+          
+          this.app.sceneManager.startFollowTarget(closestVehicle);
+          if (this.app.uiManager) {
+            this.app.uiManager.showInspector(closestVehicle);
+          }
+        }
+      }
+    } else {
+      if (prompt) {
+        prompt.classList.add('hidden');
+      }
+    }
+  }
+
+  toggleUserControl(pedestrian) {
+    if (!pedestrian) return false;
+    
+    if (pedestrian.userControlled && this.controlledPedestrian === pedestrian) {
+      this.releaseControl(pedestrian);
+      return false;
+    } else {
+      // Release any currently controlled pedestrian
+      if (this.controlledPedestrian && this.controlledPedestrian !== pedestrian) {
+        this.releaseControl(this.controlledPedestrian);
+      }
+      // Release control of any vehicle to prevent conflicts
+      if (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
+        this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
+      }
+      
+      pedestrian.userControlled = true;
+      this.controlledPedestrian = pedestrian;
+      pedestrian.info['Mood'] = '🎮 USER CONTROLLED';
+      pedestrian.info['Activity'] = 'Walking streets';
+      return true;
+    }
+  }
+
+  releaseControl(pedestrian) {
+    if (!pedestrian) return;
+    pedestrian.userControlled = false;
+    if (this.controlledPedestrian === pedestrian) {
+      this.controlledPedestrian = null;
+    }
+    
+    pedestrian.info['Mood'] = 'Energized';
+    pedestrian.info['Activity'] = pedestrian.pType === 'JOGGER' ? 'Evening Run' : (pedestrian.pType === 'BUSINESS' ? 'Commuting to Office' : 'Strolling Downtown');
+    
+    const prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) prompt.classList.add('hidden');
+
+    // Return to sidewalk network at closest node to avoid floating
+    const allNodes = Array.from(this.nodes.values()).filter(n => n.nextNodes.length > 0);
+    let closestNode = null;
+    let minDist = Infinity;
+    for (const n of allNodes) {
+      const dist = pedestrian.mesh.position.distanceTo(n.pos);
+      if (dist < minDist) {
+        minDist = dist;
+        closestNode = n;
+      }
+    }
+    
+    if (closestNode) {
+      pedestrian.currentNode = closestNode;
+      if (closestNode.nextNodes.length > 0) {
+        pedestrian.targetNode = closestNode.nextNodes[0];
+        pedestrian.mesh.lookAt(pedestrian.targetNode.pos);
+      }
+    }
+  }
+
+  getTerrainHeight(x, z) {
+    // 1. Northwest Central Park region
+    if (x < -60 && z < -60) return 0.7;
+
+    // 2. Main street blocks (sidewalks)
+    const blockCentersX = [-75, -25, 25, 75, 235, 285];
+    const blockCentersZ = [-75, -25, 25, 75];
+    const size = 22.0; // Block half-width (36 block + 4 sidewalk on each side = 44 / 2 = 22)
+
+    for (const bx of blockCentersX) {
+      for (const bz of blockCentersZ) {
+        if (Math.abs(x - bx) < size && Math.abs(z - bz) < size) {
+          return 0.4; // Elevated sidewalk height
+        }
+      }
+    }
+
+    // 3. Street/Asphalt level (offset slightly so feet align with floor)
+    return 0.05;
   }
 }

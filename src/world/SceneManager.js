@@ -120,8 +120,9 @@ export class SceneManager {
 
   update(delta) {
     const ts = this.app ? this.app.trafficSystem : null;
+    const ps = this.app ? this.app.pedestrianSystem : null;
     const keys = ts ? ts.keys : null;
-    const isControlling = ts && ts.controlledVehicle != null;
+    const isControlling = (ts && ts.controlledVehicle != null) || (ps && ps.controlledPedestrian != null);
 
     if (keys && !isControlling) {
       const isW = keys['w'] || keys['arrowup'];

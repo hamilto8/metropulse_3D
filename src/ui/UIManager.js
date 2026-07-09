@@ -175,11 +175,19 @@ export class UIManager {
         this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
         this.btnFollowTarget.classList.toggle('active', isFollowing);
 
-        if (!isFollowing && this.selectedEntity.type === 'VEHICLE' && this.selectedEntity.userControlled) {
-          this.app.trafficSystem.releaseControl(this.selectedEntity);
-          if (this.btnTakeControl) {
-            this.btnTakeControl.innerHTML = '🏎️ Take Control (Physics)';
-            this.btnTakeControl.classList.remove('active');
+        if (!isFollowing && this.selectedEntity.userControlled) {
+          if (this.selectedEntity.type === 'VEHICLE') {
+            this.app.trafficSystem.releaseControl(this.selectedEntity);
+            if (this.btnTakeControl) {
+              this.btnTakeControl.innerHTML = '🏎️ Take Control (Physics)';
+              this.btnTakeControl.classList.remove('active');
+            }
+          } else if (this.selectedEntity.type === 'PEDESTRIAN') {
+            this.app.pedestrianSystem.releaseControl(this.selectedEntity);
+            if (this.btnTakeControl) {
+              this.btnTakeControl.innerHTML = '🚶 Take Control (Walk)';
+              this.btnTakeControl.classList.remove('active');
+            }
           }
         }
       }
@@ -188,13 +196,30 @@ export class UIManager {
     // Take Control button (WASD / Arrows manual driving)
     if (this.btnTakeControl) {
       this.btnTakeControl.addEventListener('click', () => {
-        if (this.selectedEntity && this.selectedEntity.type === 'VEHICLE') {
+        if (!this.selectedEntity) return;
+
+        if (this.selectedEntity.type === 'VEHICLE') {
           const ts = this.app.trafficSystem;
           const isNowControlled = ts.toggleUserControl(this.selectedEntity);
           this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
           // Phase 2: Cinematic swoop transition to street level or ascend back to macro view
+          if (isNowControlled) {
+            this.app.sceneManager.startFollowTarget(this.selectedEntity);
+            this.btnFollowTarget.innerHTML = '❌ Stop Following';
+            this.btnFollowTarget.classList.add('active');
+          } else {
+            this.app.sceneManager.stopFollowTarget();
+            this.btnFollowTarget.innerHTML = '🎯 Follow Target';
+            this.btnFollowTarget.classList.remove('active');
+          }
+        } else if (this.selectedEntity.type === 'PEDESTRIAN') {
+          const ps = this.app.pedestrianSystem;
+          const isNowControlled = ps.toggleUserControl(this.selectedEntity);
+          this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Walk Control' : '🚶 Take Control (Walk)';
+          this.btnTakeControl.classList.toggle('active', isNowControlled);
+
           if (isNowControlled) {
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
@@ -304,7 +329,12 @@ export class UIManager {
       this.btnInteractSfx.classList.remove('hidden');
       this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
     } else if (entity.type === 'PEDESTRIAN') {
-      if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
+      if (this.btnTakeControl) {
+        this.btnTakeControl.classList.remove('hidden');
+        const isControlled = (this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian === entity && entity.userControlled);
+        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Walk Control' : '🚶 Take Control (Walk)';
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
       this.btnInteractSfx.classList.remove('hidden');
       this.btnInteractSfx.innerHTML = '👋 Wave / Talk';
     } else if (entity.type === 'MISSION_PICKUP') {
