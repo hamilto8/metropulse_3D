@@ -206,7 +206,7 @@ export class PedestrianSystem {
             setTimeout(() => { prompt.classList.add('hidden'); }, 3000);
           }
           if (this.app.audioSystem) {
-            this.app.audioSystem.playSelect();
+            this.app.audioSystem.playUIClick();
           }
           break;
         }
@@ -592,7 +592,7 @@ export class PedestrianSystem {
       this.talkingBubbleTimer = 3.5;
 
       if (this.app.audioSystem) {
-        this.app.audioSystem.playSelect();
+        this.app.audioSystem.playUIClick();
       }
 
       let bubble = document.getElementById('pedestrian-speech-bubble');
@@ -810,7 +810,7 @@ export class PedestrianSystem {
 
     // Play whoosh/swing sound
     if (this.app.audioSystem) {
-      this.app.audioSystem.playSelect();
+      this.app.audioSystem.playUIClick();
     }
 
     // Hit detection: use XZ-plane only to avoid Y-offset issues
