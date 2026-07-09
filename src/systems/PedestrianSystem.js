@@ -228,9 +228,9 @@ export class PedestrianSystem {
           if (isA) p.mesh.rotation.y += 3.2 * delta;
           if (isD) p.mesh.rotation.y -= 3.2 * delta;
 
-          // Determine target speed based on keys (Shift doubles maxSpeed)
+          // Determine target speed based on keys (Shift triples maxSpeed)
           let moveSpeed = 0;
-          const currentMaxSpeed = isShift ? p.maxSpeed * 2.0 : p.maxSpeed;
+          const currentMaxSpeed = isShift ? p.maxSpeed * 3.0 : p.maxSpeed;
           if (isW) moveSpeed = currentMaxSpeed;
           if (isS) moveSpeed = -currentMaxSpeed * 0.6; // Backwards movement is slower
           
