@@ -1119,3 +1119,48 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   font-size: 1.1rem !important;
   text-shadow: 0 0 10px rgba(255, 85, 119, 0.4) !important;
 }
+
+/* Stylized floating speech bubble */
+.floating-speech-bubble {
+  position: fixed;
+  background: rgba(7, 12, 30, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--primary);
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 16px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  max-width: 240px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+  pointer-events: none;
+  z-index: 1001;
+  transform: translate(-50%, -100%);
+  animation: speechBubblePop 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.floating-speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: rgba(7, 12, 30, 0.88);
+  border-right: 1px solid var(--primary);
+  border-bottom: 1px solid var(--primary);
+}
+
+@keyframes speechBubblePop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -85%) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -100%) scale(1.0);
+  }
+}

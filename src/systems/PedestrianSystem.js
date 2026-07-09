@@ -17,6 +17,9 @@ export class PedestrianSystem {
     this.app = app;
     this.pedestrians = [];
     this.nodes = new Map();
+    this.talkingPedestrian = null;
+    this.talkingBubbleText = '';
+    this.talkingBubbleTimer = 0;
     this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319];
     this.sidewalkCoordsZ = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
     
@@ -167,6 +170,17 @@ export class PedestrianSystem {
   }
 
   update(delta) {
+    // Update active speech bubble if any
+    if (this.talkingBubbleTimer > 0) {
+      this.talkingBubbleTimer -= delta;
+      this.updateSpeechBubblePosition();
+      if (this.talkingBubbleTimer <= 0) {
+        this.talkingPedestrian = null;
+        const bubble = document.getElementById('pedestrian-speech-bubble');
+        if (bubble) bubble.classList.add('hidden');
+      }
+    }
+
     for (let i = 0; i < this.pedestrians.length; i++) {
       const p = this.pedestrians[i];
       const pos = p.mesh.position;
@@ -307,11 +321,11 @@ export class PedestrianSystem {
       p.update(delta);
     }
 
-    // 4. Handle proximity checking for entering a vehicle
-    this.updateVehicleEntryCheck();
+    // 4. Handle proximity checking for vehicles and pedestrians
+    this.updateProximityChecks();
   }
 
-  updateVehicleEntryCheck() {
+  updateProximityChecks() {
     if (!this.controlledPedestrian) {
       const prompt = document.getElementById('vehicle-enter-prompt');
       if (prompt) prompt.classList.add('hidden');
@@ -321,21 +335,37 @@ export class PedestrianSystem {
     const p = this.controlledPedestrian;
     const pos = p.mesh.position;
     
+    // 1. Scan for closest vehicle
     let closestVehicle = null;
-    let minDist = 3.5; // Vehicle boarding range (meters)
+    let minVehDist = 3.5; // Vehicle boarding range (meters)
 
     if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
       for (const v of this.app.trafficSystem.vehicles) {
         const dist = pos.distanceTo(v.mesh.position);
-        if (dist < minDist) {
-          minDist = dist;
+        if (dist < minVehDist) {
+          minVehDist = dist;
           closestVehicle = v;
         }
       }
     }
 
+    // 2. Scan for closest other pedestrian
+    let closestPed = null;
+    let minPedDist = 3.0; // Pedestrian talk range (meters)
+
+    for (const other of this.pedestrians) {
+      if (other === p || other.knockedDown) continue;
+      const dist = pos.distanceTo(other.mesh.position);
+      if (dist < minPedDist) {
+        minPedDist = dist;
+        closestPed = other;
+      }
+    }
+
+    // 3. Resolve priority: whichever is closer triggers action
     let prompt = document.getElementById('vehicle-enter-prompt');
-    if (closestVehicle) {
+    if (closestVehicle && (closestPed === null || minVehDist < minPedDist)) {
+      // Vehicle prompt
       if (!prompt) {
         prompt = document.createElement('div');
         prompt.id = 'vehicle-enter-prompt';
@@ -363,8 +393,7 @@ export class PedestrianSystem {
 
       const ts = this.app.trafficSystem;
       const keys = ts ? ts.keys : null;
-      if (keys && (keys['e'] || keys['f'] || keys['enter'])) {
-        // Hijack key pressed! Consume input to prevent duplicate hits
+      if (keys && keys['e']) {
         keys['e'] = false;
         keys['f'] = false;
         keys['enter'] = false;
@@ -374,10 +403,8 @@ export class PedestrianSystem {
           closestVehicle.driverPedestrian = p;
           this.releaseControl(p);
           
-          // Remove from 3D scene rendering
           this.app.sceneManager.scene.remove(p.mesh);
           
-          // Remove from active updates list
           const index = this.pedestrians.indexOf(p);
           if (index > -1) {
             this.pedestrians.splice(index, 1);
@@ -391,9 +418,106 @@ export class PedestrianSystem {
           }
         }
       }
+    } else if (closestPed) {
+      // Pedestrian Talk prompt
+      if (!prompt) {
+        prompt = document.createElement('div');
+        prompt.id = 'vehicle-enter-prompt';
+        prompt.style.position = 'fixed';
+        prompt.style.bottom = '15%';
+        prompt.style.left = '50%';
+        prompt.style.transform = 'translateX(-50%)';
+        prompt.style.padding = '12px 24px';
+        prompt.style.borderRadius = '24px';
+        prompt.style.background = 'rgba(7, 12, 30, 0.75)';
+        prompt.style.backdropFilter = 'blur(12px)';
+        prompt.style.border = '1px solid #ff007f';
+        prompt.style.color = '#fff';
+        prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
+        prompt.style.fontSize = '0.95rem';
+        prompt.style.fontWeight = 'bold';
+        prompt.style.boxShadow = '0 0 15px rgba(255, 0, 127, 0.4)';
+        prompt.style.zIndex = '1000';
+        prompt.style.pointerEvents = 'none';
+        document.body.appendChild(prompt);
+      }
+
+      prompt.innerHTML = `💬 Press <span style="color: #00f0ff;">[E]</span> to Talk to ${closestPed.name.toUpperCase()}`;
+      prompt.classList.remove('hidden');
+
+      const ts = this.app.trafficSystem;
+      const keys = ts ? ts.keys : null;
+      if (keys && keys['e']) {
+        keys['e'] = false;
+        
+        const funnyDialogues = [
+          "Corporate told me to smile 15% harder today.",
+          "Did you see the comets? Excellent for property prices!",
+          "Buy the dip! NeoTech stock is basically free!",
+          "Property damage is temporary, profit is eternal.",
+          "I'm commuting to work. My shift is 48 hours.",
+          "I love the smell of comet fuel in the morning.",
+          "Please do not step on my briefcase. It has my lunch.",
+          "My coffee costs $80. What a steal!",
+          "A drone scanned my iris and deducted $5 tax.",
+          "Living the dream! (Help me, the AI is watching)",
+          "I'm jogger #3829. Enforcing cardiovascular optimization.",
+          "Can you move? I have a corporate synergy meeting."
+        ];
+        
+        this.talkingPedestrian = closestPed;
+        this.talkingBubbleText = funnyDialogues[Math.floor(Math.random() * funnyDialogues.length)];
+        this.talkingBubbleTimer = 3.5;
+
+        if (this.app.audioSystem) {
+          this.app.audioSystem.playSelect();
+        }
+
+        let bubble = document.getElementById('pedestrian-speech-bubble');
+        if (!bubble) {
+          bubble = document.createElement('div');
+          bubble.id = 'pedestrian-speech-bubble';
+          bubble.className = 'floating-speech-bubble';
+          document.body.appendChild(bubble);
+        }
+        bubble.textContent = this.talkingBubbleText;
+        bubble.classList.remove('hidden');
+        this.updateSpeechBubblePosition();
+      }
     } else {
       if (prompt) {
         prompt.classList.add('hidden');
+      }
+    }
+  }
+
+  updateSpeechBubblePosition() {
+    if (!this.talkingPedestrian || !this.talkingPedestrian.mesh) {
+      const bubble = document.getElementById('pedestrian-speech-bubble');
+      if (bubble) bubble.classList.add('hidden');
+      return;
+    }
+    
+    const camera = this.app.sceneManager.camera;
+    if (!camera) return;
+
+    const tempV = new THREE.Vector3();
+    tempV.copy(this.talkingPedestrian.mesh.position);
+    tempV.y += 2.8; // Above pedestrian's head
+    
+    tempV.project(camera);
+    
+    const bubble = document.getElementById('pedestrian-speech-bubble');
+    if (bubble) {
+      if (tempV.z > 1.0) {
+        // Target is behind camera, hide bubble
+        bubble.classList.add('hidden');
+      } else {
+        const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (tempV.y * -0.5 + 0.5) * window.innerHeight;
+        bubble.style.left = `${x}px`;
+        bubble.style.top = `${y}px`;
+        bubble.classList.remove('hidden');
       }
     }
   }
