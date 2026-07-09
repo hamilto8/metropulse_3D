@@ -728,12 +728,26 @@ export class TrafficSystem {
       for (let j = 0; j < this.vehicles.length; j++) {
         if (i === j) continue;
         const other = this.vehicles[j];
+        if (other.isParked) continue; // Parked cars along curbs don't block active lanes
+
         const dist = pos.distanceTo(other.mesh.position);
 
-        if (dist < 11) {
+        if (dist < 11.5) {
           const toOther = other.mesh.position.clone().sub(pos).normalize();
           const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(v.mesh.quaternion);
-          if (toOther.dot(forward) > 0.65) {
+          const dot = toOther.dot(forward);
+          
+          // Dynamic cones of blocking:
+          // A) Directly ahead (cone of dot > 0.50) within 11.5 meters
+          // B) Angle ahead (cone of dot > 0.15) within 7.5 meters (intersections, side-swipes)
+          // C) Extremely close (distance < 5.8 meters) and in front semi-circle (dot > 0)
+          // D) Overlapping buffer (distance < 4.5 meters) in front/sides (dot > -0.2)
+          const isDirectlyAhead = (dist < 11.5 && dot > 0.50);
+          const isAngleAhead = (dist < 7.5 && dot > 0.15);
+          const isVeryCloseFront = (dist < 5.8 && dot > 0.0);
+          const isCollidingOverlap = (dist < 4.5 && dot > -0.2);
+
+          if (isDirectlyAhead || isAngleAhead || isVeryCloseFront || isCollidingOverlap) {
             // In Fun Mode, ignore collision avoidance so cars smash into each other!
             if (!funMode) {
               isBlocked = true;
@@ -746,14 +760,59 @@ export class TrafficSystem {
         }
       }
 
-      if (!funMode) {
-        if (isBlocked) {
-          v.targetSpeed = 0;
+      // Stuck and Reversing logic for AI vehicles to prevent gridlocks
+      if (!v.userControlled && !v.isParked && !v.crashed && !v.emergencyTarget) {
+        if (v.stuckTimer === undefined) v.stuckTimer = 0;
+        if (v.isReversing === undefined) v.isReversing = false;
+        if (v.reverseTimer === undefined) v.reverseTimer = 0;
+
+        if (v.isReversing) {
+          v.reverseTimer -= delta;
+          v.targetSpeed = -4.0; // Drive backwards at 4 m/s
+          if (v.reverseTimer <= 0) {
+            v.isReversing = false;
+            v.stuckTimer = 0;
+            // Force select a new target node to break any deadlock loops
+            if (v.currentNode && v.currentNode.nextNodes.length > 0) {
+              v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
+            }
+          }
         } else {
-          v.targetSpeed = v.maxSpeed;
+          const isTryingToMove = (v.targetSpeed > 0 || isBlocked);
+          const isNearlyStopped = (v.speed < 0.25);
+          if (isTryingToMove && isNearlyStopped) {
+            v.stuckTimer += delta;
+          } else {
+            v.stuckTimer = Math.max(0, v.stuckTimer - delta * 0.5);
+          }
+
+          if (v.stuckTimer > 4.5) {
+            v.isReversing = true;
+            v.reverseTimer = 1.8 + Math.random() * 1.2;
+            v.stuckTimer = 0;
+            if (v.info) {
+              v.info['Status'] = 'Unsticking (Reversing) 🔄';
+            }
+          }
+
+          // Absolute fallback: if stuck for 18.0s, respawn the vehicle to keep traffic moving!
+          if (v.stuckTimer > 18.0) {
+            this.respawnVehicle(v);
+            continue;
+          }
         }
-      } else if (!isBlocked) {
-        v.targetSpeed = v.maxSpeed * 1.2;
+      }
+
+      if (!v.isReversing) {
+        if (!funMode) {
+          if (isBlocked) {
+            v.targetSpeed = 0;
+          } else {
+            v.targetSpeed = v.maxSpeed;
+          }
+        } else if (!isBlocked) {
+          v.targetSpeed = v.maxSpeed * 1.2;
+        }
       }
 
       if (v.speed < v.targetSpeed) {
@@ -765,7 +824,7 @@ export class TrafficSystem {
       // 2. Steer along road graph towards target node
       if (v.targetNode) {
         const distToTarget = pos.distanceTo(v.targetNode.pos);
-        if (distToTarget < 2.5) {
+        if (distToTarget < 2.5 && !v.isReversing) {
           v.currentNode = v.targetNode;
           if (v.currentNode.nextNodes.length > 0) {
             v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
@@ -775,14 +834,17 @@ export class TrafficSystem {
         }
 
         if (v.targetNode) {
-          const dir = v.targetNode.pos.clone().sub(pos).normalize();
-          const targetAngle = Math.atan2(dir.x, dir.z);
+          const isReversingState = (v.isReversing === true);
+          if (!isReversingState) {
+            const dir = v.targetNode.pos.clone().sub(pos).normalize();
+            const targetAngle = Math.atan2(dir.x, dir.z);
 
-          let currentAngle = v.mesh.rotation.y;
-          let diff = targetAngle - currentAngle;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          v.mesh.rotation.y += diff * 6.0 * delta;
+            let currentAngle = v.mesh.rotation.y;
+            let diff = targetAngle - currentAngle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            v.mesh.rotation.y += diff * 6.0 * delta;
+          }
 
           const moveStep = v.speed * delta;
           v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
@@ -988,5 +1050,61 @@ export class TrafficSystem {
 
       this.vehicles.push(vehicle);
     });
+  }
+
+  respawnVehicle(vehicle) {
+    if (!vehicle || vehicle.userControlled || vehicle.isParked) return;
+
+    // Filter for out nodes that are not currently occupied by other vehicles
+    const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
+    
+    // Pick the best (least occupied) starting node
+    let bestNode = null;
+    let maxClearDist = 0;
+    
+    for (let attempts = 0; attempts < 15; attempts++) {
+      const node = outNodes[Math.floor(Math.random() * outNodes.length)];
+      let minDist = 999999;
+      for (const other of this.vehicles) {
+        if (other === vehicle || other.isParked) continue;
+        const dist = other.mesh.position.distanceTo(node.pos);
+        if (dist < minDist) minDist = dist;
+      }
+      if (minDist > maxClearDist) {
+        maxClearDist = minDist;
+        bestNode = node;
+      }
+      if (minDist > 30) {
+        bestNode = node;
+        break; // Far enough!
+      }
+    }
+
+    if (!bestNode) {
+      bestNode = outNodes[Math.floor(Math.random() * outNodes.length)];
+    }
+
+    // Reset vehicle variables
+    vehicle.mesh.position.copy(bestNode.pos);
+    if (vehicle.physicsBody) {
+      vehicle.physicsBody.position.set(bestNode.pos.x, bestNode.pos.y + 1.05, bestNode.pos.z);
+      vehicle.physicsBody.velocity.set(0, 0, 0);
+      vehicle.physicsBody.angularVelocity.set(0, 0, 0);
+    }
+    
+    vehicle.currentNode = bestNode;
+    vehicle.targetNode = bestNode.nextNodes[Math.floor(Math.random() * bestNode.nextNodes.length)] || bestNode.nextNodes[0];
+    vehicle.speed = 0;
+    vehicle.targetSpeed = vehicle.maxSpeed;
+    vehicle.crashed = false;
+    vehicle.crashTimer = 0;
+    vehicle.emergencyTarget = null;
+    vehicle.stuckTimer = 0;
+    vehicle.isReversing = false;
+    vehicle.reverseTimer = 0;
+    if (vehicle.info) {
+      vehicle.info['Status'] = 'Cruising';
+      vehicle.info['Mood'] = 'Relaxed ☀️';
+    }
   }
 }
