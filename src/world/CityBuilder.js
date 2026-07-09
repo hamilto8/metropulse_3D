@@ -20,6 +20,7 @@ export class CityBuilder {
     this.createCentralPark();
     this.createStreetFurniture();
     this.createCountrysideNature();
+    this.createCountrysideSuburb();
   }
 
   createCountrysideNature() {
@@ -51,6 +52,130 @@ export class CityBuilder {
         this.createTree(x, y - 0.2, z);
       }
     }
+  }
+
+  createCountrysideSuburb() {
+    // Grid locations for houses
+    // Roads X are: 450, 550, 650, 750
+    // Midpoints X: 500, 600, 700
+    // Roads Z are: -100, -50, 0, 50, 100
+    // Midpoints Z: -75, -25, 25, 75
+    const midX = [500, 600, 700];
+    const midZ = [-125, -75, -25, 25, 75, 125];
+
+    for (const hx of midX) {
+      for (const hz of midZ) {
+        // 80% chance to spawn a house at each grid position to look organic and have some empty fields
+        if (Math.random() < 0.8) {
+          // Offset slightly from a strict grid to look natural and cozy
+          const xOffset = (Math.random() - 0.5) * 6.0;
+          const zOffset = (Math.random() - 0.5) * 6.0;
+          this.createSuburbanHouse(hx + xOffset, hz + zOffset);
+        }
+      }
+    }
+  }
+
+  createSuburbanHouse(x, z) {
+    const houseGroup = new THREE.Group();
+    const terrainY = this.getHillHeight(x, z);
+    houseGroup.position.set(x, terrainY, z);
+
+    // Randomize colors for a cute suburban variety
+    const bodyColors = [0xdfd3c3, 0xa3b899, 0xb8b5ff, 0xfce38a, 0xe23e57, 0x3f72af, 0x95e1d3];
+    const wallColor = bodyColors[Math.floor(Math.random() * bodyColors.length)];
+
+    // 1. House Body (Walls)
+    const wallWidth = 10;
+    const wallHeight = 6;
+    const wallDepth = 8;
+    const houseBodyGeo = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
+    const houseBodyMat = new THREE.MeshStandardMaterial({
+      color: wallColor,
+      roughness: 0.8,
+      metalness: 0.1
+    });
+    const houseBody = new THREE.Mesh(houseBodyGeo, houseBodyMat);
+    houseBody.position.y = wallHeight / 2;
+    houseBody.castShadow = true;
+    houseBody.receiveShadow = true;
+    houseGroup.add(houseBody);
+
+    // 2. Gabled Roof (using a triangular prism / rotated Cylinder)
+    const roofGeo = new THREE.CylinderGeometry(0, Math.sqrt((wallWidth / 2 + 1) ** 2 + 4 ** 2), wallDepth + 1.2, 4, 1, false);
+    roofGeo.rotateY(Math.PI / 4);
+    const roofMat = new THREE.MeshStandardMaterial({
+      color: 0x5c3d2e, // Warm brown roof tiles
+      roughness: 0.9,
+      metalness: 0.1
+    });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.rotation.x = Math.PI / 2;
+    roof.position.y = wallHeight + 1.8;
+    roof.castShadow = true;
+    houseGroup.add(roof);
+
+    // 3. Cozy Lit Windows (Yellow glowing planes)
+    const windowGeo = new THREE.PlaneGeometry(1.2, 1.6);
+    const windowMat = new THREE.MeshStandardMaterial({
+      color: 0xffe066,
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.8,
+      roughness: 0.2
+    });
+
+    // Windows on Front face
+    const winFrontL = new THREE.Mesh(windowGeo, windowMat);
+    winFrontL.position.set(-2.2, 2.5, wallDepth / 2 + 0.02);
+    houseGroup.add(winFrontL);
+
+    const winFrontR = new THREE.Mesh(windowGeo, windowMat);
+    winFrontR.position.set(2.2, 2.5, wallDepth / 2 + 0.02);
+    houseGroup.add(winFrontR);
+
+    // Windows on Back face
+    const winBackL = new THREE.Mesh(windowGeo, windowMat);
+    winBackL.position.set(-2.2, 2.5, -wallDepth / 2 - 0.02);
+    winBackL.rotation.y = Math.PI;
+    houseGroup.add(winBackL);
+
+    const winBackR = new THREE.Mesh(windowGeo, windowMat);
+    winBackR.position.set(2.2, 2.5, -wallDepth / 2 - 0.02);
+    winBackR.rotation.y = Math.PI;
+    houseGroup.add(winBackR);
+
+    // 4. Little Wooden Door
+    const doorGeo = new THREE.PlaneGeometry(1.8, 3.2);
+    const doorMat = new THREE.MeshStandardMaterial({
+      color: 0x3e2723, // Dark mahogany door
+      roughness: 0.85
+    });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 1.6, wallDepth / 2 + 0.03);
+    houseGroup.add(door);
+
+    // Tiny porch light sphere
+    const bulbGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffddaa });
+    const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+    bulb.position.set(1.4, 2.8, wallDepth / 2 + 0.15);
+    houseGroup.add(bulb);
+
+    // 5. Stone Chimney
+    const chimneyGeo = new THREE.BoxGeometry(1.2, 4.0, 1.2);
+    const chimneyMat = new THREE.MeshStandardMaterial({
+      color: 0x6d4c41, // Terracotta chimney
+      roughness: 0.9
+    });
+    const chimney = new THREE.Mesh(chimneyGeo, chimneyMat);
+    chimney.position.set(-2.8, wallHeight + 2.5, -1.5);
+    chimney.castShadow = true;
+    houseGroup.add(chimney);
+
+    // Rotate house slightly for organic suburban feel
+    houseGroup.rotation.y = (Math.random() - 0.5) * 0.15;
+
+    this.scene.add(houseGroup);
   }
 
   createGround() {
