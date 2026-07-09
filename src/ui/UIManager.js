@@ -127,6 +127,26 @@ export class UIManager {
       });
     }
 
+    // Collapsible Top Header & Left Sidebar controls
+    const topHeader = document.getElementById('top-header');
+    const btnToggleHeader = document.getElementById('btn-toggle-header');
+    const leftSidebar = document.getElementById('left-sidebar');
+    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+
+    if (btnToggleHeader && topHeader) {
+      btnToggleHeader.addEventListener('click', () => {
+        const isCollapsed = topHeader.classList.toggle('collapsed');
+        btnToggleHeader.textContent = isCollapsed ? '▼' : '▲';
+      });
+    }
+
+    if (btnToggleSidebar && leftSidebar) {
+      btnToggleSidebar.addEventListener('click', () => {
+        const isCollapsed = leftSidebar.classList.toggle('collapsed');
+        btnToggleSidebar.textContent = isCollapsed ? '▶' : '◀';
+      });
+    }
+
     // Audio toggle
     if (this.btnMute) {
       this.btnMute.addEventListener('click', () => {

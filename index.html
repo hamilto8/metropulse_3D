@@ -15,7 +15,7 @@
       <div id="canvas-container"></div>
 
       <!-- Top Header Bar -->
-      <header class="glass-panel top-header">
+      <header class="glass-panel top-header" id="top-header">
         <div class="logo-area">
           <div class="pulse-dot"></div>
           <h1>METROPULSE <span class="badge">3D SIM</span></h1>
@@ -34,10 +34,11 @@
             <span id="stat-fps" class="stat-value">60 FPS</span>
           </div>
         </div>
+        <button id="btn-toggle-header" class="header-toggle-btn" title="Toggle Info Bar">▲</button>
       </header>
 
       <!-- Left Control Sidebar (Camera & Environment) -->
-      <aside class="glass-panel left-sidebar">
+      <aside class="glass-panel left-sidebar" id="left-sidebar">
         <div class="section-title">CAMERA PRESETS</div>
         <div class="button-group">
           <button class="icon-btn active" data-camera="birdseye" title="Bird's Eye View">
@@ -95,6 +96,7 @@
             <span id="fun-mode-label" class="btn-label">Fun Mode: OFF</span>
           </button>
         </div>
+        <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" title="Toggle Sidebar">◀</button>
       </aside>
 
       <!-- Bottom Time of Day Slider Bar -->
