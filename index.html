@@ -7,186 +7,295 @@
     <title>MetroPulse 3D | Cyber-Modern Metropolis Simulation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="app">
       <!-- Three.js Canvas Container -->
       <div id="canvas-container"></div>
 
-      <!-- Top Header Bar -->
-      <header class="glass-panel top-header" id="top-header">
-        <div class="logo-area">
-          <div class="pulse-dot"></div>
-          <h1>METROPULSE <span class="badge">3D SIM</span></h1>
-        </div>
-        <div class="header-stats">
-          <div class="stat-item" title="Active Vehicles">
-            <span class="stat-icon">🚗</span>
-            <span id="stat-vehicles" class="stat-value">24</span>
+      <!-- Top Header Bar (Split Center & Stats Pills) -->
+      <header class="top-header-container" id="top-header">
+        <!-- Left Stats Pill -->
+        <div class="glass-pill top-pill-left">
+          <div class="stat-pill-item" title="City Population">
+            <span class="stat-icon">👥</span>
+            <span id="stat-pop" class="stat-val">2,450</span>
           </div>
-          <div class="stat-item" title="Active Pedestrians">
-            <span class="stat-icon">🚶</span>
-            <span id="stat-pedestrians" class="stat-value">36</span>
+          <div class="stat-pill-item" title="City Treasury / Budget">
+            <span class="stat-icon">💵</span>
+            <span id="stat-money" class="stat-val money-text">$1,250,300</span>
           </div>
-          <div class="stat-item" title="Simulation FPS">
+          <div class="stat-pill-item" title="Energy Grid Output">
             <span class="stat-icon">⚡</span>
-            <span id="stat-fps" class="stat-value">60 FPS</span>
-          </div>
-          <div class="stat-item input-badge-item" id="input-device-badge" title="Active Control Scheme (Swaps on the fly between Keyboard/Mouse & Xbox Controller)">
-            <span id="input-device-icon" class="stat-icon">⌨️+🖱️</span>
-            <span id="input-device-label" class="stat-value">KEYBOARD</span>
+            <span id="stat-energy" class="stat-val energy-text">90%</span>
           </div>
         </div>
-        <button id="btn-toggle-header" class="header-toggle-btn" title="Toggle Info Bar">▲</button>
+
+        <!-- Center Brand & Mode Selector -->
+        <div class="top-center-group">
+          <div class="glass-pill brand-pill">
+            <div class="pulse-dot"></div>
+            <h1>METROPULSE</h1>
+            <span class="badge-sim">3D SIM</span>
+          </div>
+          <div class="mode-selector-wrapper">
+            <button id="btn-mode-selector" class="mode-dropdown-btn">
+              <span>MODE: <strong id="current-mode-label">MANAGEMENT</strong></span>
+              <span class="chevron">⌄</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Stats Pill -->
+        <div class="glass-pill top-pill-right">
+          <div class="stat-pill-item" title="Active Vehicles">
+            <span class="stat-icon">🚗</span>
+            <span id="stat-vehicles" class="stat-val">60</span>
+          </div>
+          <div class="stat-pill-item" title="Active Pedestrians">
+            <span class="stat-icon">🚶</span>
+            <span id="stat-pedestrians" class="stat-val">59</span>
+          </div>
+          <div class="stat-pill-item" title="Simulation FPS">
+            <span class="stat-icon">⚡</span>
+            <span id="stat-fps" class="stat-val fps-text">130 FPS</span>
+          </div>
+          <div class="stat-pill-item input-badge-item" id="input-device-badge" title="Active Control Scheme">
+            <span id="input-device-icon" class="stat-icon">⌨️</span>
+            <span id="input-device-label" class="stat-val">PC</span>
+          </div>
+        </div>
       </header>
 
-      <!-- Left Control Sidebar (Camera & Environment) -->
+      <!-- Left Sidebar: CITY TOOLS -->
       <aside class="glass-panel left-sidebar" id="left-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">CITY TOOLS</span>
+          <button id="btn-toggle-sidebar" class="collapse-icon-btn" title="Toggle Sidebar">✕</button>
+        </div>
+
         <div class="sidebar-content">
-          <div class="section-title">CAMERA PRESETS</div>
-          <div class="button-group">
-            <button class="icon-btn active" data-camera="birdseye" title="Bird's Eye View">
-              <span class="btn-icon">🚁</span>
-              <span class="btn-label">Bird's Eye</span>
-            </button>
-            <button class="icon-btn" data-camera="street" title="Street Level">
-              <span class="btn-icon">🏙️</span>
-              <span class="btn-label">Street Level</span>
-            </button>
-            <button class="icon-btn" data-camera="park" title="Central Park">
-              <span class="btn-icon">🌳</span>
-              <span class="btn-label">Central Park</span>
-            </button>
-            <button class="icon-btn" data-camera="downtown" title="Downtown Intersection">
-              <span class="btn-icon">🚦</span>
-              <span class="btn-label">Downtown</span>
-            </button>
-            <button class="icon-btn" data-camera="bridge" title="Suspension Bridge & River">
-              <span class="btn-icon">🌉</span>
-              <span class="btn-label">Bridge</span>
-            </button>
-            <button class="icon-btn" data-camera="rocket" title="Hover over Space Rocket Launchpad">
-              <span class="btn-icon">🚀</span>
-              <span class="btn-label">Rocket</span>
-            </button>
-            <button class="icon-btn" data-camera="free" title="Free Orbit">
-              <span class="btn-icon">🌐</span>
-              <span class="btn-label">Free Orbit</span>
-            </button>
-          </div>
-
-          <div class="section-title">ATMOSPHERE</div>
-          <div class="button-group horizontal">
-            <button class="icon-btn active" data-weather="clear" title="Clear Weather">☀️ Clear</button>
-            <button class="icon-btn" data-weather="mist" title="Cyber Mist">🌫️ Mist</button>
-            <button class="icon-btn" data-weather="rain" title="Rainy Night">🌧️ Rain</button>
-            <button class="icon-btn" data-weather="thunderstorm" title="Thunderstorm">⚡ Storm</button>
-          </div>
-          <div class="button-group mt-1">
-            <button id="btn-dynamic-weather" class="icon-btn dynamic-weather-btn" title="Toggle dynamic weather cycle: weather transitions automatically over time">🔄 Dynamic Cycle: OFF</button>
-          </div>
-
-          <div class="section-title">SFX SOUNDSCAPE</div>
-          <div class="audio-controls">
-            <button id="btn-mute" class="icon-btn audio-toggle" title="Toggle Audio (Click to enable audio)">
-              <span id="mute-icon">🔇</span>
-              <span id="mute-label">Enable SFX</span>
-            </button>
-            <div class="volume-slider-container">
-              <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.5" disabled />
+          <!-- ZONING & BUILDING Accordion -->
+          <div class="accordion-section">
+            <div class="accordion-header">
+              <span>ZONING &amp; BUILDING</span>
+              <span class="accordion-arrow">⌄</span>
+            </div>
+            <div class="zoning-grid">
+              <button class="zoning-card res-card" data-zone="res" title="Residential Zone">
+                <span class="zone-icon">🏡</span>
+                <span class="zone-label">Res</span>
+              </button>
+              <button class="zoning-card com-card" data-zone="com" title="Commercial Zone">
+                <span class="zone-icon">🏬</span>
+                <span class="zone-label">Com</span>
+              </button>
+              <button class="zoning-card ind-card" data-zone="ind" title="Industrial Zone">
+                <span class="zone-icon">🏭</span>
+                <span class="zone-label">Ind</span>
+              </button>
+              <button class="zoning-card office-card" data-zone="office" title="Office Tower">
+                <span class="zone-icon">🏢</span>
+                <span class="zone-label">Office</span>
+              </button>
+              <button class="zoning-card power-card" data-zone="power" title="Power Grid">
+                <span class="zone-icon">⚡</span>
+                <span class="zone-label">Power</span>
+              </button>
+              <button class="zoning-card water-card" data-zone="water" title="Water Infrastructure">
+                <span class="zone-icon">💧</span>
+                <span class="zone-label">Water</span>
+              </button>
+              <button class="zoning-card fire-card" data-zone="fire" title="Fire Rescue Dept">
+                <span class="zone-icon">🔥</span>
+                <span class="zone-label">Fire</span>
+              </button>
             </div>
           </div>
 
-          <div class="section-title">SIMULATION MODES</div>
-          <div class="button-group">
-            <button id="btn-expand-city" class="icon-btn expand-city-btn" title="Toggle City Editor: Expand the map with new buildings, residences, civic centers, and roads [E]">
-              <span class="btn-icon">🏗️</span>
-              <span id="expand-city-label" class="btn-label">Expand City Mode [E]</span>
-            </button>
-            <button id="btn-fun-mode" class="icon-btn fun-mode-btn" title="Toggle Mayhem / Fun Mode: Cars smash, explode, and police rush to the crash site!">
-              <span class="btn-icon">💥</span>
-              <span id="fun-mode-label" class="btn-label">Fun Mode: OFF</span>
-            </button>
-            <button id="btn-launch-rocket" class="icon-btn launch-rocket-btn" title="Launch Space Rocket immediately (sets countdown to 0)">
-              <span class="btn-icon">🚀</span>
-              <span id="launch-rocket-label" class="btn-label">Launch Rocket (T-5:00)</span>
-            </button>
+          <!-- INFRASTRUCTURE Accordion -->
+          <div class="accordion-section">
+            <div class="accordion-header">
+              <span>INFRASTRUCTURE</span>
+              <span class="accordion-arrow">⌄</span>
+            </div>
+            <div class="infra-grid">
+              <button class="infra-btn" data-infra="road" title="Road Construction">
+                <span class="infra-icon">🛣️</span>
+                <span>Road</span>
+              </button>
+              <button class="infra-btn" data-infra="bridge" title="Bridge Construction">
+                <span class="infra-icon">🌉</span>
+                <span>Bridge</span>
+              </button>
+              <button class="infra-btn" data-infra="pipe" title="Pipe Infrastructure">
+                <span class="infra-icon">🔧</span>
+                <span>Pipe</span>
+              </button>
+              <button class="infra-btn" data-infra="power" title="Power Pylons">
+                <span class="infra-icon">🗼</span>
+                <span>Power</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- VIEW & ATMOSPHERE Accordion -->
+          <div class="accordion-section">
+            <div class="accordion-header">
+              <span>VIEW &amp; ATMOSPHERE</span>
+              <span class="accordion-arrow">⌄</span>
+            </div>
+            <div class="view-atmo-content">
+              <div class="sub-label">CAMERA PRESETS</div>
+              <div class="camera-presets-grid">
+                <button class="cam-pill" data-camera="rocket" title="Rocket Launchpad">🚀</button>
+                <button class="cam-pill" data-camera="street" title="Street Level">🏙️</button>
+                <button class="cam-pill active" data-camera="birdseye" title="Bird's Eye">🚁</button>
+                <button class="cam-pill" data-camera="free" title="Orbit">🌐</button>
+              </div>
+
+              <div class="sub-label mt-2">ATMOSPHERE</div>
+              <div class="weather-pills">
+                <button class="weather-pill active" data-weather="clear" title="Clear">
+                  <span class="dot clear-dot"></span> Clear
+                </button>
+                <button class="weather-pill" data-weather="mist" title="Mist">Mist</button>
+                <button class="weather-pill" data-weather="rain" title="Rain">Rain</button>
+                <button class="weather-pill" data-weather="thunderstorm" title="Storm">Storm</button>
+              </div>
+
+              <div class="sub-label mt-2">MAP OVERLAYS</div>
+              <div class="overlay-toggle-row">
+                <span class="overlay-label">🚦 Traffic Heat-map</span>
+                <label class="switch">
+                  <input type="checkbox" id="toggle-heatmap">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+
+              <div class="setting-row mt-2">
+                <span>SFX SOUNDSCAPE</span>
+                <button id="btn-mute" class="settings-gear-btn" title="Toggle Sound Engine">⚙️</button>
+              </div>
+
+              <div class="setting-row">
+                <span>SIMULATION MODES</span>
+                <button id="btn-expand-city" class="settings-gear-btn" title="City Editor / Mayhem Settings">⚙️</button>
+              </div>
+            </div>
           </div>
         </div>
-        <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" title="Toggle Sidebar">◀</button>
       </aside>
 
-      <!-- Bottom Time of Day Slider Bar -->
-      <footer class="glass-panel bottom-time-bar">
-        <div class="time-display">
-          <div id="time-icon" class="time-icon">☀️</div>
-          <div class="time-info">
-            <span id="clock-display" class="clock-display">14:30</span>
-            <span id="time-phase" class="time-phase">AFTERNOON</span>
+      <!-- Top Right Circular Minimap Radar HUD -->
+      <div id="minimap-hud" class="minimap-hud" title="Live City Radar Minimap">
+        <canvas id="minimap-canvas" width="140" height="140"></canvas>
+      </div>
+
+      <!-- Right CONTEXTUAL ACTION PANEL (Inspector HUD) -->
+      <aside id="inspector-hud" class="glass-panel inspector-hud">
+        <div class="inspector-top-bar">
+          <span class="panel-title">CONTEXTUAL ACTION PANEL</span>
+          <button id="btn-close-inspector" class="close-btn">&times;</button>
+        </div>
+        <div class="inspector-subheading">
+          <span>SELECT A CITIZEN OR VEHICLE</span>
+        </div>
+        <div class="inspector-summary-stats">
+          <div class="stat-line"><span>Vehicles</span> <span class="neon-cyan">110 / FPS</span></div>
+          <div class="stat-line"><span>Pedestrians</span> <span class="neon-cyan">104 / FPS</span></div>
+        </div>
+
+        <div id="inspector-card-container" class="inspector-card">
+          <div class="card-header">
+            <span id="inspector-type" class="inspector-badge">PEDESTRIAN</span>
+            <button class="card-close-btn">&times;</button>
+          </div>
+          <h2 id="inspector-title" class="card-name">Alex B.</h2>
+          <div id="inspector-body" class="card-attributes">
+            <div class="attr-row"><span class="attr-key">Name:</span> <span class="attr-val">Alex B.</span></div>
+            <div class="attr-row"><span class="attr-key">Class:</span> <span class="attr-val class-cyan">BUSINESS</span></div>
+            <div class="attr-row"><span class="attr-key">Activity:</span> <span class="attr-val">Commuting to Office</span></div>
+            <div class="attr-row"><span class="attr-key">Mood:</span> <span class="attr-val">Stressed Working</span></div>
+          </div>
+
+          <div class="card-actions">
+            <button id="btn-follow-target" class="btn-action-outline">✕ Stop Following</button>
+            <button id="btn-take-control" class="btn-action-primary">🕹️ TAKE WALK CONTROL</button>
+            <button id="btn-interact-sfx" class="btn-action-secondary">👋 Wave / Talk</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Bottom-Left Dual Widgets (CITY PULSE & ALERT FEED) -->
+      <div class="bottom-left-widgets">
+        <div class="glass-panel city-pulse-card">
+          <div class="card-top-tag"><span class="icon">📊</span> CITY PULSE</div>
+          <div class="pulse-rows">
+            <div class="pulse-row"><span>City stats/budget</span> <strong>2,450</strong></div>
+            <div class="pulse-row"><span>Cash</span> <strong class="cash-cyan">$1,250,300</strong></div>
+            <div class="pulse-row"><span>Energy</span> <strong class="energy-cyan">90%</strong></div>
           </div>
         </div>
 
-        <div class="time-controls">
-          <button id="btn-time-play" class="play-btn" title="Play/Pause Time">⏸️</button>
-          <div class="slider-wrapper">
-            <span class="time-label">00:00</span>
-            <input type="range" id="time-slider" min="0" max="24" step="0.05" value="14.5" />
-            <span class="time-label">24:00</span>
+        <div class="glass-panel alert-feed-card">
+          <div class="card-top-tag alert-tag"><span class="icon">🚨</span> ALERT FEED</div>
+          <div class="alert-list">
+            <div class="alert-item">• Mayor Praised for new Park Zone</div>
+            <div class="alert-item">• Traffic Congestion on Bridge Road is decreasing</div>
+            <div class="alert-item">• New Transit route opening Soon</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Bottom-Center Time Scrubber Bar -->
+      <footer class="glass-panel bottom-time-bar">
+        <div class="time-display">
+          <span id="time-icon" class="time-icon">☀️</span>
+          <div class="time-text-group">
+            <span id="clock-display" class="clock-display">17:15</span>
+            <span id="time-phase" class="time-phase">DAYTIME</span>
+          </div>
+        </div>
+
+        <button id="btn-time-play" class="time-play-btn" title="Play / Pause">⏸</button>
+
+        <div class="time-scrubber-wrapper">
+          <span class="scrub-label">00:00</span>
+          <input type="range" id="time-slider" min="0" max="24" step="0.05" value="17.25" />
+          <span class="scrub-label">24:00</span>
         </div>
 
         <div class="speed-selector">
-          <button class="speed-btn" data-speed="0.5">0.5x</button>
-          <button class="speed-btn active" data-speed="1">1x</button>
-          <button class="speed-btn" data-speed="5">5x</button>
-          <button class="speed-btn" data-speed="15">15x</button>
+          <button class="speed-pill" data-speed="0.5">0.5x</button>
+          <button class="speed-pill active" data-speed="1">1x</button>
+          <button class="speed-pill" data-speed="5">5x</button>
+          <button class="speed-pill" data-speed="15">15x</button>
         </div>
       </footer>
 
-      <!-- Satirical Real Estate Value Tracker (Fun Mode Only) -->
-      <div id="real-estate-tracker" class="real-estate-tracker hidden">
-        <div class="re-header">
-          <span class="re-badge">🚨 CRASH INDEX</span>
-          <span class="re-title">CITY REAL ESTATE</span>
-        </div>
-        <div id="re-value-display" class="re-value">$4,850,000,000</div>
-        <div id="re-status-display" class="re-status">Market Status: <span class="accent-val">Speculative Bubble 🎈</span></div>
+      <!-- Bottom-Right Quick Action Toolbar -->
+      <div class="bottom-right-toolbar">
+        <button class="action-toolbar-btn" id="btn-toolbar-control" title="Take Direct Control">
+          <span class="icon">👆</span>
+          <span class="label">Take Direct Control</span>
+        </button>
+        <button class="action-toolbar-btn" id="btn-toolbar-next" title="Select Next Citizen">
+          <span class="icon">🔀</span>
+          <span class="label">Select Next Citizen</span>
+        </button>
+        <button class="action-toolbar-btn" id="btn-toolbar-vehicles" title="Vehicle List">
+          <span class="icon">🚗</span>
+          <span class="label">Vehicle List</span>
+        </button>
+        <button class="action-toolbar-btn" id="btn-toolbar-filter" title="Filter Map">
+          <span class="icon">🎯</span>
+          <span class="label">Filter</span>
+        </button>
       </div>
 
-      <!-- Right Interactive Object Inspector HUD -->
-      <aside id="inspector-hud" class="glass-panel inspector-hud hidden">
-        <div class="inspector-header">
-          <span id="inspector-type" class="inspector-badge">BUILDING</span>
-          <button id="btn-close-inspector" class="close-btn">&times;</button>
-        </div>
-        <h2 id="inspector-title" class="inspector-title">NeoTech HQ</h2>
-        <div id="inspector-body" class="inspector-body">
-          <div class="info-row"><span class="info-label">Status:</span> <span class="info-val">Active</span></div>
-        </div>
-        <div class="inspector-actions">
-          <button id="btn-follow-target" class="action-btn primary hidden">👁️ Follow Camera</button>
-          <button id="btn-take-control" class="action-btn accent hidden">🎮 Take Control</button>
-          <button id="btn-interact-sfx" class="action-btn secondary hidden">🔊 Trigger Honk/Siren</button>
-        </div>
-      </aside>
-
-      <!-- Quick Tips Overlay -->
-      <div class="quick-tips">
-        <span>💡 Tip: Click on cars, pedestrians, or glowing cyan rings to inspect & talk! Drive through rings OR click them to start taxi missions!</span>
-      </div>
-
-      <!-- Satirical News Chyron (Fun Mode Only) -->
-      <div id="news-chyron" class="news-chyron hidden">
-        <div class="chyron-badge">🚨 METROPULSE NEWS ALERT 🚨</div>
-        <div class="chyron-ticker-container">
-          <div class="chyron-ticker-text">
-            <span>*** 💥 CITY IN PANIC AS RAIN OF COMETS IMPACTS REAL ESTATE VALUES; MAYOR WARNS NOT TO PANIC: "THE STOCK MARKET WILL BOUNCE BACK!" *** MEGA-LANDLORD APEX CORP CHARGES EXTRA 20% RENT FOR "DIRECT METEOR VIEWING EXPERIENCE" *** ECONOMISTS CELEBRATE BUILDING DESTRUCTION: "CONSTRUCTION SECTOR BOOM WILL DRIVE Q3 GDP TO RECORD HEIGHTS!" *** BILLIONAIRES FLEE TO ORBITAL YACHTS WHILE TWEETING: "WE ARE ALL IN THIS TOGETHER! KEEP HUSTLING!" *** INFLATION REACHES 400% ON FIRE EXTINGUISHERS; CEO CALLS IT "DYNAMIC MARKET-DRIVEN PRICING" *** CITY COUNCIL REJECTS ASTEROID DEFENSE SHIELD: "WOULD INFRINGE ON COMET FREEDOM AND HARM THE FREE MARKET!" *** WORKERS REQUIRED TO REPORT TO OFFICE DESPITE APOCALYPSE: "REMOTE WORK REDUCES SYNERGY DURING EXTINCTION EVENTS!" &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-            <span>*** 💥 CITY IN PANIC AS RAIN OF COMETS IMPACTS REAL ESTATE VALUES; MAYOR WARNS NOT TO PANIC: "THE STOCK MARKET WILL BOUNCE BACK!" *** MEGA-LANDLORD APEX CORP CHARGES EXTRA 20% RENT FOR "DIRECT METEOR VIEWING EXPERIENCE" *** ECONOMISTS CELEBRATE BUILDING DESTRUCTION: "CONSTRUCTION SECTOR BOOM WILL DRIVE Q3 GDP TO RECORD HEIGHTS!" *** BILLIONAIRES FLEE TO ORBITAL YACHTS WHILE TWEETING: "WE ARE ALL IN THIS TOGETHER! KEEP HUSTLING!" *** INFLATION REACHES 400% ON FIRE EXTINGUISHERS; CEO CALLS IT "DYNAMIC MARKET-DRIVEN PRICING" *** CITY COUNCIL REJECTS ASTEROID DEFENSE SHIELD: "WOULD INFRINGE ON COMET FREEDOM AND HARM THE FREE MARKET!" *** WORKERS REQUIRED TO REPORT TO OFFICE DESPITE APOCALYPSE: "REMOTE WORK REDUCES SYNERGY DURING EXTINCTION EVENTS!" &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-          </div>
-        </div>
-      </div>
-      <!-- Mission HUD Top Navigation Bar -->
+      <!-- Hidden overlays for missions / dialogue / news / arrest -->
       <div id="mission-hud" class="mission-hud hidden">
         <div class="mission-hud-badge">🚖 ACTIVE FARE</div>
         <div class="mission-hud-info">
@@ -203,7 +312,6 @@
         <button id="btn-cancel-mission" class="mission-cancel-btn" title="Cancel Mission">✕</button>
       </div>
 
-      <!-- Dialogue Modal Overlay -->
       <div id="dialogue-overlay" class="dialogue-overlay hidden">
         <div class="dialogue-card">
           <div class="dialogue-header">
@@ -217,16 +325,15 @@
           <div class="dialogue-body">
             <p id="dialogue-text">Dialogue text goes here...</p>
           </div>
-          <div class="dialogue-choices" id="dialogue-choices">
-            <!-- Choice buttons injected dynamically -->
-          </div>
+          <div class="dialogue-choices" id="dialogue-choices"></div>
         </div>
       </div>
-    <!-- Arrested Overlay -->
-    <div id="arrested-overlay" class="hidden">
-      <div class="arrested-banner">
-        <h1>ARRESTED</h1>
-        <p>You committed crimes against MetroPulse City.</p>
+
+      <div id="arrested-overlay" class="hidden">
+        <div class="arrested-banner">
+          <h1>ARRESTED</h1>
+          <p>You committed crimes against MetroPulse City.</p>
+        </div>
       </div>
     </div>
     

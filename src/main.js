@@ -21,6 +21,7 @@ import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { MissionSystem } from './systems/MissionSystem.js';
 import { CityEditorSystem } from './world/CityEditorSystem.js';
 import { CityEditorUI } from './ui/CityEditorUI.js';
+import { MinimapHUD } from './ui/MinimapHUD.js';
 import { InputManager } from './systems/InputManager.js';
 
 class MetroPulseApp {
@@ -135,6 +136,8 @@ class MetroPulseApp {
       this.currentFps
     );
 
+    this.minimapHud = new MinimapHUD(this);
+
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
   }
@@ -183,6 +186,9 @@ class MetroPulseApp {
     this.uiManager.updateRealEstateTracker(delta);
     if (this.cityBuilder && this.cityBuilder.update) {
       this.cityBuilder.update(delta);
+    }
+    if (this.minimapHud) {
+      this.minimapHud.update(this.clock.getElapsedTime());
     }
 
     // Animate space rocket vapors, countdown & liftoff in Fun Mode

@@ -69,19 +69,23 @@ export class UIManager {
 
   initEventListeners() {
     // Time slider dragging
-    this.timeSlider.addEventListener('input', (e) => {
-      const timeVal = parseFloat(e.target.value);
-      this.app.timeManager.setTime(timeVal);
-      this.updateTimeDisplay(timeVal);
-    });
+    if (this.timeSlider) {
+      this.timeSlider.addEventListener('input', (e) => {
+        const timeVal = parseFloat(e.target.value);
+        this.app.timeManager.setTime(timeVal);
+        this.updateTimeDisplay(timeVal);
+      });
+    }
 
     // Play/Pause Time
-    this.btnTimePlay.addEventListener('click', () => {
-      this.isTimePlaying = !this.isTimePlaying;
-      this.app.timeManager.setPlaying(this.isTimePlaying);
-      this.btnTimePlay.innerHTML = this.isTimePlaying ? '⏸️' : '▶️';
-      this.btnTimePlay.title = this.isTimePlaying ? 'Pause Time' : 'Play Time';
-    });
+    if (this.btnTimePlay) {
+      this.btnTimePlay.addEventListener('click', () => {
+        this.isTimePlaying = !this.isTimePlaying;
+        this.app.timeManager.setPlaying(this.isTimePlaying);
+        this.btnTimePlay.innerHTML = this.isTimePlaying ? '⏸️' : '▶️';
+        this.btnTimePlay.title = this.isTimePlaying ? 'Pause Time' : 'Play Time';
+      });
+    }
 
     // Speed buttons
     this.speedButtons.forEach(btn => {
@@ -165,23 +169,25 @@ export class UIManager {
           const enabled = this.app.audioSystem.toggleAudio();
           if (enabled) {
             this.btnMute.classList.add('active');
-            this.muteIcon.textContent = '🔊';
-            this.muteLabel.textContent = 'SFX Active';
-            this.volumeSlider.disabled = false;
+            if (this.muteIcon) this.muteIcon.textContent = '🔊';
+            if (this.muteLabel) this.muteLabel.textContent = 'SFX Active';
+            if (this.volumeSlider) this.volumeSlider.disabled = false;
           } else {
             this.btnMute.classList.remove('active');
-            this.muteIcon.textContent = '🔇';
-            this.muteLabel.textContent = 'Enable SFX';
-            this.volumeSlider.disabled = true;
+            if (this.muteIcon) this.muteIcon.textContent = '🔇';
+            if (this.muteLabel) this.muteLabel.textContent = 'Enable SFX';
+            if (this.volumeSlider) this.volumeSlider.disabled = true;
           }
         }
       });
 
-      this.volumeSlider.addEventListener('input', (e) => {
-        if (this.app.audioSystem) {
-          this.app.audioSystem.setVolume(parseFloat(e.target.value));
-        }
-      });
+      if (this.volumeSlider) {
+        this.volumeSlider.addEventListener('input', (e) => {
+          if (this.app.audioSystem) {
+            this.app.audioSystem.setVolume(parseFloat(e.target.value));
+          }
+        });
+      }
     }
 
     // Expand City / City Editor toggle
@@ -215,10 +221,10 @@ export class UIManager {
           }
           if (this.app.audioSystem && !this.app.audioSystem.isEnabled) {
             this.app.audioSystem.toggleAudio();
-            this.btnMute.classList.add('active');
-            this.muteIcon.textContent = '🔊';
-            this.muteLabel.textContent = 'SFX Active';
-            this.volumeSlider.disabled = false;
+            if (this.btnMute) this.btnMute.classList.add('active');
+            if (this.muteIcon) this.muteIcon.textContent = '🔊';
+            if (this.muteLabel) this.muteLabel.textContent = 'SFX Active';
+            if (this.volumeSlider) this.volumeSlider.disabled = false;
           }
           if (this.app.audioSystem) this.app.audioSystem.playSiren(1.5);
         } else {
@@ -252,16 +258,19 @@ export class UIManager {
     }
 
     // Inspector Close
-    this.btnCloseInspector.addEventListener('click', () => {
-      this.hideInspector();
-    });
+    if (this.btnCloseInspector) {
+      this.btnCloseInspector.addEventListener('click', () => {
+        this.hideInspector();
+      });
+    }
 
     // Follow Target button
-    this.btnFollowTarget.addEventListener('click', () => {
-      if (this.selectedEntity) {
-        const isFollowing = this.app.sceneManager.toggleFollowTarget(this.selectedEntity);
-        this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
-        this.btnFollowTarget.classList.toggle('active', isFollowing);
+    if (this.btnFollowTarget) {
+      this.btnFollowTarget.addEventListener('click', () => {
+        if (this.selectedEntity) {
+          const isFollowing = this.app.sceneManager.toggleFollowTarget(this.selectedEntity);
+          this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
+          this.btnFollowTarget.classList.toggle('active', isFollowing);
 
         if (!isFollowing && this.selectedEntity.userControlled) {
           if (this.selectedEntity.type === 'VEHICLE') {
@@ -280,6 +289,7 @@ export class UIManager {
         }
       }
     });
+    }
 
     // Take Control button (WASD / Arrows manual driving)
     if (this.btnTakeControl) {
@@ -342,6 +352,76 @@ export class UIManager {
         this.showInspector(this.selectedEntity);
       }
     });
+
+    // Speed pill listeners (.speed-pill)
+    const speedPills = document.querySelectorAll('.speed-pill');
+    speedPills.forEach(btn => {
+      btn.addEventListener('click', () => {
+        speedPills.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.timeSpeed = parseFloat(btn.dataset.speed || 1);
+        this.app.timeManager.setSpeed(this.timeSpeed);
+      });
+    });
+
+    // Mode Selector dropdown
+    const btnModeSelector = document.getElementById('btn-mode-selector');
+    const modeLabel = document.getElementById('current-mode-label');
+    if (btnModeSelector) {
+      btnModeSelector.addEventListener('click', () => {
+        if (!modeLabel) return;
+        const currentMode = modeLabel.textContent.trim();
+        if (currentMode === 'MANAGEMENT') {
+          modeLabel.textContent = 'CITY EDITOR';
+          this.toggleCityEditor();
+        } else if (currentMode === 'CITY EDITOR') {
+          modeLabel.textContent = 'MAYHEM / FUN';
+          if (this.btnFunMode) this.btnFunMode.click();
+        } else {
+          modeLabel.textContent = 'MANAGEMENT';
+          if (this.app.funMode && this.btnFunMode) this.btnFunMode.click();
+          if (this.app.cityEditorSystem && this.app.cityEditorSystem.enabled) {
+            this.toggleCityEditor();
+          }
+        }
+      });
+    }
+
+    // Zoning cards (triggers City Editor with hover preview)
+    const zoningCards = document.querySelectorAll('.zoning-card[data-zone]');
+    zoningCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const zoneType = card.dataset.zone;
+        if (!this.app.cityEditorSystem || !this.app.cityEditorSystem.enabled) {
+          this.toggleCityEditor();
+        }
+        if (modeLabel) modeLabel.textContent = 'CITY EDITOR';
+      });
+    });
+
+    // Action Toolbar buttons
+    const btnToolbarControl = document.getElementById('btn-toolbar-control');
+    if (btnToolbarControl) {
+      btnToolbarControl.addEventListener('click', () => {
+        if (this.selectedEntity && this.btnTakeControl) {
+          this.btnTakeControl.click();
+        }
+      });
+    }
+
+    const btnToolbarNext = document.getElementById('btn-toolbar-next');
+    if (btnToolbarNext) {
+      btnToolbarNext.addEventListener('click', () => {
+        if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians.length > 0) {
+          const peds = this.app.pedestrianSystem.pedestrians;
+          const randomPed = peds[Math.floor(Math.random() * peds.length)];
+          if (randomPed) {
+            this.showInspector(randomPed);
+            this.app.sceneManager.toggleFollowTarget(randomPed);
+          }
+        }
+      });
+    }
   }
 
   updateTimeDisplay(timeVal) {
@@ -381,30 +461,33 @@ export class UIManager {
 
   showInspector(entity) {
     this.selectedEntity = entity;
-    this.inspectorHud.classList.remove('hidden');
-    this.inspectorType.textContent = entity.type || 'OBJECT';
-    this.inspectorTitle.textContent = entity.name || 'Unknown Entity';
+    if (this.inspectorHud) this.inspectorHud.classList.remove('hidden');
+    if (this.inspectorType) this.inspectorType.textContent = entity.type || 'OBJECT';
+    if (this.inspectorTitle) this.inspectorTitle.textContent = entity.name || 'Unknown Entity';
     
     // Clear and build info rows
-    this.inspectorBody.innerHTML = '';
-    
-    if (entity.info) {
-      for (const [key, value] of Object.entries(entity.info)) {
-        const row = document.createElement('div');
-        row.className = 'info-row';
-        row.innerHTML = `<span class="info-label">${key}:</span> <span class="info-val accent">${value}</span>`;
-        this.inspectorBody.appendChild(row);
+    if (this.inspectorBody) {
+      this.inspectorBody.innerHTML = '';
+      if (entity.info) {
+        for (const [key, value] of Object.entries(entity.info)) {
+          const row = document.createElement('div');
+          row.className = 'attr-row';
+          row.innerHTML = `<span class="attr-key">${key}:</span> <span class="attr-val class-cyan">${value}</span>`;
+          this.inspectorBody.appendChild(row);
+        }
       }
     }
 
     // Configure action buttons
-    if (entity.type === 'VEHICLE' || entity.type === 'PEDESTRIAN') {
-      this.btnFollowTarget.classList.remove('hidden');
-      const isFollowing = (this.app.sceneManager.followTarget === entity);
-      this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
-      this.btnFollowTarget.classList.toggle('active', isFollowing);
-    } else {
-      this.btnFollowTarget.classList.add('hidden');
+    if (this.btnFollowTarget) {
+      if (entity.type === 'VEHICLE' || entity.type === 'PEDESTRIAN') {
+        this.btnFollowTarget.classList.remove('hidden');
+        const isFollowing = (this.app.sceneManager.followTarget === entity);
+        this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
+        this.btnFollowTarget.classList.toggle('active', isFollowing);
+      } else {
+        this.btnFollowTarget.classList.add('hidden');
+      }
     }
 
     if (entity.type === 'VEHICLE') {
@@ -414,8 +497,10 @@ export class UIManager {
         this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
         this.btnTakeControl.classList.toggle('active', isControlled);
       }
-      this.btnInteractSfx.classList.remove('hidden');
-      this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
+      if (this.btnInteractSfx) {
+        this.btnInteractSfx.classList.remove('hidden');
+        this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
+      }
     } else if (entity.type === 'PEDESTRIAN') {
       if (this.btnTakeControl) {
         this.btnTakeControl.classList.remove('hidden');
@@ -423,21 +508,25 @@ export class UIManager {
         this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Walk Control' : '🚶 Take Control (Walk)';
         this.btnTakeControl.classList.toggle('active', isControlled);
       }
-      this.btnInteractSfx.classList.remove('hidden');
-      this.btnInteractSfx.innerHTML = '👋 Wave / Talk';
+      if (this.btnInteractSfx) {
+        this.btnInteractSfx.classList.remove('hidden');
+        this.btnInteractSfx.innerHTML = '👋 Wave / Talk';
+      }
     } else if (entity.type === 'MISSION_PICKUP') {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
-      this.btnInteractSfx.classList.remove('hidden');
-      this.btnInteractSfx.innerHTML = '🚖 Start Fare Dialogue';
+      if (this.btnInteractSfx) {
+        this.btnInteractSfx.classList.remove('hidden');
+        this.btnInteractSfx.innerHTML = '🚖 Start Fare Dialogue';
+      }
     } else {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
-      this.btnInteractSfx.classList.add('hidden');
+      if (this.btnInteractSfx) this.btnInteractSfx.classList.add('hidden');
     }
   }
 
   hideInspector() {
     this.selectedEntity = null;
-    this.inspectorHud.classList.add('hidden');
+    if (this.inspectorHud) this.inspectorHud.classList.add('hidden');
   }
 
   updateInspectorLive() {

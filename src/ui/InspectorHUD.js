@@ -53,7 +53,9 @@ export class InspectorHUD {
         }
 
         if (hitObject) {
-          this.app.uiManager.showInspector(hitObject);
+          if (this.app.uiManager && this.app.uiManager.showInspector) {
+            this.app.uiManager.showInspector(hitObject);
+          }
           // Play a subtle UI click or select sound if enabled
           if (this.app.audioSystem) {
             this.app.audioSystem.playUIClick();
