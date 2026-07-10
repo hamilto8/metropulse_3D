@@ -23,6 +23,7 @@ export class CityBuilder {
     this.createCountrysideNature();
     this.createCountrysideSuburb();
     this.createRocketCenter(700, -280);
+    this.createMissionControlFacility(735, -245);
   }
 
   createCountrysideNature() {
@@ -49,8 +50,8 @@ export class CityBuilder {
         }
       }
 
-      // Avoid rocket launchpad and billboard areas
-      const nearRocket = (x > 670 && x < 730 && z > -310 && z < -250);
+      // Avoid rocket launchpad, access road, mission control, and billboard areas
+      const nearRocket = (x > 670 && x < 765 && z > -315 && z < -90);
       const nearBillboardSpace = (x > 600 && x < 644 && z > -180 && z < -140);
       if (nearRocket || nearBillboardSpace) {
         continue;
@@ -267,7 +268,7 @@ export class CityBuilder {
     this.scene.add(basin2);
 
     // 4. Countryside Ground Plane with rolling hills (X: 420 to 820)
-    const countrysideGeo = new THREE.PlaneGeometry(400, 800, 50, 80);
+    const countrysideGeo = new THREE.PlaneGeometry(400, 800, 160, 320);
     const posAttr = countrysideGeo.attributes.position;
     const colors = [];
     const colorGrass = new THREE.Color(0x3b7a57); // Forest green
@@ -277,11 +278,10 @@ export class CityBuilder {
       const vx = posAttr.getX(i);
       const vz = posAttr.getY(i);
       const worldX = 620 + vx;
-      const worldZ = vz;
+      const worldZ = -vz;
 
-      // Hill height formula
-      const factor = Math.min(1.0, (worldX - 420) / 100);
-      const height = (Math.sin(worldX * 0.05) * Math.cos(worldZ * 0.04) * 8 + Math.sin(worldX * 0.02) * 15) * factor;
+      // Graded hill height formula matching roadbeds and intersections
+      const height = this.getHillHeight(worldX, worldZ);
       posAttr.setZ(i, height);
 
       // Organic dirt patches based on noise formula
@@ -308,17 +308,187 @@ export class CityBuilder {
 
     const countrysideGround = new THREE.Mesh(countrysideGeo, countrysideMat);
     countrysideGround.rotation.x = -Math.PI / 2;
-    countrysideGround.position.set(620, -0.1, 0);
+    countrysideGround.position.set(620, 0, 0);
     countrysideGround.receiveShadow = true;
     this.scene.add(countrysideGround);
   }
 
-  getHillHeight(x, z) {
+  getHillHeightRaw(x, z) {
     if (x >= 420) {
       const factor = Math.min(1.0, (x - 420) / 100);
       return (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 8 + Math.sin(x * 0.02) * 15) * factor;
     }
     return 0.0;
+  }
+
+  getIntersectionHeight(rx, rz) {
+    if (rx <= 420) return 0.0;
+    return this.getHillHeightRaw(rx, rz);
+  }
+
+  getHillHeight(x, z) {
+    if (x < 420) return 0.0;
+    const rawHeight = this.getHillHeightRaw(x, z);
+
+    // Special Rocket Launch Pad & Mission Control Facility Area (X: 660 to 765, Z: -90 to -315)
+    if (x >= 660 && x <= 765 && z <= -90 && z >= -315) {
+      const h_start = this.getHillHeightRaw(700, -100);
+      const h_pad = this.getHillHeightRaw(700, -280);
+
+      const distToRoadX = Math.abs(x - 700);
+      let targetHeight = null;
+
+      // Rocket Access Road (X=700, Z from -100 to -280)
+      if (distToRoadX <= 7.5 && z <= -100 && z >= -280) {
+        const t = (z - -100) / (-280 - -100);
+        targetHeight = h_start + (h_pad - h_start) * t;
+      }
+
+      // Rocket pad plateau (radius 22)
+      const distToPad = Math.hypot(x - 700, z - -280);
+      if (distToPad <= 22) {
+        targetHeight = h_pad;
+      }
+
+      // Mission Control Facility plateau (radius 20 at 735, -245)
+      const distToFacility = Math.hypot(x - 735, z - -245);
+      if (distToFacility <= 20) {
+        targetHeight = h_pad;
+      }
+
+      // Horizontal access road to Mission Control (Z = -245, X from 700 to 735)
+      if (x >= 700 && x <= 735 && Math.abs(z - -245) <= 6.5) {
+        targetHeight = h_pad;
+      }
+
+      if (targetHeight !== null) {
+        return targetHeight;
+      }
+
+      // Smooth blend within 15 units of any pad/road edge
+      let minDistToFeature = Infinity;
+      if (z <= -100 && z >= -280) {
+        minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToRoadX - 7.5));
+      }
+      minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToPad - 22));
+      minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToFacility - 20));
+
+      if (minDistToFeature < 15.0) {
+        const t = minDistToFeature / 15.0;
+        const smoothT = t * t * (3 - 2 * t);
+        return h_pad + (rawHeight - h_pad) * smoothT;
+      }
+    }
+
+    const coordsX = [450, 550, 650, 700, 750];
+    const coordsZ = [-100, -50, 0, 50, 100];
+
+    // Find nearest coordinates
+    let rx = coordsX[0];
+    let minDistX = Math.abs(x - rx);
+    for (let i = 1; i < coordsX.length; i++) {
+      const d = Math.abs(x - coordsX[i]);
+      if (d < minDistX) {
+        minDistX = d;
+        rx = coordsX[i];
+      }
+    }
+
+    let rz = coordsZ[0];
+    let minDistZ = Math.abs(z - rz);
+    for (let i = 1; i < coordsZ.length; i++) {
+      const d = Math.abs(z - coordsZ[i]);
+      if (d < minDistZ) {
+        minDistZ = d;
+        rz = coordsZ[i];
+      }
+    }
+
+    const roadHalfWidth = 7.5;
+    const blendDistance = 15.0;
+
+    // 1. Inside any intersection plateau
+    if (minDistX <= roadHalfWidth && minDistZ <= roadHalfWidth) {
+      return this.getIntersectionHeight(rx, rz);
+    }
+
+    // 2. Calculate centerline height for horizontal road at (x, rz)
+    let rx1 = 420, rx2 = 450;
+    if (x <= 450) {
+      rx1 = 420; rx2 = 450;
+    } else if (x >= 750) {
+      rx1 = 750; rx2 = 800;
+    } else {
+      for (let i = 0; i < coordsX.length - 1; i++) {
+        if (x >= coordsX[i] && x <= coordsX[i + 1]) {
+          rx1 = coordsX[i];
+          rx2 = coordsX[i + 1];
+          break;
+        }
+      }
+    }
+    const startX = rx1 === 420 ? 420 : rx1 + roadHalfWidth;
+    const endX = rx2 === 800 ? 800 : rx2 - roadHalfWidth;
+    const h1_x = this.getIntersectionHeight(rx1, rz);
+    const h2_x = rx2 === 800 ? this.getIntersectionHeight(750, rz) : this.getIntersectionHeight(rx2, rz);
+    let h_horiz = h1_x;
+    if (x >= endX) {
+      h_horiz = h2_x;
+    } else if (x > startX) {
+      const tx = (x - startX) / (endX - startX);
+      h_horiz = h1_x + (h2_x - h1_x) * tx;
+    }
+
+    // 3. Calculate centerline height for vertical road at (rx, z)
+    let rz1 = -100, rz2 = -50;
+    if (z <= -100) {
+      rz1 = -100; rz2 = -100;
+    } else if (z >= 100) {
+      rz1 = 100; rz2 = 100;
+    } else {
+      for (let i = 0; i < coordsZ.length - 1; i++) {
+        if (z >= coordsZ[i] && z <= coordsZ[i + 1]) {
+          rz1 = coordsZ[i];
+          rz2 = coordsZ[i + 1];
+          break;
+        }
+      }
+    }
+    const startZ = rz1 === -100 ? -100 : rz1 + roadHalfWidth;
+    const endZ = rz2 === 100 ? 100 : rz2 - roadHalfWidth;
+    const h1_z = this.getIntersectionHeight(rx, rz1);
+    const h2_z = this.getIntersectionHeight(rx, rz2);
+    let h_vert = h1_z;
+    if (rz1 !== rz2) {
+      if (z >= endZ) {
+        h_vert = h2_z;
+      } else if (z > startZ) {
+        const tz = (z - startZ) / (endZ - startZ);
+        h_vert = h1_z + (h2_z - h1_z) * tz;
+      }
+    }
+
+    // 4. On road bed
+    if (minDistZ <= roadHalfWidth) {
+      return h_horiz;
+    }
+    if (minDistX <= roadHalfWidth) {
+      return h_vert;
+    }
+
+    // 5. Smooth blending zone around roads
+    const distToHoriz = minDistZ - roadHalfWidth;
+    const distToVert = minDistX - roadHalfWidth;
+    const nearestRoadDist = Math.min(distToHoriz, distToVert);
+
+    if (nearestRoadDist < blendDistance) {
+      const t = nearestRoadDist / blendDistance;
+      const smoothT = t * t * (3 - 2 * t);
+      const nearestRoadHeight = distToHoriz < distToVert ? h_horiz : h_vert;
+      return nearestRoadHeight + (rawHeight - nearestRoadHeight) * smoothT;
+    }
+
+    return rawHeight;
   }
 
   createRoadGrid() {
@@ -370,13 +540,15 @@ export class CityBuilder {
       this.scene.add(lineEast);
 
       // Countryside horizontal roads (X: 420 to 800, center 610, width 380)
-      const countrySegs = 80;
+      const countrySegs = 190;
       const roadCountryGeo = new THREE.PlaneGeometry(380, roadWidth, countrySegs, 1);
       const roadPos = roadCountryGeo.attributes.position;
       for (let i = 0; i < roadPos.count; i++) {
         const lx = roadPos.getX(i);
+        const ly = roadPos.getY(i);
         const wx = 610 + lx;
-        const h = this.getHillHeight(wx, posZ);
+        const wz = posZ - ly;
+        const h = this.getHillHeight(wx, wz);
         roadPos.setZ(i, h + 0.02);
       }
       roadCountryGeo.computeVertexNormals();
@@ -390,8 +562,10 @@ export class CityBuilder {
       const linePos = lineCountryGeo.attributes.position;
       for (let i = 0; i < linePos.count; i++) {
         const lx = linePos.getX(i);
+        const ly = linePos.getY(i);
         const wx = 610 + lx;
-        const h = this.getHillHeight(wx, posZ);
+        const wz = posZ - ly;
+        const h = this.getHillHeight(wx, wz);
         linePos.setZ(i, h + 0.03);
       }
       lineCountryGeo.computeVertexNormals();
@@ -405,13 +579,16 @@ export class CityBuilder {
       let roadZ;
       let lineZ;
       if (posX >= 450) {
-        // Create segmented road to follow hills
-        const segs = 60;
-        const roadZGeo = new THREE.PlaneGeometry(roadWidth, 300, 1, segs);
+        // Create segmented road to follow hills exactly from Z = -100 to Z = 100
+        const segs = 120;
+        const roadZGeo = new THREE.PlaneGeometry(roadWidth, 200, 1, segs);
         const posAttr = roadZGeo.attributes.position;
         for (let i = 0; i < posAttr.count; i++) {
-          const lz = posAttr.getY(i);
-          const h = this.getHillHeight(posX, lz);
+          const lx = posAttr.getX(i);
+          const ly = posAttr.getY(i);
+          const wx = posX + lx;
+          const wz = -ly; // Correct Z-inversion: after -Math.PI/2 rotation around X, local +Y is world -Z
+          const h = this.getHillHeight(wx, wz);
           posAttr.setZ(i, h + 0.02);
         }
         roadZGeo.computeVertexNormals();
@@ -419,11 +596,14 @@ export class CityBuilder {
         roadZ.rotation.x = -Math.PI / 2;
         roadZ.position.set(posX, 0, 0);
 
-        const lineZGeo = new THREE.PlaneGeometry(0.4, 280, 1, segs);
+        const lineZGeo = new THREE.PlaneGeometry(0.4, 200, 1, segs);
         const linePosAttr = lineZGeo.attributes.position;
         for (let i = 0; i < linePosAttr.count; i++) {
-          const lz = linePosAttr.getY(i);
-          const h = this.getHillHeight(posX, lz);
+          const lx = linePosAttr.getX(i);
+          const ly = linePosAttr.getY(i);
+          const wx = posX + lx;
+          const wz = -ly;
+          const h = this.getHillHeight(wx, wz);
           linePosAttr.setZ(i, h + 0.03);
         }
         lineZGeo.computeVertexNormals();
@@ -431,11 +611,11 @@ export class CityBuilder {
         lineZ.rotation.x = -Math.PI / 2;
         lineZ.position.set(posX, 0, 0);
       } else {
-        roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 300), asphaltMat);
+        roadZ = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 200), asphaltMat);
         roadZ.rotation.x = -Math.PI / 2;
         roadZ.position.set(posX, 0.01, 0);
 
-        lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 280), lineMat);
+        lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 200), lineMat);
         lineZ.rotation.x = -Math.PI / 2;
         lineZ.position.set(posX, 0.02, 0);
       }
@@ -480,6 +660,59 @@ export class CityBuilder {
     stripeInstanced.count = stripeIdx;
     this.scene.add(stripeInstanced);
 
+    // Rocket Access Road (X = 700, Z from -100 to -280)
+    const accessSegs = 90;
+    const accessRoadGeo = new THREE.PlaneGeometry(14, 180, 1, accessSegs);
+    const accessPos = accessRoadGeo.attributes.position;
+    for (let i = 0; i < accessPos.count; i++) {
+      const lx = accessPos.getX(i);
+      const ly = accessPos.getY(i);
+      const wx = 700 + lx;
+      const wz = -190 - ly;
+      const h = this.getHillHeight(wx, wz);
+      accessPos.setZ(i, h + 0.02);
+    }
+    accessRoadGeo.computeVertexNormals();
+    const accessRoad = new THREE.Mesh(accessRoadGeo, asphaltMat);
+    accessRoad.rotation.x = -Math.PI / 2;
+    accessRoad.position.set(700, 0, -190);
+    accessRoad.receiveShadow = true;
+    this.scene.add(accessRoad);
+
+    const accessLineGeo = new THREE.PlaneGeometry(0.4, 180, 1, accessSegs);
+    const accessLinePos = accessLineGeo.attributes.position;
+    for (let i = 0; i < accessLinePos.count; i++) {
+      const lx = accessLinePos.getX(i);
+      const ly = accessLinePos.getY(i);
+      const wx = 700 + lx;
+      const wz = -190 - ly;
+      const h = this.getHillHeight(wx, wz);
+      accessLinePos.setZ(i, h + 0.03);
+    }
+    accessLineGeo.computeVertexNormals();
+    const accessLine = new THREE.Mesh(accessLineGeo, lineMat);
+    accessLine.rotation.x = -Math.PI / 2;
+    accessLine.position.set(700, 0, -190);
+    this.scene.add(accessLine);
+
+    // Spur Road to Mission Control Facility (Z = -245, X from 700 to 735)
+    const spurGeo = new THREE.PlaneGeometry(35, 12, 20, 1);
+    const spurPos = spurGeo.attributes.position;
+    for (let i = 0; i < spurPos.count; i++) {
+      const lx = spurPos.getX(i);
+      const ly = spurPos.getY(i);
+      const wx = 717.5 + lx;
+      const wz = -245 - ly;
+      const h = this.getHillHeight(wx, wz);
+      spurPos.setZ(i, h + 0.02);
+    }
+    spurGeo.computeVertexNormals();
+    const spurRoad = new THREE.Mesh(spurGeo, asphaltMat);
+    spurRoad.rotation.x = -Math.PI / 2;
+    spurRoad.position.set(717.5, 0, -245);
+    spurRoad.receiveShadow = true;
+    this.scene.add(spurRoad);
+
     // 3. Create City Blocks (Sidewalk tiles + Plots for both West and East Districts)
     const blockCentersX = [-75, -25, 25, 75, 235, 285];
     const blockCentersZ = [-75, -25, 25, 75];
@@ -508,30 +741,76 @@ export class CityBuilder {
   }
 
   createRiverAndBridge() {
-    // 1. Shimmering River Water Plane
-    const waterGeo = new THREE.PlaneGeometry(50, 800);
-    const waterMat = new THREE.MeshStandardMaterial({
-      color: 0x082b42,
-      roughness: 0.15,
-      metalness: 0.8,
+    // 1. Dynamic Shimmering Blue Flowing River Water Shader
+    const waterUniforms = {
+      uTime: { value: 0.0 },
+      uColorDeep: { value: new THREE.Color(0x004488) },
+      uColorShimmer: { value: new THREE.Color(0x00e5ff) },
+      uOpacity: { value: 0.88 }
+    };
+    this.waterUniforms = waterUniforms;
+
+    const waterMat = new THREE.ShaderMaterial({
+      uniforms: waterUniforms,
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        varying float vWaveHeight;
+        uniform float uTime;
+
+        void main() {
+          vUv = uv;
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          
+          float wave1 = sin(worldPosition.x * 0.35 + uTime * 2.2) * cos(worldPosition.z * 0.35 + uTime * 1.8) * 0.22;
+          float wave2 = sin(worldPosition.x * 0.8 - uTime * 3.2 + worldPosition.z * 0.6) * 0.12;
+          vWaveHeight = wave1 + wave2;
+          
+          worldPosition.y += vWaveHeight;
+          vWorldPosition = worldPosition.xyz;
+          
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPosition;
+        varying float vWaveHeight;
+        uniform vec3 uColorDeep;
+        uniform vec3 uColorShimmer;
+        uniform float uOpacity;
+        uniform float uTime;
+
+        void main() {
+          float ripple = sin(vWorldPosition.x * 2.8 + uTime * 3.5) * sin(vWorldPosition.z * 2.8 - uTime * 2.9);
+          float shimmer = smoothstep(0.35, 0.95, ripple) * 0.55 + smoothstep(0.05, 0.3, vWaveHeight) * 0.45;
+          
+          vec3 finalColor = mix(uColorDeep, uColorShimmer, clamp(shimmer + 0.15, 0.0, 1.0));
+          
+          gl_FragColor = vec4(finalColor, uOpacity);
+        }
+      `,
       transparent: true,
-      opacity: 0.9
+      side: THREE.DoubleSide
     });
-    const water = new THREE.Mesh(waterGeo, waterMat);
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(160, -1.2, 0);
-    this.scene.add(water);
+
+    // River 1 Shimmering Water Plane (X: 135 to 185)
+    const waterGeo1 = new THREE.PlaneGeometry(50, 800, 60, 240);
+    const water1 = new THREE.Mesh(waterGeo1, waterMat);
+    water1.rotation.x = -Math.PI / 2;
+    water1.position.set(160, -1.2, 0);
+    this.scene.add(water1);
 
     // 2. Concrete Riverbank Retaining Walls
     const wallGeo = new THREE.BoxGeometry(3, 4.2, 800);
     const wallMat = new THREE.MeshStandardMaterial({ color: 0x3a4052, roughness: 0.8 });
-    const wallWest = new THREE.Mesh(wallGeo, wallMat);
-    wallWest.position.set(133.5, -2.0, 0);
-    this.scene.add(wallWest);
+    const wallWest1 = new THREE.Mesh(wallGeo, wallMat);
+    wallWest1.position.set(133.5, -2.0, 0);
+    this.scene.add(wallWest1);
 
-    const wallEast = new THREE.Mesh(wallGeo, wallMat);
-    wallEast.position.set(186.5, -2.0, 0);
-    this.scene.add(wallEast);
+    const wallEast1 = new THREE.Mesh(wallGeo, wallMat);
+    wallEast1.position.set(186.5, -2.0, 0);
+    this.scene.add(wallEast1);
 
     // 3. Grand Suspension Bridge at Z = 0
     const bridgeGroup = new THREE.Group();
@@ -654,7 +933,7 @@ export class CityBuilder {
 
     // --- COUNTRYSIDE RIVER AND BRIDGES ---
     // 5. Countryside River Water Plane (X = 400)
-    const waterGeo2 = new THREE.PlaneGeometry(40, 800);
+    const waterGeo2 = new THREE.PlaneGeometry(40, 800, 48, 240);
     const water2 = new THREE.Mesh(waterGeo2, waterMat);
     water2.rotation.x = -Math.PI / 2;
     water2.position.set(400, -1.2, 0);
@@ -1160,6 +1439,102 @@ export class CityBuilder {
       billboardGroup.add(topBar);
 
       this.scene.add(billboardGroup);
+    }
+  }
+
+  createMissionControlFacility(x, z) {
+    const facilityGroup = new THREE.Group();
+    const terrainY = this.getHillHeight(x, z);
+    facilityGroup.position.set(x, terrainY, z);
+
+    // 1. Foundation Plaza / Apron (26 x 0.6 x 20)
+    const apronGeo = new THREE.BoxGeometry(26, 0.6, 20);
+    const apronMat = new THREE.MeshStandardMaterial({
+      color: 0x3d405b,
+      roughness: 0.85,
+      metalness: 0.1
+    });
+    const apron = new THREE.Mesh(apronGeo, apronMat);
+    apron.position.y = 0.3;
+    apron.receiveShadow = true;
+    facilityGroup.add(apron);
+
+    // 2. Main Control Bunker Building (18 x 10 x 12)
+    const bunkerGeo = new THREE.BoxGeometry(18, 10, 12);
+    const bunkerMat = new THREE.MeshStandardMaterial({
+      color: 0xe0e1dd,
+      roughness: 0.4,
+      metalness: 0.2
+    });
+    const bunker = new THREE.Mesh(bunkerGeo, bunkerMat);
+    bunker.position.y = 5.3;
+    bunker.castShadow = true;
+    bunker.receiveShadow = true;
+    facilityGroup.add(bunker);
+
+    // 3. Observation Glass Bay facing launchpad (west face towards rocket)
+    const glassGeo = new THREE.BoxGeometry(1.2, 5.5, 9);
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x00b4d8,
+      emissive: 0x0077b6,
+      emissiveIntensity: 0.45,
+      roughness: 0.1,
+      metalness: 0.8
+    });
+    const glass = new THREE.Mesh(glassGeo, glassMat);
+    glass.position.set(-8.8, 6.0, 0);
+    facilityGroup.add(glass);
+
+    // 4. Glowing Blue LED Eaves Trim
+    const trimGeo = new THREE.BoxGeometry(18.4, 0.3, 12.4);
+    const trimMat = new THREE.MeshBasicMaterial({ color: 0x00d2ff });
+    const trim = new THREE.Mesh(trimGeo, trimMat);
+    trim.position.y = 9.8;
+    facilityGroup.add(trim);
+
+    // 5. Roof Radar / Telemetry Dome & Satellite Dish
+    const domeGeo = new THREE.SphereGeometry(2.8, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const domeMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.3,
+      metalness: 0.1
+    });
+    const dome = new THREE.Mesh(domeGeo, domeMat);
+    dome.position.set(4, 10.3, -2);
+    facilityGroup.add(dome);
+
+    // Satellite Dish assembly
+    const dishMastGeo = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+    const dishMastMat = new THREE.MeshStandardMaterial({ color: 0x4f5d75, metalness: 0.7 });
+    const dishMast = new THREE.Mesh(dishMastGeo, dishMastMat);
+    dishMast.position.set(-3, 11.5, 2);
+    facilityGroup.add(dishMast);
+
+    const dishGeo = new THREE.ConeGeometry(2.5, 1.2, 16, 1, true);
+    dishGeo.rotateX(Math.PI / 4);
+    const dishMat = new THREE.MeshStandardMaterial({
+      color: 0xfaf0ca,
+      roughness: 0.5,
+      metalness: 0.3,
+      side: THREE.DoubleSide
+    });
+    const dish = new THREE.Mesh(dishGeo, dishMat);
+    dish.position.set(-3, 13.2, 2);
+    facilityGroup.add(dish);
+
+    // 6. Glowing Red Aviation Warning Beacon on Roof
+    const beaconGeo = new THREE.SphereGeometry(0.4, 8, 8);
+    const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+    beacon.position.set(-3, 14.1, 2);
+    facilityGroup.add(beacon);
+
+    this.scene.add(facilityGroup);
+  }
+
+  update(delta) {
+    if (this.waterUniforms) {
+      this.waterUniforms.uTime.value += delta;
     }
   }
 

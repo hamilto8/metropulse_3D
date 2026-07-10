@@ -40,6 +40,12 @@ export class SceneManager {
     this.controls.maxDistance = 350;
     this.controls.target.set(0, 0, 0);
 
+    this.controls.addEventListener('start', () => {
+      if (this.activePreset || this.targetCameraPos || this.followTarget) {
+        this.breakToFreeOrbit();
+      }
+    });
+
     // Phase 2: Cinematic Camera Rig
     this.cameraRig = new CameraRig(this.camera, this.controls);
 
@@ -53,6 +59,30 @@ export class SceneManager {
 
     this.initPresets();
     this.initResizeHandler();
+  }
+
+  breakToFreeOrbit() {
+    this.targetCameraPos = null;
+    this.targetLookAt = null;
+    this.followTarget = null;
+    this.activePreset = null;
+    if (this.cameraRig) {
+      this.cameraRig.state = 'ORBIT_MACRO';
+    }
+    this.controls.enabled = true;
+
+    const freeBtn = document.querySelector('[data-camera="free"]');
+    if (freeBtn && !freeBtn.classList.contains('active')) {
+      const cameraButtons = document.querySelectorAll('[data-camera]');
+      cameraButtons.forEach(b => b.classList.remove('active'));
+      freeBtn.classList.add('active');
+    }
+
+    const btnFollow = document.getElementById('btn-follow-target');
+    if (btnFollow) {
+      btnFollow.innerHTML = '👁️ Follow Camera';
+      btnFollow.classList.remove('active');
+    }
   }
 
   earthquakeShake(intensity = 2.5, duration = 0.8) {
@@ -166,33 +196,7 @@ export class SceneManager {
       const isE = keys['e'];
 
       if (isW || isS || isA || isD || isQ || isE) {
-        // If we are currently following a target or in a special camera mode, break the lock instantly
-        if (this.followTarget || (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO')) {
-          this.followTarget = null;
-          if (this.cameraRig) {
-            this.cameraRig.state = 'ORBIT_MACRO';
-          }
-          this.controls.enabled = true;
-          
-          const btnFollow = document.getElementById('btn-follow-target');
-          if (btnFollow) {
-            btnFollow.innerHTML = '👁️ Follow Camera';
-            btnFollow.classList.remove('active');
-          }
-        }
-
-        // Cancel active camera preset interpolation
-        this.targetCameraPos = null;
-        this.targetLookAt = null;
-        this.activePreset = null;
-
-        // Visual update to Camera Preset buttons: set "Free Orbit" active
-        const freeBtn = document.querySelector('[data-camera="free"]');
-        if (freeBtn && !freeBtn.classList.contains('active')) {
-          const cameraButtons = document.querySelectorAll('[data-camera]');
-          cameraButtons.forEach(b => b.classList.remove('active'));
-          freeBtn.classList.add('active');
-        }
+        this.breakToFreeOrbit();
 
         // Project look vectors in 3D
         const forward = new THREE.Vector3();
@@ -245,7 +249,9 @@ export class SceneManager {
         this.camera.position.distanceTo(this.targetCameraPos) < 1.0 &&
         this.controls.target.distanceTo(this.targetLookAt) < 1.0
       ) {
-        if (this.activePreset !== 'rocket') {
+        const isRocketLaunching = this.activePreset === 'rocket' && this.app && this.app.cityBuilder &&
+          this.app.cityBuilder.rocketGroup && this.app.cityBuilder.rocketGroup.position.y > 1.6;
+        if (!isRocketLaunching) {
           this.targetCameraPos = null;
           this.targetLookAt = null;
         }

@@ -480,6 +480,11 @@ export class TrafficSystem {
       const c2 = coordsX[i + 1];
 
       for (const rz of coordsZ) {
+        // Prevent crossing either river span unless on the bridge at rz === 0
+        if (((c1 === 100 && c2 === 210) || (c1 === 310 && c2 === 450)) && rz !== 0) {
+          continue;
+        }
+
         const ebOut = this.nodes.get(`EB_OUT:${c1},${rz}`);
         const ebIn = this.nodes.get(`EB_IN:${c2},${rz}`);
         if (ebOut && ebIn) ebOut.nextNodes.push(ebIn);
@@ -506,18 +511,21 @@ export class TrafficSystem {
       }
     }
 
+    const canDriveEast = (rx, rz) => (rx !== 100 && rx !== 310) || rz === 0;
+    const canDriveWest = (rx, rz) => (rx !== 210 && rx !== 450) || rz === 0;
+
     for (const rx of coordsX) {
       for (const rz of coordsZ) {
         const ebIn = this.nodes.get(`EB_IN:${rx},${rz}`);
         if (ebIn) {
-          if (rx < 310) ebIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx < 750 && canDriveEast(rx, rz)) ebIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
           if (rz < 100) ebIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`));
           if (rz > -100) ebIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
         }
 
         const wbIn = this.nodes.get(`WB_IN:${rx},${rz}`);
         if (wbIn) {
-          if (rx > -100) wbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
+          if (rx > -100 && canDriveWest(rx, rz)) wbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
           if (rz > -100) wbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
           if (rz < 100) wbIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`));
         }
@@ -525,15 +533,15 @@ export class TrafficSystem {
         const sbIn = this.nodes.get(`SB_IN:${rx},${rz}`);
         if (sbIn) {
           if (rz < 100) sbIn.nextNodes.push(this.nodes.get(`SB_OUT:${rx},${rz}`));
-          if (rx > -100) sbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
-          if (rx < 310) sbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx > -100 && canDriveWest(rx, rz)) sbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
+          if (rx < 750 && canDriveEast(rx, rz)) sbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
         }
 
         const nbIn = this.nodes.get(`NB_IN:${rx},${rz}`);
         if (nbIn) {
           if (rz > -100) nbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
-          if (rx < 310) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
-          if (rx > -100) nbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
+          if (rx < 750 && canDriveEast(rx, rz)) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
+          if (rx > -100 && canDriveWest(rx, rz)) nbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
         }
       }
     }

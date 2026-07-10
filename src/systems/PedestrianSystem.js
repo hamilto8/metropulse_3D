@@ -61,7 +61,12 @@ export class PedestrianSystem {
 
         // Connect East neighbor (i + 1)
         if (i < coordsX.length - 1) {
-          const east = this.nodes.get(`${coordsX[i + 1]},${coordsZ[j]}`);
+          const eastX = coordsX[i + 1];
+          // Do not allow crossing River 1 (109 to 201) or River 2 (319 to 441) except on the bridge sidewalks near Z = 0
+          if (((coordsX[i] === 109 && eastX === 201) || (coordsX[i] === 319 && eastX === 441)) && Math.abs(coordsZ[j]) > 10) {
+            continue;
+          }
+          const east = this.nodes.get(`${eastX},${coordsZ[j]}`);
           if (east) {
             current.nextNodes.push(east);
             east.nextNodes.push(current); // Bi-directional walking
@@ -760,16 +765,32 @@ export class PedestrianSystem {
 
   getTerrainHeight(x, z) {
     // 1. Bridges over the rivers (first river X: 110 to 210, second river X: 380 to 420)
-    if (x > 110 && x < 210) {
+    if (x >= 110 && x <= 210) {
       for (const bz of [-100, -50, 0, 50, 100]) {
-        if (Math.abs(z - bz) < 9.0) {
+        if (Math.abs(z - bz) <= 9.5) {
+          // Smooth ramp transition at bridge ends (width of 10 units)
+          if (x < 120) {
+            const t = (x - 110) / 10.0;
+            return THREE.MathUtils.lerp(0.05, 1.0, t);
+          } else if (x > 200) {
+            const t = (210 - x) / 10.0;
+            return THREE.MathUtils.lerp(0.05, 1.0, t);
+          }
           return 1.0; // Top surface of the bridge decks
         }
       }
     }
-    if (x > 380 && x < 420) {
+    if (x >= 380 && x <= 420) {
       for (const bz of [-100, -50, 0, 50, 100]) {
-        if (Math.abs(z - bz) < 9.0) {
+        if (Math.abs(z - bz) <= 9.5) {
+          // Smooth ramp transition at bridge ends (width of 10 units)
+          if (x < 390) {
+            const t = (x - 380) / 10.0;
+            return THREE.MathUtils.lerp(0.05, 1.0, t);
+          } else if (x > 410) {
+            const t = (420 - x) / 10.0;
+            return THREE.MathUtils.lerp(0.05, 1.0, t);
+          }
           return 1.0; // Top surface of the stone arch bridges
         }
       }
@@ -801,6 +822,9 @@ export class PedestrianSystem {
 
     // 5. Countryside rolling hills (X >= 420)
     if (x >= 420) {
+      if (this.app && this.app.cityBuilder) {
+        return this.app.cityBuilder.getHillHeight(x, z) + 0.05;
+      }
       const factor = Math.min(1.0, (x - 420) / 100);
       const hillHeight = (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 8 + Math.sin(x * 0.02) * 15) * factor;
       return hillHeight + 0.05; // Base offset to align with street

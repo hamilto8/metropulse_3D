@@ -171,6 +171,9 @@ class MetroPulseApp {
     if (this.missionSystem) this.missionSystem.update(delta);
     this.uiManager.updateInspectorLive();
     this.uiManager.updateRealEstateTracker(delta);
+    if (this.cityBuilder && this.cityBuilder.update) {
+      this.cityBuilder.update(delta);
+    }
 
     // Animate space rocket vapors, countdown & liftoff in Fun Mode
     if (this.cityBuilder && this.cityBuilder.rocketFlame) {
