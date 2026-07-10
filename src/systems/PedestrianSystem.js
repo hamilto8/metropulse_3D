@@ -638,7 +638,11 @@ export class PedestrianSystem {
         closestVehicle.driverPedestrian = p;
         this.releaseControl(p);
         
-        this.app.sceneManager.scene.remove(p.mesh);
+        if (closestVehicle.vType === 'MOTORBIKE') {
+          closestVehicle.mountRider(p);
+        } else {
+          this.app.sceneManager.scene.remove(p.mesh);
+        }
         
         const index = this.pedestrians.indexOf(p);
         if (index > -1) {

@@ -792,7 +792,24 @@ class EngineAudioNode {
       
       this.baseFreq = 75;
       this.maxFreq = 310;
-      this.targetVolume = 0.12;
+    } else if (this.vType === 'MOTORBIKE') {
+      // Distinctive high-revving Inline-4 streetfighter motorcycle scream & rasp
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'sawtooth';
+      this.osc2.type = 'square';
+      this.osc1.frequency.setValueAtTime(85, now);
+      this.osc2.frequency.setValueAtTime(86.8, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(220, now);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 85;
+      this.maxFreq = 380;
+      this.targetVolume = 0.11;
     } else if (this.vType === 'AMBULANCE') {
       // Smooth EMS Rescue V8 Turbo-Diesel hum
       this.osc1 = this.ctx.createOscillator();
@@ -947,7 +964,9 @@ class EngineAudioNode {
       this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
     }
 
-    const filterFreq = (((this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 180 : 110) + ratio * 240) * dopplerMultiplier;
+    const baseFilter = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 180 : (this.vType === 'MOTORBIKE' ? 220 : 110);
+    const filterRange = this.vType === 'MOTORBIKE' ? 360 : 240;
+    const filterFreq = (baseFilter + ratio * filterRange) * dopplerMultiplier;
     this.filterNode.frequency.setTargetAtTime(filterFreq, now, 0.08);
   }
 

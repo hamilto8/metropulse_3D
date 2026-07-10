@@ -6,12 +6,13 @@ export class Vehicle {
     this.vType = type;
     this.name = name;
     this.speed = 0;
-    this.maxSpeed = (type === 'SPORTS' || type === 'SPORTS_CAR') ? 32 : (type === 'BUS' || type === 'TRUCK' || type === 'DUMP_TRUCK' ? 15 : (type === 'AMBULANCE' ? 24 : 20));
+    this.maxSpeed = (type === 'SPORTS' || type === 'SPORTS_CAR') ? 32 : (type === 'MOTORBIKE' ? 28 : (type === 'BUS' || type === 'TRUCK' || type === 'DUMP_TRUCK' ? 15 : (type === 'AMBULANCE' ? 24 : 20)));
     this.targetSpeed = this.maxSpeed;
-    this.acceleration = (type === 'SPORTS' || type === 'SPORTS_CAR') ? 18 : 12;
+    this.acceleration = (type === 'SPORTS' || type === 'SPORTS_CAR') ? 18 : (type === 'MOTORBIKE' ? 16 : 12);
     this.wheels = [];
     this.headlights = [];
     this.taillights = [];
+    this.mountedRider = null;
     this.isPolice = (type === 'POLICE');
     this.sirenTimer = 0;
     this.sirenLights = [];
@@ -31,7 +32,130 @@ export class Vehicle {
     this.mesh.userData.entityData = this;
   }
 
+  mountRider(pedestrian) {
+    if (!pedestrian || !pedestrian.mesh) return;
+    this.mountedRider = pedestrian;
+    // Position rider seated atop motorbike saddle
+    pedestrian.mesh.position.set(0, 0.68, -0.12);
+    pedestrian.mesh.rotation.set(0, 0, 0);
+
+    // Pose pedestrian limbs astride the bike holding handlebars
+    if (pedestrian.legL && pedestrian.legR) {
+      pedestrian.legL.rotation.set(-0.85, 0, 0.28);
+      pedestrian.legR.rotation.set(-0.85, 0, -0.28);
+    }
+    if (pedestrian.armL && pedestrian.armR) {
+      pedestrian.armL.rotation.set(0.95, 0, -0.18);
+      pedestrian.armR.rotation.set(0.95, 0, 0.18);
+    }
+    pedestrian.info['Activity'] = '🏍️ Riding Motorbike';
+    this.mesh.add(pedestrian.mesh);
+  }
+
+  unmountRider() {
+    const ped = this.mountedRider;
+    if (!ped || !ped.mesh) return null;
+    this.mesh.remove(ped.mesh);
+    this.mountedRider = null;
+    // Reset limb rotations
+    if (ped.legL && ped.legR) {
+      ped.legL.rotation.set(0, 0, 0);
+      ped.legR.rotation.set(0, 0, 0);
+    }
+    if (ped.armL && ped.armR) {
+      ped.armL.rotation.set(0, 0, 0);
+      ped.armR.rotation.set(0, 0, 0);
+    }
+    return ped;
+  }
+
+  buildMotorbikeModel(colorHex) {
+    const group = new THREE.Group();
+    const bodyColor = colorHex || 0xea580c;
+    const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3, metalness: 0.7 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.1, metalness: 0.95 });
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
+    const seatMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.9 });
+
+    const length = 2.2, width = 0.65, height = 1.0;
+    const wheelRadius = 0.35, wheelWidth = 0.16;
+
+    // Main engine & lower chassis frame
+    const engineBlock = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.65), darkMat);
+    engineBlock.position.set(0, wheelRadius + 0.3, 0);
+    engineBlock.castShadow = true;
+    group.add(engineBlock);
+
+    // Sculpted fuel tank
+    const fuelTank = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.28, 0.55), bodyMat);
+    fuelTank.position.set(0, wheelRadius + 0.55, 0.18);
+    fuelTank.castShadow = true;
+    group.add(fuelTank);
+
+    // Leather saddle seat
+    const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.14, 0.6), seatMat);
+    saddle.position.set(0, wheelRadius + 0.5, -0.32);
+    group.add(saddle);
+
+    // Tail fairing
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.35), bodyMat);
+    tail.position.set(0, wheelRadius + 0.54, -0.68);
+    group.add(tail);
+
+    // Front fork & handlebars
+    const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.85), chromeMat);
+    fork.position.set(0, wheelRadius + 0.48, 0.62);
+    fork.rotation.x = -0.28;
+    group.add(fork);
+
+    const handlebars = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.06, 0.06), chromeMat);
+    handlebars.position.set(0, wheelRadius + 0.8, 0.52);
+    group.add(handlebars);
+
+    // Exhaust pipe
+    const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.85), chromeMat);
+    exhaust.rotation.x = Math.PI / 2 - 0.15;
+    exhaust.position.set(0.24, wheelRadius + 0.15, -0.3);
+    group.add(exhaust);
+
+    // Front & Rear Wheels
+    const wheelGeo = new THREE.CylinderGeometry(wheelRadius, wheelRadius, wheelWidth, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+
+    const frontWheel = new THREE.Mesh(wheelGeo, wheelMat);
+    frontWheel.position.set(0, wheelRadius, 0.78);
+    frontWheel.receiveShadow = false;
+    group.add(frontWheel);
+    this.wheels.push(frontWheel);
+
+    const rearWheel = new THREE.Mesh(wheelGeo, wheelMat);
+    rearWheel.position.set(0, wheelRadius, -0.78);
+    rearWheel.receiveShadow = false;
+    group.add(rearWheel);
+    this.wheels.push(rearWheel);
+
+    // Headlight & Taillight
+    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0 });
+    const tlMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0 });
+
+    const headlight = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.18, 0.12), hlMat);
+    headlight.position.set(0, wheelRadius + 0.65, 0.75);
+    group.add(headlight);
+    this.headlights.push(headlight);
+
+    const taillight = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.12, 0.1), tlMat);
+    taillight.position.set(0, wheelRadius + 0.54, -0.86);
+    group.add(taillight);
+    this.taillights.push(taillight);
+
+    return group;
+  }
+
   buildModel(type, colorHex) {
+    if (type === 'MOTORBIKE') {
+      return this.buildMotorbikeModel(colorHex);
+    }
     const group = new THREE.Group();
     const bodyColor = colorHex || 0x3366cc;
     const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor, roughness: 0.3, metalness: 0.6 });

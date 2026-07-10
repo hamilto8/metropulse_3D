@@ -29,6 +29,7 @@ export class PlayerVehicle {
     else if (this.vType === 'AMBULANCE') this.meshOffset = 1.15;
     else if (this.vType === 'ICECREAM') this.meshOffset = 1.10;
     else if (this.vType === 'DUMP_TRUCK') this.meshOffset = 1.45;
+    else if (this.vType === 'MOTORBIKE') this.meshOffset = 0.40;
 
     this.initPhysics(startPos, startRot);
   }
@@ -43,6 +44,7 @@ export class PlayerVehicle {
       case 'AMBULANCE': return 'EMS Rescue V8 Turbo-Diesel';
       case 'ICECREAM': return 'Sweet Delivery Van 4-Cylinder';
       case 'DUMP_TRUCK': return 'Heavy Titan Diesel Industrial';
+      case 'MOTORBIKE': return 'Inline-4 Streetfighter 1000cc';
       default: return 'Twin-Turbo V6 (cannon-es)';
     }
   }
@@ -57,6 +59,7 @@ export class PlayerVehicle {
       case 'AMBULANCE': return 'EMS Rapid Response AWD';
       case 'ICECREAM': return 'Delivery Van FWD';
       case 'DUMP_TRUCK': return '6x4 Heavy Dumper Chassis';
+      case 'MOTORBIKE': return 'RWD Motorcycle Chain Drive';
       default: return 'AWD RaycastVehicle';
     }
   }
@@ -108,6 +111,13 @@ export class PlayerVehicle {
       suspensionRestLength = 0.58;
       suspensionStiffness = 110;
       maxSuspensionForce = 300000;
+    } else if (this.vType === 'MOTORBIKE') {
+      mass = 250;
+      width = 0.7; height = 1.0; length = 2.2;
+      wheelRadius = 0.35;
+      suspensionRestLength = 0.35;
+      suspensionStiffness = 55;
+      maxSuspensionForce = 80000;
     }
 
     // 1. Chassis rigid body
@@ -383,6 +393,11 @@ export class PlayerVehicle {
     this.mesh.position.copy(this.chassisBody.position);
     this.mesh.position.y -= this.meshOffset;
     this.mesh.quaternion.copy(this.chassisBody.quaternion);
+    if (this.vType === 'MOTORBIKE' && this.chassisBody.angularVelocity) {
+      // Lean motorcycle into turns based on angular yaw velocity
+      const leanAngle = Math.max(-0.45, Math.min(0.45, -this.chassisBody.angularVelocity.y * 0.28));
+      this.mesh.rotateZ(leanAngle);
+    }
 
     // Calculate Speed and Gear for HUD
     const vel = this.chassisBody.velocity;

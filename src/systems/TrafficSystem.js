@@ -93,6 +93,24 @@ export class TrafficSystem {
       this.controlledVehicle = vehicle;
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
 
+      // If hijacking an active motorbike with an NPC rider mounted, knock them off onto the ground!
+      if (vehicle.vType === 'MOTORBIKE' && vehicle.mountedRider) {
+        const npcPed = vehicle.unmountRider();
+        if (npcPed && this.app && this.app.pedestrianSystem) {
+          const knockPos = vehicle.mesh.position.clone();
+          const offset = new THREE.Vector3(1.4, 0.4, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), vehicle.mesh.rotation.y);
+          knockPos.add(offset);
+          knockPos.y = this.getTerrainHeight(knockPos.x, knockPos.z);
+
+          npcPed.mesh.position.copy(knockPos);
+          npcPed.mesh.rotation.y = vehicle.mesh.rotation.y;
+
+          this.app.sceneManager.scene.add(npcPed.mesh);
+          this.app.pedestrianSystem.pedestrians.push(npcPed);
+          this.app.pedestrianSystem.knockDownPedestrian(npcPed, new THREE.Vector3(1.3, 0.2, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), vehicle.mesh.rotation.y));
+        }
+      }
+
       // Phase 1: Attach cannon-es PlayerVehicle if PhysicsWorld is available
       if (this.app && this.app.physicsWorld) {
         if (vehicle.physicsBody) {
@@ -168,6 +186,10 @@ export class TrafficSystem {
     const v = this.controlledVehicle;
     if (!v) return;
 
+    if (v.vType === 'MOTORBIKE' && v.mountedRider) {
+      v.unmountRider();
+    }
+
     let ped = v.driverPedestrian;
     if (!ped) {
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
@@ -179,7 +201,8 @@ export class TrafficSystem {
     const rotY = v.mesh.rotation.y;
 
     // Offset position to the left side of the vehicle
-    const offset = new THREE.Vector3(-1.8, 0.4, 0);
+    const offsetDist = v.vType === 'MOTORBIKE' ? -1.1 : -1.8;
+    const offset = new THREE.Vector3(offsetDist, 0.4, 0);
     offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
     pos.add(offset);
     pos.y = this.getTerrainHeight(pos.x, pos.z);
@@ -622,12 +645,12 @@ export class TrafficSystem {
   }
 
   spawnVehicles(count) {
-    const types = ['SEDAN', 'SPORTS', 'BUS', 'TRUCK', 'TAXI', 'POLICE', 'AMBULANCE', 'ICECREAM', 'DUMP_TRUCK', 'SPORTS_CAR'];
-    const colors = [0xdf0054, 0x00f0ff, 0xffcc00, 0x22ee44, 0xeeeeee, 0x1a1a24, 0xffffff, 0xffe4e1, 0xea580c, 0xff2200];
+    const types = ['SEDAN', 'SPORTS', 'BUS', 'TRUCK', 'TAXI', 'POLICE', 'AMBULANCE', 'ICECREAM', 'DUMP_TRUCK', 'SPORTS_CAR', 'MOTORBIKE'];
+    const colors = [0xdf0054, 0x00f0ff, 0xffcc00, 0x22ee44, 0xeeeeee, 0x1a1a24, 0xffffff, 0xffe4e1, 0xea580c, 0xff2200, 0xea580c];
     const names = [
       'Cyber Cruiser 2099', 'Apex GT Turbo', 'Metro Transit Bus #42', 'Express Freight Truck',
       'City Yellow Cab #88', 'Metro Police Interceptor #01', 'Metro EMS Rescue Ambulance', 'Sweet Treats Ice Cream Van',
-      'Heavy Titan Dump Truck', 'Veloce V10 Supercar'
+      'Heavy Titan Dump Truck', 'Veloce V10 Supercar', 'Phantom Streetfighter Motorbike'
     ];
 
     const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
@@ -647,6 +670,9 @@ export class TrafficSystem {
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
       const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][i % 3];
       vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[i % pedColors.length], `Driver of ${name}`);
+      if (vehicle.vType === 'MOTORBIKE' && vehicle.driverPedestrian) {
+        vehicle.mountRider(vehicle.driverPedestrian);
+      }
 
       const startNode = outNodes[i % outNodes.length];
       vehicle.mesh.position.copy(startNode.pos);
@@ -1215,7 +1241,49 @@ export class TrafficSystem {
           );
         }
       }
+      this.vehicles.push(vehicle);
+    });
 
+    // Dedicated parked Motorbikes around town
+    const bikeSpots = [
+      { x: 12.0, z: 25.0, ry: 0, color: 0xea580c },
+      { x: -12.0, z: -25.0, ry: Math.PI, color: 0x00f0ff },
+      { x: 48.0, z: 30.0, ry: 0, color: 0x22ee44 },
+      { x: -28.0, z: -6.0, ry: -Math.PI / 2, color: 0xdf0054 }
+    ];
+
+    bikeSpots.forEach((spot, idx) => {
+      const name = `Phantom Streetfighter (Parked) #${idx + 90}`;
+      const vehicle = new Vehicle('MOTORBIKE', spot.color, name);
+      vehicle.crashed = false;
+      vehicle.crashTimer = 0;
+      vehicle.isParked = true;
+      vehicle.speed = 0;
+      vehicle.info['Status'] = '🅿️ Parked Motorbike';
+
+      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
+      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];
+      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[idx % pedColors.length], `Rider of ${name}`);
+
+      vehicle.mesh.position.set(spot.x, 0, spot.z);
+      vehicle.mesh.rotation.y = spot.ry;
+
+      this.app.sceneManager.scene.add(vehicle.mesh);
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(vehicle.mesh, vehicle);
+      }
+      if (this.app.physicsWorld) {
+        vehicle.physicsBody = this.app.physicsWorld.addKinematicBoxCollider(
+          new THREE.Vector3(spot.x, 0.8, spot.z),
+          new THREE.Vector3(0.8, 1.1, 2.3)
+        );
+        if (vehicle.physicsBody) {
+          vehicle.physicsBody.quaternion.setFromAxisAngle(
+            new THREE.Vector3(0, 1, 0),
+            spot.ry
+          );
+        }
+      }
       this.vehicles.push(vehicle);
     });
   }
