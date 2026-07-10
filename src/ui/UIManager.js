@@ -199,7 +199,7 @@ export class UIManager {
 
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'e' || e.key === 'E') {
+      if (e.key === 'f' || e.key === 'F') {
         this.toggleCityEditor();
       }
     });
