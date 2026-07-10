@@ -762,6 +762,9 @@ class EngineAudioNode {
     this.filterNode = null;
     this.lfo = null;
     this.lfoGain = null;
+    this.targetVolume = 0.1;
+    this.baseFreq = 50;
+    this.maxFreq = 160;
 
     this.initSound();
   }
@@ -792,6 +795,7 @@ class EngineAudioNode {
       
       this.baseFreq = 75;
       this.maxFreq = 310;
+      this.targetVolume = 0.12;
     } else if (this.vType === 'MOTORBIKE') {
       // Distinctive high-revving Inline-4 streetfighter motorcycle scream & rasp
       this.osc1 = this.ctx.createOscillator();
@@ -939,35 +943,40 @@ class EngineAudioNode {
     if (this.osc2) this.osc2.start(now);
     if (this.lfo) this.lfo.start(now);
 
-    this.gainNode.gain.setTargetAtTime(this.targetVolume, now, 0.2);
+    const safeVol = Number.isFinite(this.targetVolume) ? this.targetVolume : 0.1;
+    this.gainNode.gain.setTargetAtTime(safeVol, now, 0.2);
   }
 
   updateSound(speedKmh, maxSpeedKmh, volumeMultiplier = 1.0, dopplerMultiplier = 1.0) {
     if (!this.ctx || !this.osc1) return;
     const now = this.ctx.currentTime;
-    const ratio = Math.max(0, Math.min(1.0, speedKmh / (maxSpeedKmh || 30.0)));
+    const ratio = Math.max(0, Math.min(1.0, (speedKmh || 0) / (maxSpeedKmh || 30.0)));
+    const safeDoppler = Number.isFinite(dopplerMultiplier) ? dopplerMultiplier : 1.0;
+    const safeVolMult = Number.isFinite(volumeMultiplier) ? volumeMultiplier : 1.0;
 
-    const currentFreq = (this.baseFreq + (this.maxFreq - this.baseFreq) * ratio) * dopplerMultiplier;
+    const currentFreq = (this.baseFreq + (this.maxFreq - this.baseFreq) * ratio) * safeDoppler;
 
-    this.osc1.frequency.setTargetAtTime(currentFreq, now, 0.08);
+    this.osc1.frequency.setTargetAtTime(Number.isFinite(currentFreq) ? currentFreq : this.baseFreq, now, 0.08);
     if (this.osc2) {
-      this.osc2.frequency.setTargetAtTime(currentFreq + ((this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 2.5 : 0.5) * dopplerMultiplier, now, 0.08);
+      const osc2Freq = currentFreq + ((this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 2.5 : 0.5) * safeDoppler;
+      this.osc2.frequency.setTargetAtTime(Number.isFinite(osc2Freq) ? osc2Freq : this.baseFreq, now, 0.08);
     }
 
     // Scale engine load volume based on speed ratio and spatial attenuation multiplier
-    const currentVol = this.targetVolume * (0.8 + ratio * 0.4) * volumeMultiplier;
+    const baseVol = Number.isFinite(this.targetVolume) ? this.targetVolume : 0.1;
+    const currentVol = baseVol * (0.8 + ratio * 0.4) * safeVolMult;
     
     // In Web Audio API, if we are modulating gain.gain directly with LFO, we must not override LFO values abruptly
     if ((this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') && this.lfoGain) {
-      this.lfoGain.gain.setTargetAtTime((0.08 + ratio * 0.03) * volumeMultiplier, now, 0.1);
+      this.lfoGain.gain.setTargetAtTime((0.08 + ratio * 0.03) * safeVolMult, now, 0.1);
     } else {
-      this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
+      this.gainNode.gain.setTargetAtTime(Number.isFinite(currentVol) ? currentVol : 0.1, now, 0.1);
     }
 
     const baseFilter = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 180 : (this.vType === 'MOTORBIKE' ? 220 : 110);
     const filterRange = this.vType === 'MOTORBIKE' ? 360 : 240;
-    const filterFreq = (baseFilter + ratio * filterRange) * dopplerMultiplier;
-    this.filterNode.frequency.setTargetAtTime(filterFreq, now, 0.08);
+    const filterFreq = (baseFilter + ratio * filterRange) * safeDoppler;
+    this.filterNode.frequency.setTargetAtTime(Number.isFinite(filterFreq) ? filterFreq : baseFilter, now, 0.08);
   }
 
   stop() {
