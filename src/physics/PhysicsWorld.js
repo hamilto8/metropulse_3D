@@ -51,6 +51,46 @@ export class PhysicsWorld {
     this.groundBody = groundBody;
   }
 
+  initCountrysideTerrain(cityBuilder) {
+    if (!cityBuilder || typeof cityBuilder.getHillHeight !== 'function') return;
+
+    // Create a continuous, smooth CANNON.Heightfield covering the countryside (X: 400 to 820, Z: -400 to 400)
+    // This creates a seamless triangulated physics terrain with ZERO vertical steps or invisible walls.
+    const startX = 400;
+    const startZ = 400;
+    const elementSize = 5;
+    const numX = 85;
+    const numY = 161;
+
+    const matrix = [];
+    for (let i = 0; i < numX; i++) {
+      matrix.push([]);
+      for (let j = 0; j < numY; j++) {
+        const worldX = startX + i * elementSize;
+        const worldZ = startZ - j * elementSize;
+        const h = cityBuilder.getHillHeight(worldX, worldZ);
+        matrix[i].push(h);
+      }
+    }
+
+    const hfShape = new CANNON.Heightfield(matrix, {
+      elementSize: elementSize
+    });
+
+    const hfBody = new CANNON.Body({
+      type: CANNON.Body.STATIC,
+      material: this.groundMaterial
+    });
+    hfBody.addShape(hfShape);
+
+    // Position at start corner and rotate -PI/2 around X axis so CANNON local Z maps to world +Y
+    hfBody.position.set(startX, 0, startZ);
+    hfBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+
+    this.world.addBody(hfBody);
+    this.countrysideTerrainBody = hfBody;
+  }
+
   setWeatherFriction(weatherMode) {
     if (weatherMode === 'rain') {
       // Slick asphalt drifting in heavy rain!

@@ -19,6 +19,9 @@ import { InspectorHUD } from './ui/InspectorHUD.js';
 import { DialogueOverlay } from './ui/DialogueOverlay.js';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { MissionSystem } from './systems/MissionSystem.js';
+import { CityEditorSystem } from './world/CityEditorSystem.js';
+import { CityEditorUI } from './ui/CityEditorUI.js';
+import { InputManager } from './systems/InputManager.js';
 
 class MetroPulseApp {
   constructor() {
@@ -62,7 +65,7 @@ class MetroPulseApp {
         if (lamp.pos) {
           this.physicsWorld.addStaticBoxCollider(
             new THREE.Vector3(lamp.pos.x, 3, lamp.pos.z),
-            new THREE.Vector3(1.6, 6, 1.6)
+            new THREE.Vector3(0.6, 6, 0.6)
           );
         }
       }
@@ -104,9 +107,15 @@ class MetroPulseApp {
     // 10. Pedestrian Simulation
     this.pedestrianSystem = new PedestrianSystem(this);
     this.physicsWorld.terrainSystem = this.pedestrianSystem;
+    this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
+    this.inputManager = new InputManager(this);
+
+    // 11.2 City Editor & Map Expansion System
+    this.cityEditorSystem = new CityEditorSystem(this);
+    this.uiManager.cityEditorUI = new CityEditorUI(this);
 
     // 11.5 Phase 3 Mission Logic & Branching Dialogue Overlay
     this.dialogueOverlay = new DialogueOverlay();
@@ -161,6 +170,7 @@ class MetroPulseApp {
     }
 
     // Update simulation systems
+    if (this.inputManager) this.inputManager.update(delta);
     this.physicsWorld.step(delta);
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);

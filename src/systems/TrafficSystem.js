@@ -970,18 +970,27 @@ export class TrafficSystem {
 
           if (this.app.pedestrianSystem) {
             const currentH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z);
-            v.mesh.position.y = currentH - 0.05;
+            v.mesh.position.y = currentH;
 
-            // Compute pitch along vehicle forward direction for natural slope alignment
+            // Compute pitch and roll along vehicle axes for natural slope and crowned road alignment
             const forwardX = Math.sin(v.mesh.rotation.y);
             const forwardZ = Math.cos(v.mesh.rotation.y);
-            const frontH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + forwardX * 2.0, v.mesh.position.z + forwardZ * 2.0);
-            const backH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - forwardX * 2.0, v.mesh.position.z - forwardZ * 2.0);
-            const pitch = Math.atan2(frontH - backH, 4.0);
+            const rightX = Math.cos(v.mesh.rotation.y);
+            const rightZ = -Math.sin(v.mesh.rotation.y);
+
+            const frontH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + forwardX * 2.2, v.mesh.position.z + forwardZ * 2.2);
+            const backH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - forwardX * 2.2, v.mesh.position.z - forwardZ * 2.2);
+            const leftH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - rightX * 1.2, v.mesh.position.z - rightZ * 1.2);
+            const rightH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + rightX * 1.2, v.mesh.position.z + rightZ * 1.2);
+
+            const pitch = Math.atan2(frontH - backH, 4.4);
+            const roll = Math.atan2(leftH - rightH, 2.4);
             v.mesh.rotation.x = -pitch;
+            v.mesh.rotation.z = roll;
           } else {
             v.mesh.position.y = 0;
             v.mesh.rotation.x = 0;
+            v.mesh.rotation.z = 0;
           }
         }
       }

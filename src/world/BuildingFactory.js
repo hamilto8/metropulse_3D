@@ -351,6 +351,237 @@ export class BuildingFactory {
     group.add(storeWin);
   }
 
+  addResidentialDetails(group, w, height, d, baseColor, accentColorHex) {
+    const balconyMat = new THREE.MeshStandardMaterial({
+      color: accentColorHex,
+      emissive: accentColorHex,
+      emissiveIntensity: 0
+    });
+    this.nightLights.push({ mat: balconyMat, maxIntensity: 0.6 });
+
+    const levels = Math.floor(height / 6);
+    for (let i = 1; i < levels; i++) {
+      const balc = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 1.2, 0.6, d + 1.2),
+        balconyMat
+      );
+      balc.position.set(0, i * 6, 0);
+      group.add(balc);
+    }
+  }
+
+  addCivicDetails(group, w, height, d, baseColor, accentColorHex, signText) {
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.2 });
+    for (let i = -w / 3; i <= w / 3; i += w / 3) {
+      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 8, 12), pillarMat);
+      pillar.position.set(i, 4, d / 2 + 1);
+      group.add(pillar);
+    }
+
+    const archMat = new THREE.MeshStandardMaterial({
+      color: accentColorHex,
+      emissive: accentColorHex,
+      emissiveIntensity: 0
+    });
+    this.nightLights.push({ mat: archMat, maxIntensity: 0.9 });
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(w - 6, 1.6, 2), archMat);
+    arch.position.set(0, 8.8, d / 2 + 1);
+    group.add(arch);
+  }
+
+  addParkPlazaDetails(group, w, d, baseColor, accentColorHex) {
+    // Plaza base
+    const plazaBase = new THREE.Mesh(
+      new THREE.BoxGeometry(w, 1.5, d),
+      new THREE.MeshStandardMaterial({ color: 0x2d4c38, roughness: 0.8 })
+    );
+    plazaBase.position.y = 0.75;
+    plazaBase.receiveShadow = true;
+    group.add(plazaBase);
+
+    // Glowing Cyber Fountain Pool
+    const poolGeo = new THREE.CylinderGeometry(6, 6, 1.8, 24);
+    const poolMat = new THREE.MeshStandardMaterial({ color: 0x113344, roughness: 0.2 });
+    const pool = new THREE.Mesh(poolGeo, poolMat);
+    pool.position.set(0, 1.2, 0);
+    group.add(pool);
+
+    const waterGeo = new THREE.CylinderGeometry(5.2, 5.2, 2.1, 24);
+    const waterMat = new THREE.MeshBasicMaterial({ color: accentColorHex, transparent: true, opacity: 0.65 });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.position.set(0, 1.4, 0);
+    group.add(water);
+
+    // Cyber Park Trees at 4 corners
+    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x3d2817, roughness: 0.9 });
+    const treeLeavesMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff88,
+      emissive: 0x00aa55,
+      emissiveIntensity: 0.35,
+      roughness: 0.4
+    });
+
+    const corners = [
+      [-w / 3, -d / 3], [w / 3, -d / 3],
+      [-w / 3, d / 3], [w / 3, d / 3]
+    ];
+    for (const [tx, tz] of corners) {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 4, 8), treeTrunkMat);
+      trunk.position.set(tx, 2.5, tz);
+      group.add(trunk);
+
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(2.5, 12, 12), treeLeavesMat);
+      crown.position.set(tx, 5.2, tz);
+      group.add(crown);
+    }
+  }
+
+  addRoadSegmentDetails(group, w, d, roadType) {
+    const roadBase = new THREE.Mesh(
+      new THREE.BoxGeometry(w, 0.4, d),
+      new THREE.MeshStandardMaterial({ color: 0x22252a, roughness: 0.9 })
+    );
+    roadBase.position.y = 0.2;
+    roadBase.receiveShadow = true;
+    group.add(roadBase);
+
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+    if (roadType === 'INTERSECTION') {
+      const lineX = new THREE.Mesh(new THREE.PlaneGeometry(w - 4, 0.6), lineMat);
+      lineX.rotation.x = -Math.PI / 2;
+      lineX.position.set(0, 0.42, 0);
+      group.add(lineX);
+
+      const lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.6, d - 4), lineMat);
+      lineZ.rotation.x = -Math.PI / 2;
+      lineZ.position.set(0, 0.42, 0);
+      group.add(lineZ);
+    } else {
+      const lineZ = new THREE.Mesh(new THREE.PlaneGeometry(0.6, d - 4), lineMat);
+      lineZ.rotation.x = -Math.PI / 2;
+      lineZ.position.set(0, 0.42, 0);
+      group.add(lineZ);
+    }
+  }
+
+  placeUserBuilding(plot, spec, rotationY = 0) {
+    const group = new THREE.Group();
+    group.position.set(plot.x, plot.y || 0, plot.z);
+    group.rotation.y = rotationY;
+
+    const w = spec.footprint.width;
+    const d = spec.footprint.depth;
+    const height = spec.height || 30;
+
+    let baseBox = null;
+
+    if (spec.generatorType === 'PARK_PLAZA') {
+      this.addParkPlazaDetails(group, w, d, spec.baseColor, spec.accentColor);
+      baseBox = group.children[0];
+    } else if (spec.generatorType === 'ROAD_SEGMENT') {
+      this.addRoadSegmentDetails(group, w, d, spec.roadType);
+      baseBox = group.children[0];
+    } else {
+      baseBox = new THREE.Mesh(
+        new THREE.BoxGeometry(w - 2, height, d - 2),
+        new THREE.MeshStandardMaterial({ color: spec.baseColor, roughness: 0.35, metalness: 0.35 })
+      );
+      baseBox.position.y = height / 2;
+      baseBox.castShadow = true;
+      baseBox.receiveShadow = true;
+      group.add(baseBox);
+
+      if (spec.generatorType === 'SKYSCRAPER') {
+        this.addSkyscraperDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
+      } else if (spec.generatorType === 'SHOP') {
+        this.addShopDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      } else if (spec.generatorType === 'RESIDENTIAL') {
+        this.addResidentialDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
+      } else if (spec.generatorType === 'CIVIC') {
+        this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      }
+    }
+
+    if (this.inspectorHud && baseBox) {
+      this.inspectorHud.registerObject(baseBox, {
+        type: `${spec.category} (USER PLACED)`,
+        name: spec.name,
+        info: {
+          'Category': spec.category,
+          'Footprint': `${w}m x ${d}m`,
+          'Height': `${height}m`,
+          'Status': 'User Constructed Structure 🏗️'
+        }
+      });
+    }
+
+    this.scene.add(group);
+
+    const buildingObj = {
+      group: group,
+      baseBox: baseBox,
+      plot: { ...plot, width: w, depth: d },
+      spec: spec,
+      type: spec.id,
+      name: spec.name,
+      height: height,
+      isUserPlaced: true,
+      isDestroyed: false
+    };
+
+    this.buildings.push(buildingObj);
+    return buildingObj;
+  }
+
+  createStructurePreviewGroup(spec, tintHex = 0x00ff88) {
+    const group = new THREE.Group();
+    const w = spec.footprint.width;
+    const d = spec.footprint.depth;
+    const height = spec.height || 30;
+
+    if (spec.generatorType === 'PARK_PLAZA') {
+      this.addParkPlazaDetails(group, w, d, spec.baseColor, spec.accentColor);
+    } else if (spec.generatorType === 'ROAD_SEGMENT') {
+      this.addRoadSegmentDetails(group, w, d, spec.roadType);
+    } else {
+      const baseBox = new THREE.Mesh(
+        new THREE.BoxGeometry(w - 2, height, d - 2),
+        new THREE.MeshStandardMaterial({ color: spec.baseColor, roughness: 0.35, metalness: 0.35 })
+      );
+      baseBox.position.y = height / 2;
+      group.add(baseBox);
+
+      if (spec.generatorType === 'SKYSCRAPER') {
+        this.addSkyscraperDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
+      } else if (spec.generatorType === 'SHOP') {
+        this.addShopDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      } else if (spec.generatorType === 'RESIDENTIAL') {
+        this.addResidentialDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
+      } else if (spec.generatorType === 'CIVIC') {
+        this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      }
+    }
+
+    const tintColor = new THREE.Color(tintHex);
+    group.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.material = child.material.clone();
+        child.material.transparent = true;
+        child.material.opacity = 0.65;
+        if (child.material.emissive) {
+          child.material.emissive = tintColor;
+          child.material.emissiveIntensity = 0.28;
+        }
+        child.castShadow = false;
+        child.receiveShadow = false;
+      }
+    });
+
+    return group;
+  }
+
+
+
   destroyBuilding(building) {
     if (building.isDestroyed) return;
     building.isDestroyed = true;

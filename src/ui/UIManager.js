@@ -26,6 +26,15 @@ export class UIManager {
     this.muteLabel = document.getElementById('mute-label');
     this.volumeSlider = document.getElementById('volume-slider');
     
+    // Input Device status indicator
+    this.inputDeviceBadge = document.getElementById('input-device-badge');
+    this.inputDeviceIcon = document.getElementById('input-device-icon');
+    this.inputDeviceLabel = document.getElementById('input-device-label');
+
+    // City Editor & Map Expansion control
+    this.btnExpandCity = document.getElementById('btn-expand-city');
+    this.expandCityLabel = document.getElementById('expand-city-label');
+
     // Fun Mode controls
     this.btnFunMode = document.getElementById('btn-fun-mode');
     this.funModeLabel = document.getElementById('fun-mode-label');
@@ -174,6 +183,20 @@ export class UIManager {
         }
       });
     }
+
+    // Expand City / City Editor toggle
+    if (this.btnExpandCity) {
+      this.btnExpandCity.addEventListener('click', () => {
+        this.toggleCityEditor();
+      });
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'e' || e.key === 'E') {
+        this.toggleCityEditor();
+      }
+    });
 
     // Fun Mode toggle
     if (this.btnFunMode) {
@@ -589,4 +612,64 @@ export class UIManager {
       this.app.physicsWorld.setWeatherFriction(mode);
     }
   }
+
+  toggleCityEditor() {
+    if (!this.cityEditorUI) return;
+    this.cityEditorUI.toggle();
+    const isActive = this.cityEditorUI.isVisible;
+    if (this.btnExpandCity) {
+      this.btnExpandCity.classList.toggle('active', isActive);
+    }
+    if (this.expandCityLabel) {
+      this.expandCityLabel.textContent = isActive ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [E]';
+    }
+  }
+
+  showToast(message) {
+    let toast = document.getElementById('city-editor-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'city-editor-toast';
+      toast.style.cssText = `
+        position: fixed;
+        top: 86px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(11, 16, 33, 0.92);
+        color: #00f0ff;
+        border: 1px solid #00f0ff;
+        padding: 10px 24px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        z-index: 3000;
+        pointer-events: none;
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
+        transition: opacity 0.3s ease;
+      `;
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.style.opacity = '1';
+    clearTimeout(this._toastTimeout);
+    this._toastTimeout = setTimeout(() => {
+      toast.style.opacity = '0';
+    }, 3200);
+  }
+
+  updateControlDeviceBadge(newInterface) {
+    if (!this.inputDeviceBadge || !this.inputDeviceIcon || !this.inputDeviceLabel) return;
+    if (newInterface === 'GAMEPAD') {
+      this.inputDeviceBadge.classList.add('gamepad-active');
+      this.inputDeviceIcon.textContent = '🎮';
+      this.inputDeviceLabel.textContent = 'XBOX CONTROLLER';
+      this.inputDeviceBadge.title = 'Active Control Scheme: Xbox Gamepad Connected (RT/LT Throttle, LS Steer, RS Orbit)';
+    } else {
+      this.inputDeviceBadge.classList.remove('gamepad-active');
+      this.inputDeviceIcon.textContent = '⌨️+🖱️';
+      this.inputDeviceLabel.textContent = 'KEYBOARD';
+      this.inputDeviceBadge.title = 'Active Control Scheme: Keyboard & Mouse Active';
+    }
+  }
 }
+

@@ -86,7 +86,7 @@ export class PlayerVehicle {
     });
     this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, height * 0.15, 0));
     
-    const initialY = pos.y > 0.5 ? pos.y : (wheelRadius + height * 0.5);
+    const initialY = pos.y + this.meshOffset;
     this.chassisBody.position.set(pos.x, initialY, pos.z);
 
     if (rot) {
@@ -170,11 +170,24 @@ export class PlayerVehicle {
       return;
     }
 
-    const isForward = keys['w'] || keys['arrowup'];
-    const isReverse = keys['s'] || keys['arrowdown'];
-    const isLeft = keys['a'] || keys['arrowleft'];
-    const isRight = keys['d'] || keys['arrowright'];
-    const isHandbrake = keys[' '];
+    // Get analog inputs from InputManager or fall back to keys
+    let analogThrottle = keys['w'] || keys['arrowup'] ? 1.0 : 0.0;
+    let analogBrake = keys['s'] || keys['arrowdown'] ? 1.0 : 0.0;
+    let analogSteer = (keys['a'] || keys['arrowleft'] ? 1.0 : 0.0) - (keys['d'] || keys['arrowright'] ? 1.0 : 0.0);
+    let isHandbrake = keys[' '];
+
+    if (window.app && window.app.inputManager) {
+      const imState = window.app.inputManager.state;
+      analogThrottle = Math.max(analogThrottle, imState.throttle);
+      analogBrake = Math.max(analogBrake, imState.brake);
+      if (Math.abs(imState.steer) > 0.05) {
+        analogSteer = imState.steer;
+      }
+      isHandbrake = isHandbrake || imState.handbrake;
+    }
+
+    const isForward = analogThrottle > 0.05;
+    const isReverse = analogBrake > 0.05;
 
     // Calculate forward speed along vehicle forward vector (+Z local)
     const forwardVec = new CANNON.Vec3(0, 0, 1);
@@ -185,37 +198,31 @@ export class PlayerVehicle {
     const maxBrakeForce = this.vType === 'BUS' ? 600 : (this.vType === 'TRUCK' ? 400 : 160);
     const maxSteerVal = this.vType === 'BUS' ? 0.35 : (this.vType === 'TRUCK' ? 0.45 : 0.55);
 
-    // 1. Steering
-    let targetSteering = 0;
-    if (isLeft) targetSteering = maxSteerVal;
-    if (isRight) targetSteering = -maxSteerVal;
+    // 1. Steering (Analog smooth steering)
+    const targetSteering = analogSteer * maxSteerVal;
     this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 16.0);
 
     this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
     this.raycastVehicle.setSteeringValue(this.currentSteering, 1);
 
     // Apply direct yaw response when moving so steering is accurate and responsive
-    if (Math.abs(currentForwardSpeed) > 0.5) {
+    if (Math.abs(currentForwardSpeed) > 0.5 && Math.abs(analogSteer) > 0.05) {
       const turnDir = currentForwardSpeed > 0 ? 1 : -1;
-      const turnRate = Math.min(2.8, Math.abs(currentForwardSpeed) * 0.16);
-      if (isLeft) {
-        this.chassisBody.angularVelocity.y = turnRate * turnDir;
-      } else if (isRight) {
-        this.chassisBody.angularVelocity.y = -turnRate * turnDir;
-      } else {
-        this.chassisBody.angularVelocity.y *= 0.85;
-      }
+      const turnRate = Math.min(2.8, Math.abs(currentForwardSpeed) * 0.16) * analogSteer;
+      this.chassisBody.angularVelocity.y = turnRate * turnDir;
+    } else if (Math.abs(analogSteer) <= 0.05) {
+      this.chassisBody.angularVelocity.y *= 0.85;
     }
 
-    // 2. Engine & Braking
+    // 2. Engine & Braking (Analog smooth throttle & brake)
     let engineForce = 0;
     let brakeForce = 0;
 
     if (isForward) {
       if (currentForwardSpeed < -1.5) {
-        brakeForce = maxBrakeForce;
+        brakeForce = maxBrakeForce * analogThrottle;
       } else {
-        engineForce = maxEngineForce * 1.3;
+        engineForce = maxEngineForce * 1.3 * analogThrottle;
         brakeForce = 0;
         
         // Scale thrust dynamically with mass/type
@@ -224,22 +231,22 @@ export class PlayerVehicle {
         
         if (currentForwardSpeed < maxSpeedLimit) {
           const thrust = forwardVec.clone();
-          thrust.scale(thrustForceVal, thrust);
+          thrust.scale(thrustForceVal * analogThrottle, thrust);
           this.chassisBody.applyForce(thrust, new CANNON.Vec3(0, 0, 0));
         }
 
         // Low speed takeoff assist to guarantee breaking out of any standstill or slight obstruction
         if (Math.abs(currentForwardSpeed) < 3.0) {
           const boost = forwardVec.clone();
-          boost.scale(this.chassisBody.mass * 18.0, boost);
+          boost.scale(this.chassisBody.mass * 18.0 * analogThrottle, boost);
           this.chassisBody.applyForce(boost, new CANNON.Vec3(0, 0, 0));
         }
       }
     } else if (isReverse) {
       if (currentForwardSpeed > 1.5) {
-        brakeForce = maxBrakeForce;
+        brakeForce = maxBrakeForce * analogBrake;
       } else {
-        engineForce = -maxEngineForce * 1.15;
+        engineForce = -maxEngineForce * 1.15 * analogBrake;
         brakeForce = 0;
         if (currentForwardSpeed > -18) {
           const revThrust = forwardVec.clone();
@@ -271,12 +278,14 @@ export class PlayerVehicle {
       this.chassisBody.applyForce(antiDrift, new CANNON.Vec3(0, 0, 0));
     }
 
-    // 4. Aerodynamic downforce
+    // 4. Aerodynamic downforce (oriented along vehicle local -Y normal)
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
-      const downForceFactor = this.vType === 'SPORTS' ? -600 : (this.vType === 'BUS' ? -100 : (this.vType === 'TRUCK' ? -200 : -400));
-      const downForce = new CANNON.Vec3(0, downForceFactor * speed, 0);
-      this.chassisBody.applyForce(downForce, new CANNON.Vec3(0, 0, 0));
+      const downForceFactor = this.vType === 'SPORTS' ? 600 : (this.vType === 'BUS' ? 100 : (this.vType === 'TRUCK' ? 200 : 400));
+      const downVec = new CANNON.Vec3(0, -1, 0);
+      this.chassisBody.quaternion.vmult(downVec, downVec);
+      downVec.scale(downForceFactor * speed, downVec);
+      this.chassisBody.applyForce(downVec, new CANNON.Vec3(0, 0, 0));
     }
 
     const numWheels = this.raycastVehicle.wheelInfos.length;
@@ -289,16 +298,53 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
-    // Safety height check only if the vehicle has fallen through the ground plane
+    // 1. Anti-Flip Auto-Righting Protection: Prevent vehicle from flipping upside down or rolling over sideways
+    const upVec = new CANNON.Vec3(0, 1, 0);
+    this.chassisBody.quaternion.vmult(upVec, upVec);
+    if (upVec.y < 0.65) {
+      const forwardCheck = new CANNON.Vec3(0, 0, 1);
+      this.chassisBody.quaternion.vmult(forwardCheck, forwardCheck);
+      const yaw = Math.atan2(forwardCheck.x, forwardCheck.z);
+      const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
+      const frontH = terrainSystem ? terrainSystem.getTerrainHeight(this.chassisBody.position.x + forwardCheck.x * 2.2, this.chassisBody.position.z + forwardCheck.z * 2.2) : 0;
+      const backH = terrainSystem ? terrainSystem.getTerrainHeight(this.chassisBody.position.x - forwardCheck.x * 2.2, this.chassisBody.position.z - forwardCheck.z * 2.2) : 0;
+      const pitch = Math.atan2(frontH - backH, 4.4);
+      const targetQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(-pitch, yaw, 0, 'YXZ'));
+      this.chassisBody.quaternion.set(targetQ.x, targetQ.y, targetQ.z, targetQ.w);
+      this.chassisBody.angularVelocity.set(0, 0, 0);
+    }
+
+    // 2. Ensure vehicle never clips through terrain or road surfaces and stays flush on wheels
     let terrainY = 0.0;
     const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
     if (terrainSystem) {
-      terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z) - 0.05;
+      terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z);
     }
-    if (this.chassisBody.position.y < terrainY - 5.0) {
-      this.chassisBody.position.y = terrainY + 1.2;
-      this.chassisBody.velocity.set(0, 0, 0);
-      this.chassisBody.angularVelocity.set(0, 0, 0);
+    const minChassisY = terrainY + (this.meshOffset || 0.55);
+    if (this.chassisBody.position.y < minChassisY) {
+      this.chassisBody.position.y = minChassisY;
+      if (this.chassisBody.velocity.y < 0) {
+        this.chassisBody.velocity.y = 0;
+      }
+    }
+
+    if (terrainSystem && this.chassisBody.position.y <= minChassisY + 0.85) {
+      const forwardVec = new CANNON.Vec3(0, 0, 1);
+      const rightVec = new CANNON.Vec3(1, 0, 0);
+      this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
+      this.chassisBody.quaternion.vmult(rightVec, rightVec);
+
+      const frontH = terrainSystem.getTerrainHeight(this.chassisBody.position.x + forwardVec.x * 2.2, this.chassisBody.position.z + forwardVec.z * 2.2);
+      const backH = terrainSystem.getTerrainHeight(this.chassisBody.position.x - forwardVec.x * 2.2, this.chassisBody.position.z - forwardVec.z * 2.2);
+      const leftH = terrainSystem.getTerrainHeight(this.chassisBody.position.x - rightVec.x * 1.2, this.chassisBody.position.z - rightVec.z * 1.2);
+      const rightH = terrainSystem.getTerrainHeight(this.chassisBody.position.x + rightVec.x * 1.2, this.chassisBody.position.z + rightVec.z * 1.2);
+
+      const targetPitch = Math.atan2(frontH - backH, 4.4);
+      const targetRoll = Math.atan2(leftH - rightH, 2.4);
+      const yaw = Math.atan2(forwardVec.x, forwardVec.z);
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-targetPitch, yaw, targetRoll, 'YXZ'));
+      this.chassisBody.quaternion.slerp(new CANNON.Quaternion(q.x, q.y, q.z, q.w), 0.45, this.chassisBody.quaternion);
+      this.chassisBody.angularVelocity.z *= 0.1;
     }
 
     // Sync chassis transform to visual Three.js mesh

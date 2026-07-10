@@ -25,6 +25,7 @@ export class Vehicle {
     };
 
     this.mesh = this.buildModel(type, colorHex);
+    this.mesh.rotation.order = 'YXZ';
     // Register reference for InspectorHUD
     this.mesh.userData.entityData = this;
   }

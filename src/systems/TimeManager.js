@@ -77,16 +77,16 @@ export class TimeManager {
 
   updateLighting() {
     const sunAngle = ((this.timeVal - 6.0) / 24.0) * Math.PI * 2.0;
-    const distance = 250;
+    const distance = 1800;
 
     this.sunLight.position.x = Math.cos(sunAngle) * distance;
     this.sunLight.position.y = Math.sin(sunAngle) * distance;
-    this.sunLight.position.z = Math.sin(sunAngle * 0.5) * 80;
+    this.sunLight.position.z = Math.sin(sunAngle * 0.5) * 250;
 
     const moonAngle = sunAngle + Math.PI;
     this.moonLight.position.x = Math.cos(moonAngle) * distance;
     this.moonLight.position.y = Math.sin(moonAngle) * distance;
-    this.moonLight.position.z = -Math.sin(sunAngle * 0.5) * 80;
+    this.moonLight.position.z = -Math.sin(sunAngle * 0.5) * 250;
 
     if (this.timeVal >= 6.0 && this.timeVal < 18.0) {
       const elevation = Math.sin(((this.timeVal - 6.0) / 12.0) * Math.PI);

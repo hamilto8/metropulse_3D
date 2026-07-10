@@ -153,6 +153,22 @@ export class SceneManager {
   }
 
   update(delta) {
+    if (this.app && this.app.inputManager) {
+      const rsX = this.app.inputManager.state.cameraPanX;
+      const rsY = this.app.inputManager.state.cameraPanY;
+      if (Math.abs(rsX) > 0.05 || Math.abs(rsY) > 0.05) {
+        const target = this.controls ? this.controls.target : new THREE.Vector3(0, 0, 0);
+        const offset = this.camera.position.clone().sub(target);
+        const angleX = -rsX * delta * 2.5;
+        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleX);
+        const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize();
+        const angleY = rsY * delta * 1.5;
+        offset.applyAxisAngle(right, angleY);
+        this.camera.position.copy(target).add(offset);
+        this.camera.lookAt(target);
+      }
+    }
+
     const ts = this.app ? this.app.trafficSystem : null;
     const ps = this.app ? this.app.pedestrianSystem : null;
     const keys = ts ? ts.keys : null;

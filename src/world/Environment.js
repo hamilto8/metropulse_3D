@@ -59,11 +59,11 @@ export class Environment {
     this.scene.add(this.starfield);
 
     // 2. Moon
-    const moonGeo = new THREE.SphereGeometry(12, 16, 16);
+    const moonGeo = new THREE.SphereGeometry(68, 32, 32);
     const moonMat = new THREE.MeshStandardMaterial({
       color: 0xffffdd,
       emissive: 0xffeedd,
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 0.9,
       roughness: 0.9
     });
     this.moon = new THREE.Mesh(moonGeo, moonMat);
@@ -81,25 +81,36 @@ export class Environment {
       });
     }
 
-    // 3. Sun
-    const sunGeo = new THREE.SphereGeometry(18, 32, 32);
+    // 3. Sun (Larger, brighter, layered realistic solar sphere)
+    const sunGeo = new THREE.SphereGeometry(110, 48, 48);
     const sunMat = new THREE.MeshStandardMaterial({
-      color: 0xffffaa,
-      emissive: 0xffaa00,
-      emissiveIntensity: 2.2,
-      roughness: 0.1
+      color: 0xffffff,
+      emissive: 0xffbb22,
+      emissiveIntensity: 3.5,
+      roughness: 0.0,
+      metalness: 0.0
     });
     this.sun = new THREE.Mesh(sunGeo, sunMat);
 
     // Soft glowing aura halo around the sun
-    const glowGeo = new THREE.SphereGeometry(26, 32, 32);
+    const glowGeo = new THREE.SphereGeometry(180, 32, 32);
     const glowMat = new THREE.MeshBasicMaterial({
-      color: 0xff8811,
+      color: 0xff9922,
       transparent: true,
-      opacity: 0.35
+      opacity: 0.42
     });
     this.sunGlow = new THREE.Mesh(glowGeo, glowMat);
     this.sun.add(this.sunGlow);
+
+    // Outer Solar Corona haze for atmospheric realism
+    const coronaGeo = new THREE.SphereGeometry(290, 32, 32);
+    const coronaMat = new THREE.MeshBasicMaterial({
+      color: 0xffaa33,
+      transparent: true,
+      opacity: 0.22
+    });
+    this.sunCorona = new THREE.Mesh(coronaGeo, coronaMat);
+    this.sun.add(this.sunCorona);
 
     this.scene.add(this.sun);
 
@@ -117,20 +128,20 @@ export class Environment {
   }
 
   initRain() {
-    const dropCount = 3000;
+    const dropCount = 12000;
     const rainGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(dropCount * 3);
 
     for (let i = 0; i < dropCount * 3; i += 3) {
-      positions[i] = (Math.random() - 0.5) * 300;
-      positions[i + 1] = Math.random() * 150;
-      positions[i + 2] = (Math.random() - 0.5) * 300;
+      positions[i] = (Math.random() - 0.5) * 800;
+      positions[i + 1] = Math.random() * 230 - 10;
+      positions[i + 2] = (Math.random() - 0.5) * 800;
     }
 
     rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.rainMat = new THREE.PointsMaterial({
       color: 0xaaaaee,
-      size: 0.8,
+      size: 0.9,
       transparent: true,
       opacity: 0
     });
@@ -297,44 +308,52 @@ export class Environment {
     // 2. Position Sun and Moon in opposition across the celestial dome
     const sunAngle = ((timeVal - 6.0) / 24.0) * Math.PI * 2.0;
     const moonAngle = sunAngle + Math.PI;
-    const orbitRadius = 320;
+    const orbitRadius = 1800; // Far beyond the entire terrain/city limits (X: -300 to 820) so sun/moon never intersect ground
     
     if (this.moon) {
       this.moon.position.x = Math.cos(moonAngle) * orbitRadius;
       this.moon.position.y = Math.sin(moonAngle) * orbitRadius;
-      this.moon.position.z = -Math.sin(sunAngle * 0.5) * 80;
-      this.moon.visible = this.moon.position.y > -30;
+      this.moon.position.z = -Math.sin(sunAngle * 0.5) * 250;
+      this.moon.visible = this.moon.position.y > -80;
     }
 
     if (this.sun) {
       this.sun.position.x = Math.cos(sunAngle) * orbitRadius;
       this.sun.position.y = Math.sin(sunAngle) * orbitRadius;
-      this.sun.position.z = Math.sin(sunAngle * 0.5) * 80;
-      this.sun.visible = this.sun.position.y > -30;
+      this.sun.position.z = Math.sin(sunAngle * 0.5) * 250;
+      this.sun.visible = this.sun.position.y > -80;
 
       // Dynamic color transition based on altitude (sunrise/sunset horizon vs zenith midday)
       if (this.sun.visible && this.sun.material) {
-        const altFactor = Math.min(1.0, Math.max(0.0, (this.sun.position.y + 20) / 160));
-        // Horizon: fiery orange-red (HSL 0.05, 1.0, 0.45), Midday: brilliant golden-yellow (HSL 0.14, 1.0, 0.65)
-        const hue = 0.04 + altFactor * 0.10;
-        const lightness = 0.45 + altFactor * 0.20;
+        const altFactor = Math.min(1.0, Math.max(0.0, (this.sun.position.y + 100) / 900));
+        // Horizon: fiery orange-gold, Midday: brilliant pure white-gold
+        const hue = 0.06 + altFactor * 0.08;
+        const lightness = 0.5 + altFactor * 0.25;
         this.sun.material.emissive.setHSL(hue, 1.0, lightness);
         if (this.sunGlow && this.sunGlow.material) {
-          this.sunGlow.material.color.setHSL(hue, 1.0, lightness * 0.8);
-          this.sunGlow.material.opacity = 0.25 + (1.0 - altFactor) * 0.25; // Richer glow near the horizon!
+          this.sunGlow.material.color.setHSL(hue, 1.0, lightness * 0.85);
+          this.sunGlow.material.opacity = 0.28 + (1.0 - altFactor) * 0.25;
+        }
+        if (this.sunCorona && this.sunCorona.material) {
+          this.sunCorona.material.color.setHSL(hue, 1.0, lightness * 0.7);
+          this.sunCorona.material.opacity = 0.15 + (1.0 - altFactor) * 0.15;
         }
       }
     }
 
-    // 3. Update Rain Particle physics
+    // 3. Update Rain Particle physics and center horizontally on active view for map-wide rainfall
     if ((this.weatherMode === 'rain' || this.weatherMode === 'thunderstorm') && this.rainParticles) {
+      if (this.app && this.app.camera) {
+        this.rainParticles.position.x = this.app.camera.position.x;
+        this.rainParticles.position.z = this.app.camera.position.z;
+      }
       const posAttr = this.rainParticles.geometry.attributes.position;
       const arr = posAttr.array;
       const fallSpeed = this.weatherMode === 'thunderstorm' ? 170 : 120;
       for (let i = 1; i < arr.length; i += 3) {
-        arr[i] -= fallSpeed * delta; // Fall speed
-        if (arr[i] < 0) {
-          arr[i] = 150; // Respawn at top
+        arr[i] -= fallSpeed * delta;
+        if (arr[i] < -15) {
+          arr[i] = 220;
         }
       }
       posAttr.needsUpdate = true;
