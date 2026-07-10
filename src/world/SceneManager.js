@@ -209,7 +209,7 @@ export class SceneManager {
       const isA = keys['a'] || keys['arrowleft'];
       const isD = keys['d'] || keys['arrowright'];
       const isQ = keys['q'];
-      const isE = keys['e'];
+      const isE = keys['e'] || keys[' '] || keys['space'] || keys['spacebar'];
 
       if (isW || isS || isA || isD || isQ || isE) {
         this.breakToFreeOrbit();

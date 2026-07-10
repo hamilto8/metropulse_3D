@@ -422,8 +422,19 @@ export class PedestrianSystem {
           p.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
         }
 
-        // Snapping elevation to current sidewalk, road, or park height
-        p.mesh.position.y = this.getTerrainHeight(pos.x, pos.z);
+        // Jump physics update
+        const terrainHeight = this.getTerrainHeight(pos.x, pos.z);
+        if (p.isJumping) {
+          p.jumpVelocity = (p.jumpVelocity || 0) - 28.0 * delta; // Gravity acceleration
+          p.mesh.position.y += p.jumpVelocity * delta;
+          if (p.mesh.position.y <= terrainHeight) {
+            p.mesh.position.y = terrainHeight;
+            p.jumpVelocity = 0;
+            p.isJumping = false;
+          }
+        } else {
+          p.mesh.position.y = terrainHeight;
+        }
 
         // Update leg/arm swing animations
         p.update(delta);
@@ -1133,6 +1144,20 @@ export class PedestrianSystem {
     setTimeout(() => {
       if (overlay) overlay.classList.add('hidden');
     }, 3000);
+  }
+
+  triggerPedestrianJump() {
+    const p = this.controlledPedestrian;
+    if (!p) return;
+    const terrainHeight = this.getTerrainHeight(p.mesh.position.x, p.mesh.position.z);
+    // Only jump if on or very close to the ground
+    if (!p.isJumping && p.mesh.position.y <= terrainHeight + 0.05) {
+      p.jumpVelocity = 11.5;
+      p.isJumping = true;
+      if (this.app.audioSystem && this.app.audioSystem.playUIClick) {
+        this.app.audioSystem.playUIClick();
+      }
+    }
   }
 
   updateWantedHud() {

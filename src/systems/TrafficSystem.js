@@ -33,6 +33,20 @@ export class TrafficSystem {
     this.keys = {};
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+      // Prevent spacebar button activation in free/orbit camera mode or pedestrian control mode
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        const ps = this.app ? this.app.pedestrianSystem : null;
+        const isVehControlled = this.controlledVehicle != null;
+        const isPedControlled = ps && ps.controlledPedestrian != null;
+        if (!isVehControlled) {
+          e.preventDefault();
+          if (isPedControlled) {
+            ps.triggerPedestrianJump();
+          }
+        }
+      }
+
       this.keys[e.key.toLowerCase()] = true;
 
       // Check Honk with Shift key when controlling a vehicle!
