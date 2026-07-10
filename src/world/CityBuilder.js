@@ -1054,16 +1054,51 @@ export class CityBuilder {
     rocketGroup.add(nozzle);
 
     // Thruster fiery particles / static glow cone
-    const flameGeo = new THREE.ConeGeometry(1.8, 5.0, 12);
+    const flameGeo = new THREE.ConeGeometry(2.2, 8.0, 16);
     flameGeo.rotateX(Math.PI);
     const flameMat = new THREE.MeshBasicMaterial({
-      color: 0xff5722,
+      color: 0xff3a00,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
     });
     const flame = new THREE.Mesh(flameGeo, flameMat);
-    flame.position.y = -3.5;
+    flame.position.y = -5.0;
+    flame.visible = false;
     rocketGroup.add(flame);
+    this.rocketFlame = flame;
+
+    // Create vapor particle pool for blastoff prep
+    this.rocketVapors = [];
+    const vaporGeo = new THREE.SphereGeometry(2.0, 8, 8);
+    for (let i = 0; i < 20; i++) {
+      const vaporMat = new THREE.MeshStandardMaterial({
+        color: 0xf0f2f5,
+        roughness: 0.9,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false
+      });
+      const vaporMesh = new THREE.Mesh(vaporGeo, vaporMat);
+      
+      // Store initial state for animation resets
+      vaporMesh.userData = {
+        age: Math.random() * 2.0,
+        lifetime: 1.5 + Math.random() * 1.5,
+        speedY: 8.0 + Math.random() * 6.0,
+        offsetX: (Math.random() - 0.5) * 1.5,
+        offsetZ: (Math.random() - 0.5) * 1.5
+      };
+
+      vaporMesh.position.set(
+        vaporMesh.userData.offsetX,
+        18.5,
+        vaporMesh.userData.offsetZ
+      );
+      vaporMesh.visible = false;
+      centerGroup.add(vaporMesh);
+      this.rocketVapors.push(vaporMesh);
+    }
 
     centerGroup.add(rocketGroup);
     this.scene.add(centerGroup);

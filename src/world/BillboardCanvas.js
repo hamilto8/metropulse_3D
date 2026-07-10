@@ -109,7 +109,7 @@ export class BillboardCanvas {
     
     let tickerText = "★ METROPULSE 3D SIMULATION ★ Traffic Flowing Smoothly ★ CyberCafe Offering 50% Off Espresso ★ NeoTech Stock Hits Record High ★ Starlight Hotel Booking Fast ★ Welcome to the Future!";
     if (isFunMode) {
-      tickerText = "🚨 METEOR ALERT: COMET SHOWER DETECTED ★ KEEP PRODUCTIVE ★ Property Damage is Temporary, Profit is Eternal! ★ Real Estate Index Plunging: Buy The Dip! ★ Police Dispatching Heavy Enforcers To Secure Corporate Annexes ★ Stay Indoors and Consume ★ NeoTech Defence Drones Online ★";
+      tickerText = "🚨 METEOR ALERT: COMET SHOWER DETECTED ★ BILLIONAIRES FLEEING BY ROCKET: 'DO NOT PANIC, CAPITAL STAYS SAFE' ★ KEEP PRODUCTIVE ★ Property Damage is Temporary, Profit is Eternal! ★ Real Estate Index Plunging: Buy The Dip! ★ Police Dispatching Heavy Enforcers To Secure Corporate Annexes ★ Stay Indoors and Consume ★ NeoTech Defence Drones Online ★";
     }
     
     ctx.fillText(tickerText, scrollX, 160);
@@ -298,20 +298,36 @@ export class BillboardCanvas {
       ctx.closePath();
       ctx.fill();
 
-      // Status text
-      if (phase % 2 === 0) {
-        ctx.fillStyle = '#00ff88';
-        ctx.font = 'bold 28px monospace';
-        ctx.fillText('NEXT LAUNCH: T-MINUS 00:04:12', canvas.width / 2, 240);
-      } else {
-        ctx.fillStyle = '#ffaa00';
-        ctx.font = 'bold 28px monospace';
-        ctx.fillText('STATUS: PROPELLANT LOADING', canvas.width / 2, 240);
-      }
+      const isFunMode = this.app && this.app.funMode;
+      if (isFunMode) {
+        // Red warning title for End of the World Express
+        ctx.fillStyle = phase % 2 === 0 ? '#ff0055' : '#ffcc00';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('🚀 END OF THE WORLD EXPRESS! 🚀', canvas.width / 2, 220);
 
-      ctx.fillStyle = '#00f0ff';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText('DESTINATION: CYBER MOON BASE 🌌', canvas.width / 2, 290);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText('BILLIONAIRES NOW BOARDING!', canvas.width / 2, 255);
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 24px monospace';
+        ctx.fillText('LAST CALL - SAVING ASSETS!', canvas.width / 2, 290);
+      } else {
+        // Normal status
+        if (phase % 2 === 0) {
+          ctx.fillStyle = '#00ff88';
+          ctx.font = 'bold 28px monospace';
+          ctx.fillText('NEXT LAUNCH: T-MINUS 00:04:12', canvas.width / 2, 240);
+        } else {
+          ctx.fillStyle = '#ffaa00';
+          ctx.font = 'bold 28px monospace';
+          ctx.fillText('STATUS: PROPELLANT LOADING', canvas.width / 2, 240);
+        }
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('DESTINATION: CYBER MOON BASE 🌌', canvas.width / 2, 290);
+      }
 
       // Ticker Background Bar (black bar at the bottom)
       ctx.fillStyle = '#000000';
@@ -368,6 +384,16 @@ export class BillboardCanvas {
             this.drawAd(bb);
           }
         }
+      }
+    }
+  }
+
+  forceRedrawAll() {
+    for (const bb of this.billboards) {
+      if (bb.type === 'ad') {
+        this.drawAd(bb);
+      } else if (bb.type === 'ticker') {
+        this.drawTicker(bb);
       }
     }
   }

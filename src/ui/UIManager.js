@@ -177,6 +177,9 @@ export class UIManager {
     if (this.btnFunMode) {
       this.btnFunMode.addEventListener('click', () => {
         this.app.funMode = !this.app.funMode;
+        if (this.app.billboardCanvas) {
+          this.app.billboardCanvas.forceRedrawAll();
+        }
         if (this.app.funMode) {
           this.btnFunMode.classList.add('active');
           if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: MAYHEM! 🔥';
