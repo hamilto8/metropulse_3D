@@ -622,11 +622,12 @@ export class TrafficSystem {
   }
 
   spawnVehicles(count) {
-    const types = ['SEDAN', 'SPORTS', 'BUS', 'TRUCK', 'TAXI', 'POLICE', 'POLICE', 'SEDAN'];
-    const colors = [0xdf0054, 0x00f0ff, 0xffcc00, 0x22ee44, 0xeeeeee, 0x1a1a24, 0x1a1a24, 0xff5500];
+    const types = ['SEDAN', 'SPORTS', 'BUS', 'TRUCK', 'TAXI', 'POLICE', 'AMBULANCE', 'ICECREAM', 'DUMP_TRUCK', 'SPORTS_CAR'];
+    const colors = [0xdf0054, 0x00f0ff, 0xffcc00, 0x22ee44, 0xeeeeee, 0x1a1a24, 0xffffff, 0xffe4e1, 0xea580c, 0xff2200];
     const names = [
       'Cyber Cruiser 2099', 'Apex GT Turbo', 'Metro Transit Bus #42', 'Express Freight Truck',
-      'City Yellow Cab #88', 'Metro Police Cruiser #01', 'Metro Police Interceptor #02', 'Neo Tech autonomous Sedan'
+      'City Yellow Cab #88', 'Metro Police Interceptor #01', 'Metro EMS Rescue Ambulance', 'Sweet Treats Ice Cream Van',
+      'Heavy Titan Dump Truck', 'Veloce V10 Supercar'
     ];
 
     const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
@@ -1092,20 +1093,44 @@ export class TrafficSystem {
         }
       }
 
-      // 2. Update police spatial siren audio
-      const hasActiveSiren = (v.isPolice && (v.emergencyTarget != null || (v.sirenTimer && v.sirenTimer > 0)));
+      // 2. Update police/ambulance spatial siren audio
+      const hasActiveSiren = (v.isPolice && (v.emergencyTarget != null || (v.sirenTimer && v.sirenTimer > 0))) || (v.vType === 'AMBULANCE' && v.sirenActive === true);
       if (hasActiveSiren && dist < maxAudibleDist) {
         const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
 
         if (!v.spatialSiren) {
-          v.spatialSiren = this.app.audioSystem.createSirenInstance();
+          v.spatialSiren = v.vType === 'AMBULANCE'
+            ? this.app.audioSystem.createAmbulanceSirenInstance()
+            : this.app.audioSystem.createSirenInstance();
         }
 
-        this.app.audioSystem.updateSirenInstance(v.spatialSiren, dopplerMultiplier, volumeMultiplier * 0.65);
+        if (v.vType === 'AMBULANCE') {
+          this.app.audioSystem.updateAmbulanceSirenInstance(v.spatialSiren, dopplerMultiplier, volumeMultiplier * 0.75);
+        } else {
+          this.app.audioSystem.updateSirenInstance(v.spatialSiren, dopplerMultiplier, volumeMultiplier * 0.65);
+        }
       } else {
         if (v.spatialSiren) {
-          this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          if (v.vType === 'AMBULANCE') {
+            this.app.audioSystem.stopAmbulanceSirenInstance(v.spatialSiren);
+          } else {
+            this.app.audioSystem.stopSirenInstance(v.spatialSiren);
+          }
           v.spatialSiren = null;
+        }
+      }
+
+      // 3. Update Ice Cream Truck spatial musical jingle
+      if (v.vType === 'ICECREAM' && dist < maxAudibleDist) {
+        const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
+        if (!v.spatialJingle) {
+          v.spatialJingle = this.app.audioSystem.createIceCreamJingleInstance();
+        }
+        this.app.audioSystem.updateIceCreamJingleInstance(v.spatialJingle, dopplerMultiplier, volumeMultiplier * 0.65);
+      } else {
+        if (v.spatialJingle) {
+          this.app.audioSystem.stopIceCreamJingleInstance(v.spatialJingle);
+          v.spatialJingle = null;
         }
       }
     }

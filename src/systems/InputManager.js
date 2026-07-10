@@ -25,6 +25,12 @@ export class InputManager {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
       this.keys[e.key.toLowerCase()] = true;
       this.setInterface('KEYBOARD');
+      if (e.key === 'Shift') {
+        const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+        if (vehicle && vehicle.toggleAmbulanceSiren) {
+          vehicle.toggleAmbulanceSiren(this.app.audioSystem);
+        }
+      }
     });
 
     window.addEventListener('keyup', (e) => {
@@ -200,10 +206,12 @@ export class InputManager {
       }
     }
 
-    // Left Bumper (Btn 4): Honk Horn / Police Siren
+    // Left Bumper (Btn 4): Honk Horn / Emergency Siren Toggle
     if (this.justPressed('btn4', this.isButtonPressed(gp, 4))) {
-      if (this.app.audioSystem) {
-        const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+      const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+      if (vehicle && (vehicle.vType === 'AMBULANCE' || vehicle.isPolice) && vehicle.toggleAmbulanceSiren) {
+        vehicle.toggleAmbulanceSiren(this.app.audioSystem);
+      } else if (this.app.audioSystem) {
         if (vehicle && vehicle.isPolice) {
           this.app.audioSystem.playSiren(1.5);
         } else {

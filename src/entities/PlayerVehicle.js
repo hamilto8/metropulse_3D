@@ -23,29 +23,40 @@ export class PlayerVehicle {
     
     // Set dynamic offsets
     this.meshOffset = 0.55;
-    if (this.vType === 'SPORTS') this.meshOffset = 0.48;
+    if (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') this.meshOffset = 0.48;
     else if (this.vType === 'TRUCK') this.meshOffset = 1.35;
     else if (this.vType === 'BUS') this.meshOffset = 2.05;
+    else if (this.vType === 'AMBULANCE') this.meshOffset = 1.15;
+    else if (this.vType === 'ICECREAM') this.meshOffset = 1.10;
+    else if (this.vType === 'DUMP_TRUCK') this.meshOffset = 1.45;
 
     this.initPhysics(startPos, startRot);
   }
 
   getEngineName(vType) {
     switch (vType) {
-      case 'SPORTS': return 'High-Rev V8 Hybrid (cannon-es)';
+      case 'SPORTS':
+      case 'SPORTS_CAR': return 'High-Rev V10 Supercar (cannon-es)';
       case 'BUS': return 'Heavy-Duty Electric Drive';
       case 'TRUCK': return 'High-Torque Turbodiesel';
       case 'POLICE': return 'Interceptor V8 Supercharged';
+      case 'AMBULANCE': return 'EMS Rescue V8 Turbo-Diesel';
+      case 'ICECREAM': return 'Sweet Delivery Van 4-Cylinder';
+      case 'DUMP_TRUCK': return 'Heavy Titan Diesel Industrial';
       default: return 'Twin-Turbo V6 (cannon-es)';
     }
   }
 
   getDriveType(vType) {
     switch (vType) {
-      case 'SPORTS': return 'RWD Performance Chassis';
+      case 'SPORTS':
+      case 'SPORTS_CAR': return 'RWD Performance GT Chassis';
       case 'BUS': return '6x4 Transit Chassis';
       case 'TRUCK': return 'Rear-Dual Heavy Duty';
       case 'POLICE': return 'Pursuit-Tuned AWD';
+      case 'AMBULANCE': return 'EMS Rapid Response AWD';
+      case 'ICECREAM': return 'Delivery Van FWD';
+      case 'DUMP_TRUCK': return '6x4 Heavy Dumper Chassis';
       default: return 'AWD RaycastVehicle';
     }
   }
@@ -56,12 +67,12 @@ export class PlayerVehicle {
     let wheelRadius = 0.4, suspensionRestLength = 0.45, suspensionStiffness = 48;
     let maxSuspensionForce = 100000;
     
-    if (this.vType === 'SPORTS') {
+    if (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') {
       mass = 950;
-      width = 2.1; height = 1.1; length = 4.4;
+      width = 2.1; height = 1.05; length = 4.4;
       wheelRadius = 0.45;
       suspensionRestLength = 0.38;
-      suspensionStiffness = 65;
+      suspensionStiffness = 68;
     } else if (this.vType === 'BUS') {
       mass = 4800;
       width = 2.6; height = 3.2; length = 10.5;
@@ -76,6 +87,27 @@ export class PlayerVehicle {
       suspensionRestLength = 0.55;
       suspensionStiffness = 95;
       maxSuspensionForce = 250000;
+    } else if (this.vType === 'AMBULANCE') {
+      mass = 2400;
+      width = 2.3; height = 2.4; length = 6.2;
+      wheelRadius = 0.5;
+      suspensionRestLength = 0.5;
+      suspensionStiffness = 75;
+      maxSuspensionForce = 180000;
+    } else if (this.vType === 'ICECREAM') {
+      mass = 1900;
+      width = 2.2; height = 2.3; length = 5.8;
+      wheelRadius = 0.48;
+      suspensionRestLength = 0.48;
+      suspensionStiffness = 65;
+      maxSuspensionForce = 150000;
+    } else if (this.vType === 'DUMP_TRUCK') {
+      mass = 4200;
+      width = 2.5; height = 2.9; length = 7.8;
+      wheelRadius = 0.6;
+      suspensionRestLength = 0.58;
+      suspensionStiffness = 110;
+      maxSuspensionForce = 300000;
     }
 
     // 1. Chassis rigid body
@@ -194,9 +226,9 @@ export class PlayerVehicle {
     this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
     const currentForwardSpeed = this.chassisBody.velocity.dot(forwardVec);
 
-    const maxEngineForce = this.vType === 'SPORTS' ? 6500 : (this.vType === 'BUS' ? 18000 : (this.vType === 'TRUCK' ? 12000 : 4500));
-    const maxBrakeForce = this.vType === 'BUS' ? 600 : (this.vType === 'TRUCK' ? 400 : 160);
-    const maxSteerVal = this.vType === 'BUS' ? 0.35 : (this.vType === 'TRUCK' ? 0.45 : 0.55);
+    const maxEngineForce = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 7200 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 18000 : (this.vType === 'TRUCK' ? 12000 : (this.vType === 'AMBULANCE' ? 8500 : 4500)));
+    const maxBrakeForce = (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') ? 600 : (this.vType === 'TRUCK' ? 400 : 160);
+    const maxSteerVal = (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') ? 0.35 : (this.vType === 'TRUCK' ? 0.45 : 0.55);
 
     // 1. Steering (Analog smooth steering)
     const targetSteering = analogSteer * maxSteerVal;
@@ -226,8 +258,8 @@ export class PlayerVehicle {
         brakeForce = 0;
         
         // Scale thrust dynamically with mass/type
-        const thrustForceVal = this.vType === 'SPORTS' ? 48000 : (this.vType === 'BUS' ? 140000 : (this.vType === 'TRUCK' ? 95000 : 38000));
-        const maxSpeedLimit = this.vType === 'SPORTS' ? 52 : (this.vType === 'BUS' ? 22 : (this.vType === 'TRUCK' ? 28 : 42));
+        const thrustForceVal = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 54000 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 140000 : (this.vType === 'TRUCK' ? 95000 : (this.vType === 'AMBULANCE' ? 68000 : 38000)));
+        const maxSpeedLimit = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 56 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 22 : (this.vType === 'TRUCK' ? 28 : (this.vType === 'AMBULANCE' ? 46 : 42)));
         
         if (currentForwardSpeed < maxSpeedLimit) {
           const thrust = forwardVec.clone();
@@ -380,6 +412,18 @@ export class PlayerVehicle {
     this.chassisBody.quaternion.set(q.x, q.y, q.z, q.w);
     this.chassisBody.velocity.set(0, 0, 0);
     this.chassisBody.angularVelocity.set(0, 0, 0);
+  }
+
+  toggleAmbulanceSiren(audioSystem) {
+    if (this.vType !== 'AMBULANCE' && this.vType !== 'POLICE') return;
+    this.sirenActive = !this.sirenActive;
+    if (audioSystem) {
+      if (this.sirenActive) {
+        audioSystem.startAmbulanceSiren(this);
+      } else {
+        audioSystem.stopAmbulanceSiren(this);
+      }
+    }
   }
 
   destroy() {

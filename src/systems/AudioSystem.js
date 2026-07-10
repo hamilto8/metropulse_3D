@@ -19,6 +19,9 @@ export class AudioSystem {
     this.birdTimer = 3.0;
     this.honkTimer = 8.0 + Math.random() * 10.0;
     this.panicScreamTimer = 0;
+
+    this.ambulanceSirens = new Map();
+    this.iceCreamJingles = new Map();
   }
 
   toggleAudio() {
@@ -628,6 +631,55 @@ export class AudioSystem {
     }
   }
 
+  createAmbulanceSirenInstance() {
+    if (!this.isEnabled || !this.ctx) return null;
+    return new AmbulanceSirenNode(this);
+  }
+
+  updateAmbulanceSirenInstance(instance, dopplerMultiplier, volumeMultiplier) {
+    if (instance && instance.updateSound) {
+      instance.updateSound(dopplerMultiplier, volumeMultiplier);
+    }
+  }
+
+  stopAmbulanceSirenInstance(instance) {
+    if (instance && instance.stop) {
+      instance.stop();
+    }
+  }
+
+  startAmbulanceSiren(vehicle) {
+    if (!vehicle || this.ambulanceSirens.has(vehicle)) return;
+    const node = this.createAmbulanceSirenInstance();
+    if (node) {
+      this.ambulanceSirens.set(vehicle, node);
+    }
+  }
+
+  stopAmbulanceSiren(vehicle) {
+    if (!vehicle || !this.ambulanceSirens.has(vehicle)) return;
+    const node = this.ambulanceSirens.get(vehicle);
+    this.stopAmbulanceSirenInstance(node);
+    this.ambulanceSirens.delete(vehicle);
+  }
+
+  createIceCreamJingleInstance() {
+    if (!this.isEnabled || !this.ctx) return null;
+    return new IceCreamJingleNode(this);
+  }
+
+  updateIceCreamJingleInstance(instance, dopplerMultiplier, volumeMultiplier) {
+    if (instance && instance.updateSound) {
+      instance.updateSound(dopplerMultiplier, volumeMultiplier);
+    }
+  }
+
+  stopIceCreamJingleInstance(instance) {
+    if (instance && instance.stop) {
+      instance.stop();
+    }
+  }
+
   playThunder(volumeScale = 1.0) {
     if (!this.isEnabled || !this.ctx) return;
     const now = this.ctx.currentTime;
@@ -723,24 +775,86 @@ class EngineAudioNode {
 
     this.filterNode = this.ctx.createBiquadFilter();
 
-    if (this.vType === 'SPORTS') {
-      // Warm lowpass dual sawtooths for sports car growl
+    if (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') {
+      // High-revving V10 supercar scream with dual sawtooth rasp
       this.osc1 = this.ctx.createOscillator();
       this.osc2 = this.ctx.createOscillator();
       this.osc1.type = 'sawtooth';
       this.osc2.type = 'sawtooth';
-      this.osc1.frequency.setValueAtTime(70, now);
-      this.osc2.frequency.setValueAtTime(72.0, now);
+      this.osc1.frequency.setValueAtTime(75, now);
+      this.osc2.frequency.setValueAtTime(77.5, now);
 
       this.filterNode.type = 'lowpass';
-      this.filterNode.frequency.setValueAtTime(150, now);
+      this.filterNode.frequency.setValueAtTime(180, now);
 
       this.osc1.connect(this.filterNode);
       this.osc2.connect(this.filterNode);
       
-      this.baseFreq = 70;
-      this.maxFreq = 260;
+      this.baseFreq = 75;
+      this.maxFreq = 310;
+      this.targetVolume = 0.12;
+    } else if (this.vType === 'AMBULANCE') {
+      // Smooth EMS Rescue V8 Turbo-Diesel hum
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'sawtooth';
+      this.osc2.type = 'triangle';
+      this.osc1.frequency.setValueAtTime(44, now);
+      this.osc2.frequency.setValueAtTime(44.6, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(130, now);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 44;
+      this.maxFreq = 125;
       this.targetVolume = 0.11;
+    } else if (this.vType === 'ICECREAM') {
+      // Cheerful light delivery van purr
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'triangle';
+      this.osc2.type = 'sine';
+      this.osc1.frequency.setValueAtTime(48, now);
+      this.osc2.frequency.setValueAtTime(96, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(160, now);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 48;
+      this.maxFreq = 135;
+      this.targetVolume = 0.09;
+    } else if (this.vType === 'DUMP_TRUCK') {
+      // Ultra-deep industrial diesel thumper
+      this.osc1 = this.ctx.createOscillator();
+      this.osc2 = this.ctx.createOscillator();
+      this.osc1.type = 'sawtooth';
+      this.osc2.type = 'sawtooth';
+      this.osc1.frequency.setValueAtTime(26, now);
+      this.osc2.frequency.setValueAtTime(26.5, now);
+
+      this.filterNode.type = 'lowpass';
+      this.filterNode.frequency.setValueAtTime(90, now);
+
+      this.lfo = this.ctx.createOscillator();
+      this.lfo.frequency.value = 4.5;
+      this.lfoGain = this.ctx.createGain();
+      this.lfoGain.gain.value = 0.09;
+
+      this.lfo.connect(this.lfoGain);
+      this.lfoGain.connect(this.gainNode.gain);
+
+      this.osc1.connect(this.filterNode);
+      this.osc2.connect(this.filterNode);
+
+      this.baseFreq = 26;
+      this.maxFreq = 68;
+      this.targetVolume = 0.15;
     } else if (this.vType === 'BUS') {
       // Extremely deep lowpass diesel rumble with soft LFO tremolo
       this.osc1 = this.ctx.createOscillator();
@@ -820,20 +934,20 @@ class EngineAudioNode {
 
     this.osc1.frequency.setTargetAtTime(currentFreq, now, 0.08);
     if (this.osc2) {
-      this.osc2.frequency.setTargetAtTime(currentFreq + (this.vType === 'SPORTS' ? 1.5 : 0.4) * dopplerMultiplier, now, 0.08);
+      this.osc2.frequency.setTargetAtTime(currentFreq + ((this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 2.5 : 0.5) * dopplerMultiplier, now, 0.08);
     }
 
     // Scale engine load volume based on speed ratio and spatial attenuation multiplier
     const currentVol = this.targetVolume * (0.8 + ratio * 0.4) * volumeMultiplier;
     
     // In Web Audio API, if we are modulating gain.gain directly with LFO, we must not override LFO values abruptly
-    if (this.vType === 'BUS' && this.lfoGain) {
+    if ((this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') && this.lfoGain) {
       this.lfoGain.gain.setTargetAtTime((0.08 + ratio * 0.03) * volumeMultiplier, now, 0.1);
     } else {
       this.gainNode.gain.setTargetAtTime(currentVol, now, 0.1);
     }
 
-    const filterFreq = ((this.vType === 'SPORTS' ? 150 : 110) + ratio * 220) * dopplerMultiplier;
+    const filterFreq = (((this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 180 : 110) + ratio * 240) * dopplerMultiplier;
     this.filterNode.frequency.setTargetAtTime(filterFreq, now, 0.08);
   }
 
@@ -930,5 +1044,132 @@ class SirenAudioNode {
       this.osc = null;
       this.sweepOsc = null;
     }, 220);
+  }
+}
+
+class AmbulanceSirenNode {
+  constructor(audioSystem) {
+    this.audioSystem = audioSystem;
+    this.ctx = audioSystem.ctx;
+    this.osc = null;
+    this.gainNode = null;
+    this.timer = null;
+    this.isHighTone = false;
+    this.initSound();
+  }
+
+  initSound() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0, now);
+
+    this.osc = this.ctx.createOscillator();
+    this.osc.type = 'sawtooth';
+    this.osc.frequency.setValueAtTime(650, now);
+
+    this.osc.connect(this.gainNode);
+    this.gainNode.connect(this.audioSystem.masterGain);
+    this.osc.start(now);
+
+    this.gainNode.gain.setTargetAtTime(0.32, now, 0.2);
+
+    this.timer = setInterval(() => {
+      if (!this.ctx || !this.osc) return;
+      this.isHighTone = !this.isHighTone;
+      const targetFreq = this.isHighTone ? 920 : 650;
+      this.osc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.04);
+    }, 420);
+  }
+
+  updateSound(dopplerMultiplier, volumeMultiplier) {
+    if (!this.ctx || !this.gainNode) return;
+    const now = this.ctx.currentTime;
+    const currentVol = 0.32 * volumeMultiplier;
+    this.gainNode.gain.setTargetAtTime(currentVol, now, 0.08);
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (!this.ctx || !this.osc) return;
+    const now = this.ctx.currentTime;
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    setTimeout(() => {
+      try {
+        if (this.osc) this.osc.stop();
+      } catch (e) {}
+      this.osc = null;
+    }, 220);
+  }
+}
+
+class IceCreamJingleNode {
+  constructor(audioSystem) {
+    this.audioSystem = audioSystem;
+    this.ctx = audioSystem.ctx;
+    this.osc = null;
+    this.gainNode = null;
+    this.timer = null;
+    this.noteIdx = 0;
+    this.notes = [
+      523.25, 587.33, 659.25, 523.25,
+      659.25, 698.46, 783.99,
+      880.00, 783.99, 659.25, 523.25
+    ];
+    this.initSound();
+  }
+
+  initSound() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.gainNode = this.ctx.createGain();
+    this.gainNode.gain.setValueAtTime(0, now);
+
+    this.osc = this.ctx.createOscillator();
+    this.osc.type = 'triangle';
+    this.osc.frequency.setValueAtTime(this.notes[0], now);
+
+    this.osc.connect(this.gainNode);
+    this.gainNode.connect(this.audioSystem.masterGain);
+    this.osc.start(now);
+
+    this.gainNode.gain.setTargetAtTime(0.24, now, 0.15);
+
+    this.timer = setInterval(() => {
+      if (!this.ctx || !this.osc) return;
+      this.noteIdx = (this.noteIdx + 1) % this.notes.length;
+      const freq = this.notes[this.noteIdx];
+      this.osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    }, 360);
+  }
+
+  updateSound(dopplerMultiplier, volumeMultiplier) {
+    if (!this.ctx || !this.gainNode) return;
+    const now = this.ctx.currentTime;
+    const currentVol = 0.24 * volumeMultiplier;
+    this.gainNode.gain.setTargetAtTime(currentVol, now, 0.08);
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (!this.ctx || !this.osc) return;
+    const now = this.ctx.currentTime;
+    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, now);
+    this.gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    setTimeout(() => {
+      try {
+        if (this.osc) this.osc.stop();
+      } catch (e) {}
+      this.osc = null;
+    }, 280);
   }
 }
