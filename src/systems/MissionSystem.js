@@ -57,6 +57,14 @@ export class MissionSystem {
     // Payout toast element (injected dynamically)
     this._toastEl = null;
 
+    this.pendingMission = null;
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 'e' || e.key === 'E') && !e.repeat && this.pendingMission) {
+        this.openPendingMissionDetails();
+      }
+    });
+
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener('click', () => this.cancelMission());
     }
@@ -123,6 +131,56 @@ export class MissionSystem {
     }
   }
 
+  showMissionAvailablePrompt(mission) {
+    if (this.state !== 'IDLE' || this.activeMission) return;
+    this.pendingMission = mission;
+
+    let prompt = document.getElementById('mission-available-prompt');
+    if (!prompt) {
+      prompt = document.createElement('div');
+      prompt.id = 'mission-available-prompt';
+      prompt.style.position = 'fixed';
+      prompt.style.bottom = '18%';
+      prompt.style.left = '50%';
+      prompt.style.transform = 'translateX(-50%)';
+      prompt.style.padding = '14px 28px';
+      prompt.style.borderRadius = '30px';
+      prompt.style.background = 'rgba(7, 18, 38, 0.88)';
+      prompt.style.backdropFilter = 'blur(14px)';
+      prompt.style.border = '1px solid #00f0ff';
+      prompt.style.color = '#fff';
+      prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
+      prompt.style.fontSize = '1.05rem';
+      prompt.style.fontWeight = 'bold';
+      prompt.style.boxShadow = '0 0 20px rgba(0, 240, 255, 0.5)';
+      prompt.style.zIndex = '1000';
+      prompt.style.pointerEvents = 'none';
+      prompt.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+      document.body.appendChild(prompt);
+    }
+
+    prompt.innerHTML = `🌟 <span style="color: #00f0ff; font-weight: 800;">MISSION AVAILABLE!</span> Press <span style="color: #00f0ff; background: rgba(0,240,255,0.22); padding: 3px 10px; border-radius: 8px; border: 1px solid #00f0ff; margin: 0 4px;">[E]</span> for details (${mission.passengerName})`;
+    prompt.style.display = 'block';
+    prompt.style.opacity = '1';
+  }
+
+  hideMissionAvailablePrompt() {
+    this.pendingMission = null;
+    const prompt = document.getElementById('mission-available-prompt');
+    if (prompt) {
+      prompt.style.display = 'none';
+      prompt.style.opacity = '0';
+    }
+  }
+
+  openPendingMissionDetails() {
+    if (!this.pendingMission) return false;
+    const mission = this.pendingMission;
+    this.hideMissionAvailablePrompt();
+    this.triggerMissionDialogue(mission);
+    return true;
+  }
+
   /**
    * Triggers the passenger dialogue overlay for a given mission.
    * Guards against re-triggering during cooldown or an active mission.
@@ -131,6 +189,7 @@ export class MissionSystem {
   triggerMissionDialogue(mission) {
     if (this.triggerCooldown > 0 || this.activeMission) return;
     if (this.state === 'DIALOGUE_ACTIVE') return;
+    this.hideMissionAvailablePrompt();
     if (this.dialogueOverlay && !this.dialogueOverlay.currentMission) {
       this.state = 'DIALOGUE_ACTIVE';
       this.dialogueOverlay.showMissionDialogue(mission, this);
@@ -457,13 +516,22 @@ export class MissionSystem {
     //    Only triggered when the PLAYER has an active vehicle (controlled or followed).
     //    AI vehicles driving near rings must NOT auto-trigger dialogues for the player.
     if (this.state === 'IDLE' && this.triggerCooldown <= 0 && activeVehicle) {
+      let insideRingMission = null;
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
         if (activeVehicle.mesh.position.distanceTo(r.group.position) < MISSION_TRIGGER_RADIUS) {
-          this.triggerMissionDialogue(r.mission);
+          insideRingMission = r.mission;
           break;
         }
       }
+
+      if (insideRingMission) {
+        this.showMissionAvailablePrompt(insideRingMission);
+      } else {
+        this.hideMissionAvailablePrompt();
+      }
+    } else {
+      this.hideMissionAvailablePrompt();
     }
 
     // No active mission or active vehicle — nothing more to update

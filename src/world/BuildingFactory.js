@@ -60,7 +60,7 @@ export class BuildingFactory {
 
     if (type === 'NEOTECH') {
       height = 75;
-      color = 0x0a192f;
+      color = 0x3b4d68;
       name = 'NeoTech HQ';
       employees = 1420;
       specialty = 'Quantum AI & Robotics';
@@ -71,35 +71,35 @@ export class BuildingFactory {
       group.add(adMesh);
     } else if (type === 'CYBERCAFE') {
       height = 25;
-      color = 0x1f102f;
+      color = 0x5a3e73;
       name = 'CyberCafe 24/7';
       employees = 35;
       specialty = 'High-Speed Quantum Gaming & Coffee';
       this.addShopDetails(group, w, height, d, color, 0xff00ff, '☕ CYBERCAFE');
     } else if (type === 'APEX_BANK') {
       height = 85;
-      color = 0x112233;
+      color = 0x475569;
       name = 'Apex Financial Tower';
       employees = 980;
       specialty = 'Decentralized Crypto Banking';
       this.addSkyscraperDetails(group, w, height, d, color, 0xffaa00);
     } else if (type === 'STARLIGHT_HOTEL') {
       height = 65;
-      color = 0x2d1a3e;
+      color = 0x6b4c7a;
       name = 'Starlight Grand Resort';
       employees = 420;
       specialty = 'Luxury Skyline Suites';
       this.addSkyscraperDetails(group, w, height, d, color, 0xbf55ec);
     } else if (type === 'BOBA_HAVEN') {
       height = 20;
-      color = 0x2e1a24;
+      color = 0x7a4358;
       name = 'Boba Haven Tea Bar';
       employees = 18;
       specialty = 'Synthetic Fruit Infusions';
       this.addShopDetails(group, w, height, d, color, 0xff66bb, '🧋 BOBA HAVEN');
     } else if (type === 'GALAXY_CINEMA') {
       height = 35;
-      color = 0x1a0f2e;
+      color = 0x4f3f6e;
       name = 'Galaxy Cinema Complex';
       employees = 85;
       specialty = 'Inmerse-3D Hologram Movies';
@@ -110,14 +110,14 @@ export class BuildingFactory {
       group.add(adMesh);
     } else if (type === 'MART_247') {
       height = 18;
-      color = 0x1a2e26;
+      color = 0x3d5a4d;
       name = '24/7 Convenience Mart';
       employees = 12;
       specialty = 'Snacks, Electronics & Essentials';
       this.addShopDetails(group, w, height, d, color, 0x00f0ff, '🏪 24/7 MART');
     } else if (type === 'METRO_TOWER') {
       height = 95;
-      color = 0x111827;
+      color = 0x485265;
       name = 'Metro Pulse Spire';
       employees = 2100;
       specialty = 'City Communications & Broadcast';
@@ -128,7 +128,7 @@ export class BuildingFactory {
       group.add(tickerMesh);
     } else if (type === 'ORBITAL_SYSTEMS') {
       height = 105;
-      color = 0x091428;
+      color = 0x3b526c;
       name = 'Orbital Systems Spire';
       employees = 1850;
       specialty = 'Satellite Navigation & Deep Space AI';
@@ -138,35 +138,35 @@ export class BuildingFactory {
       group.add(adMesh);
     } else if (type === 'QUANTUM_DYNAMIC') {
       height = 88;
-      color = 0x1a1a2e;
+      color = 0x4f4a6e;
       name = 'Quantum Dynamics Tower';
       employees = 1200;
       specialty = 'Supercomputing & Particle Simulation';
       this.addSkyscraperDetails(group, w, height, d, color, 0xe94560);
     } else if (type === 'VALKYRIE_MOTORS') {
       height = 70;
-      color = 0x16213e;
+      color = 0x3a5372;
       name = 'Valkyrie Motors Tower';
       employees = 890;
       specialty = 'Autonomous Flying Vehicle Engines';
       this.addSkyscraperDetails(group, w, height, d, color, 0x0f3460);
     } else if (type === 'SYNTH_LABS') {
       height = 80;
-      color = 0x0f2027;
+      color = 0x375a63;
       name = 'SynthLabs Biotech HQ';
       employees = 1100;
       specialty = 'Cybernetic Enhancement & Diagnostics';
       this.addSkyscraperDetails(group, w, height, d, color, 0x203a43);
     } else if (type === 'CHRONO_BANK') {
       height = 92;
-      color = 0x1e1f26;
+      color = 0x555047;
       name = 'Chrono Bank Plaza';
       employees = 1500;
       specialty = 'Temporal Vaults & Secure Transfers';
       this.addSkyscraperDetails(group, w, height, d, color, 0xf0a500);
     } else if (type === 'AETHER_TOWER') {
       height = 115;
-      color = 0x131313;
+      color = 0x494d5a;
       name = 'Aether Skyspire';
       employees = 2400;
       specialty = 'Atmospheric Energy Harvesting';
@@ -176,20 +176,21 @@ export class BuildingFactory {
       group.add(tickerMesh);
     } else if (type === 'SOLARIS_HOTEL') {
       height = 78;
-      color = 0x2c1b2d;
+      color = 0x6e4854;
       name = 'Solaris Waterfront Hotel';
       employees = 650;
       specialty = 'River-View Luxury Suites & Spa';
       this.addSkyscraperDetails(group, w, height, d, color, 0xff6b6b);
     } else {
       height = Math.floor(Math.random() * 45 + 40);
+      color = 0x4a5568;
       name = `East District Tower #${Math.floor(Math.random() * 90 + 10)}`;
       this.addSkyscraperDetails(group, w, height, d, color, 0x00f0ff);
     }
 
     const baseBox = new THREE.Mesh(
       new THREE.BoxGeometry(w, height, d),
-      new THREE.MeshStandardMaterial({ color: color, roughness: 0.5, metalness: 0.5 })
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.35, metalness: 0.35 })
     );
     baseBox.position.y = height / 2;
     baseBox.castShadow = true;
@@ -243,26 +244,27 @@ export class BuildingFactory {
 
     // 2. Window Grids (Optimized with InstancedMesh to save ~3,000 draw calls!)
     const winMat = new THREE.MeshStandardMaterial({
-      color: 0xffffd0,
-      emissive: 0xffe080,
-      emissiveIntensity: 0,
-      roughness: 0.2
+      color: 0x9ed8f0,
+      emissive: 0xffe8a0,
+      emissiveIntensity: 0.22,
+      roughness: 0.15,
+      metalness: 0.45
     });
-    this.nightLights.push({ mat: winMat, maxIntensity: 0.9 });
+    this.nightLights.push({ mat: winMat, baseIntensity: 0.22, maxIntensity: 0.95 });
 
     const rows = Math.floor(height / 4);
     const cols = Math.floor(w / 4);
     const maxWins = (rows - 1) * cols * 2;
     
     if (maxWins > 0) {
-      const winGeo = new THREE.PlaneGeometry(2, 2);
+      const winGeo = new THREE.PlaneGeometry(2.4, 2.4);
       const winInstanced = new THREE.InstancedMesh(winGeo, winMat, maxWins);
       let winIdx = 0;
       const dummy = new THREE.Object3D();
 
       for (let r = 1; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          if (Math.random() > 0.3) {
+          if (Math.random() > 0.15) {
             const wx = -w / 2 + 3 + c * 4;
             const wy = r * 4;
 
@@ -284,7 +286,28 @@ export class BuildingFactory {
       group.add(winInstanced);
     }
 
-    // 3. Rooftop antenna or spire
+    // 3. Horizontal architectural spandrel bands / floor cornices
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0xc8d6e5, roughness: 0.3, metalness: 0.6 });
+    const floorStep = 16;
+    for (let fy = floorStep; fy < height - 2; fy += floorStep) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.7, d + 0.6), trimMat);
+      band.position.set(0, fy, 0);
+      group.add(band);
+    }
+
+    // 4. Ground floor lobby entrance glass pavilion
+    const lobbyGlassMat = new THREE.MeshStandardMaterial({
+      color: 0xa8e0ff,
+      emissive: 0xddeeff,
+      emissiveIntensity: 0.35,
+      roughness: 0.1,
+      metalness: 0.5
+    });
+    const lobby = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, 4.0, 1.2), lobbyGlassMat);
+    lobby.position.set(0, 2.0, d / 2 + 0.4);
+    group.add(lobby);
+
+    // 5. Rooftop antenna or spire
     if (height > 60) {
       const spireGeo = new THREE.CylinderGeometry(0.2, 0.8, 15, 8);
       const spireMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8 });

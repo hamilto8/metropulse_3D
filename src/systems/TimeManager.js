@@ -11,12 +11,15 @@ export class TimeManager {
   }
 
   initLights() {
-    // 1. Ambient Light
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // 1. Ambient & Hemisphere Light for rich sky-to-ground fill lighting
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     this.app.sceneManager.scene.add(this.ambientLight);
 
+    this.hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 0.95);
+    this.app.sceneManager.scene.add(this.hemiLight);
+
     // 2. Directional Sun Light (Optimized shadow map size for high FPS on Apple Silicon)
-    this.sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    this.sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
     this.sunLight.castShadow = true;
     this.sunLight.shadow.mapSize.width = 1024;
     this.sunLight.shadow.mapSize.height = 1024;
@@ -87,10 +90,15 @@ export class TimeManager {
 
     if (this.timeVal >= 6.0 && this.timeVal < 18.0) {
       const elevation = Math.sin(((this.timeVal - 6.0) / 12.0) * Math.PI);
-      this.sunLight.intensity = Math.max(0, elevation * 1.6);
+      this.sunLight.intensity = Math.max(0.65, elevation * 2.5 + 0.8);
       this.moonLight.intensity = 0;
       this.ambientLight.color.setHex(0xffffff);
-      this.ambientLight.intensity = 0.4 + elevation * 0.3;
+      this.ambientLight.intensity = 0.65 + elevation * 0.45;
+      if (this.hemiLight) {
+        this.hemiLight.intensity = 0.85 + elevation * 0.4;
+        this.hemiLight.color.setHex(0xe0f2fe);
+        this.hemiLight.groundColor.setHex(0x334155);
+      }
     } else {
       this.sunLight.intensity = 0;
       let nightElev = 0;
@@ -99,20 +107,25 @@ export class TimeManager {
       } else {
         nightElev = Math.sin(((this.timeVal + 6.0) / 12.0) * Math.PI);
       }
-      this.moonLight.intensity = Math.max(0, nightElev * 0.6);
-      this.ambientLight.color.setHex(0x335588);
-      this.ambientLight.intensity = 0.25;
+      this.moonLight.intensity = Math.max(0.35, nightElev * 0.95);
+      this.ambientLight.color.setHex(0x5577aa);
+      this.ambientLight.intensity = 0.45;
+      if (this.hemiLight) {
+        this.hemiLight.intensity = 0.48;
+        this.hemiLight.color.setHex(0x384d66);
+        this.hemiLight.groundColor.setHex(0x1e293b);
+      }
     }
 
     const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
     if (isFunMode) {
       this.ambientLight.color.setHex(0xff5533);
-      this.ambientLight.intensity = Math.max(0.6, this.ambientLight.intensity);
+      this.ambientLight.intensity = Math.max(0.8, this.ambientLight.intensity);
       if (this.sunLight.intensity > 0) {
         this.sunLight.color.setHex(0xff3311);
       }
     } else {
-      this.sunLight.color.setHex(0xffffff);
+      this.sunLight.color.setHex(0xfff8ee);
     }
 
     // Apply lightning flash light override
@@ -139,14 +152,15 @@ export class TimeManager {
     // 1. Building emissive materials & neon signs
     if (this.app.buildingFactory && this.app.buildingFactory.nightLights) {
       for (const nl of this.app.buildingFactory.nightLights) {
-        nl.mat.emissiveIntensity = nl.maxIntensity * nightFactor;
+        const base = nl.baseIntensity || 0;
+        nl.mat.emissiveIntensity = base + (nl.maxIntensity - base) * nightFactor;
       }
     }
 
     // 2. Streetlamp bulbs & high-perf volumetric cones
     if (this.app.cityBuilder && this.app.cityBuilder.streetlamps) {
       for (const lamp of this.app.cityBuilder.streetlamps) {
-        lamp.bulb.material.emissiveIntensity = 2.0 * nightFactor;
+        lamp.bulb.material.emissiveIntensity = 0.3 + 2.2 * nightFactor;
         if (lamp.cone) {
           lamp.cone.opacity = 0.18 * nightFactor;
         }

@@ -230,12 +230,35 @@ export class CityBuilder {
     this.scene.add(houseGroup);
   }
 
+  isInWater(pos) {
+    if (!pos) return false;
+    const x = pos.x;
+    const y = pos.y;
+    const z = pos.z;
+
+    // River 1 (X: 135 to 185)
+    if (x >= 135 && x <= 185) {
+      // Safe on suspension bridge deck (Z near 0 within deck half-width 9.5, Y >= -0.5)
+      const onBridge = Math.abs(z) <= 9.5 && y >= -0.5;
+      if (!onBridge) return true;
+    }
+
+    // River 2 (X: 380 to 420)
+    if (x >= 380 && x <= 420) {
+      // Safe on any of the 5 stone arch bridges (Z near -100, -50, 0, 50, 100 within bridge half-width 9.5, Y >= -0.5)
+      const onBridge = y >= -0.5 && [-100, -50, 0, 50, 100].some(bz => Math.abs(z - bz) <= 9.5);
+      if (!onBridge) return true;
+    }
+
+    return false;
+  }
+
   createGround() {
     // 1. West Ground Plane
     const westGeo = new THREE.PlaneGeometry(335, 800);
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x0c0f1d,
-      roughness: 0.9,
+      color: 0x1e2534,
+      roughness: 0.85,
       metalness: 0.1
     });
     const westGround = new THREE.Mesh(westGeo, groundMat);
@@ -244,11 +267,11 @@ export class CityBuilder {
     westGround.receiveShadow = true;
     this.scene.add(westGround);
 
-    // 2. East Ground Plane (Resized to end at X = 380: width 245, centered at 257.5)
-    const eastGeo = new THREE.PlaneGeometry(245, 800);
+    // 2. East Ground Plane (X: 185 to 380: width 195, centered at 282.5)
+    const eastGeo = new THREE.PlaneGeometry(195, 800);
     const eastGround = new THREE.Mesh(eastGeo, groundMat);
     eastGround.rotation.x = -Math.PI / 2;
-    eastGround.position.set(257.5, -0.1, 0);
+    eastGround.position.set(282.5, -0.1, 0);
     eastGround.receiveShadow = true;
     this.scene.add(eastGround);
 
@@ -323,6 +346,9 @@ export class CityBuilder {
 
   getIntersectionHeight(rx, rz) {
     if (rx <= 420) return 0.0;
+    if (rx === 700 && rz === -100) {
+      return 0.5 * (this.getHillHeightRaw(650, -100) + this.getHillHeightRaw(750, -100));
+    }
     return this.getHillHeightRaw(rx, rz);
   }
 
@@ -332,7 +358,7 @@ export class CityBuilder {
 
     // Special Rocket Launch Pad & Mission Control Facility Area (X: 660 to 765, Z: -90 to -315)
     if (x >= 660 && x <= 765 && z <= -90 && z >= -315) {
-      const h_start = this.getHillHeightRaw(700, -100);
+      const h_start = this.getIntersectionHeight(700, -100);
       const h_pad = this.getHillHeightRaw(700, -280);
 
       const distToRoadX = Math.abs(x - 700);
@@ -341,7 +367,8 @@ export class CityBuilder {
       // Rocket Access Road (X=700, Z from -100 to -280)
       if (distToRoadX <= 7.5 && z <= -100 && z >= -280) {
         const t = (z - -100) / (-280 - -100);
-        targetHeight = h_start + (h_pad - h_start) * t;
+        const st = t * t * (3 - 2 * t);
+        targetHeight = h_start + (h_pad - h_start) * st;
       }
 
       // Rocket pad plateau (radius 22)
@@ -436,7 +463,8 @@ export class CityBuilder {
       h_horiz = h2_x;
     } else if (x > startX) {
       const tx = (x - startX) / (endX - startX);
-      h_horiz = h1_x + (h2_x - h1_x) * tx;
+      const stx = tx * tx * (3 - 2 * tx);
+      h_horiz = h1_x + (h2_x - h1_x) * stx;
     }
 
     // 3. Calculate centerline height for vertical road at (rx, z)
@@ -464,7 +492,8 @@ export class CityBuilder {
         h_vert = h2_z;
       } else if (z > startZ) {
         const tz = (z - startZ) / (endZ - startZ);
-        h_vert = h1_z + (h2_z - h1_z) * tz;
+        const stz = tz * tz * (3 - 2 * tz);
+        h_vert = h1_z + (h2_z - h1_z) * stz;
       }
     }
 
@@ -499,15 +528,15 @@ export class CityBuilder {
     const blockSize = 50 - roadWidth;
 
     const asphaltMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1e29,
-      roughness: 0.85,
-      metalness: 0.15
+      color: 0x2c3344,
+      roughness: 0.78,
+      metalness: 0.18
     });
 
     const sidewalkMat = new THREE.MeshStandardMaterial({
-      color: 0x2e3548,
-      roughness: 0.7,
-      metalness: 0.1
+      color: 0x647488,
+      roughness: 0.65,
+      metalness: 0.12
     });
 
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 }); // Yellow road dividing line
@@ -818,7 +847,7 @@ export class CityBuilder {
     // Road Deck (X: 110 to 210, length 100)
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
     const deck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 18), deckMat);
-    deck.position.set(160, 0.5, 0);
+    deck.position.set(160, -0.45, 0);
     deck.receiveShadow = true;
     bridgeGroup.add(deck);
 
@@ -826,16 +855,16 @@ export class CityBuilder {
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
     const line = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
     line.rotation.x = -Math.PI / 2;
-    line.position.set(160, 1.02, 0);
+    line.position.set(160, 0.06, 0);
     bridgeGroup.add(line);
 
     const sideMat = new THREE.MeshStandardMaterial({ color: 0x333b4e });
     const sideN = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
-    sideN.position.set(160, 1.1, -7.5);
+    sideN.position.set(160, 0.15, -7.5);
     bridgeGroup.add(sideN);
 
     const sideS = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
-    sideS.position.set(160, 1.1, 7.5);
+    sideS.position.set(160, 0.15, 7.5);
     bridgeGroup.add(sideS);
 
     // Suspension Towers (at X = 138 and X = 182)
@@ -959,9 +988,9 @@ export class CityBuilder {
     const deckMat = new THREE.MeshStandardMaterial({ color: 0x3d312a, roughness: 0.9 }); // Dark rustic stone
     const bridgeWidth = 14;
 
-    // Bridge Deck (X: 380 to 420, Y: 0.5, Z: bz)
+    // Bridge Deck (X: 380 to 420, top at Y: 0.05, Z: bz)
     const deck = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, bridgeWidth + 2), deckMat);
-    deck.position.set(400, 0.5, bz);
+    deck.position.set(400, -0.45, bz);
     deck.receiveShadow = true;
     this.scene.add(deck);
 
@@ -970,17 +999,17 @@ export class CityBuilder {
     const arch = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, bridgeWidth + 1.8, 16, 1, false, 0, Math.PI), archMat);
     arch.rotation.z = Math.PI / 2;
     arch.rotation.x = Math.PI / 2;
-    arch.position.set(400, -1.8, bz);
+    arch.position.set(400, -2.8, bz);
     this.scene.add(arch);
 
     // Stone side rails
     const railMat = new THREE.MeshStandardMaterial({ color: 0x5a534f, roughness: 0.8 });
-    const railN = new THREE.Mesh(new THREE.BoxGeometry(40, 1.5, 1.0), railMat);
-    railN.position.set(400, 1.3, bz - (bridgeWidth / 2 + 0.5));
+    const railN = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, 1.0), railMat);
+    railN.position.set(400, 0.55, bz - (bridgeWidth / 2 + 0.5));
     this.scene.add(railN);
 
-    const railS = new THREE.Mesh(new THREE.BoxGeometry(40, 1.5, 1.0), railMat);
-    railS.position.set(400, 1.3, bz + (bridgeWidth / 2 + 0.5));
+    const railS = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, 1.0), railMat);
+    railS.position.set(400, 0.55, bz + (bridgeWidth / 2 + 0.5));
     this.scene.add(railS);
 
     // Add yellow divider lines on deck

@@ -419,7 +419,45 @@ export class UIManager {
 
   updateInspectorLive() {
     this.updateRocketButtonDisplay();
-    if (!this.selectedEntity || !this.selectedEntity.info) return;
+    if (!this.selectedEntity) return;
+
+    // Check if the inspected entity has been culled or removed from the scene
+    if (this.selectedEntity.mesh && !this.selectedEntity.mesh.parent) {
+      this.hideInspector();
+      return;
+    }
+    if (this.selectedEntity.type === 'VEHICLE' && this.app && this.app.trafficSystem) {
+      if (!this.app.trafficSystem.vehicles.includes(this.selectedEntity)) {
+        this.hideInspector();
+        return;
+      }
+    }
+    if (this.selectedEntity.type === 'PEDESTRIAN' && this.app && this.app.pedestrianSystem) {
+      if (!this.app.pedestrianSystem.pedestrians.includes(this.selectedEntity)) {
+        this.hideInspector();
+        return;
+      }
+    }
+
+    if (!this.selectedEntity.info) return;
+
+    // Keep Take Control action button live
+    if (this.selectedEntity.type === 'VEHICLE' && this.btnTakeControl) {
+      const isControlled = (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle === this.selectedEntity && this.selectedEntity.userControlled);
+      const targetText = isControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
+      if (this.btnTakeControl.innerHTML !== targetText) {
+        this.btnTakeControl.innerHTML = targetText;
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
+    } else if (this.selectedEntity.type === 'PEDESTRIAN' && this.btnTakeControl) {
+      const isControlled = (this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian === this.selectedEntity && this.selectedEntity.userControlled);
+      const targetText = isControlled ? '🛑 Release Walk Control' : '🚶 Take Control (Walk)';
+      if (this.btnTakeControl.innerHTML !== targetText) {
+        this.btnTakeControl.innerHTML = targetText;
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
+    }
+
     // Update live values like vehicle speed, coordinates, or battery
     const rows = this.inspectorBody.querySelectorAll('.info-row');
     let idx = 0;

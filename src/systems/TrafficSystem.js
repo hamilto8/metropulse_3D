@@ -48,6 +48,9 @@ export class TrafficSystem {
 
       // Check Exit Vehicle with key E when controlling a vehicle!
       if ((e.key === 'e' || e.key === 'E') && this.controlledVehicle && !e.repeat) {
+        if (this.app.missionSystem && this.app.missionSystem.openPendingMissionDetails()) {
+          return;
+        }
         this.keys['e'] = false;
         this.exitControlledVehicle();
         return; // Prevent fall-through double trigger
@@ -150,8 +153,12 @@ export class TrafficSystem {
       } else {
         vehicle.targetNode = closestNode;
       }
-      if (vehicle.targetNode) {
+         if (vehicle.targetNode) {
         vehicle.mesh.lookAt(vehicle.targetNode.pos);
+      }
+      if (this.app && this.app.cityBuilder && this.app.cityBuilder.isInWater(vehicle.mesh.position)) {
+        vehicle.mesh.position.copy(closestNode.pos);
+        vehicle.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
       }
       vehicle.speed = Math.max(8, vehicle.speed);
     }
@@ -175,49 +182,87 @@ export class TrafficSystem {
     const offset = new THREE.Vector3(-1.8, 0.4, 0);
     offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
     pos.add(offset);
-
-    if (this.app.pedestrianSystem) {
-      pos.y = this.app.pedestrianSystem.getTerrainHeight(pos.x, pos.z);
-    } else {
-      pos.y = 0.4;
-    }
+    pos.y = this.getTerrainHeight(pos.x, pos.z);
 
     ped.mesh.position.copy(pos);
     ped.mesh.rotation.y = rotY;
 
-    // Make pedestrian visible/active in scene
-    this.app.sceneManager.scene.add(ped.mesh);
-    if (this.app.inspectorHud) {
-      this.app.inspectorHud.registerObject(ped.mesh, ped);
-    }
-
-    // Register inside PedestrianSystem update list
     if (this.app.pedestrianSystem) {
-      // Ensure it is not added twice
-      if (!this.app.pedestrianSystem.pedestrians.includes(ped)) {
-        this.app.pedestrianSystem.pedestrians.push(ped);
+      this.app.pedestrianSystem.pedestrians.push(ped);
+      this.app.sceneManager.scene.add(ped.mesh);
+      if (this.app.inspectorHud) {
+        this.app.inspectorHud.registerObject(ped.mesh, ped);
       }
-      this.app.pedestrianSystem.controlledPedestrian = ped;
+
+      // Assign nearest sidewalk node
+      const nodes = Array.from(this.app.pedestrianSystem.nodes.values());
+      let closest = nodes[0];
+      let minDist = Infinity;
+      for (const n of nodes) {
+        const d = pos.distanceTo(n.pos);
+        if (d < minDist) {
+          minDist = d;
+          closest = n;
+        }
+      }
+      if (closest) {
+        ped.currentNode = closest;
+        ped.targetNode = closest.nextNodes[0] || closest;
+      }
+
+      // Switch control to pedestrian
+      this.app.pedestrianSystem.toggleUserControl(ped);
     }
 
-    ped.userControlled = true;
-    ped.info['Mood'] = '🎮 USER CONTROLLED';
+    v.info['Driver'] = 'None (Exited)';
     ped.info['Activity'] = 'Walking streets';
 
     // Release vehicle control (reverts it to AI/cruising flow)
     this.releaseControl(v);
+  }
 
-    // Follow pedestrian camera
-    this.app.sceneManager.startFollowTarget(ped);
+  cullVehicle(v) {
+    if (!v) return;
+    v.userControlled = false;
+    if (this.controlledVehicle === v) {
+      this.controlledVehicle = null;
+    }
+    if (this.app && this.app.uiManager && (this.app.uiManager.selectedEntity === v || !this.controlledVehicle)) {
+      this.app.uiManager.hideInspector();
+    }
+    const prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) prompt.classList.add('hidden');
 
-    // Show inspector for pedestrian
-    if (this.app.uiManager) {
-      this.app.uiManager.showInspector(ped);
+    if (this.app && this.app.sceneManager) {
+      if (this.app.sceneManager.followTarget === v || this.app.sceneManager.activePreset === 'FREE_ORBIT') {
+        this.app.sceneManager.breakToFreeOrbit();
+      }
+    }
+    if (v.mesh && v.mesh.parent) {
+      v.mesh.parent.remove(v.mesh);
+    }
+    if (this.app && this.app.inspectorHud) {
+      this.app.inspectorHud.unregisterObject(v.mesh);
+    }
+    const idx = this.vehicles.indexOf(v);
+    if (idx !== -1) {
+      this.vehicles.splice(idx, 1);
     }
   }
 
   updateUserControlledVehicle(v, delta) {
     if (!this.keys) return;
+
+    if (this.app.cityBuilder && this.app.cityBuilder.isInWater(v.mesh.position)) {
+      if (this.app.audioSystem && this.app.audioSystem.playSplash) {
+        this.app.audioSystem.playSplash();
+      }
+      if (this.app.sceneManager) {
+        this.app.sceneManager.breakToFreeOrbit();
+      }
+      this.cullVehicle(v);
+      return;
+    }
 
     // Check reset key 'r' to flip upright if rolled over
     if (this.keys['r'] && v.physicsVehicle) {
@@ -480,8 +525,8 @@ export class TrafficSystem {
       const c2 = coordsX[i + 1];
 
       for (const rz of coordsZ) {
-        // Prevent crossing either river span unless on the bridge at rz === 0
-        if (((c1 === 100 && c2 === 210) || (c1 === 310 && c2 === 450)) && rz !== 0) {
+        // River 1 (100 to 210) only has a bridge at rz === 0. Countryside River (310 to 450) has bridges at all 5 rz values.
+        if (c1 === 100 && c2 === 210 && rz !== 0) {
           continue;
         }
 
@@ -511,8 +556,8 @@ export class TrafficSystem {
       }
     }
 
-    const canDriveEast = (rx, rz) => (rx !== 100 && rx !== 310) || rz === 0;
-    const canDriveWest = (rx, rz) => (rx !== 210 && rx !== 450) || rz === 0;
+    const canDriveEast = (rx, rz) => rx !== 100 || rz === 0;
+    const canDriveWest = (rx, rz) => rx !== 210 || rz === 0;
 
     for (const rx of coordsX) {
       for (const rz of coordsZ) {
@@ -542,6 +587,35 @@ export class TrafficSystem {
           if (rz > -100) nbIn.nextNodes.push(this.nodes.get(`NB_OUT:${rx},${rz}`));
           if (rx < 750 && canDriveEast(rx, rz)) nbIn.nextNodes.push(this.nodes.get(`EB_OUT:${rx},${rz}`));
           if (rx > -100 && canDriveWest(rx, rz)) nbIn.nextNodes.push(this.nodes.get(`WB_OUT:${rx},${rz}`));
+        }
+      }
+    }
+
+    // Safety pass: ensure NO dead-end nodes exist in the traffic graph
+    for (const node of this.nodes.values()) {
+      node.nextNodes = node.nextNodes.filter(Boolean);
+      if (node.nextNodes.length === 0) {
+        const [dir, coords] = node.id.split(':');
+        let fallbackId = null;
+        if (dir === 'EB_OUT') fallbackId = `WB_IN:${coords}`;
+        else if (dir === 'WB_OUT') fallbackId = `EB_IN:${coords}`;
+        else if (dir === 'NB_OUT') fallbackId = `SB_IN:${coords}`;
+        else if (dir === 'SB_OUT') fallbackId = `NB_IN:${coords}`;
+        else if (dir === 'EB_IN') fallbackId = `WB_OUT:${coords}`;
+        else if (dir === 'WB_IN') fallbackId = `EB_OUT:${coords}`;
+        else if (dir === 'NB_IN') fallbackId = `SB_OUT:${coords}`;
+        else if (dir === 'SB_IN') fallbackId = `NB_OUT:${coords}`;
+
+        const fallback = this.nodes.get(fallbackId);
+        if (fallback) {
+          node.nextNodes.push(fallback);
+        } else {
+          for (const other of this.nodes.values()) {
+            if (other !== node) {
+              node.nextNodes.push(other);
+              break;
+            }
+          }
         }
       }
     }
@@ -657,9 +731,14 @@ export class TrafficSystem {
       }
     }
 
-    for (let i = 0; i < this.vehicles.length; i++) {
+    for (let i = this.vehicles.length - 1; i >= 0; i--) {
       const v = this.vehicles[i];
       const pos = v.mesh.position;
+
+      if (this.app.cityBuilder && this.app.cityBuilder.isInWater(pos)) {
+        this.cullVehicle(v);
+        continue;
+      }
 
       // Handle crashed state recovery
       if (v.crashed) {
@@ -777,21 +856,18 @@ export class TrafficSystem {
         const dist = pos.distanceTo(other.mesh.position);
 
         if (dist < 11.5) {
-          const toOther = other.mesh.position.clone().sub(pos).normalize();
+          const toOtherOffset = other.mesh.position.clone().sub(pos);
           const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(v.mesh.quaternion);
-          const dot = toOther.dot(forward);
-          
-          // Dynamic cones of blocking:
-          // A) Directly ahead (cone of dot > 0.50) within 11.5 meters
-          // B) Angle ahead (cone of dot > 0.15) within 7.5 meters (intersections, side-swipes)
-          // C) Extremely close (distance < 5.8 meters) and in front semi-circle (dot > 0)
-          // D) Overlapping buffer (distance < 4.5 meters) in front/sides (dot > -0.2)
-          const isDirectlyAhead = (dist < 11.5 && dot > 0.50);
-          const isAngleAhead = (dist < 7.5 && dot > 0.15);
-          const isVeryCloseFront = (dist < 5.8 && dot > 0.0);
-          const isCollidingOverlap = (dist < 4.5 && dot > -0.2);
+          const right = new THREE.Vector3(1, 0, 0).applyQuaternion(v.mesh.quaternion);
+          const forwardDist = toOtherOffset.dot(forward);
+          const lateralDist = Math.abs(toOtherOffset.dot(right));
 
-          if (isDirectlyAhead || isAngleAhead || isVeryCloseFront || isCollidingOverlap) {
+          // Only block if the other vehicle is ahead in our lane corridor (< 2.6m lateral offset)
+          // OR physically touching/overlapping within 3.8m
+          const isInOurLaneAhead = (forwardDist > 0.4 && forwardDist < 11.5 && lateralDist < 2.6);
+          const isDirectCollision = (dist < 3.8 && forwardDist > -0.5);
+
+          if (isInOurLaneAhead || isDirectCollision) {
             // In Fun Mode, ignore collision avoidance so cars smash into each other!
             if (!funMode) {
               isBlocked = true;
@@ -812,35 +888,35 @@ export class TrafficSystem {
 
         if (v.isReversing) {
           v.reverseTimer -= delta;
-          v.targetSpeed = -4.0; // Drive backwards at 4 m/s
+          v.targetSpeed = -4.5; // Drive backwards out of obstruction
           if (v.reverseTimer <= 0) {
             v.isReversing = false;
             v.stuckTimer = 0;
             // Force select a new target node to break any deadlock loops
-            if (v.currentNode && v.currentNode.nextNodes.length > 0) {
+            if (v.currentNode && v.currentNode.nextNodes && v.currentNode.nextNodes.length > 0) {
               v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
             }
           }
         } else {
           const isTryingToMove = (v.targetSpeed > 0 || isBlocked);
-          const isNearlyStopped = (v.speed < 0.25);
+          const isNearlyStopped = (v.speed < 0.3);
           if (isTryingToMove && isNearlyStopped) {
             v.stuckTimer += delta;
           } else {
             v.stuckTimer = Math.max(0, v.stuckTimer - delta * 0.5);
           }
 
-          if (v.stuckTimer > 4.5) {
+          if (v.stuckTimer > 2.2) {
             v.isReversing = true;
-            v.reverseTimer = 1.8 + Math.random() * 1.2;
+            v.reverseTimer = 1.6 + Math.random() * 1.0;
             v.stuckTimer = 0;
             if (v.info) {
               v.info['Status'] = 'Unsticking (Reversing) 🔄';
             }
           }
 
-          // Absolute fallback: if stuck for 18.0s, respawn the vehicle to keep traffic moving!
-          if (v.stuckTimer > 18.0) {
+          // Absolute fallback: if stuck for 12.0s, respawn the vehicle to keep traffic moving!
+          if (v.stuckTimer > 12.0) {
             this.respawnVehicle(v);
             continue;
           }
@@ -867,32 +943,46 @@ export class TrafficSystem {
 
       // 2. Steer along road graph towards target node
       if (v.targetNode) {
-        const distToTarget = pos.distanceTo(v.targetNode.pos);
-        if (distToTarget < 2.5 && !v.isReversing) {
+        const dist2D = Math.hypot(pos.x - v.targetNode.pos.x, pos.z - v.targetNode.pos.z);
+        if (dist2D < 4.5 && !v.isReversing) {
           v.currentNode = v.targetNode;
-          if (v.currentNode.nextNodes.length > 0) {
+          if (v.currentNode.nextNodes && v.currentNode.nextNodes.length > 0) {
             v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
-          } else {
-            v.speed = 0;
           }
         }
 
         if (v.targetNode) {
           const isReversingState = (v.isReversing === true);
           if (!isReversingState) {
-            const dir = v.targetNode.pos.clone().sub(pos).normalize();
-            const targetAngle = Math.atan2(dir.x, dir.z);
+            const dx = v.targetNode.pos.x - pos.x;
+            const dz = v.targetNode.pos.z - pos.z;
+            const targetAngle = Math.atan2(dx, dz);
 
             let currentAngle = v.mesh.rotation.y;
             let diff = targetAngle - currentAngle;
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
-            v.mesh.rotation.y += diff * 6.0 * delta;
+            v.mesh.rotation.y += diff * 6.5 * delta;
           }
 
           const moveStep = v.speed * delta;
           v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-          v.mesh.position.y = this.app.pedestrianSystem ? this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z) - 0.05 : 0;
+
+          if (this.app.pedestrianSystem) {
+            const currentH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z);
+            v.mesh.position.y = currentH - 0.05;
+
+            // Compute pitch along vehicle forward direction for natural slope alignment
+            const forwardX = Math.sin(v.mesh.rotation.y);
+            const forwardZ = Math.cos(v.mesh.rotation.y);
+            const frontH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + forwardX * 2.0, v.mesh.position.z + forwardZ * 2.0);
+            const backH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - forwardX * 2.0, v.mesh.position.z - forwardZ * 2.0);
+            const pitch = Math.atan2(frontH - backH, 4.0);
+            v.mesh.rotation.x = -pitch;
+          } else {
+            v.mesh.position.y = 0;
+            v.mesh.rotation.x = 0;
+          }
         }
       }
 

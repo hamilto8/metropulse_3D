@@ -110,6 +110,19 @@ export class PedestrianSystem {
       this.linkBiDir('-75,-91', '-59,-91');
       this.linkBiDir('park_n', '-75,-91');
     }
+
+    // Safety check: ensure NO dead-end sidewalk nodes exist
+    for (const node of this.nodes.values()) {
+      node.nextNodes = node.nextNodes.filter(Boolean);
+      if (node.nextNodes.length === 0) {
+        for (const other of this.nodes.values()) {
+          if (other !== node) {
+            node.nextNodes.push(other);
+            break;
+          }
+        }
+      }
+    }
   }
 
   linkBiDir(id1, id2) {
@@ -302,9 +315,22 @@ export class PedestrianSystem {
       }
     }
 
-    for (let i = 0; i < this.pedestrians.length; i++) {
+    for (let i = this.pedestrians.length - 1; i >= 0; i--) {
       const p = this.pedestrians[i];
       const pos = p.mesh.position;
+
+      if (this.app && this.app.cityBuilder && this.app.cityBuilder.isInWater(pos)) {
+        if (this.app.audioSystem && this.app.audioSystem.playSplash) {
+          this.app.audioSystem.playSplash();
+        }
+        if (p.userControlled || (this.app.sceneManager && this.app.sceneManager.followTarget === p)) {
+          if (this.app.sceneManager) {
+            this.app.sceneManager.breakToFreeOrbit();
+          }
+        }
+        this.cullPedestrian(p);
+        continue;
+      }
 
       // 0. Check knockdown recovery
       if (p.knockedDown) {
@@ -349,6 +375,17 @@ export class PedestrianSystem {
       if (p.knockedDown) continue;
 
       if (p.userControlled) {
+        if (this.app.cityBuilder && this.app.cityBuilder.isInWater(p.mesh.position)) {
+          if (this.app.audioSystem && this.app.audioSystem.playSplash) {
+            this.app.audioSystem.playSplash();
+          }
+          this.releaseControl(p);
+          if (this.app.sceneManager) {
+            this.app.sceneManager.breakToFreeOrbit();
+          }
+          continue;
+        }
+
         const ts = this.app.trafficSystem;
         const keys = ts ? ts.keys : null;
         
@@ -408,8 +445,8 @@ export class PedestrianSystem {
 
       // 2. Move along sidewalk graph towards target node
       if (p.targetNode) {
-        const dist = pos.distanceTo(p.targetNode.pos);
-        if (dist < 1.2) {
+        const dist = Math.hypot(pos.x - p.targetNode.pos.x, pos.z - p.targetNode.pos.z);
+        if (dist < 1.8) {
           // Reached node! Pick next connected node along sidewalk (prefer not turning immediately back if possible)
           const prevNode = p.currentNode;
           p.currentNode = p.targetNode;
@@ -423,8 +460,9 @@ export class PedestrianSystem {
         }
 
         if (p.targetNode) {
-          const dir = p.targetNode.pos.clone().sub(pos).normalize();
-          const targetAngle = Math.atan2(dir.x, dir.z);
+          const dx = p.targetNode.pos.x - pos.x;
+          const dz = p.targetNode.pos.z - pos.z;
+          const targetAngle = Math.atan2(dx, dz);
 
           let currentAngle = p.mesh.rotation.y;
           let diff = targetAngle - currentAngle;
@@ -729,6 +767,35 @@ export class PedestrianSystem {
     }
   }
 
+  cullPedestrian(p) {
+    if (!p) return;
+    p.userControlled = false;
+    if (this.controlledPedestrian === p) {
+      this.controlledPedestrian = null;
+    }
+    if (this.app && this.app.uiManager && (this.app.uiManager.selectedEntity === p || !this.controlledPedestrian)) {
+      this.app.uiManager.hideInspector();
+    }
+    const prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) prompt.classList.add('hidden');
+
+    if (this.app && this.app.sceneManager) {
+      if (this.app.sceneManager.followTarget === p || this.app.sceneManager.activePreset === 'FREE_ORBIT') {
+        this.app.sceneManager.breakToFreeOrbit();
+      }
+    }
+    if (p.mesh && p.mesh.parent) {
+      p.mesh.parent.remove(p.mesh);
+    }
+    if (this.app && this.app.inspectorHud) {
+      this.app.inspectorHud.unregisterObject(p.mesh);
+    }
+    const idx = this.pedestrians.indexOf(p);
+    if (idx !== -1) {
+      this.pedestrians.splice(idx, 1);
+    }
+  }
+
   releaseControl(pedestrian) {
     if (!pedestrian) return;
     pedestrian.userControlled = false;
@@ -760,38 +827,24 @@ export class PedestrianSystem {
         pedestrian.targetNode = closestNode.nextNodes[0];
         pedestrian.mesh.lookAt(pedestrian.targetNode.pos);
       }
+      if (this.app && this.app.cityBuilder && this.app.cityBuilder.isInWater(pedestrian.mesh.position)) {
+        pedestrian.mesh.position.copy(closestNode.pos);
+        pedestrian.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
+      }
     }
   }
 
   getTerrainHeight(x, z) {
     // 1. Bridges over the rivers (first river X: 110 to 210, second river X: 380 to 420)
     if (x >= 110 && x <= 210) {
-      for (const bz of [-100, -50, 0, 50, 100]) {
-        if (Math.abs(z - bz) <= 9.5) {
-          // Smooth ramp transition at bridge ends (width of 10 units)
-          if (x < 120) {
-            const t = (x - 110) / 10.0;
-            return THREE.MathUtils.lerp(0.05, 1.0, t);
-          } else if (x > 200) {
-            const t = (210 - x) / 10.0;
-            return THREE.MathUtils.lerp(0.05, 1.0, t);
-          }
-          return 1.0; // Top surface of the bridge decks
-        }
+      if (Math.abs(z) <= 9.5) {
+        return 0.05; // Flush top surface of the suspension bridge deck
       }
     }
     if (x >= 380 && x <= 420) {
       for (const bz of [-100, -50, 0, 50, 100]) {
         if (Math.abs(z - bz) <= 9.5) {
-          // Smooth ramp transition at bridge ends (width of 10 units)
-          if (x < 390) {
-            const t = (x - 380) / 10.0;
-            return THREE.MathUtils.lerp(0.05, 1.0, t);
-          } else if (x > 410) {
-            const t = (420 - x) / 10.0;
-            return THREE.MathUtils.lerp(0.05, 1.0, t);
-          }
-          return 1.0; // Top surface of the stone arch bridges
+          return 0.05; // Flush top surface of the stone arch bridges
         }
       }
     }

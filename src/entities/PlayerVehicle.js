@@ -95,6 +95,7 @@ export class PlayerVehicle {
     }
     this.chassisBody.linearDamping = 0.15;
     this.chassisBody.angularDamping = 0.25;
+    this.chassisBody.allowSleep = false;
 
     // 2. Create RaycastVehicle
     this.raycastVehicle = new CANNON.RaycastVehicle({
@@ -211,14 +212,14 @@ export class PlayerVehicle {
     let brakeForce = 0;
 
     if (isForward) {
-      if (currentForwardSpeed < -1.0) {
+      if (currentForwardSpeed < -1.5) {
         brakeForce = maxBrakeForce;
       } else {
-        engineForce = maxEngineForce;
+        engineForce = maxEngineForce * 1.3;
         brakeForce = 0;
         
         // Scale thrust dynamically with mass/type
-        const thrustForceVal = this.vType === 'SPORTS' ? 42000 : (this.vType === 'BUS' ? 120000 : (this.vType === 'TRUCK' ? 85000 : 32000));
+        const thrustForceVal = this.vType === 'SPORTS' ? 48000 : (this.vType === 'BUS' ? 140000 : (this.vType === 'TRUCK' ? 95000 : 38000));
         const maxSpeedLimit = this.vType === 'SPORTS' ? 52 : (this.vType === 'BUS' ? 22 : (this.vType === 'TRUCK' ? 28 : 42));
         
         if (currentForwardSpeed < maxSpeedLimit) {
@@ -226,17 +227,30 @@ export class PlayerVehicle {
           thrust.scale(thrustForceVal, thrust);
           this.chassisBody.applyForce(thrust, new CANNON.Vec3(0, 0, 0));
         }
+
+        // Low speed takeoff assist to guarantee breaking out of any standstill or slight obstruction
+        if (Math.abs(currentForwardSpeed) < 3.0) {
+          const boost = forwardVec.clone();
+          boost.scale(this.chassisBody.mass * 18.0, boost);
+          this.chassisBody.applyForce(boost, new CANNON.Vec3(0, 0, 0));
+        }
       }
     } else if (isReverse) {
-      if (currentForwardSpeed > 1.0) {
+      if (currentForwardSpeed > 1.5) {
         brakeForce = maxBrakeForce;
       } else {
-        engineForce = -maxEngineForce * 0.75;
+        engineForce = -maxEngineForce * 1.15;
         brakeForce = 0;
         if (currentForwardSpeed > -18) {
           const revThrust = forwardVec.clone();
-          revThrust.scale(-18000, revThrust);
+          revThrust.scale(-24000, revThrust);
           this.chassisBody.applyForce(revThrust, new CANNON.Vec3(0, 0, 0));
+        }
+        // Low speed reverse assist
+        if (Math.abs(currentForwardSpeed) < 3.0) {
+          const revBoost = forwardVec.clone();
+          revBoost.scale(-this.chassisBody.mass * 14.0, revBoost);
+          this.chassisBody.applyForce(revBoost, new CANNON.Vec3(0, 0, 0));
         }
       }
     } else {
@@ -275,16 +289,16 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
-    // Safety height based on vehicle type and terrain height!
+    // Safety height check only if the vehicle has fallen through the ground plane
     let terrainY = 0.0;
     const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
     if (terrainSystem) {
       terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z) - 0.05;
     }
-    const safetyY = terrainY + (this.vType === 'BUS' ? 2.5 : (this.vType === 'TRUCK' ? 1.8 : 1.05));
-    if (this.chassisBody.position.y < terrainY + 0.3) {
-      this.chassisBody.position.y = safetyY;
-      this.chassisBody.velocity.y = Math.max(0, this.chassisBody.velocity.y);
+    if (this.chassisBody.position.y < terrainY - 5.0) {
+      this.chassisBody.position.y = terrainY + 1.2;
+      this.chassisBody.velocity.set(0, 0, 0);
+      this.chassisBody.angularVelocity.set(0, 0, 0);
     }
 
     // Sync chassis transform to visual Three.js mesh
