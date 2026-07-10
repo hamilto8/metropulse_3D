@@ -1101,6 +1101,9 @@ export class CityBuilder {
     }
 
     centerGroup.add(rocketGroup);
+    this.rocketGroup = rocketGroup;
+    this.rocketAltitude = 1.5;
+    this.rocketVelocityY = 0.0;
     this.scene.add(centerGroup);
 
     // 4. Large Nearby Electronic Space Billboard (Double-sided, parallel to road at X = 622, Z = -160)
@@ -1157,6 +1160,23 @@ export class CityBuilder {
       billboardGroup.add(topBar);
 
       this.scene.add(billboardGroup);
+    }
+  }
+
+  resetRocket() {
+    if (this.rocketGroup) {
+      this.rocketAltitude = 1.5;
+      this.rocketVelocityY = 0.0;
+      this.rocketGroup.position.y = 1.5;
+    }
+    if (this.rocketFlame) {
+      this.rocketFlame.visible = false;
+      this.rocketFlame.scale.set(1, 1, 1);
+    }
+    if (this.rocketVapors) {
+      for (const vapor of this.rocketVapors) {
+        vapor.visible = false;
+      }
     }
   }
 }

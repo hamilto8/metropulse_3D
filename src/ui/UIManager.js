@@ -29,6 +29,8 @@ export class UIManager {
     // Fun Mode controls
     this.btnFunMode = document.getElementById('btn-fun-mode');
     this.funModeLabel = document.getElementById('fun-mode-label');
+    this.btnLaunchRocket = document.getElementById('btn-launch-rocket');
+    this.launchRocketLabel = document.getElementById('launch-rocket-label');
     this.newsChyron = document.getElementById('news-chyron');
     
     // Real Estate Tracker (Satirical Crash Index)
@@ -205,6 +207,23 @@ export class UIManager {
           if (this.app.buildingFactory) {
             this.app.buildingFactory.restoreAllBuildings();
           }
+        }
+      });
+    }
+
+    if (this.btnLaunchRocket) {
+      this.btnLaunchRocket.addEventListener('click', () => {
+        if (this.app.rocketLaunched) {
+          this.app.rocketLaunched = false;
+          this.app.rocketCountdown = 300.0;
+          if (this.app.cityBuilder) this.app.cityBuilder.resetRocket();
+          if (this.app.billboardCanvas) this.app.billboardCanvas.forceRedrawAll();
+        } else {
+          if (!this.app.funMode && this.btnFunMode) {
+            this.btnFunMode.click();
+          }
+          this.app.rocketCountdown = 0;
+          this.app.triggerRocketLaunch();
         }
       });
     }
@@ -399,6 +418,7 @@ export class UIManager {
   }
 
   updateInspectorLive() {
+    this.updateRocketButtonDisplay();
     if (!this.selectedEntity || !this.selectedEntity.info) return;
     // Update live values like vehicle speed, coordinates, or battery
     const rows = this.inspectorBody.querySelectorAll('.info-row');
@@ -411,6 +431,26 @@ export class UIManager {
         }
       }
       idx++;
+    }
+  }
+
+  updateRocketButtonDisplay() {
+    if (!this.launchRocketLabel) return;
+    const funMode = this.app && this.app.funMode;
+    const launched = this.app && this.app.rocketLaunched;
+    const countdown = this.app && typeof this.app.rocketCountdown === 'number' ? Math.max(0, Math.ceil(this.app.rocketCountdown)) : 300;
+
+    if (launched) {
+      this.launchRocketLabel.textContent = '🚀 LIFTOFF! (Reset)';
+      if (this.btnLaunchRocket) this.btnLaunchRocket.classList.add('active');
+    } else if (funMode) {
+      const mins = Math.floor(countdown / 60);
+      const secs = countdown % 60;
+      this.launchRocketLabel.textContent = `🚀 Launch Now (T-${mins}:${String(secs).padStart(2, '0')})`;
+      if (this.btnLaunchRocket) this.btnLaunchRocket.classList.remove('active');
+    } else {
+      this.launchRocketLabel.textContent = '🚀 Launch Rocket (T-5:00)';
+      if (this.btnLaunchRocket) this.btnLaunchRocket.classList.remove('active');
     }
   }
 

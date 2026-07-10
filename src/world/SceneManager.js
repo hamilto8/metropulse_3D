@@ -67,12 +67,14 @@ export class SceneManager {
       park: { pos: new THREE.Vector3(-45, 12, -45), target: new THREE.Vector3(-60, 4, -60) },
       downtown: { pos: new THREE.Vector3(35, 18, 35), target: new THREE.Vector3(-10, 8, -10) },
       bridge: { pos: new THREE.Vector3(160, 28, 65), target: new THREE.Vector3(160, 8, -15) },
+      rocket: { pos: new THREE.Vector3(670, 52, -245), target: new THREE.Vector3(700, 28, -280) },
       free: { pos: new THREE.Vector3(160, 95, 130), target: new THREE.Vector3(80, 0, 0) }
     };
   }
 
   setCameraPreset(mode) {
     this.stopFollowTarget();
+    this.activePreset = mode;
     if (!this.presets[mode]) return;
     this.targetCameraPos = this.presets[mode].pos.clone();
     this.targetLookAt = this.presets[mode].target.clone();
@@ -182,6 +184,7 @@ export class SceneManager {
         // Cancel active camera preset interpolation
         this.targetCameraPos = null;
         this.targetLookAt = null;
+        this.activePreset = null;
 
         // Visual update to Camera Preset buttons: set "Free Orbit" active
         const freeBtn = document.querySelector('[data-camera="free"]');
@@ -223,6 +226,16 @@ export class SceneManager {
       return;
     }
 
+    // Dynamic hover tracking for Rocket preset
+    if (this.activePreset === 'rocket' && this.app && this.app.cityBuilder && this.app.cityBuilder.rocketGroup) {
+      const rocketY = this.app.cityBuilder.rocketGroup.position.y;
+      if (rocketY > 1.6) {
+        const deltaY = rocketY - 1.5;
+        this.targetCameraPos = new THREE.Vector3(670, 52 + deltaY * 0.9, -245);
+        this.targetLookAt = new THREE.Vector3(700, 28 + deltaY, -280);
+      }
+    }
+
     // Preset transition interpolation
     if (this.targetCameraPos && this.targetLookAt) {
       this.camera.position.lerp(this.targetCameraPos, 0.05);
@@ -232,8 +245,10 @@ export class SceneManager {
         this.camera.position.distanceTo(this.targetCameraPos) < 1.0 &&
         this.controls.target.distanceTo(this.targetLookAt) < 1.0
       ) {
-        this.targetCameraPos = null;
-        this.targetLookAt = null;
+        if (this.activePreset !== 'rocket') {
+          this.targetCameraPos = null;
+          this.targetLookAt = null;
+        }
       }
     }
 

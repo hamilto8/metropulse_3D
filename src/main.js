@@ -95,6 +95,8 @@ class MetroPulseApp {
 
     // 9. Traffic Simulation & Fun Mode
     this.funMode = false;
+    this.rocketCountdown = 300.0; // 5 minutes countdown
+    this.rocketLaunched = false;
     this.explosionManager = new ExplosionManager(this.sceneManager.scene);
     this.cometManager = new CometManager(this);
     this.trafficSystem = new TrafficSystem(this);
@@ -128,6 +130,17 @@ class MetroPulseApp {
     requestAnimationFrame(this.animate);
   }
 
+  triggerRocketLaunch() {
+    this.rocketLaunched = true;
+    this.rocketCountdown = 0;
+    if (this.audioSystem) {
+      this.audioSystem.playExplosion(1.5);
+    }
+    if (this.billboardCanvas) {
+      this.billboardCanvas.forceRedrawAll();
+    }
+  }
+
   animate() {
     requestAnimationFrame(this.animate);
 
@@ -159,48 +172,53 @@ class MetroPulseApp {
     this.uiManager.updateInspectorLive();
     this.uiManager.updateRealEstateTracker(delta);
 
-    // Animate space rocket vapors & flame in Fun Mode
+    // Animate space rocket vapors, countdown & liftoff in Fun Mode
     if (this.cityBuilder && this.cityBuilder.rocketFlame) {
       if (this.funMode) {
-        // Pulse rocket flame
-        const pulse = 1.0 + Math.sin(Date.now() * 0.02) * 0.15;
-        this.cityBuilder.rocketFlame.scale.set(pulse, pulse * 1.2, pulse);
+        if (!this.rocketLaunched) {
+          if (this.rocketCountdown > 0) {
+            this.rocketCountdown = Math.max(0, this.rocketCountdown - delta);
+            if (this.rocketCountdown <= 0) {
+              this.triggerRocketLaunch();
+            }
+          }
+        } else {
+          // Rocket is lifting off!
+          if (this.cityBuilder.rocketGroup) {
+            this.cityBuilder.rocketVelocityY += 45.0 * delta;
+            this.cityBuilder.rocketAltitude += this.cityBuilder.rocketVelocityY * delta;
+            this.cityBuilder.rocketGroup.position.y = this.cityBuilder.rocketAltitude;
+          }
+        }
+
+        // Pulse rocket flame (enlarged when launched)
+        const pulse = (this.rocketLaunched ? 2.2 : 1.0) + Math.sin(Date.now() * 0.02) * 0.15;
+        this.cityBuilder.rocketFlame.scale.set(pulse, pulse * (this.rocketLaunched ? 2.8 : 1.2), pulse);
         this.cityBuilder.rocketFlame.visible = true;
 
         // Animate vapors
         if (this.cityBuilder.rocketVapors) {
+          const nozzleY = (this.cityBuilder.rocketGroup ? this.cityBuilder.rocketGroup.position.y : 1.5) + 17.0;
           for (const vapor of this.cityBuilder.rocketVapors) {
             vapor.visible = true;
-            
-            // Advance particle age
-            vapor.userData.age += delta;
-            
-            // Calculate progress (0 to 1)
+            vapor.userData.age += delta * (this.rocketLaunched ? 2.0 : 1.0);
             const progress = vapor.userData.age / vapor.userData.lifetime;
             
             if (progress >= 1.0) {
-              // Reset vapor particle back to engine nozzle exit
               vapor.userData.age = 0.0;
               vapor.userData.lifetime = 1.5 + Math.random() * 1.5;
               vapor.userData.speedY = 8.0 + Math.random() * 6.0;
               vapor.userData.offsetX = (Math.random() - 0.5) * 1.5;
               vapor.userData.offsetZ = (Math.random() - 0.5) * 1.5;
-              vapor.position.set(vapor.userData.offsetX, 18.5, vapor.userData.offsetZ);
+              vapor.position.set(vapor.userData.offsetX, nozzleY, vapor.userData.offsetZ);
               vapor.scale.set(1.0, 1.0, 1.0);
               vapor.material.opacity = 0.0;
             } else {
-              // Move downwards relative to nozzle
               vapor.position.y -= vapor.userData.speedY * delta;
-              
-              // Drift outward from the pad center
               vapor.position.x += Math.sin(vapor.userData.age * 3.0 + vapor.userData.offsetX) * 2.0 * delta;
               vapor.position.z += Math.cos(vapor.userData.age * 3.0 + vapor.userData.offsetZ) * 2.0 * delta;
-              
-              // Expand in size as it billows down
               const scaleVal = 1.0 + progress * 4.5;
               vapor.scale.set(scaleVal, scaleVal, scaleVal);
-              
-              // Fade in at start, then fade out towards end of life
               if (progress < 0.2) {
                 vapor.material.opacity = (progress / 0.2) * 0.45;
               } else {
@@ -210,7 +228,6 @@ class MetroPulseApp {
           }
         }
       } else {
-        // Hide flame and vapors when not in fun mode
         this.cityBuilder.rocketFlame.visible = false;
         if (this.cityBuilder.rocketVapors) {
           for (const vapor of this.cityBuilder.rocketVapors) {

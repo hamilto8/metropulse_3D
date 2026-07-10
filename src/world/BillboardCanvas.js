@@ -299,19 +299,39 @@ export class BillboardCanvas {
       ctx.fill();
 
       const isFunMode = this.app && this.app.funMode;
+      const launched = this.app && this.app.rocketLaunched;
+      const countdown = this.app && typeof this.app.rocketCountdown === 'number' ? Math.max(0, Math.ceil(this.app.rocketCountdown)) : 300;
+      const mins = Math.floor(countdown / 60);
+      const secs = countdown % 60;
+      const timeStr = `T-${mins}:${String(secs).padStart(2, '0')}`;
+
       if (isFunMode) {
-        // Red warning title for End of the World Express
-        ctx.fillStyle = phase % 2 === 0 ? '#ff0055' : '#ffcc00';
-        ctx.font = 'bold 28px sans-serif';
-        ctx.fillText('🚀 END OF THE WORLD EXPRESS! 🚀', canvas.width / 2, 220);
+        if (launched) {
+          ctx.fillStyle = phase % 2 === 0 ? '#ffcc00' : '#00ff88';
+          ctx.font = 'bold 28px sans-serif';
+          ctx.fillText('🚀 BLASTOFF! WE HAVE LIFTOFF! 🚀', canvas.width / 2, 220);
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 24px monospace';
-        ctx.fillText('BILLIONAIRES NOW BOARDING!', canvas.width / 2, 255);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 24px monospace';
+          ctx.fillText('BILLIONAIRES EN ROUTE TO ORBIT!', canvas.width / 2, 255);
 
-        ctx.fillStyle = '#00f0ff';
-        ctx.font = 'bold 24px monospace';
-        ctx.fillText('LAST CALL - SAVING ASSETS!', canvas.width / 2, 290);
+          ctx.fillStyle = '#ff0055';
+          ctx.font = 'bold 24px monospace';
+          ctx.fillText('GOODBYE EARTH - GOOD LUCK!', canvas.width / 2, 290);
+        } else {
+          // Red warning title for End of the World Express
+          ctx.fillStyle = phase % 2 === 0 ? '#ff0055' : '#ffcc00';
+          ctx.font = 'bold 26px sans-serif';
+          ctx.fillText('🚀 END OF THE WORLD EXPRESS! 🚀', canvas.width / 2, 218);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 22px monospace';
+          ctx.fillText('BILLIONAIRES NOW BOARDING!', canvas.width / 2, 252);
+
+          ctx.fillStyle = '#00f0ff';
+          ctx.font = 'bold 24px monospace';
+          ctx.fillText(`LAST CALL (${timeStr})`, canvas.width / 2, 290);
+        }
       } else {
         // Normal status
         if (phase % 2 === 0) {
