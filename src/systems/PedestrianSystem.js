@@ -778,6 +778,9 @@ export class PedestrianSystem {
       this.controlledPedestrian = pedestrian;
       pedestrian.info['Mood'] = '🎮 USER CONTROLLED';
       pedestrian.info['Activity'] = 'Walking streets';
+      if (this.app.uiManager && this.app.uiManager.addAlert) {
+        this.app.uiManager.addAlert(`🚶 Direct walk control engaged: ${pedestrian.name || 'Citizen'}`, 'info');
+      }
       return true;
     }
   }
@@ -1038,6 +1041,9 @@ export class PedestrianSystem {
           if (this.app.trafficSystem) {
             this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
           }
+          if (this.app.uiManager && this.app.uiManager.addAlert) {
+            this.app.uiManager.addAlert("🚨 POLICE DISPATCHED: Vehicle destruction reported!", "danger");
+          }
         }
         break; // Only hit one vehicle per swing
       }
@@ -1086,6 +1092,9 @@ export class PedestrianSystem {
         this.isWanted = true;
         if (this.app.trafficSystem) {
           this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
+        }
+        if (this.app.uiManager && this.app.uiManager.addAlert) {
+          this.app.uiManager.addAlert(`🚨 POLICE DISPATCHED: Citizen assault reported!`, 'danger');
         }
         break; // Only hit one NPC per swing
       }

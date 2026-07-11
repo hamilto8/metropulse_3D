@@ -184,6 +184,7 @@ class MetroPulseApp {
     if (this.missionSystem) this.missionSystem.update(delta);
     this.uiManager.updateInspectorLive();
     this.uiManager.updateRealEstateTracker(delta);
+    this.uiManager.updateAlertFeed(delta);
     if (this.cityBuilder && this.cityBuilder.update) {
       this.cityBuilder.update(delta);
     }

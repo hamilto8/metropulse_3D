@@ -106,9 +106,15 @@ export class TrafficSystem {
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
+      if (this.app.uiManager && this.app.uiManager.addAlert) {
+        this.app.uiManager.addAlert(`🏎️ Direct control engaged: ${vehicle.vType || 'VEHICLE'}`, 'info');
+      }
 
       // If hijacking an active motorbike with an NPC rider mounted, knock them off onto the ground!
       if (vehicle.vType === 'MOTORBIKE' && vehicle.mountedRider) {
+        if (this.app.uiManager && this.app.uiManager.addAlert) {
+          this.app.uiManager.addAlert(`🏍️ Motorbike hijacked! Rider knocked onto street.`, 'warn');
+        }
         const npcPed = vehicle.unmountRider();
         if (npcPed && this.app && this.app.pedestrianSystem) {
           const knockPos = vehicle.mesh.position.clone();

@@ -1,113 +1,272 @@
-import { BUILDING_CATALOG, BUILDING_CATEGORIES, getCatalogByCategory } from '../world/BuildingCatalog.js';
+import { BUILDING_CATALOG, getCatalogByCategory, getBuildingSpec } from '../world/BuildingCatalog.js';
 
 export class CityEditorUI {
   constructor(app) {
     this.app = app;
     this.container = null;
     this.currentCategory = 'ALL';
+    this.searchQuery = '';
+    this.currentPage = 0;
+    this.pageSize = 4;
     this.selectedSpecId = BUILDING_CATALOG[0].id;
     this.isVisible = false;
+    this.activeTool = 'SELECT'; // SELECT, MOVE, ROTATE, DELETE
 
     this.initDOM();
   }
 
   initDOM() {
     this.container = document.createElement('div');
-    this.container.className = 'city-editor-ui';
+    this.container.className = 'city-editor-wrapper';
     this.container.style.display = 'none';
     this.container.innerHTML = `
-      <div class="city-editor-header">
-        <div class="city-editor-title">
-          <span>🏗️ CITY EDITOR & MAP EXPANSION</span>
-          <span class="city-editor-subtitle">Select buildings, residences, or roads and place them to expand Metro Pulse</span>
+      <!-- BUILDINGS Palette Tray -->
+      <div class="buildings-palette-tray">
+        <!-- Tray Header Bar -->
+        <div class="tray-header-row">
+          <div class="tray-title-group">
+            <div class="tray-cube-icon">📦</div>
+            <span>BUILDINGS</span>
+          </div>
+          <div class="tray-search-bar">
+            <span>🔍</span>
+            <input type="text" id="editor-search-input" placeholder="Search buildings...">
+            <button class="tray-filter-btn" title="Filter Catalog">⏳</button>
+          </div>
+          <button class="tray-close-btn" id="btn-editor-close">✕ Exit Editor</button>
         </div>
-        <div class="city-editor-actions">
-          <button class="editor-btn" id="btn-editor-rotate" title="Rotate Structure [R]">🔄 Rotate (90°)</button>
-          <button class="editor-btn active" id="btn-editor-snap" title="Toggle Grid Snap [G]">📐 Snap Grid: ON</button>
-          <button class="editor-btn" id="btn-editor-delete" title="Demolish User Buildings">🗑️ Demolish Tool</button>
-          <button class="editor-btn close-btn" id="btn-editor-close" title="Exit City Editor [ESC]">❌ Close Editor</button>
+
+        <!-- Category Tabs Row -->
+        <div class="tray-tabs-row" id="editor-category-tabs">
+          <button class="tray-tab-pill active" data-category="ALL">All</button>
+          <button class="tray-tab-pill" data-category="RESIDENTIAL">Residential</button>
+          <button class="tray-tab-pill" data-category="COMMERCIAL">Commercial</button>
+          <button class="tray-tab-pill" data-category="CIVIC">Civic</button>
+          <button class="tray-tab-pill" data-category="UTILITIES">Utilities</button>
+        </div>
+
+        <!-- Main Tray Body Grid -->
+        <div class="tray-body-grid">
+          <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+            <div class="tray-carousel-wrapper">
+              <button class="carousel-nav-btn" id="btn-carousel-prev" title="Previous Page">&lt;</button>
+              <div class="tray-cards-container" id="editor-cards-grid"></div>
+              <button class="carousel-nav-btn" id="btn-carousel-next" title="Next Page">&gt;</button>
+            </div>
+            <div class="tray-dots-row" id="editor-carousel-dots"></div>
+          </div>
+
+          <!-- Right Side Blueprint Preview Box -->
+          <div class="blueprint-preview-panel">
+            <div class="blueprint-hologram-box">
+              <div class="blueprint-hologram-icon" id="blueprint-icon">🏢</div>
+              <div class="blueprint-hologram-label" id="blueprint-name">NeoTech Quantum Tower</div>
+            </div>
+            <button class="place-building-btn" id="btn-place-building">
+              <span>📦</span>
+              <span>Place Building</span>
+            </button>
+          </div>
         </div>
       </div>
-      <div class="city-editor-tabs" id="city-editor-tabs">
-        <button class="editor-tab active" data-category="ALL">All Structures</button>
-        <button class="editor-tab" data-category="COMMERCIAL">Commercial Towers</button>
-        <button class="editor-tab" data-category="RESIDENTIAL">Residential Complexes</button>
-        <button class="editor-tab" data-category="CIVIC">Civic & Medical</button>
-        <button class="editor-tab" data-category="INFRASTRUCTURE">Roads & Power</button>
+
+      <!-- Transform / Placement Toolbar (Bottom-Right) -->
+      <div class="editor-transform-toolbar">
+        <button class="transform-tool-btn active" id="btn-tool-select" title="Select / Place Tool [S]">
+          <span class="transform-icon">↗</span>
+          <span>Select</span>
+        </button>
+        <button class="transform-tool-btn" id="btn-tool-move" title="Toggle Grid Snap [G]">
+          <span class="transform-icon">✥</span>
+          <span>Move</span>
+        </button>
+        <button class="transform-tool-btn" id="btn-tool-rotate" title="Rotate Structure 90° [R]">
+          <span class="transform-icon">↻</span>
+          <span>Rotate</span>
+        </button>
+        <button class="transform-tool-btn" id="btn-tool-delete" title="Demolish Structure Tool">
+          <span class="transform-icon">🗑️</span>
+          <span>Delete</span>
+        </button>
       </div>
-      <div class="city-editor-catalog" id="city-editor-catalog"></div>
     `;
 
     document.body.appendChild(this.container);
     this.bindEvents();
     this.renderCatalog();
+    this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
   }
 
   bindEvents() {
-    const tabs = this.container.querySelectorAll('.editor-tab');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        this.currentCategory = tab.dataset.category;
+    // Search input
+    const searchInput = this.container.querySelector('#editor-search-input');
+    searchInput.addEventListener('input', (e) => {
+      this.searchQuery = e.target.value.trim().toLowerCase();
+      this.currentPage = 0;
+      this.renderCatalog();
+    });
+
+    // Category tabs
+    const tabButtons = this.container.querySelectorAll('.tray-tab-pill');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.currentCategory = btn.dataset.category;
+        this.currentPage = 0;
         this.renderCatalog();
       });
     });
 
-    const rotateBtn = this.container.querySelector('#btn-editor-rotate');
-    rotateBtn.addEventListener('click', () => {
+    // Carousel Navigation
+    const prevBtn = this.container.querySelector('#btn-carousel-prev');
+    const nextBtn = this.container.querySelector('#btn-carousel-next');
+
+    prevBtn.addEventListener('click', () => {
+      const items = this.getFilteredCatalog();
+      const maxPage = Math.max(0, Math.ceil(items.length / this.pageSize) - 1);
+      this.currentPage = (this.currentPage - 1 + (maxPage + 1)) % (maxPage + 1);
+      this.renderCatalog();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      const items = this.getFilteredCatalog();
+      const maxPage = Math.max(0, Math.ceil(items.length / this.pageSize) - 1);
+      this.currentPage = (this.currentPage + 1) % (maxPage + 1);
+      this.renderCatalog();
+    });
+
+    // Place Building button
+    const placeBtn = this.container.querySelector('#btn-place-building');
+    placeBtn.addEventListener('click', () => {
+      if (this.app.cityEditorSystem) {
+        this.app.cityEditorSystem.selectBuilding(this.selectedSpecId);
+      }
+      if (this.app.uiManager && this.app.uiManager.addAlert) {
+        const spec = getBuildingSpec(this.selectedSpecId);
+        this.app.uiManager.addAlert(`🏗️ Ready to place: ${spec.name}. Click street or parcel to build.`, 'info');
+      }
+    });
+
+    // Transform tools
+    const selectTool = this.container.querySelector('#btn-tool-select');
+    const moveTool = this.container.querySelector('#btn-tool-move');
+    const rotateTool = this.container.querySelector('#btn-tool-rotate');
+    const deleteTool = this.container.querySelector('#btn-tool-delete');
+
+    selectTool.addEventListener('click', () => {
+      this.setActiveTool('SELECT');
+      if (this.app.cityEditorSystem && this.app.cityEditorSystem.isDeleteMode) {
+        this.app.cityEditorSystem.toggleDeleteMode();
+      }
+    });
+
+    moveTool.addEventListener('click', () => {
+      this.setActiveTool('MOVE');
+      if (this.app.cityEditorSystem) {
+        const state = this.app.cityEditorSystem.toggleGridSnap();
+        if (this.app.uiManager) {
+          this.app.uiManager.addAlert(`📐 Grid snap ${state ? 'ENABLED' : 'DISABLED'}`, 'info');
+        }
+      }
+    });
+
+    rotateTool.addEventListener('click', () => {
       if (this.app.cityEditorSystem) {
         this.app.cityEditorSystem.rotateSelection();
       }
     });
 
-    const snapBtn = this.container.querySelector('#btn-editor-snap');
-    snapBtn.addEventListener('click', () => {
+    deleteTool.addEventListener('click', () => {
       if (this.app.cityEditorSystem) {
-        const state = this.app.cityEditorSystem.toggleGridSnap();
-        snapBtn.classList.toggle('active', state);
-        snapBtn.textContent = state ? '📐 Snap Grid: ON' : '📐 Snap Grid: OFF';
+        const isDel = this.app.cityEditorSystem.toggleDeleteMode();
+        this.setActiveTool(isDel ? 'DELETE' : 'SELECT');
       }
     });
 
-    const deleteBtn = this.container.querySelector('#btn-editor-delete');
-    deleteBtn.addEventListener('click', () => {
-      if (this.app.cityEditorSystem) {
-        const state = this.app.cityEditorSystem.toggleDeleteMode();
-        deleteBtn.classList.toggle('active-delete', state);
-        deleteBtn.textContent = state ? '🗑️ Demolish Mode ACTIVE' : '🗑️ Demolish Tool';
-      }
-    });
-
+    // Close Button
     const closeBtn = this.container.querySelector('#btn-editor-close');
     closeBtn.addEventListener('click', () => {
       this.hide();
     });
   }
 
-  renderCatalog() {
-    const grid = this.container.querySelector('#city-editor-catalog');
-    grid.innerHTML = '';
+  setActiveTool(toolName) {
+    this.activeTool = toolName;
+    const selectTool = this.container.querySelector('#btn-tool-select');
+    const moveTool = this.container.querySelector('#btn-tool-move');
+    const deleteTool = this.container.querySelector('#btn-tool-delete');
 
-    const items = getCatalogByCategory(this.currentCategory);
-    items.forEach(spec => {
+    selectTool.classList.toggle('active', toolName === 'SELECT');
+    moveTool.classList.toggle('active', toolName === 'MOVE');
+    deleteTool.classList.toggle('active-danger', toolName === 'DELETE');
+  }
+
+  getFilteredCatalog() {
+    let items = getCatalogByCategory(this.currentCategory);
+    if (this.searchQuery) {
+      items = items.filter(item =>
+        item.name.toLowerCase().includes(this.searchQuery) ||
+        (item.description && item.description.toLowerCase().includes(this.searchQuery))
+      );
+    }
+    return items;
+  }
+
+  renderCatalog() {
+    const grid = this.container.querySelector('#editor-cards-grid');
+    const dotsContainer = this.container.querySelector('#editor-carousel-dots');
+    grid.innerHTML = '';
+    dotsContainer.innerHTML = '';
+
+    const items = this.getFilteredCatalog();
+    const totalPages = Math.max(1, Math.ceil(items.length / this.pageSize));
+    if (this.currentPage >= totalPages) this.currentPage = totalPages - 1;
+
+    // Render Dots
+    for (let i = 0; i < totalPages; i++) {
+      const dot = document.createElement('div');
+      dot.className = `tray-dot ${i === this.currentPage ? 'active' : ''}`;
+      dot.addEventListener('click', () => {
+        this.currentPage = i;
+        this.renderCatalog();
+      });
+      dotsContainer.appendChild(dot);
+    }
+
+    const startIdx = this.currentPage * this.pageSize;
+    const pageItems = items.slice(startIdx, startIdx + this.pageSize);
+
+    if (pageItems.length === 0) {
+      grid.innerHTML = `<div style="grid-column: span 4; color: #64748b; text-align: center; padding: 24px;">No buildings match your filter</div>`;
+      return;
+    }
+
+    pageItems.forEach(spec => {
       const card = document.createElement('div');
-      card.className = `catalog-card ${spec.id === this.selectedSpecId ? 'selected' : ''}`;
+      card.className = `building-card ${spec.id === this.selectedSpecId ? 'selected' : ''}`;
       card.dataset.id = spec.id;
+
+      const formattedPrice = spec.cost
+        ? `$${Number(spec.cost).toLocaleString()}`
+        : `$350,000`;
+
       card.innerHTML = `
-        <div class="catalog-card-icon">${spec.icon}</div>
-        <div class="catalog-card-info">
-          <div class="catalog-card-name">${spec.name}</div>
-          <div class="catalog-card-meta">${spec.footprint.width}m x ${spec.footprint.depth}m | Height: ${spec.height}m</div>
-          <div class="catalog-card-desc">${spec.description}</div>
+        <div class="building-card-preview">${spec.icon || '🏢'}</div>
+        <div class="building-card-title" title="${spec.name}">${spec.name}</div>
+        <div class="building-card-stats">
+          <span class="building-card-price">${formattedPrice}</span>
+          <span class="building-card-dim">${spec.footprint.width}m x ${spec.footprint.depth}m</span>
         </div>
       `;
 
       card.addEventListener('click', () => {
-        const allCards = grid.querySelectorAll('.catalog-card');
+        const allCards = grid.querySelectorAll('.building-card');
         allCards.forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         this.selectedSpecId = spec.id;
+
+        this.updateBlueprintPreview(spec);
 
         if (this.app.cityEditorSystem) {
           this.app.cityEditorSystem.selectBuilding(spec.id);
@@ -118,9 +277,28 @@ export class CityEditorUI {
     });
   }
 
+  updateBlueprintPreview(spec) {
+    if (!spec) return;
+    const iconEl = this.container.querySelector('#blueprint-icon');
+    const nameEl = this.container.querySelector('#blueprint-name');
+    if (iconEl) iconEl.textContent = spec.icon || '🏢';
+    if (nameEl) nameEl.textContent = spec.name;
+  }
+
   show() {
     this.isVisible = true;
     this.container.style.display = 'flex';
+
+    // Hide bottom time bar while editor is open to prevent overlap
+    const timeBar = document.getElementById('bottom-time-bar');
+    if (timeBar) timeBar.style.display = 'none';
+
+    // Ensure left sidebar is visible so CITY TOOLS is accessible
+    const leftSidebar = document.getElementById('left-sidebar');
+    if (leftSidebar) {
+      leftSidebar.classList.remove('hidden', 'collapsed');
+    }
+
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.activate();
     }
@@ -129,6 +307,10 @@ export class CityEditorUI {
   hide() {
     this.isVisible = false;
     this.container.style.display = 'none';
+
+    const timeBar = document.getElementById('bottom-time-bar');
+    if (timeBar) timeBar.style.display = 'flex';
+
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.deactivate();
     }

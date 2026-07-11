@@ -63,6 +63,8 @@ export class UIManager {
     this.selectedEntity = null;
     this.isTimePlaying = true;
     this.timeSpeed = 1.0;
+    this.alertFeedList = document.getElementById('alert-feed-list');
+    this.alertTimer = 0;
 
     this.initEventListeners();
   }
@@ -387,13 +389,42 @@ export class UIManager {
       });
     }
 
-    // Zoning cards (triggers City Editor with hover preview)
+    // Zoning cards & Infrastructure buttons (open City Editor UI filtered by category)
     const zoningCards = document.querySelectorAll('.zoning-card[data-zone]');
     zoningCards.forEach(card => {
       card.addEventListener('click', () => {
         const zoneType = card.dataset.zone;
-        if (!this.app.cityEditorSystem || !this.app.cityEditorSystem.enabled) {
-          this.toggleCityEditor();
+        if (this.cityEditorUI) {
+          if (!this.cityEditorUI.isVisible) this.cityEditorUI.show();
+          const categoryMap = {
+            residential: 'RESIDENTIAL',
+            commercial: 'COMMERCIAL',
+            office: 'COMMERCIAL',
+            fire: 'CIVIC',
+            power: 'UTILITIES',
+            water: 'UTILITIES'
+          };
+          const targetCat = categoryMap[zoneType] || 'ALL';
+          this.cityEditorUI.currentCategory = targetCat;
+          this.cityEditorUI.currentPage = 0;
+          this.cityEditorUI.renderCatalog();
+          const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
+          pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCat));
+        }
+        if (modeLabel) modeLabel.textContent = 'CITY EDITOR';
+      });
+    });
+
+    const infraBtns = document.querySelectorAll('.infra-btn[data-infra]');
+    infraBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (this.cityEditorUI) {
+          if (!this.cityEditorUI.isVisible) this.cityEditorUI.show();
+          this.cityEditorUI.currentCategory = 'INFRASTRUCTURE';
+          this.cityEditorUI.currentPage = 0;
+          this.cityEditorUI.renderCatalog();
+          const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
+          pills.forEach(p => p.classList.toggle('active', p.dataset.category === 'INFRASTRUCTURE'));
         }
         if (modeLabel) modeLabel.textContent = 'CITY EDITOR';
       });
@@ -710,7 +741,61 @@ export class UIManager {
       this.btnExpandCity.classList.toggle('active', isActive);
     }
     if (this.expandCityLabel) {
-      this.expandCityLabel.textContent = isActive ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [E]';
+      this.expandCityLabel.textContent = isActive ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [F]';
+    }
+    this.addAlert(isActive ? '🏗️ City Editor active: Zoning and placement tools ready.' : '✅ City Editor closed. Simulation resumed.', 'info');
+  }
+
+  addAlert(message, type = 'info') {
+    if (!this.alertFeedList) {
+      this.alertFeedList = document.getElementById('alert-feed-list');
+    }
+    if (!this.alertFeedList) return;
+
+    const timeStr = (this.app && this.app.timeManager && typeof this.app.timeManager.getFormattedTime === 'function')
+      ? this.app.timeManager.getFormattedTime()
+      : 'LIVE';
+
+    const item = document.createElement('div');
+    item.className = `alert-item alert-${type}`;
+    item.innerHTML = `<span class="alert-time">${timeStr}</span> <span class="alert-msg">${message}</span>`;
+
+    this.alertFeedList.insertBefore(item, this.alertFeedList.firstChild);
+
+    while (this.alertFeedList.children.length > 7) {
+      this.alertFeedList.removeChild(this.alertFeedList.lastChild);
+    }
+  }
+
+  updateAlertFeed(delta) {
+    if (!this.app) return;
+    this.alertTimer += delta;
+    if (this.alertTimer < 14.0) return;
+    this.alertTimer = 0;
+
+    const events = [];
+    const trafficCount = (this.app.trafficSystem && this.app.trafficSystem.vehicles) ? this.app.trafficSystem.vehicles.length : 0;
+    const pedCount = (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) ? this.app.pedestrianSystem.pedestrians.length : 0;
+    const wanted = this.app.pedestrianSystem && this.app.pedestrianSystem.isWanted;
+    const reValue = this.currentReValue;
+
+    if (wanted) {
+      events.push({ msg: '🚨 HIGH ALERT: Police security dispatch actively patrolling city sector.', type: 'danger' });
+    } else if (trafficCount > 20) {
+      events.push({ msg: `🚗 MetroPulse traffic grid optimal (${trafficCount} active autonomous units).`, type: 'info' });
+    } else if (pedCount > 15) {
+      events.push({ msg: `🚶 Pedestrian satisfaction index nominal across city sidewalks.`, type: 'success' });
+    }
+
+    if (reValue < 2000000000) {
+      events.push({ msg: `📉 Real Estate market valuation drop detected ($${Math.round(reValue/1e6)}M).`, type: 'warn' });
+    } else {
+      events.push({ msg: `⚡ Energy & infrastructure grids operating at 94% efficiency.`, type: 'success' });
+    }
+
+    if (events.length > 0) {
+      const chosen = events[Math.floor(Math.random() * events.length)];
+      this.addAlert(chosen.msg, chosen.type);
     }
   }
 
