@@ -34,6 +34,37 @@ export class Vehicle {
     this.mesh.userData.entityData = this;
   }
 
+  addLowDetailProxy(group, { width, height, length, colorHex, centerY }) {
+    this.highDetailParts = [...group.children];
+    this.shadowCasters = [];
+    group.traverse(child => {
+      if (child.isMesh && child.castShadow) this.shadowCasters.push(child);
+    });
+
+    const proxy = new THREE.Mesh(
+      new THREE.BoxGeometry(width, Math.max(0.55, height), length),
+      new THREE.MeshLambertMaterial({ color: colorHex || 0x3366cc })
+    );
+    proxy.position.y = centerY;
+    proxy.visible = false;
+    proxy.castShadow = false;
+    proxy.userData.lowDetailProxy = true;
+    group.add(proxy);
+    this.lowDetailProxy = proxy;
+    this.detailLevel = 'HIGH';
+    return group;
+  }
+
+  setDetailLevel(level = 'HIGH') {
+    if (!this.lowDetailProxy || this.detailLevel === level) return;
+    const low = level === 'LOW';
+    for (const part of this.highDetailParts) part.visible = !low;
+    this.lowDetailProxy.visible = low;
+    for (const mesh of this.shadowCasters) mesh.castShadow = level === 'HIGH';
+    if (this.mountedRider?.mesh) this.mountedRider.mesh.visible = !low;
+    this.detailLevel = level;
+  }
+
   mountRider(pedestrian) {
     if (!pedestrian || !pedestrian.mesh) return;
     this.mountedRider = pedestrian;
@@ -152,7 +183,13 @@ export class Vehicle {
     group.add(taillight);
     this.taillights.push(taillight);
 
-    return group;
+    return this.addLowDetailProxy(group, {
+      width,
+      height: 0.8,
+      length,
+      colorHex: bodyColor,
+      centerY: wheelRadius + 0.35
+    });
   }
 
   buildModel(type, colorHex) {
@@ -358,7 +395,13 @@ export class Vehicle {
     group.add(tlR);
     this.taillights.push(tlL, tlR);
 
-    return group;
+    return this.addLowDetailProxy(group, {
+      width,
+      height,
+      length,
+      colorHex: bodyColor,
+      centerY: wheelRadius + height / 2
+    });
   }
 
   setNightLights(enabled) {

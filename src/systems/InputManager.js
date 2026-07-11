@@ -44,10 +44,16 @@ export class InputManager {
         this.keys['space'] = true;
       }
       this.setInterface('KEYBOARD');
+
+      if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
+        this.handlePrimaryAction();
+      }
       if (e.key === 'Shift' && !e.repeat) {
         const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-        if (vehicle && vehicle.toggleAmbulanceSiren) {
+        if (vehicle && (vehicle.vType === 'AMBULANCE' || vehicle.isPolice) && vehicle.toggleAmbulanceSiren) {
           vehicle.toggleAmbulanceSiren(this.app.audioSystem);
+        } else if (vehicle && this.app.audioSystem) {
+          this.app.audioSystem.playHonk();
         }
       }
     });
@@ -64,6 +70,30 @@ export class InputManager {
       if (e.target.closest('header, aside, footer, button, input')) return;
       this.setInterface('KEYBOARD');
     });
+  }
+
+  /**
+   * Routes the contextual action key through one priority-ordered owner.
+   * Mission interactions must win over vehicle exit, otherwise pressing E at
+   * a sabotage target would accidentally abandon the required vehicle.
+   */
+  handlePrimaryAction() {
+    const missionSystem = this.app?.missionSystem;
+    if (missionSystem?.handleActionKey?.()) return true;
+    if (missionSystem?.openPendingMissionDetails?.()) return true;
+
+    const trafficSystem = this.app?.trafficSystem;
+    if (trafficSystem?.controlledVehicle) {
+      trafficSystem.exitControlledVehicle();
+      return true;
+    }
+
+    const pedestrianSystem = this.app?.pedestrianSystem;
+    if (pedestrianSystem?.controlledPedestrian) {
+      pedestrianSystem.handlePedestrianActionKey();
+      return true;
+    }
+    return false;
   }
 
   initGamepadEvents() {

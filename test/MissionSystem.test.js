@@ -111,6 +111,14 @@ test('mission-data validation accepts supported objectives and rejects structura
     () => validateMissionData([missionFixture({ timeLimit: 0 })]),
     /invalid timeLimit/
   );
+  assert.throws(
+    () => validateMissionData([missionFixture({ missionType: 'RACE' })]),
+    /checkpoints/
+  );
+  assert.throws(
+    () => validateMissionData([missionFixture({ missionType: 'SABOTAGE' })]),
+    /sabotage action/
+  );
 
   const brokenDialogue = missionFixture();
   brokenDialogue.dialogueTree.start.choices[0].next = 'missing-node';
@@ -216,6 +224,65 @@ test('delivery timers advance deterministically and fail at zero while survival 
     completions += 1;
   };
   survivalSystem.update(1);
+  assert.equal(completions, 1);
+});
+
+test('race missions advance authored checkpoints and fail when a rival finishes first', () => {
+  const app = appFixture();
+  const racer = vehicleFixture({ type: 'SPORTS' });
+  app.trafficSystem.controlledVehicle = racer;
+  const system = createSystem(app);
+  const race = missionFixture({
+    id: 'mission-test-race',
+    missionType: 'RACE',
+    vehicleType: 'SPORTS',
+    timeLimit: 100,
+    checkpoints: [
+      { x: 20, z: 20, district: 'One' },
+      { x: 30, z: 20, district: 'Two' }
+    ],
+    dropoff: { x: 40, z: 20, district: 'Finish' },
+    rivals: [{ name: 'Test Rival', finishTime: 30 }]
+  });
+  assert.equal(system.startMission(race), true);
+  assert.equal(system.routePoints.length, 3);
+
+  racer.mesh.position.set(20, 0, 20);
+  system.update(0.1);
+  assert.equal(system.routeIndex, 1);
+  assert.deepEqual(system.getNavigationTarget(), race.checkpoints[1]);
+
+  let failure = null;
+  system.failMission = reason => { failure = reason; };
+  system.raceElapsed = 29.9;
+  system.update(0.1);
+  assert.equal(failure, 'race_lost');
+});
+
+test('sabotage missions require a stopped on-target interaction and hold period', () => {
+  const app = appFixture();
+  const cruiser = vehicleFixture({ type: 'POLICE', x: 110, z: 120 });
+  app.trafficSystem.controlledVehicle = cruiser;
+  const system = createSystem(app);
+  const sabotage = missionFixture({
+    id: 'mission-test-sabotage',
+    missionType: 'SABOTAGE',
+    vehicleType: 'POLICE',
+    sabotageAction: 'Disable target network',
+    sabotageDuration: 2
+  });
+  cruiser.mesh.position.set(10, 0, 20);
+  assert.equal(system.startMission(sabotage), true);
+  cruiser.mesh.position.set(110, 0, 120);
+  cruiser.speed = 0;
+  assert.equal(system.handleActionKey(), true);
+  assert.equal(system.sabotageActive, true);
+
+  let completions = 0;
+  system.completeMission = () => { completions += 1; };
+  system.update(1);
+  assert.equal(completions, 0);
+  system.update(1);
   assert.equal(completions, 1);
 });
 

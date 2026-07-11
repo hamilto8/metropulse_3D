@@ -26,6 +26,7 @@ import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
 import { GameManager } from './core/GameManager.js';
+import { PerformanceSystem } from './systems/PerformanceSystem.js';
 
 class MetroPulseApp {
   constructor() {
@@ -133,17 +134,20 @@ class MetroPulseApp {
     this.rocketLaunched = false;
     this.explosionManager = new ExplosionManager(this.sceneManager.scene);
     this.cometManager = new CometManager(this);
+    // Input is created before gameplay systems so there is exactly one
+    // keyboard/gamepad state owner from their first frame onward.
+    this.inputManager = new InputManager(this);
     this.trafficSystem = new TrafficSystem(this);
 
     // 10. Pedestrian Simulation
     this.pedestrianSystem = new PedestrianSystem(this);
+    this.performanceSystem = new PerformanceSystem(this);
     this.physicsWorld.terrainSystem = this.pedestrianSystem;
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
     this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
-    this.inputManager = new InputManager(this);
 
     // 11.2 City Editor & Map Expansion System
     this.cityEditorSystem = new CityEditorSystem(this);
@@ -263,6 +267,7 @@ class MetroPulseApp {
 
     // Update simulation systems
     if (this.inputManager) this.inputManager.update(delta);
+    this.performanceSystem.beginFrame();
     this.physicsWorld.step(delta);
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);

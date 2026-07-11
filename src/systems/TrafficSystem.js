@@ -32,63 +32,10 @@ export class TrafficSystem {
     this.initWaypoints();
     this.spawnVehicles(this.targetMovingVehicleCount);
     this.spawnParkedVehicles();
-    this.initKeyboardControls();
   }
 
-  initKeyboardControls() {
-    this.keys = {};
-    window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-
-      // Prevent spacebar button activation in free/orbit camera mode or pedestrian control mode
-      if (e.key === ' ' || e.key === 'Spacebar') {
-        const ps = this.app ? this.app.pedestrianSystem : null;
-        const isVehControlled = this.controlledVehicle != null;
-        const isPedControlled = ps && ps.controlledPedestrian != null;
-        if (!isVehControlled) {
-          e.preventDefault();
-          if (isPedControlled) {
-            ps.triggerPedestrianJump();
-          }
-        }
-      }
-
-      this.keys[e.key.toLowerCase()] = true;
-
-      // Check Honk with Shift key when controlling a vehicle!
-      if (e.key === 'Shift' && this.controlledVehicle && !e.repeat) {
-        if (this.app.audioSystem) {
-          // Emergency siren toggling is handled once by InputManager. Avoid
-          // also playing a horn/siren here from this second keyboard listener.
-          const isEmergencyVehicle = this.controlledVehicle.isPolice || this.controlledVehicle.vType === 'AMBULANCE';
-          if (!isEmergencyVehicle) {
-            this.app.audioSystem.playHonk();
-          }
-        }
-      }
-
-      // Check Exit Vehicle with key E when controlling a vehicle!
-      if ((e.key === 'e' || e.key === 'E') && this.controlledVehicle && !e.repeat) {
-        if (this.app.missionSystem && this.app.missionSystem.openPendingMissionDetails()) {
-          return;
-        }
-        this.keys['e'] = false;
-        this.exitControlledVehicle();
-        return; // Prevent fall-through double trigger
-      }
-
-      // Check pedestrian actions (Talk / Hijack) with key E when controlling a pedestrian!
-      if ((e.key === 'e' || e.key === 'E') && !e.repeat) {
-        const ps = this.app ? this.app.pedestrianSystem : null;
-        if (ps && ps.controlledPedestrian) {
-          ps.handlePedestrianActionKey();
-        }
-      }
-    });
-
-    window.addEventListener('keyup', (e) => {
-      this.keys[e.key.toLowerCase()] = false;
-    });
+  get keys() {
+    return this.app?.inputManager?.keys || {};
   }
 
   toggleUserControl(vehicle) {
@@ -529,7 +476,8 @@ export class TrafficSystem {
       if (v.bumpCooldown > 0) {
         v.bumpCooldown -= delta;
       }
-      for (const other of this.vehicles) {
+      const collisionCandidates = this.app.performanceSystem?.nearbyVehicles(v.mesh.position, 4.8) || this.vehicles;
+      for (const other of collisionCandidates) {
         if (other === v) continue;
         if (v.mesh.position.distanceTo(other.mesh.position) < 4.8) {
           const bounceDir = v.mesh.position.clone().sub(other.mesh.position);
@@ -574,7 +522,8 @@ export class TrafficSystem {
 
       // Check collision with pedestrians (knockback onto ground)
       if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) {
-        for (const ped of this.app.pedestrianSystem.pedestrians) {
+        const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(v.mesh.position, 3.2) || this.app.pedestrianSystem.pedestrians;
+        for (const ped of nearbyPedestrians) {
           if (ped.knockedDown) continue;
           if (Math.abs(v.speed) > 1.5 && v.mesh.position.distanceTo(ped.mesh.position) < 3.2) {
             const knockDir = ped.mesh.position.clone().sub(v.mesh.position).normalize();
@@ -959,6 +908,23 @@ export class TrafficSystem {
     }
   }
 
+  triggerMayhemCollision(v1, v2) {
+    if (!v1 || !v2 || v1 === v2 || v1.crashed || v2.crashed || (v1.isParked && v2.isParked)) return false;
+    if (v1.mesh.position.distanceToSquared(v2.mesh.position) >= 3.8 ** 2) return false;
+    for (const vehicle of [v1, v2]) {
+      vehicle.crashed = true;
+      vehicle.speed = 0;
+      vehicle.targetSpeed = 0;
+      vehicle.crashTimer = 16;
+      vehicle.mesh.rotation.z = (Math.random() - 0.5) * 0.9;
+    }
+    const crashPos = v1.mesh.position.clone().add(v2.mesh.position).multiplyScalar(0.5);
+    this.app.explosionManager?.createExplosion?.(crashPos);
+    this.app.audioSystem?.playExplosion?.();
+    this.dispatchPolice(crashPos);
+    return true;
+  }
+
   update(delta) {
     const funMode = this.app.funMode;
 
@@ -970,41 +936,14 @@ export class TrafficSystem {
 
     // Check collisions between cars in Fun Mode!
     if (funMode) {
-      for (let i = 0; i < this.vehicles.length; i++) {
-        for (let j = i + 1; j < this.vehicles.length; j++) {
-          const v1 = this.vehicles[i];
-          const v2 = this.vehicles[j];
-          if (v1.crashed || v2.crashed) continue;
-          if (v1.isParked && v2.isParked) continue;
-
-          const dist = v1.mesh.position.distanceTo(v2.mesh.position);
-          if (dist < 3.8) {
-            // MAYHEM COLLISION!
-            v1.crashed = true;
-            v1.speed = 0;
-            v1.targetSpeed = 0;
-            v1.crashTimer = 16.0;
-            v1.mesh.rotation.z = (Math.random() - 0.5) * 0.9; // Wrecked tilt
-
-            v2.crashed = true;
-            v2.speed = 0;
-            v2.targetSpeed = 0;
-            v2.crashTimer = 16.0;
-            v2.mesh.rotation.z = (Math.random() - 0.5) * 0.9;
-
-            const crashPos = v1.mesh.position.clone().add(v2.mesh.position).multiplyScalar(0.5);
-            
-            // Trigger explosion visual and audio effects
-            if (this.app.explosionManager) {
-              this.app.explosionManager.createExplosion(crashPos);
-            }
-            if (this.app.audioSystem) {
-              this.app.audioSystem.playExplosion();
-            }
-
-            // Police rush to the scene of the accident
-            this.dispatchPolice(crashPos);
-          }
+      const indexByVehicle = new Map(this.vehicles.map((vehicle, index) => [vehicle, index]));
+      for (let i = 0; i < this.vehicles.length; i += 1) {
+        const v1 = this.vehicles[i];
+        const candidates = this.app.performanceSystem?.nearbyVehicles(v1.mesh.position, 3.8) || this.vehicles;
+        for (const v2 of candidates) {
+          const j = indexByVehicle.get(v2);
+          if (!Number.isInteger(j) || j <= i) continue;
+          this.triggerMayhemCollision(v1, v2);
         }
       }
     }
@@ -1135,9 +1074,9 @@ export class TrafficSystem {
 
       // 1. Normal Collision avoidance check with vehicle ahead
       let isBlocked = false;
-      for (let j = 0; j < this.vehicles.length; j++) {
-        if (i === j) continue;
-        const other = this.vehicles[j];
+      const nearbyTraffic = this.app.performanceSystem?.nearbyVehicles(pos, 11.5) || this.vehicles;
+      for (const other of nearbyTraffic) {
+        if (other === v) continue;
         if (other.isParked) continue; // Parked cars along curbs don't block active lanes
 
         const dist = pos.distanceTo(other.mesh.position);
@@ -1272,21 +1211,20 @@ export class TrafficSystem {
             const currentH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z);
             v.mesh.position.y = currentH;
 
-            // Compute pitch and roll along vehicle axes for natural slope and crowned road alignment
-            const forwardX = Math.sin(v.mesh.rotation.y);
-            const forwardZ = Math.cos(v.mesh.rotation.y);
-            const rightX = Math.cos(v.mesh.rotation.y);
-            const rightZ = -Math.sin(v.mesh.rotation.y);
-
-            const frontH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + forwardX * 2.2, v.mesh.position.z + forwardZ * 2.2);
-            const backH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - forwardX * 2.2, v.mesh.position.z - forwardZ * 2.2);
-            const leftH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - rightX * 1.2, v.mesh.position.z - rightZ * 1.2);
-            const rightH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + rightX * 1.2, v.mesh.position.z + rightZ * 1.2);
-
-            const pitch = Math.atan2(frontH - backH, 4.4);
-            const roll = Math.atan2(leftH - rightH, 2.4);
-            v.mesh.rotation.x = -pitch;
-            v.mesh.rotation.z = roll;
+            // Far agents use one terrain sample and a low-poly proxy. Nearby
+            // agents retain the more expensive four-corner suspension pose.
+            if (v.detailLevel !== 'LOW') {
+              const forwardX = Math.sin(v.mesh.rotation.y);
+              const forwardZ = Math.cos(v.mesh.rotation.y);
+              const rightX = Math.cos(v.mesh.rotation.y);
+              const rightZ = -Math.sin(v.mesh.rotation.y);
+              const frontH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + forwardX * 2.2, v.mesh.position.z + forwardZ * 2.2);
+              const backH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - forwardX * 2.2, v.mesh.position.z - forwardZ * 2.2);
+              const leftH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x - rightX * 1.2, v.mesh.position.z - rightZ * 1.2);
+              const rightH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x + rightX * 1.2, v.mesh.position.z + rightZ * 1.2);
+              v.mesh.rotation.x = -Math.atan2(frontH - backH, 4.4);
+              v.mesh.rotation.z = Math.atan2(leftH - rightH, 2.4);
+            }
           } else {
             v.mesh.position.y = 0;
             v.mesh.rotation.x = 0;
@@ -1296,7 +1234,7 @@ export class TrafficSystem {
       }
 
       // 3. Update vehicle animations & wheels
-      v.update(delta);
+      if (this.app.performanceSystem?.shouldAnimate(v, i) ?? true) v.update(delta);
 
       if (v.physicsBody) {
         v.physicsBody.position.set(v.mesh.position.x, v.mesh.position.y + 1.05, v.mesh.position.z);

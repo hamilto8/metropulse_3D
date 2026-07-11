@@ -87,7 +87,7 @@
       <aside class="glass-panel left-sidebar" id="left-sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">CITY TOOLS</span>
-          <button id="btn-toggle-sidebar" class="collapse-icon-btn" title="Toggle Sidebar">✕</button>
+          <button id="btn-toggle-sidebar" class="collapse-icon-btn" title="Toggle Sidebar" aria-label="Toggle city tools sidebar">✕</button>
         </div>
 
         <div class="sidebar-content">
@@ -222,10 +222,10 @@
       </div>
 
       <!-- Right CONTEXTUAL ACTION PANEL (Inspector HUD) -->
-      <aside id="inspector-hud" class="glass-panel inspector-hud">
+      <aside id="inspector-hud" class="glass-panel inspector-hud hidden" aria-label="Contextual action panel">
         <div class="inspector-top-bar">
           <span class="panel-title">CONTEXTUAL ACTION PANEL</span>
-          <button id="btn-close-inspector" class="close-btn">&times;</button>
+          <button id="btn-close-inspector" class="close-btn" aria-label="Close contextual action panel">&times;</button>
         </div>
         <div class="inspector-subheading">
           <span>SELECT A CITIZEN OR VEHICLE</span>
@@ -238,7 +238,7 @@
         <div id="inspector-card-container" class="inspector-card">
           <div class="card-header">
             <span id="inspector-type" class="inspector-badge">OBJECT</span>
-            <button class="card-close-btn">&times;</button>
+            <button class="card-close-btn" aria-label="Clear selected object">&times;</button>
           </div>
           <h2 id="inspector-title" class="card-name">Select an object</h2>
           <div id="inspector-body" class="card-attributes">
@@ -361,7 +361,7 @@
           <div class="mission-hud-timer" id="mission-hud-timer">⏱️ 00s</div>
           <div class="mission-hud-fare" id="mission-hud-fare">$0</div>
         </div>
-        <button id="btn-cancel-mission" class="mission-cancel-btn" title="Cancel Mission">✕</button>
+        <button id="btn-cancel-mission" class="mission-cancel-btn" title="Cancel Mission" aria-label="Cancel active mission">✕</button>
       </div>
 
       <div id="dialogue-overlay" class="dialogue-overlay hidden">
@@ -372,7 +372,7 @@
               <div class="dialogue-speaker" id="dialogue-speaker">Marcus Vance</div>
               <div class="dialogue-role" id="dialogue-role">Venture Capital Executive</div>
             </div>
-            <button id="btn-close-dialogue" class="dialogue-close-btn">✕</button>
+            <button id="btn-close-dialogue" class="dialogue-close-btn" aria-label="Close mission dialogue">✕</button>
           </div>
           <div class="dialogue-body">
             <p id="dialogue-text">Dialogue text goes here...</p>

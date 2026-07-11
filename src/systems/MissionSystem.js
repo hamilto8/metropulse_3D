@@ -28,6 +28,17 @@ export function validateMissionData(missions) {
     if (objective !== 'SURVIVAL' && (!mission.dropoff || !Number.isFinite(mission.dropoff.x) || !Number.isFinite(mission.dropoff.z))) {
       throw new Error(`Mission ${mission.id} has an invalid dropoff.`);
     }
+    if (objective === 'RACE') {
+      if (!Array.isArray(mission.checkpoints) || mission.checkpoints.length < 2 || mission.checkpoints.some(point => !Number.isFinite(point?.x) || !Number.isFinite(point?.z))) {
+        throw new Error(`Race mission ${mission.id} requires at least two valid checkpoints.`);
+      }
+      if (!Array.isArray(mission.rivals) || mission.rivals.length === 0 || mission.rivals.some(rival => !rival?.name || !Number.isFinite(rival.finishTime) || rival.finishTime <= 0)) {
+        throw new Error(`Race mission ${mission.id} requires an authored rival roster.`);
+      }
+    }
+    if (objective === 'SABOTAGE' && (!mission.sabotageAction || !Number.isFinite(mission.sabotageDuration) || mission.sabotageDuration <= 0)) {
+      throw new Error(`Sabotage mission ${mission.id} requires a valid sabotage action and duration.`);
+    }
     if (!Number.isFinite(mission.timeLimit) || mission.timeLimit <= 0) throw new Error(`Mission ${mission.id} has an invalid timeLimit.`);
     if (!mission.dialogueTree?.start) throw new Error(`Mission ${mission.id} is missing dialogueTree.start.`);
 
@@ -73,6 +84,12 @@ export class MissionSystem {
     this.activeVehicle = null;
     this.congestionSamples = 0;
     this.congestionTotal = 0;
+    this.routePoints = [];
+    this.routeIndex = 0;
+    this.raceElapsed = 0;
+    this.raceLeader = null;
+    this.sabotageProgress = 0;
+    this.sabotageActive = false;
     this.narrativeState = {
       completedMissionIds: new Set(),
       dialogueChoices: [],
@@ -106,12 +123,6 @@ export class MissionSystem {
     this._toastEl = null;
 
     this.pendingMission = null;
-
-    window.addEventListener('keydown', (e) => {
-      if ((e.key === 'e' || e.key === 'E') && !e.repeat && this.pendingMission) {
-        this.openPendingMissionDetails();
-      }
-    });
 
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener('click', () => this.cancelMission());
@@ -311,8 +322,18 @@ export class MissionSystem {
     this.congestionSamples = 0;
     this.congestionTotal = 0;
 
-    // Cache dropoff position to avoid per-frame Vector3 allocation
-    if (mission.dropoff) this._dropoffPos.set(mission.dropoff.x, 0, mission.dropoff.z);
+    const objective = mission.missionType || mission.objectiveType || 'DELIVERY';
+    this.routePoints = objective === 'RACE'
+      ? [...mission.checkpoints, mission.dropoff]
+      : (mission.dropoff ? [mission.dropoff] : []);
+    this.routeIndex = 0;
+    this.raceElapsed = 0;
+    this.raceLeader = objective === 'RACE'
+      ? mission.rivals.reduce((leader, rival) => !leader || rival.finishTime < leader.finishTime ? rival : leader, null)
+      : null;
+    this.sabotageProgress = 0;
+    this.sabotageActive = false;
+    if (this.routePoints[0]) this.setNavigationTarget(this.routePoints[0]);
 
     // Hide pickup ring for this mission
     const ringObj = this.pickupRings.find(r => r.mission.id === mission.id);
@@ -321,16 +342,16 @@ export class MissionSystem {
     }
 
     // Create soaring holographic destination beacon at dropoff coordinate
-    const objective = mission.missionType || mission.objectiveType || 'DELIVERY';
-    if (objective !== 'SURVIVAL' && mission.dropoff) this.createDestinationBeacon(mission.dropoff);
+    if (objective !== 'SURVIVAL' && this.routePoints[0]) this.createDestinationBeacon(this.routePoints[0]);
 
     // Show HUD
     if (this.hudEl) {
       this.hudEl.classList.remove('hidden');
       if (this.hudTitleEl) {
-        this.hudTitleEl.textContent = objective === 'SURVIVAL'
-          ? `${mission.title}: survive the comet storm`
-          : `${mission.passengerName} → ${mission.dropoff?.district || 'Destination'}`;
+        if (objective === 'SURVIVAL') this.hudTitleEl.textContent = `${mission.title}: survive the comet storm`;
+        else if (objective === 'RACE') this.hudTitleEl.textContent = `${mission.title}: checkpoint 1/${this.routePoints.length}`;
+        else if (objective === 'SABOTAGE') this.hudTitleEl.textContent = `${mission.title}: reach the target and disrupt it`;
+        else this.hudTitleEl.textContent = `${mission.passengerName} → ${mission.dropoff?.district || 'Destination'}`;
       }
     }
 
@@ -344,6 +365,36 @@ export class MissionSystem {
     if (this.app.audioSystem) {
       this.app.audioSystem.playHonk();
     }
+    return true;
+  }
+
+  setNavigationTarget(point) {
+    if (!point) return;
+    this._dropoffPos.set(point.x, 0, point.z);
+  }
+
+  getNavigationTarget() {
+    return this.routePoints[this.routeIndex] || this.activeMission?.dropoff || null;
+  }
+
+  /** Starts the distinct sabotage interaction when the player is stopped on target. */
+  handleActionKey() {
+    const objective = this.activeMission?.missionType || this.activeMission?.objectiveType;
+    if (this.state !== 'IN_PROGRESS' || objective !== 'SABOTAGE') return false;
+
+    const vehicle = this.getControlledVehicle();
+    const inRange = vehicle?.mesh?.position?.distanceTo?.(this._dropoffPos) < MISSION_COMPLETE_RADIUS;
+    if (!vehicle || !inRange) {
+      this.app?.uiManager?.showToast?.('⚠️ Reach the sabotage target first.');
+      return true;
+    }
+    if (Math.abs(vehicle.speed || 0) > 1) {
+      this.app?.uiManager?.showToast?.('⚠️ Stop the vehicle before deploying the jammer.');
+      return true;
+    }
+    this.sabotageActive = true;
+    this.sabotageProgress = 0;
+    this.app?.uiManager?.showToast?.(`📡 ${this.activeMission.sabotageAction}… hold position.`);
     return true;
   }
 
@@ -562,6 +613,9 @@ export class MissionSystem {
     } else if (reason === 'vehicle_lost') {
       toastMsg = 'Mission vehicle was lost or changed.';
       tickerMsg = `*** ❌ MISSION FAILED: Required ${this.activeMission.vehicleType} vehicle lost! *** `;
+    } else if (reason === 'race_lost') {
+      toastMsg = 'A rival crossed the finish line first.';
+      tickerMsg = `*** 🏁 RACE LOST: ${this.activeMission.title} has a new corporate champion. *** `;
     }
 
     const newsEl = document.querySelector('.chyron-ticker-text span');
@@ -608,6 +662,12 @@ export class MissionSystem {
     this.triggerCooldown = 4.0;
     this.activeMission = null;
     this.activeVehicle = null;
+    this.routePoints = [];
+    this.routeIndex = 0;
+    this.raceElapsed = 0;
+    this.raceLeader = null;
+    this.sabotageProgress = 0;
+    this.sabotageActive = false;
     this.state = 'IDLE';
   }
 
@@ -675,6 +735,14 @@ export class MissionSystem {
 
     const objective = this.activeMission.missionType || this.activeMission.objectiveType || 'DELIVERY';
 
+    if (objective === 'RACE') {
+      this.raceElapsed += delta;
+      if (this.raceLeader && this.raceElapsed >= this.raceLeader.finishTime) {
+        this.failMission('race_lost');
+        return;
+      }
+    }
+
     const congestion = this.app.trafficSystem?.getCongestionMetrics?.().index ?? this.estimateCongestion();
     this.congestionTotal += congestion;
     this.congestionSamples += 1;
@@ -695,10 +763,37 @@ export class MissionSystem {
       return;
     }
 
+    if (objective === 'SABOTAGE' && this.sabotageActive) {
+      const dist = vPos.distanceTo(this._dropoffPos);
+      if (dist >= MISSION_COMPLETE_RADIUS || Math.abs(activeVehicle.speed || 0) > 1) {
+        this.sabotageActive = false;
+        this.sabotageProgress = 0;
+        this.app?.uiManager?.showToast?.('⚠️ Signal lost. Stop on target and press E to retry.');
+      } else {
+        this.sabotageProgress += delta;
+        const remaining = Math.max(0, this.activeMission.sabotageDuration - this.sabotageProgress);
+        if (this.hudDistEl) this.hudDistEl.textContent = `JAMMING ${remaining.toFixed(1)}s`;
+        if (this.hudTimerEl) this.hudTimerEl.textContent = `⏱️ ${Math.ceil(this.timeRemaining)}s`;
+        if (this.sabotageProgress >= this.activeMission.sabotageDuration) this.completeMission();
+        return;
+      }
+    }
+
     // 5. Check dropoff arrival using cached _dropoffPos
     const distToDropoff = vPos.distanceTo(this._dropoffPos);
     if (distToDropoff < MISSION_COMPLETE_RADIUS) {
-      this.completeMission();
+      if (objective === 'RACE' && this.routeIndex < this.routePoints.length - 1) {
+        this.routeIndex += 1;
+        const nextTarget = this.routePoints[this.routeIndex];
+        this.setNavigationTarget(nextTarget);
+        this.createDestinationBeacon(nextTarget);
+        if (this.hudTitleEl) this.hudTitleEl.textContent = `${this.activeMission.title}: checkpoint ${this.routeIndex + 1}/${this.routePoints.length}`;
+        this.app?.uiManager?.showToast?.(`🏁 Checkpoint ${this.routeIndex}/${this.routePoints.length - 1} cleared`);
+      } else if (objective === 'SABOTAGE') {
+        if (this.hudDistEl) this.hudDistEl.textContent = 'STOP · PRESS E';
+      } else {
+        this.completeMission();
+      }
       return;
     }
 
@@ -710,7 +805,12 @@ export class MissionSystem {
       this.hudTimerEl.textContent = `⏱️ ${Math.ceil(this.timeRemaining)}s`;
     }
     if (this.hudFareEl) {
-      this.hudFareEl.textContent = `$${this.payout.toLocaleString('en-US')}`;
+      if (objective === 'RACE') {
+        const rival = this.raceLeader;
+        this.hudFareEl.textContent = rival ? `VS ${rival.name} · ${Math.max(0, rival.finishTime - this.raceElapsed).toFixed(1)}s` : `$${this.payout.toLocaleString('en-US')}`;
+      } else {
+        this.hudFareEl.textContent = `$${this.payout.toLocaleString('en-US')}`;
+      }
     }
 
     // 7. Compute navigation compass arrow angle.

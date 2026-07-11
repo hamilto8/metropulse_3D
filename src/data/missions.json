@@ -170,6 +170,8 @@
     "avatar": "👮",
     "pickup": { "x": 0, "z": 0, "district": "Police Precinct Central" },
     "dropoff": { "x": -50, "z": 50, "district": "Apex Bank Plaza" },
+    "sabotageAction": "Jam the getaway fleet's ignition network",
+    "sabotageDuration": 3,
     "baseReward": 750,
     "timeLimit": 45,
     "dialogueTree": {
@@ -254,6 +256,15 @@
     "avatar": "🏎️",
     "pickup": { "x": 210, "z": 0, "district": "Apex Trackline" },
     "dropoff": { "x": -100, "z": 100, "district": "Waterfront Harbor" },
+    "checkpoints": [
+      { "x": 260, "z": 50, "district": "Neon Exchange" },
+      { "x": 100, "z": 50, "district": "Financial Chicane" },
+      { "x": 0, "z": 100, "district": "Transit Loop" }
+    ],
+    "rivals": [
+      { "name": "Nova Kade", "finishTime": 35 },
+      { "name": "Rex Voltage", "finishTime": 38 }
+    ],
     "baseReward": 900,
     "timeLimit": 40,
     "dialogueTree": {

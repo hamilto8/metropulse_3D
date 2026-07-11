@@ -438,7 +438,8 @@ export class PedestrianSystem {
       // 1. Check collisions and avoidance with nearby vehicles
       let isBlocked = false;
       if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-        for (const v of this.app.trafficSystem.vehicles) {
+        const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(pos, 4.5) || this.app.trafficSystem.vehicles;
+        for (const v of nearbyVehicles) {
           const dist = pos.distanceTo(v.mesh.position);
           const hitDist = (v.vType === 'BUS' || v.vType === 'TRUCK') ? 3.8 : 2.6;
 
@@ -576,7 +577,7 @@ export class PedestrianSystem {
       }
 
       // 3. Update walk animation
-      p.update(delta, isRaining);
+      if (this.app.performanceSystem?.shouldAnimate(p, i) ?? true) p.update(delta, isRaining);
     }
 
     // 4. Handle proximity checking for vehicles and pedestrians
@@ -598,7 +599,8 @@ export class PedestrianSystem {
     let minVehDist = 3.5;
 
     if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-      for (const v of this.app.trafficSystem.vehicles) {
+      const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(pos, minVehDist) || this.app.trafficSystem.vehicles;
+      for (const v of nearbyVehicles) {
         const dist = pos.distanceTo(v.mesh.position);
         if (dist < minVehDist) {
           minVehDist = dist;
@@ -611,7 +613,8 @@ export class PedestrianSystem {
     let closestPed = null;
     let minPedDist = 3.0;
 
-    for (const other of this.pedestrians) {
+    const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(pos, minPedDist) || this.pedestrians;
+    for (const other of nearbyPedestrians) {
       if (other === p || other.knockedDown) continue;
       const dist = pos.distanceTo(other.mesh.position);
       if (dist < minPedDist) {
@@ -708,7 +711,8 @@ export class PedestrianSystem {
     let minVehDist = 3.5;
 
     if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-      for (const v of this.app.trafficSystem.vehicles) {
+      const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(pos, minVehDist) || this.app.trafficSystem.vehicles;
+      for (const v of nearbyVehicles) {
         const dist = pos.distanceTo(v.mesh.position);
         if (dist < minVehDist) {
           minVehDist = dist;
@@ -721,7 +725,8 @@ export class PedestrianSystem {
     let closestPed = null;
     let minPedDist = 3.0;
 
-    for (const other of this.pedestrians) {
+    const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(pos, minPedDist) || this.pedestrians;
+    for (const other of nearbyPedestrians) {
       if (other === p || other.knockedDown) continue;
       const dist = pos.distanceTo(other.mesh.position);
       if (dist < minPedDist) {

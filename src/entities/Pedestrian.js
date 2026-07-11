@@ -124,7 +124,30 @@ export class Pedestrian {
       this.rainBehavior = 'NORMAL';
     }
 
+    this.highDetailParts = [...group.children];
+    this.shadowCasters = [];
+    group.traverse(child => {
+      if (child.isMesh && child.castShadow) this.shadowCasters.push(child);
+    });
+    this.lowDetailProxy = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.38, 1.35, 3, 6),
+      new THREE.MeshLambertMaterial({ color: clothColor })
+    );
+    this.lowDetailProxy.position.y = 1.35;
+    this.lowDetailProxy.visible = false;
+    this.lowDetailProxy.userData.lowDetailProxy = true;
+    group.add(this.lowDetailProxy);
+    this.detailLevel = 'HIGH';
     return group;
+  }
+
+  setDetailLevel(level = 'HIGH') {
+    if (!this.lowDetailProxy || this.detailLevel === level) return;
+    const low = level === 'LOW';
+    for (const part of this.highDetailParts) part.visible = !low;
+    this.lowDetailProxy.visible = low;
+    for (const mesh of this.shadowCasters) mesh.castShadow = level === 'HIGH';
+    this.detailLevel = level;
   }
 
   update(delta, isRaining = false) {

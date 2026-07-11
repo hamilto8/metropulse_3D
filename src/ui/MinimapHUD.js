@@ -204,7 +204,7 @@ export class MinimapHUD {
 
     const activeMission = missionSystem.activeMission;
     const objective = activeMission?.missionType || activeMission?.objectiveType;
-    const dropoff = activeMission?.dropoff;
+    const dropoff = missionSystem.getNavigationTarget?.() || activeMission?.dropoff;
     if (dropoff && objective !== 'SURVIVAL') {
       this.drawWaypointMarker(ctx, dropoff, centerPosition, cx, cy);
     }

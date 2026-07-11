@@ -717,7 +717,13 @@ export class UIManager {
         for (const [key, value] of Object.entries(entity.info)) {
           const row = document.createElement('div');
           row.className = 'attr-row';
-          row.innerHTML = `<span class="attr-key">${key}:</span> <span class="attr-val class-cyan">${value}</span>`;
+          const keyEl = document.createElement('span');
+          keyEl.className = 'attr-key';
+          keyEl.textContent = `${key}:`;
+          const valueEl = document.createElement('span');
+          valueEl.className = 'attr-val class-cyan';
+          valueEl.textContent = String(value);
+          row.append(keyEl, valueEl);
           this.inspectorBody.appendChild(row);
         }
       }

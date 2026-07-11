@@ -30,6 +30,12 @@ export class Environment {
       rain: 40,
       thunderstorm: 28
     };
+    this.weatherFogDensities = {
+      clear: 0.0035,
+      mist: 0.015,
+      rain: 0.008,
+      thunderstorm: 0.012
+    };
     this.wasDynamicWeatherEnabled = true;
 
     // Wet-surface state. Materials are captured lazily so editor-placed roads
@@ -176,19 +182,19 @@ export class Environment {
     this.thunderTimer = -1;
 
     if (normalizedMode === 'clear') {
-      this.scene.fog.density = 0.0035;
+      this.scene.fog.density = this.weatherFogDensities.clear;
       if (this.rainMat) this.rainMat.opacity = 0;
       this.targetWetness = 0;
     } else if (normalizedMode === 'mist') {
-      this.scene.fog.density = 0.015;
+      this.scene.fog.density = this.weatherFogDensities.mist;
       if (this.rainMat) this.rainMat.opacity = 0;
       this.targetWetness = 0.12;
     } else if (normalizedMode === 'rain') {
-      this.scene.fog.density = 0.008;
+      this.scene.fog.density = this.weatherFogDensities.rain;
       if (this.rainMat) this.rainMat.opacity = 0.6;
       this.targetWetness = 0.72;
     } else if (normalizedMode === 'thunderstorm') {
-      this.scene.fog.density = 0.012;
+      this.scene.fog.density = this.weatherFogDensities.thunderstorm;
       if (this.rainMat) this.rainMat.opacity = 0.85;
       this.lightningTimer = 3.0 + Math.random() * 5.0; // Trigger lightning soon!
       this.targetWetness = 1;
@@ -298,6 +304,16 @@ export class Environment {
     }
 
     this.updateWetSurfaces(delta);
+
+    // Exponential fog that reads well at street level can completely flatten
+    // a 300 m management overview. Fade density with camera altitude while
+    // preserving each weather state's relative visibility penalty.
+    const cameraHeight = this.app?.sceneManager?.camera?.position?.y || 0;
+    const altitudeBlend = THREE.MathUtils.smoothstep(cameraHeight, 60, 300);
+    const altitudeScale = THREE.MathUtils.lerp(1, 0.32, altitudeBlend);
+    if (this.scene.fog) {
+      this.scene.fog.density = this.weatherFogDensities[this.weatherMode] * altitudeScale;
+    }
 
     // 1. Sky & Fog color transitions based on time of day
     const dayColor = new THREE.Color(0x3882f6); // Bright blue
