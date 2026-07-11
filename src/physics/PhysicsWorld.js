@@ -34,6 +34,9 @@ export class PhysicsWorld {
     this.world.addContactMaterial(this.wheelObstacleContact);
 
     this.staticBodies = [];
+    this.playerVehicles = new Set();
+    this.weatherMode = 'clear';
+    this.weatherGripMultiplier = 1.0;
     this.initGround();
   }
 
@@ -92,17 +95,43 @@ export class PhysicsWorld {
   }
 
   setWeatherFriction(weatherMode) {
+    this.weatherMode = weatherMode;
     if (weatherMode === 'rain') {
       // Slick asphalt drifting in heavy rain!
       this.wheelGroundContact.friction = 0.28;
+      this.weatherGripMultiplier = 0.48;
     } else if (weatherMode === 'thunderstorm') {
       // Drenched asphalt, super slick drifting storm!
       this.wheelGroundContact.friction = 0.22;
+      this.weatherGripMultiplier = 0.38;
     } else if (weatherMode === 'mist') {
       this.wheelGroundContact.friction = 0.55;
+      this.weatherGripMultiplier = 0.72;
     } else {
       this.wheelGroundContact.friction = 0.85;
+      this.weatherGripMultiplier = 1.0;
     }
+
+    // RaycastVehicle wheels are rays rather than rigid wheel bodies, so their
+    // traction does not come from ContactMaterial. Propagate weather grip to
+    // every active player vehicle explicitly.
+    for (const vehicle of this.playerVehicles) {
+      if (vehicle && typeof vehicle.applyWeatherGrip === 'function') {
+        vehicle.applyWeatherGrip(this.weatherGripMultiplier);
+      }
+    }
+  }
+
+  registerPlayerVehicle(vehicle) {
+    if (!vehicle) return;
+    this.playerVehicles.add(vehicle);
+    if (typeof vehicle.applyWeatherGrip === 'function') {
+      vehicle.applyWeatherGrip(this.weatherGripMultiplier);
+    }
+  }
+
+  unregisterPlayerVehicle(vehicle) {
+    this.playerVehicles.delete(vehicle);
   }
 
   addStaticBoxCollider(position, size) {
@@ -122,6 +151,23 @@ export class PhysicsWorld {
     this.world.addBody(boxBody);
     this.staticBodies.push(boxBody);
     return boxBody;
+  }
+
+  removeStaticCollider(body) {
+    if (!body) return;
+    if (this.world.bodies.includes(body)) {
+      this.world.removeBody(body);
+    }
+  }
+
+  restoreStaticCollider(body) {
+    if (!body) return;
+    if (!this.world.bodies.includes(body)) {
+      this.world.addBody(body);
+    }
+    if (!this.staticBodies.includes(body)) {
+      this.staticBodies.push(body);
+    }
   }
 
   addKinematicBoxCollider(position, size) {

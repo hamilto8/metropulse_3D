@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MetroPulse 3D | Cyber-Modern Metropolis Simulation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,6 +30,10 @@
             <span class="stat-icon">⚡</span>
             <span id="stat-energy" class="stat-val energy-text">90%</span>
           </div>
+          <div class="stat-pill-item" title="Citizen Happiness">
+            <span class="stat-icon">😊</span>
+            <span id="stat-happiness" class="stat-val">72%</span>
+          </div>
         </div>
 
         <!-- Center Brand & Mode Selector -->
@@ -40,7 +44,7 @@
             <span class="badge-sim">3D SIM</span>
           </div>
           <div class="mode-selector-wrapper">
-            <button id="btn-mode-selector" class="mode-dropdown-btn">
+            <button id="btn-mode-selector" class="mode-dropdown-btn" aria-label="Toggle management and city builder modes" title="Mode Switch [M]">
               <span>MODE: <strong id="current-mode-label">MANAGEMENT</strong></span>
               <span class="chevron">⌄</span>
             </button>
@@ -60,6 +64,17 @@
           <div class="stat-pill-item" title="Simulation FPS">
             <span class="stat-icon">⚡</span>
             <span id="stat-fps" class="stat-val fps-text">130 FPS</span>
+          </div>
+          <div class="stat-pill-item" title="Simulation Time and Weather">
+            <span class="stat-icon">🕒</span>
+            <span id="stat-sim-time" class="stat-val">14:30</span>
+          </div>
+          <div class="stat-pill-item" title="Current Weather">
+            <span id="stat-weather" class="stat-val">☀️ CLEAR</span>
+          </div>
+          <div class="stat-pill-item top-alert-item" title="Latest City Alert">
+            <span class="stat-icon">🚨</span>
+            <span id="top-alert-summary" class="stat-val">GRID ONLINE</span>
           </div>
           <div class="stat-pill-item input-badge-item" id="input-device-badge" title="Active Control Scheme">
             <span id="input-device-icon" class="stat-icon">⌨️</span>
@@ -152,6 +167,9 @@
                 <button class="cam-pill" data-camera="rocket" title="Rocket Launchpad">🚀</button>
                 <button class="cam-pill" data-camera="street" title="Street Level">🏙️</button>
                 <button class="cam-pill active" data-camera="birdseye" title="Bird's Eye">🚁</button>
+                <button class="cam-pill" data-camera="park" title="Central Park">🌳</button>
+                <button class="cam-pill" data-camera="downtown" title="Downtown">🚦</button>
+                <button class="cam-pill" data-camera="bridge" title="Suspension Bridge">🌉</button>
                 <button class="cam-pill" data-camera="free" title="Orbit">🌐</button>
               </div>
 
@@ -164,6 +182,7 @@
                 <button class="weather-pill" data-weather="rain" title="Rain">Rain</button>
                 <button class="weather-pill" data-weather="thunderstorm" title="Storm">Storm</button>
               </div>
+              <button id="btn-dynamic-weather" class="sidebar-action-btn dynamic-weather-btn" type="button">🔄 Dynamic Cycle: OFF</button>
 
               <div class="sub-label mt-2">MAP OVERLAYS</div>
               <div class="overlay-toggle-row">
@@ -175,13 +194,22 @@
               </div>
 
               <div class="setting-row mt-2">
-                <span>SFX SOUNDSCAPE</span>
-                <button id="btn-mute" class="settings-gear-btn" title="Toggle Sound Engine">⚙️</button>
+                <button id="btn-mute" class="sidebar-action-btn" title="Toggle Sound Engine">
+                  <span id="mute-icon">🔇</span> <span id="mute-label">Enable SFX</span>
+                </button>
+                <label class="volume-control" title="Master soundscape volume">
+                  <span>VOL</span>
+                  <input id="volume-slider" type="range" min="0" max="1" step="0.05" value="0.65" disabled>
+                </label>
               </div>
 
-              <div class="setting-row">
-                <span>SIMULATION MODES</span>
-                <button id="btn-expand-city" class="settings-gear-btn" title="City Editor / Mayhem Settings">⚙️</button>
+              <div class="sub-label mt-2">SIMULATION MODES</div>
+              <div class="simulation-mode-actions">
+                <button id="btn-expand-city" class="sidebar-action-btn expand-city-btn" type="button"><span id="expand-city-label">🏗️ Expand City Mode [F]</span></button>
+                <button id="btn-fun-mode" class="sidebar-action-btn fun-mode-btn" type="button"><span id="fun-mode-label">☄️ Fun Mode: OFF</span></button>
+                <button id="btn-launch-rocket" class="sidebar-action-btn launch-rocket-btn" type="button"><span id="launch-rocket-label">🚀 Launch Rocket (T-5:00)</span></button>
+                <button id="btn-unlock-east" class="sidebar-action-btn" type="button">🏙️ Unlock East District ($500k)</button>
+                <button id="btn-bridge-priority" class="sidebar-action-btn" type="button">🌉 Toggle Bridge Priority</button>
               </div>
             </div>
           </div>
@@ -202,28 +230,26 @@
         <div class="inspector-subheading">
           <span>SELECT A CITIZEN OR VEHICLE</span>
         </div>
-        <div class="inspector-summary-stats">
-          <div class="stat-line"><span>Vehicles</span> <span class="neon-cyan">110 / FPS</span></div>
-          <div class="stat-line"><span>Pedestrians</span> <span class="neon-cyan">104 / FPS</span></div>
+          <div class="inspector-summary-stats">
+            <div class="stat-line"><span>Vehicles</span> <span id="inspector-vehicle-count" class="neon-cyan">0</span></div>
+            <div class="stat-line"><span>Pedestrians</span> <span id="inspector-pedestrian-count" class="neon-cyan">0</span></div>
         </div>
 
         <div id="inspector-card-container" class="inspector-card">
           <div class="card-header">
-            <span id="inspector-type" class="inspector-badge">PEDESTRIAN</span>
+            <span id="inspector-type" class="inspector-badge">OBJECT</span>
             <button class="card-close-btn">&times;</button>
           </div>
-          <h2 id="inspector-title" class="card-name">Alex B.</h2>
+          <h2 id="inspector-title" class="card-name">Select an object</h2>
           <div id="inspector-body" class="card-attributes">
-            <div class="attr-row"><span class="attr-key">Name:</span> <span class="attr-val">Alex B.</span></div>
-            <div class="attr-row"><span class="attr-key">Class:</span> <span class="attr-val class-cyan">BUSINESS</span></div>
-            <div class="attr-row"><span class="attr-key">Activity:</span> <span class="attr-val">Commuting to Office</span></div>
-            <div class="attr-row"><span class="attr-key">Mood:</span> <span class="attr-val">Stressed Working</span></div>
+            <div class="attr-row"><span class="attr-key">Status:</span> <span class="attr-val">Click a citizen, vehicle, building, or mission beacon.</span></div>
           </div>
 
           <div class="card-actions">
-            <button id="btn-follow-target" class="btn-action-outline">✕ Stop Following</button>
-            <button id="btn-take-control" class="btn-action-primary">🕹️ TAKE WALK CONTROL</button>
-            <button id="btn-interact-sfx" class="btn-action-secondary">👋 Wave / Talk</button>
+            <button id="btn-follow-target" class="btn-action-outline hidden">👁️ Follow Camera</button>
+            <button id="btn-take-control" class="btn-action-primary hidden">🕹️ Take Control</button>
+            <button id="btn-interact-sfx" class="btn-action-secondary hidden">👋 Interact</button>
+            <button id="btn-combat-action" class="btn-action-secondary combat-action hidden">🏏 Combat Action</button>
           </div>
         </div>
       </aside>
@@ -233,9 +259,13 @@
         <div class="glass-panel city-pulse-card">
           <div class="card-top-tag"><span class="icon">📊</span> CITY PULSE</div>
           <div class="pulse-rows">
-            <div class="pulse-row"><span>City stats/budget</span> <strong>2,450</strong></div>
-            <div class="pulse-row"><span>Cash</span> <strong class="cash-cyan">$1,250,300</strong></div>
-            <div class="pulse-row"><span>Energy</span> <strong class="energy-cyan">90%</strong></div>
+            <div class="pulse-row"><span>Population</span> <strong id="pulse-population">2,450</strong></div>
+            <div class="pulse-row"><span>Cash</span> <strong id="pulse-cash" class="cash-cyan">$1,250,300</strong></div>
+            <div class="pulse-row"><span>Energy</span> <strong id="pulse-energy" class="energy-cyan">90%</strong></div>
+            <div class="pulse-row"><span>Happiness</span> <strong id="pulse-happiness">72%</strong></div>
+            <div class="pulse-row"><span>Land Value</span> <strong id="pulse-land-value">100</strong></div>
+            <div class="pulse-row"><span>Reputation</span> <strong id="pulse-reputation">0</strong></div>
+            <div class="pulse-row"><span>Services</span> <strong id="pulse-services">P 90% · W 80% · F 65%</strong></div>
           </div>
         </div>
 
@@ -248,7 +278,7 @@
       </div>
 
       <!-- Bottom-Center Time Scrubber Bar -->
-      <footer class="glass-panel bottom-time-bar">
+      <footer id="bottom-time-bar" class="glass-panel bottom-time-bar">
         <div class="time-display">
           <span id="time-icon" class="time-icon">☀️</span>
           <div class="time-text-group">
@@ -293,9 +323,33 @@
         </button>
       </div>
 
+      <!-- Street-level action HUD -->
+      <div id="street-speedometer" class="street-speedometer hidden" aria-live="polite">
+        <span id="speedometer-value" class="speedometer-value">0</span>
+        <span class="speedometer-unit">KM/H</span>
+        <span id="speedometer-gear" class="speedometer-gear">GEAR —</span>
+      </div>
+      <div id="street-control-hint" class="street-control-hint hidden">WASD move · Right-drag mouse look · E interact/exit · Shift horn/siren · Space brake/jump · Click attack · M return to management</div>
+
+      <!-- Fun Mode market feedback and satirical news -->
+      <div id="real-estate-tracker" class="real-estate-tracker hidden">
+        <div class="re-header"><span class="re-title">CITY LAND VALUE</span><span class="re-badge">LIVE</span></div>
+        <div id="re-value-display" class="re-value">$4,850,000,000</div>
+        <div id="re-status-display" class="re-status">Market Status: <span class="accent-val">Speculative Bubble 🎈</span></div>
+      </div>
+      <div id="news-chyron" class="news-chyron hidden" role="status" aria-live="polite">
+        <div class="chyron-badge">🚨 METROPULSE NEWS ALERT 🚨</div>
+        <div class="chyron-ticker-container">
+          <div class="chyron-ticker-text">
+            <span>PROFITS SOAR AS METEORS CLEAR UNDERPERFORMING REAL ESTATE • QUANTUM DYNAMICS DENIES OWNING THE SKY • AETHER SKYSPIRE DECLARES EXTINCTION A PREMIUM NETWORKING EVENT • </span>
+            <span>PROFITS SOAR AS METEORS CLEAR UNDERPERFORMING REAL ESTATE • QUANTUM DYNAMICS DENIES OWNING THE SKY • AETHER SKYSPIRE DECLARES EXTINCTION A PREMIUM NETWORKING EVENT • </span>
+          </div>
+        </div>
+      </div>
+
       <!-- Hidden overlays for missions / dialogue / news / arrest -->
       <div id="mission-hud" class="mission-hud hidden">
-        <div class="mission-hud-badge">🚖 ACTIVE FARE</div>
+        <div class="mission-hud-badge">🎯 ACTIVE MISSION</div>
         <div class="mission-hud-info">
           <div class="mission-hud-title" id="mission-hud-title">Passenger Name</div>
           <div class="mission-hud-target">
@@ -313,7 +367,7 @@
       <div id="dialogue-overlay" class="dialogue-overlay hidden">
         <div class="dialogue-card">
           <div class="dialogue-header">
-            <div class="dialogue-avatar" id="dialogue-avatar">👔</div>
+            <canvas class="dialogue-avatar" id="dialogue-avatar" width="112" height="112" aria-label="Passenger ink portrait"></canvas>
             <div class="dialogue-meta">
               <div class="dialogue-speaker" id="dialogue-speaker">Marcus Vance</div>
               <div class="dialogue-role" id="dialogue-role">Venture Capital Executive</div>

@@ -8,6 +8,18 @@ export class CometManager {
     this.spawnTimer = 2.0; // Initial comet spawn delay when entering Fun Mode
   }
 
+  disposeComet(comet) {
+    if (!comet || !comet.mesh) return;
+    this.scene.remove(comet.mesh);
+    comet.mesh.traverse(child => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) material.dispose();
+      }
+    });
+  }
+
   spawnComet() {
     // Pick a random target position on the city map
     const targetX = (Math.random() - 0.5) * 170;
@@ -25,11 +37,12 @@ export class CometManager {
       }
     }
 
-    const targetPos = new THREE.Vector3(
-      targetBuilding ? targetBuilding.plot.x : targetX,
-      0,
-      targetBuilding ? targetBuilding.plot.z : targetZ
-    );
+    const resolvedTargetX = targetBuilding ? targetBuilding.plot.x : targetX;
+    const resolvedTargetZ = targetBuilding ? targetBuilding.plot.z : targetZ;
+    const resolvedTargetY = targetBuilding
+      ? (Number.isFinite(targetBuilding.plot.y) ? targetBuilding.plot.y : (targetBuilding.group?.position?.y || 0))
+      : (this.app.cityBuilder?.getHillHeight?.(resolvedTargetX, resolvedTargetZ) || 0);
+    const targetPos = new THREE.Vector3(resolvedTargetX, resolvedTargetY, resolvedTargetZ);
 
     // Spawn high up in the sky with a steep diagonal trajectory
     const spawnPos = new THREE.Vector3(
@@ -80,7 +93,7 @@ export class CometManager {
       // Clean up any remaining comets if Fun Mode turned off
       while (this.comets.length > 0) {
         const c = this.comets.pop();
-        this.scene.remove(c.mesh);
+        this.disposeComet(c);
       }
       return;
     }
@@ -106,13 +119,13 @@ export class CometManager {
       c.aura.scale.set(scale, scale, scale);
 
       // Check if comet reached ground or target altitude
-      if (c.mesh.position.y <= 4.0 || c.mesh.position.distanceTo(c.targetPos) < 6.0) {
+      if (c.mesh.position.y <= c.targetPos.y + 4.0 || c.mesh.position.distanceTo(c.targetPos) < 6.0) {
         const impactPos = c.mesh.position.clone();
-        impactPos.y = 1.0;
+        impactPos.y = c.targetPos.y + 1.0;
 
         // 1. Remove comet mesh
-        this.scene.remove(c.mesh);
         this.comets.splice(i, 1);
+        this.disposeComet(c);
 
         // 2. Giant Impact Mega-Explosion
         if (this.app.explosionManager) {
@@ -149,12 +162,37 @@ export class CometManager {
               v.speed = 0;
               v.targetSpeed = 0;
               v.crashTimer = 22.0;
-              v.mesh.rotation.z = (Math.random() - 0.5) * 1.6;
-              v.mesh.rotation.y += Math.random() * Math.PI * 1.5;
+              if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
+                const body = v.physicsVehicle.chassisBody;
+                const blastX = v.mesh.position.x - impactPos.x;
+                const blastZ = v.mesh.position.z - impactPos.z;
+                const blastLength = Math.hypot(blastX, blastZ) || 1;
+                body.velocity.x += (blastX / blastLength) * 14;
+                body.velocity.y += 9;
+                body.velocity.z += (blastZ / blastLength) * 14;
+                body.angularVelocity.x += (Math.random() - 0.5) * 2.5;
+                body.angularVelocity.z += (Math.random() - 0.5) * 2.5;
+              } else {
+                v.mesh.rotation.z = (Math.random() - 0.5) * 1.6;
+                v.mesh.rotation.y += Math.random() * Math.PI * 1.5;
+              }
             }
           }
           // Dispatch emergency police cruisers to the disaster impact zone!
           this.app.trafficSystem.dispatchPolice(impactPos);
+        }
+
+        // Blast waves also affect nearby pedestrians, including the player.
+        if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) {
+          for (const pedestrian of this.app.pedestrianSystem.pedestrians) {
+            const dist = pedestrian.mesh.position.distanceTo(impactPos);
+            if (dist >= 28.0 || pedestrian.knockedDown) continue;
+            const knockDir = pedestrian.mesh.position.clone().sub(impactPos);
+            knockDir.y = 0.2;
+            if (knockDir.lengthSq() === 0) knockDir.set(1, 0.2, 0);
+            knockDir.normalize();
+            this.app.pedestrianSystem.knockDownPedestrian(pedestrian, knockDir);
+          }
         }
       }
     }

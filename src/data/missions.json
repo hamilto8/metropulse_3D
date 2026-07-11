@@ -2,6 +2,8 @@
   {
     "id": "mission_executive",
     "title": "Boardroom Emergency",
+    "missionType": "TAXI",
+    "chronologyChapter": 5,
     "vehicleType": "TAXI",
     "passengerName": "Marcus Vance",
     "passengerRole": "Venture Capital Executive",
@@ -48,6 +50,8 @@
   {
     "id": "mission_cyberdj",
     "title": "Headlining Set at Neon Club",
+    "missionType": "TAXI",
+    "chronologyChapter": 4,
     "vehicleType": "TAXI",
     "passengerName": "Lyra Pulse",
     "passengerRole": "Cyber-Synth DJ",
@@ -84,6 +88,8 @@
   {
     "id": "mission_scientist",
     "title": "Classified Quantum Data",
+    "missionType": "COURIER",
+    "chronologyChapter": 3,
     "vehicleType": "TAXI",
     "passengerName": "Dr. Aris Thorne",
     "passengerRole": "Quantum Physicist",
@@ -94,7 +100,7 @@
     "timeLimit": 75,
     "dialogueTree": {
       "start": {
-        "text": "Keep your voice down... I am carrying a quantum drive with breakthrough energy grid simulations. We must reach Advanced Tech Labs immediately.",
+        "text": "Keep your voice down... Quantum Dynamics stole Aether Skyspire's atmospheric-energy model. This drive proves it. We must cross the bridge to Advanced Tech Labs immediately.",
         "choices": [
           {
             "label": "Understood, Doctor. Full throttle to the Tech Labs.",
@@ -120,6 +126,7 @@
   {
     "id": "mission_tourist",
     "title": "Skyline Grand Tour",
+    "missionType": "TAXI",
     "vehicleType": "TAXI",
     "passengerName": "Elena Rostova",
     "passengerRole": "Architecture Enthusiast",
@@ -156,6 +163,7 @@
   {
     "id": "mission_police_robbery",
     "title": "Bank Heist Response",
+    "missionType": "SABOTAGE",
     "vehicleType": "POLICE",
     "passengerName": "Officer Sterling",
     "passengerRole": "Police dispatcher",
@@ -202,6 +210,7 @@
   {
     "id": "mission_police_park",
     "title": "Park Patrol Commotion",
+    "missionType": "DELIVERY",
     "vehicleType": "POLICE",
     "passengerName": "Dispatcher K.",
     "passengerRole": "Precinct Operator",
@@ -238,6 +247,7 @@
   {
     "id": "mission_sports_trial",
     "title": "Waterfront Time Trial",
+    "missionType": "RACE",
     "vehicleType": "SPORTS",
     "passengerName": "Jax Racer",
     "passengerRole": "Pro Circuit Sponsor",
@@ -275,6 +285,8 @@
   {
     "id": "mission_sports_smuggle",
     "title": "Contraband Courier",
+    "missionType": "COURIER",
+    "chronologyChapter": 2,
     "vehicleType": "SPORTS",
     "passengerName": "Kai Neon",
     "passengerRole": "Underground Fixer",
@@ -285,7 +297,7 @@
     "timeLimit": 60,
     "dialogueTree": {
       "start": {
-        "text": "Yo. I need a very fast courier to transport this secure data pad to Boba Haven. No questions, no police sirens. You interested?",
+        "text": "Yo. NeoTech intercepted an Orbital Systems data pad tying both firms to the comet-guidance conspiracy. Get it across the bridge to Boba Haven. No police sirens. Interested?",
         "choices": [
           {
             "label": "Deal. Out of sight, top speed.",
@@ -311,6 +323,7 @@
   {
     "id": "mission_bus_loop",
     "title": "Waterfront Transit Route",
+    "missionType": "DELIVERY",
     "vehicleType": "BUS",
     "passengerName": "Transit Central",
     "passengerRole": "Operations Dispatch",
@@ -347,6 +360,7 @@
   {
     "id": "mission_bus_tour",
     "title": "Downtown Sightseeing",
+    "missionType": "DELIVERY",
     "vehicleType": "BUS",
     "passengerName": "Clara Tour",
     "passengerRole": "Tourism Organizer",
@@ -383,6 +397,7 @@
   {
     "id": "mission_truck_delivery",
     "title": "Steel Cargo Haul",
+    "missionType": "COURIER",
     "vehicleType": "TRUCK",
     "passengerName": "Logistics Bill",
     "passengerRole": "Warehouse Coordinator",
@@ -419,6 +434,7 @@
   {
     "id": "mission_truck_goods",
     "title": "Chilled Market Supply",
+    "missionType": "COURIER",
     "vehicleType": "TRUCK",
     "passengerName": "Supermarket Lead",
     "passengerRole": "Supply chain Manager",
@@ -455,6 +471,7 @@
   {
     "id": "mission_sedan_grocery",
     "title": "Aunt Sarah's Errand",
+    "missionType": "TAXI",
     "vehicleType": "SEDAN",
     "passengerName": "Aunt Sarah",
     "passengerRole": "Family Elder",
@@ -491,6 +508,7 @@
   {
     "id": "mission_sedan_testing",
     "title": "Autopilot Diagnostic Run",
+    "missionType": "DELIVERY",
     "vehicleType": "SEDAN",
     "passengerName": "NeoTech Support",
     "passengerRole": "QA Engineer",
@@ -520,6 +538,45 @@
       },
       "decline": {
         "text": "Diagnostic cancelled. Rescheduling update.",
+        "action": "DECLINE"
+      }
+    }
+  },
+  {
+    "id": "mission_mayhem_escape",
+    "title": "The Last Profitable Quarter",
+    "missionType": "SURVIVAL",
+    "chronologyChapter": 1,
+    "vehicleType": "SPORTS",
+    "passengerName": "Director Vale",
+    "passengerRole": "Aether Skyspire Crisis Director",
+    "avatar": "🌌",
+    "pickup": { "x": 210, "z": -50, "district": "Aether Evacuation Lane" },
+    "dropoff": { "x": -100, "z": 0, "district": "West-Bank Shelter" },
+    "baseReward": 1500,
+    "timeLimit": 45,
+    "requiresMayhem": true,
+    "dialogueTree": {
+      "start": {
+        "text": "This is the climax, driver. Quantum Dynamics turned the comet-deflection grid into a hostile takeover instrument. Keep this prototype alive until Aether uploads the shutdown key.",
+        "choices": [
+          {
+            "label": "Start the Mayhem prologue. The quarterly report survives with us.",
+            "next": "accept"
+          },
+          {
+            "label": "The apocalypse is outside my compensation band.",
+            "next": "decline"
+          }
+        ]
+      },
+      "accept": {
+        "text": "Comets inbound. Survive for forty-five seconds; every intact shareholder is a victory.",
+        "action": "START_MISSION",
+        "rushBonus": 500
+      },
+      "decline": {
+        "text": "Understood. Human resources will note your lack of extinction-event initiative.",
         "action": "DECLINE"
       }
     }

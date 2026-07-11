@@ -11,6 +11,7 @@ export class PlayerVehicle {
     this.currentSteering = 0;
     this.speedKmH = 0;
     this.gear = 1;
+    this.gripMultiplier = 1.0;
     this.info = {
       'Status': '🏎️ PHYSICS ACTION MODE',
       'Engine': this.getEngineName(vType),
@@ -153,7 +154,7 @@ export class PlayerVehicle {
       directionLocal: new CANNON.Vec3(0, -1, 0),
       suspensionStiffness: suspensionStiffness,
       suspensionRestLength: suspensionRestLength,
-      frictionSlip: this.vType === 'SPORTS' ? 8.0 : 6.0,
+      frictionSlip: (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 8.0 : 6.0,
       dampingRelaxation: 2.8,
       dampingCompression: 4.5,
       maxSuspensionForce: maxSuspensionForce,
@@ -195,6 +196,30 @@ export class PlayerVehicle {
     }
 
     this.raycastVehicle.addToWorld(this.physicsWorld.world);
+    if (typeof this.physicsWorld.registerPlayerVehicle === 'function') {
+      this.physicsWorld.registerPlayerVehicle(this);
+    }
+  }
+
+  applyWeatherGrip(multiplier = 1.0) {
+    this.gripMultiplier = Math.max(0.2, Math.min(1.0, multiplier));
+    if (!this.raycastVehicle) return;
+
+    for (const wheel of this.raycastVehicle.wheelInfos) {
+      if (wheel._dryFrictionSlip === undefined) {
+        wheel._dryFrictionSlip = wheel.frictionSlip;
+      }
+      wheel.frictionSlip = wheel._dryFrictionSlip * this.gripMultiplier;
+    }
+  }
+
+  applyCrashBrake(force = 500) {
+    if (!this.raycastVehicle || !this.chassisBody) return;
+    for (let i = 0; i < this.raycastVehicle.wheelInfos.length; i++) {
+      this.raycastVehicle.applyEngineForce(0, i);
+      this.raycastVehicle.setBrake(force, i);
+    }
+    this.chassisBody.angularVelocity.y *= 0.94;
   }
 
   applyInput(keys, delta) {
@@ -316,14 +341,15 @@ export class PlayerVehicle {
       this.chassisBody.quaternion.vmult(rightVec, rightVec);
       const lateralVel = this.chassisBody.velocity.dot(rightVec);
       const antiDrift = rightVec.clone();
-      antiDrift.scale(-lateralVel * this.chassisBody.mass * (this.vType === 'SPORTS' ? 12.0 : 10.0), antiDrift);
+      const sportsType = this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR';
+      antiDrift.scale(-lateralVel * this.chassisBody.mass * (sportsType ? 12.0 : 10.0) * this.gripMultiplier, antiDrift);
       this.chassisBody.applyForce(antiDrift, new CANNON.Vec3(0, 0, 0));
     }
 
     // 4. Aerodynamic downforce (oriented along vehicle local -Y normal)
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
-      const downForceFactor = this.vType === 'SPORTS' ? 600 : (this.vType === 'BUS' ? 100 : (this.vType === 'TRUCK' ? 200 : 400));
+      const downForceFactor = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 600 : (this.vType === 'BUS' ? 100 : (this.vType === 'TRUCK' ? 200 : 400));
       const downVec = new CANNON.Vec3(0, -1, 0);
       this.chassisBody.quaternion.vmult(downVec, downVec);
       downVec.scale(downForceFactor * speed, downVec);
@@ -401,7 +427,7 @@ export class PlayerVehicle {
 
     // Calculate Speed and Gear for HUD
     const vel = this.chassisBody.velocity;
-    const speedMs = vel.length();
+    const speedMs = Math.hypot(vel.x, vel.z);
     this.speedKmH = Math.round(speedMs * 3.6);
 
     if (this.speedKmH < 3) this.gear = 1;
@@ -442,11 +468,16 @@ export class PlayerVehicle {
   }
 
   destroy() {
+    if (this.physicsWorld && typeof this.physicsWorld.unregisterPlayerVehicle === 'function') {
+      this.physicsWorld.unregisterPlayerVehicle(this);
+    }
     if (this.raycastVehicle) {
       this.raycastVehicle.removeFromWorld(this.physicsWorld.world);
+      this.raycastVehicle = null;
     }
-    if (this.chassisBody) {
+    if (this.chassisBody && this.physicsWorld.world.bodies.includes(this.chassisBody)) {
       this.physicsWorld.world.removeBody(this.chassisBody);
     }
+    this.chassisBody = null;
   }
 }

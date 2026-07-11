@@ -236,6 +236,9 @@ export class CityBuilder {
     const y = pos.y;
     const z = pos.z;
 
+    const userBridgeHeight = this.getUserBridgeDeckHeight(x, z);
+    if (userBridgeHeight !== null && y >= userBridgeHeight - 1) return false;
+
     // River 1 (X: 135 to 185)
     if (x >= 135 && x <= 185) {
       // Safe on suspension bridge deck (Z near 0 within deck half-width 9.5, Y >= -0.5)
@@ -251,6 +254,34 @@ export class CityBuilder {
     }
 
     return false;
+  }
+
+  getUserBridgeDeckHeight(x, z) {
+    const segments = this.app?.trafficSystem?.placedRoadSegments;
+    if (!segments) return null;
+
+    for (const record of segments.values()) {
+      const building = record?.building;
+      const spec = record?.spec || building?.spec;
+      if (!building?.plot || building.isDestroyed || spec?.roadType !== 'BRIDGE') continue;
+
+      const rotationY = building.group?.rotation?.y || 0;
+      const dx = x - building.plot.x;
+      const dz = z - building.plot.z;
+      const cosine = Math.cos(rotationY);
+      const sine = Math.sin(rotationY);
+      const localX = dx * cosine - dz * sine;
+      const localZ = dx * sine + dz * cosine;
+      const halfWidth = Number(building.plot.width || spec.footprint?.width || 30) * 0.5;
+      const halfDepth = Number(building.plot.depth || spec.footprint?.depth || 30) * 0.5;
+      if (Math.abs(localX) > halfWidth || Math.abs(localZ) > halfDepth) continue;
+
+      const baseY = Number.isFinite(building.plot.y)
+        ? building.plot.y
+        : (building.group?.position?.y || 0);
+      return baseY + 0.45;
+    }
+    return null;
   }
 
   createGround() {

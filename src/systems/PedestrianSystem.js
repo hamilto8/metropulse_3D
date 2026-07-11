@@ -3,6 +3,7 @@ import { Pedestrian } from '../entities/Pedestrian.js';
 
 /** Shared forward-axis vector — avoids per-frame allocation in 60-pedestrian movement loop */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
+const UP_AXIS = Object.freeze(new THREE.Vector3(0, 1, 0));
 
 class SidewalkNode {
   constructor(id, x, z, y = 0.4) {
@@ -22,12 +23,18 @@ export class PedestrianSystem {
     this.talkingBubbleTimer = 0;
     this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319, 441, 459, 541, 559, 641, 659, 741, 759];
     this.sidewalkCoordsZ = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
+    this.targetPedestrianCount = 60;
+    this.nextPedestrianSerial = 0;
+    this.populationCheckTimer = 2.0;
     
     this.initWaypoints();
-    this.spawnPedestrians(60);
+    this.spawnPedestrians(this.targetPedestrianCount);
     this.baseballBats = [];
     this.isWanted = false;
     this.escapeTimer = 0;
+    this.crimeSequence = 0;
+    this.activeCrimeIncidentId = null;
+    this.hijackTransition = null;
     this.spawnBaseballBats();
 
     // Listen for attacks
@@ -143,8 +150,9 @@ export class PedestrianSystem {
     const allNodes = Array.from(this.nodes.values()).filter(n => n.nextNodes.length > 0);
 
     for (let i = 0; i < count; i++) {
-      const pType = types[i % types.length];
-      const color = colors[i % colors.length];
+      const serial = this.nextPedestrianSerial++;
+      const pType = types[serial % types.length];
+      const color = colors[serial % colors.length];
       const fname = firstNames[Math.floor(Math.random() * firstNames.length)];
       const lname = lastNames[Math.floor(Math.random() * lastNames.length)];
       const name = `${fname} ${lname}`;
@@ -152,7 +160,15 @@ export class PedestrianSystem {
       const ped = new Pedestrian(pType, color, name);
 
       // Pick starting node
-      const startNode = allNodes[i % allNodes.length];
+      let startNode = allNodes[serial % allNodes.length];
+      for (let offset = 0; offset < allNodes.length; offset++) {
+        const candidate = allNodes[(serial + offset) % allNodes.length];
+        const occupied = this.pedestrians.some(existing => existing.mesh.position.distanceTo(candidate.pos) < 1.2);
+        if (!occupied) {
+          startNode = candidate;
+          break;
+        }
+      }
       ped.mesh.position.copy(startNode.pos);
       ped.currentNode = startNode;
       ped.targetNode = startNode.nextNodes[Math.floor(Math.random() * startNode.nextNodes.length)];
@@ -201,9 +217,73 @@ export class PedestrianSystem {
     }
   }
 
+  reportCrime(position, reason = 'Criminal activity reported', showAlert = true) {
+    const newlyWanted = !this.isWanted;
+    this.isWanted = true;
+    this.escapeTimer = 0;
+
+    if (this.app.trafficSystem && position) {
+      this.app.trafficSystem.dispatchPolice(position.clone ? position.clone() : new THREE.Vector3(position.x, position.y || 0, position.z));
+    }
+    if (newlyWanted && showAlert && this.app.uiManager && this.app.uiManager.addAlert) {
+      this.app.uiManager.addAlert(`🚨 POLICE DISPATCHED: ${reason}`, 'danger');
+    }
+    if (newlyWanted && this.app.economySystem?.recordIncident) {
+      const incidentId = `player-crime-${++this.crimeSequence}`;
+      const incidentPosition = Number.isFinite(position?.x) && Number.isFinite(position?.z)
+        ? { x: position.x, z: position.z }
+        : null;
+      this.app.economySystem.recordIncident({
+        id: incidentId,
+        type: 'CRIME',
+        severity: 2,
+        reputationDelta: -1,
+        happinessModifier: -2,
+        landValueModifier: -1,
+        ...(incidentPosition ? {
+          position: incidentPosition,
+          influenceRadius: 40
+        } : {})
+      });
+      this.activeCrimeIncidentId = incidentId;
+    }
+  }
+
+  resolveCrimeIncident() {
+    if (!this.activeCrimeIncidentId) return;
+    this.app.economySystem?.resolveIncident?.(this.activeCrimeIncidentId);
+    this.activeCrimeIncidentId = null;
+  }
+
+  clearPoliceResponse() {
+    if (!this.app.trafficSystem || !this.app.trafficSystem.vehicles) return;
+    for (const vehicle of this.app.trafficSystem.vehicles) {
+      if (!vehicle.isPolice || vehicle.userControlled) continue;
+      vehicle.emergencyTarget = null;
+      vehicle.maxSpeed = vehicle.normalMaxSpeed || 20;
+      vehicle.targetSpeed = vehicle.maxSpeed;
+      vehicle.sirenActive = false;
+      vehicle.sirenTimer = 0;
+    }
+  }
+
+  ensurePopulationFloor() {
+    if (this.pedestrians.length < this.targetPedestrianCount) {
+      this.spawnPedestrians(this.targetPedestrianCount - this.pedestrians.length);
+    }
+  }
+
   update(delta) {
     const weather = this.app.environment ? this.app.environment.weatherMode : 'clear';
     const isRaining = (weather === 'rain' || weather === 'thunderstorm');
+
+    this.updateHijackTransition(delta);
+
+    this.populationCheckTimer -= delta;
+    if (this.populationCheckTimer <= 0) {
+      this.populationCheckTimer = 2.0;
+      this.ensurePopulationFloor();
+    }
 
     // Update baseball bat pick-ups
     const p = this.controlledPedestrian;
@@ -243,13 +323,17 @@ export class PedestrianSystem {
       }
     }
 
-    // Handle wanted level/police pursuit and arrest check
-    if (this.isWanted && p) {
-      const playerPos = p.mesh.position;
+    // Handle wanted level/police pursuit and arrest check across both street
+    // and vehicle control. Wanted state belongs to the player, not whichever
+    // entity happens to be controlled at this instant.
+    const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+    const wantedTarget = p || controlledVehicle;
+    if (this.isWanted && wantedTarget && wantedTarget.mesh) {
+      const playerPos = wantedTarget.mesh.position;
       
       // Update police targets to track the player
       if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-        const policeVehicles = this.app.trafficSystem.vehicles.filter(v => v.isPolice && !v.crashed);
+        const policeVehicles = this.app.trafficSystem.vehicles.filter(v => v.isPolice && !v.crashed && v !== controlledVehicle && !v.userControlled);
         let minPoliceDist = Infinity;
 
         for (const pv of policeVehicles) {
@@ -257,6 +341,7 @@ export class PedestrianSystem {
           pv.maxSpeed = 42;
           pv.targetSpeed = 42;
           pv.sirenTimer = 5.0; // Keep siren blaring!
+          pv.sirenActive = true;
           
           const distToPlayer = pv.mesh.position.distanceTo(playerPos);
           if (distToPlayer < minPoliceDist) {
@@ -264,8 +349,8 @@ export class PedestrianSystem {
           }
         }
 
-        // Arrest check: only arrest if police vehicle is right next to the player (< 3.0 meters)
-        if (minPoliceDist < 3.0) {
+        const arrestDistance = controlledVehicle ? 4.5 : 3.0;
+        if (minPoliceDist < arrestDistance) {
           this.arrestPlayer();
         } else {
           // If the player is far away from all police cruisers (> 35 meters), let them escape over time
@@ -275,13 +360,9 @@ export class PedestrianSystem {
               // Successfully escaped!
               this.isWanted = false;
               this.escapeTimer = 0;
+              this.resolveCrimeIncident();
               
-              // Reset police response
-              for (const pv of policeVehicles) {
-                pv.emergencyTarget = null;
-                pv.maxSpeed = 18;
-                pv.targetSpeed = 18;
-              }
+              this.clearPoliceResponse();
               
               // Show notification on prompt
               const prompt = document.getElementById('vehicle-enter-prompt');
@@ -297,7 +378,7 @@ export class PedestrianSystem {
           }
         }
       }
-    } else {
+    } else if (!this.isWanted) {
       this.escapeTimer = 0;
     }
 
@@ -365,6 +446,9 @@ export class PedestrianSystem {
             // HIT BY A CAR!
             const pushDir = pos.clone().sub(v.mesh.position).normalize();
             this.knockDownPedestrian(p, pushDir);
+            if (v.userControlled) {
+              this.reportCrime(v.mesh.position, 'Hit-and-run reported');
+            }
             break;
           } else if (dist < 4.5 && v.speed > 1.0) {
             isBlocked = true;
@@ -375,6 +459,10 @@ export class PedestrianSystem {
       if (p.knockedDown) continue;
 
       if (p.userControlled) {
+        if (p.isHijacking) {
+          p.speed = 0;
+          continue;
+        }
         if (this.app.cityBuilder && this.app.cityBuilder.isInWater(p.mesh.position)) {
           if (this.app.audioSystem && this.app.audioSystem.playSplash) {
             this.app.audioSystem.playSplash();
@@ -437,7 +525,7 @@ export class PedestrianSystem {
         }
 
         // Update leg/arm swing animations
-        p.update(delta);
+        p.update(delta, isRaining);
         continue;
       }
 
@@ -610,7 +698,7 @@ export class PedestrianSystem {
   }
 
   handlePedestrianActionKey() {
-    if (!this.controlledPedestrian) return;
+    if (!this.controlledPedestrian || this.hijackTransition) return false;
 
     const p = this.controlledPedestrian;
     const pos = p.mesh.position;
@@ -644,30 +732,7 @@ export class PedestrianSystem {
 
     // 3. Trigger action based on priority
     if (closestVehicle && (closestPed === null || minVehDist < minPedDist)) {
-      const success = this.app.trafficSystem.toggleUserControl(closestVehicle);
-      if (success) {
-        closestVehicle.driverPedestrian = p;
-        this.releaseControl(p);
-        
-        if (closestVehicle.vType === 'MOTORBIKE') {
-          closestVehicle.mountRider(p);
-        } else {
-          this.app.sceneManager.scene.remove(p.mesh);
-        }
-        
-        const index = this.pedestrians.indexOf(p);
-        if (index > -1) {
-          this.pedestrians.splice(index, 1);
-        }
-
-        const prompt = document.getElementById('vehicle-enter-prompt');
-        if (prompt) prompt.classList.add('hidden');
-        
-        this.app.sceneManager.startFollowTarget(closestVehicle);
-        if (this.app.uiManager) {
-          this.app.uiManager.showInspector(closestVehicle);
-        }
-      }
+      return this.beginHijack(p, closestVehicle);
     } else if (closestPed) {
       const funnyDialogues = [
         "Corporate told me to smile 15% harder today.",
@@ -702,7 +767,101 @@ export class PedestrianSystem {
       bubble.textContent = this.talkingBubbleText;
       bubble.classList.remove('hidden');
       this.updateSpeechBubblePosition();
+      return true;
     }
+    return false;
+  }
+
+  getHijackDoorPosition(vehicle, target = new THREE.Vector3()) {
+    const rotationY = vehicle?.mesh?.rotation?.y || 0;
+    target.set(-1.45, 0, 0).applyAxisAngle(UP_AXIS, rotationY);
+    target.add(vehicle.mesh.position);
+    target.y = this.getTerrainHeight(target.x, target.z);
+    return target;
+  }
+
+  beginHijack(pedestrian, vehicle) {
+    if (!pedestrian?.mesh || !vehicle?.mesh || this.hijackTransition) return false;
+    pedestrian.isHijacking = true;
+    pedestrian.speed = 0;
+    pedestrian.info.Activity = `Hijacking ${vehicle.name || vehicle.vType || 'vehicle'}`;
+    vehicle.preHijackTargetSpeed = vehicle.targetSpeed;
+    vehicle.targetSpeed = 0;
+    vehicle.speed = Math.min(Math.abs(vehicle.speed || 0), 1.5);
+
+    this.hijackTransition = {
+      pedestrian,
+      vehicle,
+      elapsed: 0,
+      duration: 0.6,
+      start: pedestrian.mesh.position.clone(),
+      door: new THREE.Vector3()
+    };
+
+    const prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) {
+      prompt.textContent = '🏎️ Hijacking in progress…';
+      prompt.classList.remove('hidden');
+    }
+    this.app.uiManager?.addAlert?.(`🏎️ Seizing ${vehicle.name || vehicle.vType || 'vehicle'}…`, 'warn');
+    return true;
+  }
+
+  updateHijackTransition(delta) {
+    const transition = this.hijackTransition;
+    if (!transition) return;
+    const { pedestrian, vehicle } = transition;
+    if (!pedestrian?.mesh || !vehicle?.mesh || vehicle.crashed) {
+      if (pedestrian) pedestrian.isHijacking = false;
+      if (vehicle) vehicle.targetSpeed = vehicle.preHijackTargetSpeed || vehicle.maxSpeed;
+      this.hijackTransition = null;
+      return;
+    }
+
+    transition.elapsed += Math.max(0, delta);
+    const progress = Math.min(1, transition.elapsed / transition.duration);
+    const eased = progress * progress * (3 - 2 * progress);
+    this.getHijackDoorPosition(vehicle, transition.door);
+    pedestrian.mesh.position.lerpVectors(transition.start, transition.door, eased);
+    pedestrian.mesh.lookAt(vehicle.mesh.position.x, pedestrian.mesh.position.y, vehicle.mesh.position.z);
+    if (pedestrian.armL && pedestrian.armR) {
+      pedestrian.armL.rotation.x = -1.15 * eased;
+      pedestrian.armR.rotation.x = -1.35 * eased;
+    }
+
+    if (progress >= 1) this.finalizeHijack(transition);
+  }
+
+  finalizeHijack(transition) {
+    if (this.hijackTransition !== transition) return false;
+    this.hijackTransition = null;
+    const { pedestrian, vehicle } = transition;
+    pedestrian.isHijacking = false;
+
+    const success = this.app.trafficSystem.toggleUserControl(vehicle);
+    if (!success) {
+      vehicle.targetSpeed = vehicle.preHijackTargetSpeed || vehicle.maxSpeed;
+      pedestrian.info.Activity = 'Hijack failed';
+      return false;
+    }
+
+    vehicle.preHijackTargetSpeed = null;
+    vehicle.driverPedestrian = pedestrian;
+    if (vehicle.vType === 'MOTORBIKE') {
+      vehicle.mountRider(pedestrian);
+    } else {
+      this.app.sceneManager.scene.remove(pedestrian.mesh);
+    }
+
+    this.app.inspectorHud?.unregisterObject?.(pedestrian.mesh);
+    const index = this.pedestrians.indexOf(pedestrian);
+    if (index > -1) this.pedestrians.splice(index, 1);
+
+    const prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) prompt.classList.add('hidden');
+    this.app.sceneManager.startFollowTarget(vehicle);
+    this.app.uiManager?.showInspector?.(vehicle);
+    return true;
   }
 
   updateSpeechBubblePosition() {
@@ -776,6 +935,7 @@ export class PedestrianSystem {
       
       pedestrian.userControlled = true;
       this.controlledPedestrian = pedestrian;
+      this.app.gameManager?.setMode?.('ACTION', { reason: 'pedestrian-control' });
       pedestrian.info['Mood'] = '🎮 USER CONTROLLED';
       pedestrian.info['Activity'] = 'Walking streets';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
@@ -787,13 +947,9 @@ export class PedestrianSystem {
 
   cullPedestrian(p) {
     if (!p) return;
-    p.userControlled = false;
-    if (this.controlledPedestrian === p) {
-      this.controlledPedestrian = null;
-    }
-    if (this.app && this.app.uiManager && (this.app.uiManager.selectedEntity === p || !this.controlledPedestrian)) {
-      this.app.uiManager.hideInspector();
-    }
+    const wasControlled = this.controlledPedestrian === p || p.userControlled;
+    if (wasControlled) this.releaseControl(p);
+
     const prompt = document.getElementById('vehicle-enter-prompt');
     if (prompt) prompt.classList.add('hidden');
 
@@ -802,15 +958,35 @@ export class PedestrianSystem {
         this.app.sceneManager.breakToFreeOrbit();
       }
     }
-    if (p.mesh && p.mesh.parent) {
-      p.mesh.parent.remove(p.mesh);
+    // Recover citizens to the closest safe sidewalk instead of permanently
+    // shrinking the 60-agent crowd whenever one enters a river volume.
+    const safeNodes = Array.from(this.nodes.values()).filter(node =>
+      node.nextNodes.length > 0 && !(this.app.cityBuilder && this.app.cityBuilder.isInWater(node.pos))
+    );
+    let closestNode = null;
+    let closestDistance = Infinity;
+    for (const node of safeNodes) {
+      const distance = p.mesh.position.distanceTo(node.pos);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestNode = node;
+      }
     }
-    if (this.app && this.app.inspectorHud) {
-      this.app.inspectorHud.unregisterObject(p.mesh);
+    if (closestNode) {
+      p.mesh.position.copy(closestNode.pos);
+      p.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
+      p.currentNode = closestNode;
+      p.targetNode = closestNode.nextNodes[0] || closestNode;
+      p.mesh.lookAt(p.targetNode.pos);
     }
-    const idx = this.pedestrians.indexOf(p);
-    if (idx !== -1) {
-      this.pedestrians.splice(idx, 1);
+    p.knockedDown = false;
+    p.isJumping = false;
+    p.jumpVelocity = 0;
+    p.speed = 0;
+    p.targetSpeed = p.maxSpeed;
+
+    if (this.app.uiManager && this.app.uiManager.addAlert) {
+      this.app.uiManager.addAlert(wasControlled ? '🌊 Citizen rescued from the river; walk control released.' : '🚶 Citizen returned to the sidewalk network.', 'warn');
     }
   }
 
@@ -819,6 +995,9 @@ export class PedestrianSystem {
     pedestrian.userControlled = false;
     if (this.controlledPedestrian === pedestrian) {
       this.controlledPedestrian = null;
+    }
+    if (!this.app.trafficSystem?.controlledVehicle) {
+      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'pedestrian-release' });
     }
     
     pedestrian.info['Mood'] = 'Energized';
@@ -853,6 +1032,9 @@ export class PedestrianSystem {
   }
 
   getTerrainHeight(x, z) {
+    const userBridgeHeight = this.app?.cityBuilder?.getUserBridgeDeckHeight?.(x, z);
+    if (userBridgeHeight !== null && userBridgeHeight !== undefined) return userBridgeHeight;
+
     // 1. Bridges over the rivers (first river X: 110 to 210, second river X: 380 to 420)
     if (x >= 110 && x <= 210) {
       if (Math.abs(z) <= 9.5) {
@@ -1037,10 +1219,7 @@ export class PedestrianSystem {
           v.fireMesh = fireMesh;
 
           // Dispatch police for destruction
-          this.isWanted = true;
-          if (this.app.trafficSystem) {
-            this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
-          }
+          this.reportCrime(ped.mesh.position, 'Vehicle destruction reported', false);
           if (this.app.uiManager && this.app.uiManager.addAlert) {
             this.app.uiManager.addAlert("🚨 POLICE DISPATCHED: Vehicle destruction reported!", "danger");
           }
@@ -1089,10 +1268,7 @@ export class PedestrianSystem {
         }
 
         // Dispatch police for assault
-        this.isWanted = true;
-        if (this.app.trafficSystem) {
-          this.app.trafficSystem.dispatchPolice(ped.mesh.position.clone());
-        }
+        this.reportCrime(ped.mesh.position, 'Citizen assault reported', false);
         if (this.app.uiManager && this.app.uiManager.addAlert) {
           this.app.uiManager.addAlert(`🚨 POLICE DISPATCHED: Citizen assault reported!`, 'danger');
         }
@@ -1107,7 +1283,9 @@ export class PedestrianSystem {
   }
 
   arrestPlayer() {
-    if (!this.controlledPedestrian) return;
+    const ped = this.controlledPedestrian;
+    const controlledVehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
+    if (!ped && !controlledVehicle) return;
 
     // Show arrested overlay
     const overlay = document.getElementById('arrested-overlay');
@@ -1120,28 +1298,30 @@ export class PedestrianSystem {
 
     // Clear wanted state
     this.isWanted = false;
+    this.escapeTimer = 0;
+    this.resolveCrimeIncident();
 
     // Reset police targets
-    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-      for (const v of this.app.trafficSystem.vehicles) {
-        if (v.isPolice) {
-          v.emergencyTarget = null;
-          v.maxSpeed = 18;
-          v.targetSpeed = 18;
-        }
+    this.clearPoliceResponse();
+
+    // Remove baseball bat from pedestrian
+    if (ped) {
+      ped.hasBaseballBat = false;
+      if (ped.batMesh) {
+        ped.armR.remove(ped.batMesh);
+        ped.batMesh = null;
       }
     }
 
-    // Remove baseball bat from pedestrian
-    const ped = this.controlledPedestrian;
-    ped.hasBaseballBat = false;
-    if (ped.batMesh) {
-      ped.armR.remove(ped.batMesh);
-      ped.batMesh = null;
+    if (controlledVehicle) {
+      controlledVehicle.sirenActive = false;
+      if (controlledVehicle.vType === 'AMBULANCE' && this.app.audioSystem) {
+        this.app.audioSystem.stopAmbulanceSiren(controlledVehicle);
+      }
+      this.app.trafficSystem.releaseControl(controlledVehicle);
+    } else {
+      this.releaseControl(ped);
     }
-
-    // Release control of pedestrian
-    this.releaseControl(ped);
 
     // Stop camera follow and reset to orbital view
     this.app.sceneManager.stopFollowTarget();

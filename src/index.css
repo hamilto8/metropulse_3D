@@ -2838,3 +2838,239 @@ input:checked + .slider.round:before {
   font-size: 1.35rem;
 }
 
+/* ── Integrated game-state, economy, and action HUD refinements ── */
+.top-header-container {
+  width: min(98%, 1480px);
+}
+
+.top-pill-left,
+.top-pill-right {
+  gap: 12px;
+  padding-inline: 14px;
+}
+
+.top-alert-item {
+  max-width: 170px;
+}
+
+.top-alert-item .stat-val {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.left-sidebar {
+  top: 92px;
+  max-height: calc(100vh - 195px);
+}
+
+.bottom-left-widgets {
+  left: 315px;
+  bottom: 95px;
+}
+
+.camera-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.sidebar-action-btn {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font: 600 0.72rem var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-action-btn:hover,
+.sidebar-action-btn.active {
+  border-color: #00f0ff;
+  background: rgba(0, 240, 255, 0.14);
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.18);
+}
+
+.sidebar-action-btn:disabled {
+  cursor: default;
+  opacity: 0.75;
+  border-color: rgba(52, 211, 153, 0.5);
+  color: #6ee7b7;
+}
+
+.simulation-mode-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.setting-row {
+  gap: 8px;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 100px;
+  color: #64748b;
+  font: 600 0.6rem var(--font-mono);
+}
+
+.volume-control input {
+  width: 74px;
+  accent-color: #00f0ff;
+}
+
+.minimap-hud {
+  top: 92px;
+}
+
+.inspector-hud {
+  top: 245px;
+  max-height: calc(100vh - 355px);
+  overflow-y: auto;
+}
+
+.combat-action {
+  border-color: rgba(251, 146, 60, 0.45);
+  color: #fdba74;
+}
+
+.street-speedometer {
+  position: fixed;
+  right: 30px;
+  bottom: 115px;
+  z-index: 80;
+  width: 126px;
+  height: 126px;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  background: radial-gradient(circle, rgba(8, 18, 36, 0.9) 45%, rgba(0, 240, 255, 0.16));
+  border: 2px solid rgba(0, 240, 255, 0.65);
+  box-shadow: 0 0 28px rgba(0, 240, 255, 0.32), inset 0 0 22px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.speedometer-value {
+  color: #fff;
+  font: 800 2.2rem/1 var(--font-mono);
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.75);
+}
+
+.speedometer-unit,
+.speedometer-gear {
+  color: #00f0ff;
+  font: 700 0.62rem/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.street-control-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 92px;
+  transform: translateX(-50%);
+  z-index: 75;
+  max-width: min(820px, 80vw);
+  padding: 7px 15px;
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(8, 18, 36, 0.82);
+  color: #cbd5e1;
+  font: 600 0.7rem var(--font-mono);
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+}
+
+.dialogue-avatar {
+  position: relative;
+  isolation: isolate;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  filter: contrast(1.2) saturate(0.72);
+  border: 2px solid #dbeafe;
+  border-radius: 48% 52% 45% 55%;
+  background:
+    repeating-linear-gradient(165deg, transparent 0 4px, rgba(255,255,255,0.13) 5px 6px),
+    rgba(8, 18, 36, 0.95);
+  transform: rotate(-1deg);
+  box-shadow: 3px 3px 0 rgba(0, 240, 255, 0.35);
+}
+
+body[data-game-mode="action"] .left-sidebar,
+body[data-game-mode="action"] .bottom-left-widgets {
+  opacity: 0.25;
+  transition: opacity 0.25s ease;
+}
+
+body[data-game-mode="action"] .left-sidebar:hover,
+body[data-game-mode="action"] .bottom-left-widgets:hover {
+  opacity: 1;
+}
+
+@media (max-width: 1180px) {
+  .top-alert-item,
+  #stat-fps,
+  #stat-pedestrians {
+    display: none;
+  }
+
+  .top-pill-left,
+  .top-pill-right {
+    gap: 8px;
+  }
+
+  .bottom-right-toolbar {
+    display: none;
+  }
+
+  .bottom-left-widgets {
+    display: none;
+  }
+}
+
+@media (max-width: 780px) {
+  .top-pill-right,
+  .brand-pill .badge-sim,
+  .stat-pill-item[title="Citizen Happiness"] {
+    display: none;
+  }
+
+  .top-header-container {
+    justify-content: center;
+  }
+
+  .top-pill-left {
+    position: absolute;
+    top: 62px;
+  }
+
+  .left-sidebar {
+    width: min(270px, calc(100vw - 40px));
+  }
+
+  .inspector-hud {
+    display: none;
+  }
+
+  .bottom-left-widgets {
+    display: none;
+  }
+
+  .bottom-time-bar {
+    width: calc(100vw - 24px);
+    box-sizing: border-box;
+    padding-inline: 12px;
+  }
+
+  .time-scrubber-wrapper,
+  .speed-selector {
+    display: none;
+  }
+}

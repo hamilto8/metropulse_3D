@@ -44,7 +44,7 @@ export class InputManager {
         this.keys['space'] = true;
       }
       this.setInterface('KEYBOARD');
-      if (e.key === 'Shift') {
+      if (e.key === 'Shift' && !e.repeat) {
         const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
         if (vehicle && vehicle.toggleAmbulanceSiren) {
           vehicle.toggleAmbulanceSiren(this.app.audioSystem);
@@ -257,8 +257,9 @@ export class InputManager {
     // View / Back Button (Btn 8): Reset Vehicle
     if (this.justPressed('btn8', this.isButtonPressed(gp, 8))) {
       const vehicle = this.app.trafficSystem ? this.app.trafficSystem.controlledVehicle : null;
-      if (vehicle && typeof vehicle.resetOrientation === 'function') {
-        vehicle.resetOrientation();
+      const physicsVehicle = vehicle ? vehicle.physicsVehicle : null;
+      if (physicsVehicle && typeof physicsVehicle.resetPosition === 'function') {
+        physicsVehicle.resetPosition();
         if (this.app.uiManager) {
           this.app.uiManager.showToast('🔄 Vehicle Orientation Reset');
         }

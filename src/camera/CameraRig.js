@@ -21,9 +21,51 @@ export class CameraRig {
     // Shake offset
     this.shakeIntensity = 0;
     this.shakeOffset = new THREE.Vector3();
+    this.appliedShakeOffset = new THREE.Vector3();
 
     // Smoothed FOV
     this.currentFov = 60;
+
+    // Street-level mouse look (hold right mouse button while in chase mode).
+    this.chaseYaw = 0;
+    this.chasePitch = 0;
+    this.isPointerLooking = false;
+    this.bindPointerLook();
+  }
+
+  bindPointerLook() {
+    const element = this.controls?.domElement;
+    if (!element?.addEventListener) return;
+
+    this._onPointerDown = event => {
+      if (event.button !== 2 || this.state === 'ORBIT_MACRO') return;
+      this.isPointerLooking = true;
+      element.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    };
+    this._onPointerMove = event => {
+      if (!this.isPointerLooking) return;
+      this.chaseYaw -= event.movementX * 0.004;
+      this.chasePitch = THREE.MathUtils.clamp(
+        this.chasePitch - event.movementY * 0.003,
+        -0.3,
+        0.55
+      );
+    };
+    this._onPointerUp = event => {
+      if (event.button !== 2) return;
+      this.isPointerLooking = false;
+      element.releasePointerCapture?.(event.pointerId);
+    };
+    this._onContextMenu = event => {
+      if (this.state !== 'ORBIT_MACRO') event.preventDefault();
+    };
+
+    element.addEventListener('pointerdown', this._onPointerDown);
+    element.addEventListener('pointermove', this._onPointerMove);
+    element.addEventListener('pointerup', this._onPointerUp);
+    element.addEventListener('pointercancel', this._onPointerUp);
+    element.addEventListener('contextmenu', this._onContextMenu);
   }
 
   // Quintic smoothstep for ultra-silky cinematic swoops
@@ -34,6 +76,7 @@ export class CameraRig {
   // Transition from high overhead down to street level chase behind vehicle
   swoopToStreet(targetEntity, duration = 1.25) {
     if (!targetEntity || !targetEntity.mesh) return;
+    this.removeAppliedShake();
 
     // Save current macro view so we can ascend back to it later
     if (this.state === 'ORBIT_MACRO') {
@@ -42,6 +85,8 @@ export class CameraRig {
     }
 
     this.followTarget = targetEntity;
+    this.chaseYaw = 0;
+    this.chasePitch = 0;
     this.state = 'SWOOP_TO_STREET';
     this.transitionTimer = 0;
     this.transitionDuration = duration;
@@ -54,6 +99,7 @@ export class CameraRig {
 
   // Transition back up to overhead city planner view
   ascendToMacro(duration = 1.0) {
+    this.removeAppliedShake();
     this.state = 'ASCEND_TO_MACRO';
     this.transitionTimer = 0;
     this.transitionDuration = duration;
@@ -68,6 +114,19 @@ export class CameraRig {
     this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
   }
 
+  removeAppliedShake() {
+    if (this.appliedShakeOffset.lengthSq() === 0) return false;
+    this.camera.position.sub(this.appliedShakeOffset);
+    this.appliedShakeOffset.set(0, 0, 0);
+    return true;
+  }
+
+  applyShake() {
+    if (this.shakeIntensity <= 0 || this.shakeOffset.lengthSq() === 0) return;
+    this.camera.position.add(this.shakeOffset);
+    this.appliedShakeOffset.copy(this.shakeOffset);
+  }
+
   getDesiredChasePose() {
     if (!this.followTarget || !this.followTarget.mesh) {
       return {
@@ -79,17 +138,19 @@ export class CameraRig {
     const mesh = this.followTarget.mesh;
     const targetPos = mesh.position.clone();
     const rotation = mesh.rotation.y;
+    const viewRotation = rotation + this.chaseYaw;
 
     const isPhysicsCar = this.followTarget.physicsVehicle || this.followTarget.userControlled;
     const distance = isPhysicsCar ? 15.0 : (this.followTarget.type === 'VEHICLE' ? 17.0 : 8.0);
     const height = isPhysicsCar ? 4.5 : (this.followTarget.type === 'VEHICLE' ? 6.5 : 3.5);
 
-    const offsetX = -Math.sin(rotation) * distance;
-    const offsetZ = -Math.cos(rotation) * distance;
+    const horizontalDistance = distance * Math.cos(this.chasePitch);
+    const offsetX = -Math.sin(viewRotation) * horizontalDistance;
+    const offsetZ = -Math.cos(viewRotation) * horizontalDistance;
 
     const desiredCamPos = new THREE.Vector3(
       targetPos.x + offsetX,
-      targetPos.y + height,
+      targetPos.y + height + Math.sin(this.chasePitch) * distance,
       targetPos.z + offsetZ
     );
 
@@ -107,6 +168,10 @@ export class CameraRig {
   }
 
   update(delta) {
+    // Remove the previous frame's render-only offset before updating the base
+    // camera pose. Without this, repeated impacts random-walk the orbit camera.
+    this.removeAppliedShake();
+
     // 1. Update shake intensity decay
     if (this.shakeIntensity > 0) {
       this.shakeOffset.set(
@@ -128,9 +193,7 @@ export class CameraRig {
       this.controls.enabled = true;
       this.controls.update();
       // Apply shake if any
-      if (this.shakeIntensity > 0) {
-        this.camera.position.add(this.shakeOffset);
-      }
+      this.applyShake();
       return;
     }
 
@@ -186,8 +249,6 @@ export class CameraRig {
     }
 
     // Apply shake offset
-    if (this.shakeIntensity > 0) {
-      this.camera.position.add(this.shakeOffset);
-    }
+    this.applyShake();
   }
 }

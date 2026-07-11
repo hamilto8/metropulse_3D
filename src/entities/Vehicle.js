@@ -15,8 +15,10 @@ export class Vehicle {
     this.mountedRider = null;
     this.isPolice = (type === 'POLICE');
     this.sirenTimer = 0;
+    this.sirenFlashPhase = 0;
     this.sirenLights = [];
     this.sirenActive = false;
+    this.wheelRadius = 0.4;
 
     this.info = {
       'Model': name,
@@ -80,6 +82,7 @@ export class Vehicle {
 
     const length = 2.2, width = 0.65, height = 1.0;
     const wheelRadius = 0.35, wheelWidth = 0.16;
+    this.wheelRadius = wheelRadius;
 
     // Main engine & lower chassis frame
     const engineBlock = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.65), darkMat);
@@ -184,6 +187,7 @@ export class Vehicle {
       length = 7.8; width = 2.5; height = 2.9;
       wheelRadius = 0.6;
     }
+    this.wheelRadius = wheelRadius;
 
     // 1. Main Chassis Body
     const chassisGeo = new THREE.BoxGeometry(width, height, length);
@@ -367,18 +371,41 @@ export class Vehicle {
     }
   }
 
+  toggleAmbulanceSiren(audioSystem) {
+    if (this.vType !== 'AMBULANCE' && !this.isPolice) return false;
+    this.sirenActive = !this.sirenActive;
+
+    if (audioSystem) {
+      if (this.vType === 'AMBULANCE') {
+        if (this.sirenActive) {
+          audioSystem.startAmbulanceSiren(this);
+        } else {
+          audioSystem.stopAmbulanceSiren(this);
+        }
+      } else if (this.sirenActive) {
+        // Police audio is spatialized by TrafficSystem for AI vehicles. A
+        // controlled cruiser gets immediate audible feedback on activation.
+        audioSystem.playSiren(1.5);
+      }
+    }
+
+    return this.sirenActive;
+  }
+
   update(delta) {
     // 1. Wheel rotation
-    const wheelRotSpeed = (this.speed / 0.4) * delta;
+    const speedMs = Number.isFinite(this.speed) ? this.speed : 0;
+    const wheelRotSpeed = (speedMs / Math.max(0.1, this.wheelRadius)) * delta;
     for (const wheel of this.wheels) {
       wheel.rotation.x += wheelRotSpeed;
     }
 
     // 2. Emergency Siren strobe light flashing animation
     if (this.sirenLights.length >= 2) {
-      if (this.sirenActive || (this.isPolice && this.sirenActive !== false)) {
-        this.sirenTimer += delta * 9;
-        const isOdd = Math.floor(this.sirenTimer) % 2 === 0;
+      const shouldFlash = this.sirenActive || (this.isPolice && (this.emergencyTarget != null || this.sirenTimer > 0));
+      if (shouldFlash) {
+        this.sirenFlashPhase += delta * 9;
+        const isOdd = Math.floor(this.sirenFlashPhase) % 2 === 0;
         this.sirenLights[0].mesh.material.color.setHex(isOdd ? this.sirenLights[0].color : 0x1a0000);
         this.sirenLights[1].mesh.material.color.setHex(isOdd ? 0x111111 : this.sirenLights[1].color);
       } else {
@@ -388,7 +415,26 @@ export class Vehicle {
     }
 
     // 3. Update info data
-    this.info['Speed'] = `${Math.round(this.speed * 1.8)} km/h`;
-    this.info['Status'] = this.speed < 1.0 ? 'Stopped (Traffic/Light)' : 'Cruising';
+    if (this.physicsVehicle) {
+      this.info['Speed'] = `${this.physicsVehicle.speedKmH} km/h (Gear ${this.physicsVehicle.gear})`;
+    } else {
+      this.info['Speed'] = `${Math.round(Math.abs(speedMs) * 3.6)} km/h`;
+    }
+
+    if (this.onFire) {
+      this.info['Status'] = '🔥 ON FIRE!';
+    } else if (this.crashed) {
+      if (this.info['Status'] !== '💥 DESTROYED') {
+        this.info['Status'] = '💥 CRASHED';
+      }
+    } else if (this.userControlled) {
+      this.info['Status'] = '🎮 USER CONTROLLED';
+    } else if (this.isParked) {
+      this.info['Status'] = '🅿️ Parked';
+    } else if (this.emergencyTarget) {
+      this.info['Status'] = '🚨 EMERGENCY RESPONSE';
+    } else {
+      this.info['Status'] = Math.abs(speedMs) < 1.0 ? 'Stopped (Traffic/Light)' : 'Cruising';
+    }
   }
 }

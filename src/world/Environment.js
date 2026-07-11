@@ -21,11 +21,29 @@ export class Environment {
     this.thunderVolume = 1.0;
 
     // Dynamic weather cycle state
-    this.isDynamicWeather = false;
-    this.weatherCycleTimer = 0;
+    this.isDynamicWeather = true;
+    this.weatherCycleTimer = 45;
+    this.weatherSequence = ['clear', 'mist', 'rain', 'thunderstorm'];
+    this.weatherDurations = {
+      clear: 45,
+      mist: 30,
+      rain: 40,
+      thunderstorm: 28
+    };
+    this.wasDynamicWeatherEnabled = true;
+
+    // Wet-surface state. Materials are captured lazily so editor-placed roads
+    // can join the effect without requiring a hard dependency on CityBuilder.
+    this.wetness = 0;
+    this.targetWetness = 0;
+    this.wetSurfaceEntries = [];
+    this.wetSurfaceMaterials = new Set();
+    this.wetSurfaceScanTimer = 0;
+    this.wetSurfaceTint = new THREE.Color(0x101827);
 
     this.initSkyAndStars();
     this.initRain();
+    this.collectWetSurfaceMaterials();
   }
 
   initSkyAndStars() {
@@ -150,50 +168,136 @@ export class Environment {
     this.scene.add(this.rainParticles);
   }
 
-  setWeather(mode) {
-    this.weatherMode = mode;
+  setWeather(mode, { sync = true, resetCycleTimer = false } = {}) {
+    const normalizedMode = this.weatherSequence.includes(mode) ? mode : 'clear';
+    this.weatherMode = normalizedMode;
     this.flashIntensity = 0;
     this.flashSequence = [];
     this.thunderTimer = -1;
 
-    if (mode === 'clear') {
+    if (normalizedMode === 'clear') {
       this.scene.fog.density = 0.0035;
       if (this.rainMat) this.rainMat.opacity = 0;
-    } else if (mode === 'mist') {
+      this.targetWetness = 0;
+    } else if (normalizedMode === 'mist') {
       this.scene.fog.density = 0.015;
       if (this.rainMat) this.rainMat.opacity = 0;
-    } else if (mode === 'rain') {
+      this.targetWetness = 0.12;
+    } else if (normalizedMode === 'rain') {
       this.scene.fog.density = 0.008;
       if (this.rainMat) this.rainMat.opacity = 0.6;
-    } else if (mode === 'thunderstorm') {
+      this.targetWetness = 0.72;
+    } else if (normalizedMode === 'thunderstorm') {
       this.scene.fog.density = 0.012;
       if (this.rainMat) this.rainMat.opacity = 0.85;
       this.lightningTimer = 3.0 + Math.random() * 5.0; // Trigger lightning soon!
+      this.targetWetness = 1;
+    }
+
+    this.collectWetSurfaceMaterials();
+    if (resetCycleTimer && this.isDynamicWeather) {
+      this.weatherCycleTimer = this.getWeatherDuration(normalizedMode);
+    }
+    if (sync) this.syncWeatherIntegration(normalizedMode);
+    return normalizedMode;
+  }
+
+  setDynamicWeather(enabled) {
+    this.isDynamicWeather = Boolean(enabled);
+    this.wasDynamicWeatherEnabled = this.isDynamicWeather;
+    this.weatherCycleTimer = this.isDynamicWeather ? this.getWeatherDuration(this.weatherMode) : 0;
+    return this.isDynamicWeather;
+  }
+
+  getWeatherDuration(mode = this.weatherMode) {
+    return this.weatherDurations[mode] || 35;
+  }
+
+  advanceWeatherCycle() {
+    const currentIndex = this.weatherSequence.indexOf(this.weatherMode);
+    const nextIndex = (Math.max(0, currentIndex) + 1) % this.weatherSequence.length;
+    const nextMode = this.weatherSequence[nextIndex];
+    this.setWeather(nextMode, { sync: true, resetCycleTimer: false });
+    this.weatherCycleTimer = this.getWeatherDuration(nextMode);
+    return nextMode;
+  }
+
+  syncWeatherIntegration(mode) {
+    this.app?.physicsWorld?.setWeatherFriction?.(mode);
+    this.app?.uiManager?.syncWeatherButtons?.(mode);
+
+    const gameManager = this.app?.gameManager;
+    if (typeof gameManager?.onWeatherChanged === 'function') {
+      gameManager.onWeatherChanged(mode, { source: 'Environment' });
+    }
+  }
+
+  collectWetSurfaceMaterials() {
+    const wetSurfaceColors = new Set([
+      0x1e2534, // city ground
+      0x2c3344, // asphalt road grid
+      0x222633, // suspension bridge deck
+      0x3d312a, // countryside bridge deck
+      0x22252a, // editor-placed road segment
+      0x647488  // sidewalks
+    ]);
+
+    this.scene.traverse(object => {
+      if (!object.isMesh || !object.material) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        if (!material?.isMeshStandardMaterial || !material.color) continue;
+        if (this.wetSurfaceMaterials.has(material)) continue;
+        if (!wetSurfaceColors.has(material.color.getHex())) continue;
+
+        this.wetSurfaceMaterials.add(material);
+        this.wetSurfaceEntries.push({
+          material,
+          baseColor: material.color.clone(),
+          baseRoughness: material.roughness,
+          baseMetalness: material.metalness
+        });
+      }
+    });
+  }
+
+  updateWetSurfaces(delta) {
+    const blend = 1 - Math.exp(-Math.max(0, delta) * 1.7);
+    this.wetness += (this.targetWetness - this.wetness) * blend;
+    if (Math.abs(this.targetWetness - this.wetness) < 0.001) this.wetness = this.targetWetness;
+
+    this.wetSurfaceScanTimer -= delta;
+    if (this.wetSurfaceScanTimer <= 0) {
+      this.collectWetSurfaceMaterials();
+      this.wetSurfaceScanTimer = 5;
+    }
+
+    for (const entry of this.wetSurfaceEntries) {
+      const { material, baseColor, baseRoughness, baseMetalness } = entry;
+      if (!material) continue;
+      material.color.copy(baseColor).lerp(this.wetSurfaceTint, this.wetness * 0.22);
+      material.roughness = THREE.MathUtils.lerp(baseRoughness, 0.2, this.wetness);
+      material.metalness = THREE.MathUtils.lerp(baseMetalness, Math.max(baseMetalness, 0.48), this.wetness);
     }
   }
 
   update(timeVal, delta) {
     // Dynamic weather cycling
+    if (this.isDynamicWeather && !this.wasDynamicWeatherEnabled) {
+      this.wasDynamicWeatherEnabled = true;
+      this.weatherCycleTimer = this.getWeatherDuration(this.weatherMode);
+    } else if (!this.isDynamicWeather) {
+      this.wasDynamicWeatherEnabled = false;
+    }
+
     if (this.isDynamicWeather) {
       this.weatherCycleTimer -= delta;
       if (this.weatherCycleTimer <= 0) {
-        const modes = ['clear', 'mist', 'rain', 'thunderstorm'];
-        let nextModes = modes.filter(m => m !== this.weatherMode);
-        // Bias towards clear weather slightly so it doesn't storm non-stop
-        if (this.weatherMode !== 'clear' && Math.random() < 0.45) {
-          nextModes = ['clear'];
-        }
-        const newMode = nextModes[Math.floor(Math.random() * nextModes.length)];
-        this.setWeather(newMode);
-
-        if (this.app && this.app.uiManager) {
-          this.app.uiManager.syncWeatherButtons(newMode);
-        }
-
-        // Cycle every 25 to 50 seconds
-        this.weatherCycleTimer = 25.0 + Math.random() * 25.0;
+        this.advanceWeatherCycle();
       }
     }
+
+    this.updateWetSurfaces(delta);
 
     // 1. Sky & Fog color transitions based on time of day
     const dayColor = new THREE.Color(0x3882f6); // Bright blue
@@ -308,19 +412,30 @@ export class Environment {
     // 2. Position Sun and Moon in opposition across the celestial dome
     const sunAngle = ((timeVal - 6.0) / 24.0) * Math.PI * 2.0;
     const moonAngle = sunAngle + Math.PI;
-    const orbitRadius = 1800; // Far beyond the entire terrain/city limits (X: -300 to 820) so sun/moon never intersect ground
+    // Keep the visual celestial bodies inside SceneManager's camera far plane.
+    // They follow the active view horizontally like a sky dome while retaining
+    // a world-space orbital altitude for sunrise and sunset.
+    const orbitRadius = 650;
+    const activeCamera = this.app?.sceneManager?.camera;
+    const skyCenterX = activeCamera?.position.x || 0;
+    const skyCenterZ = activeCamera?.position.z || 0;
+
+    if (this.starfield && activeCamera) {
+      this.starfield.position.x = skyCenterX;
+      this.starfield.position.z = skyCenterZ;
+    }
     
     if (this.moon) {
-      this.moon.position.x = Math.cos(moonAngle) * orbitRadius;
+      this.moon.position.x = skyCenterX + Math.cos(moonAngle) * orbitRadius;
       this.moon.position.y = Math.sin(moonAngle) * orbitRadius;
-      this.moon.position.z = -Math.sin(sunAngle * 0.5) * 250;
+      this.moon.position.z = skyCenterZ - Math.sin(sunAngle * 0.5) * 180;
       this.moon.visible = this.moon.position.y > -80;
     }
 
     if (this.sun) {
-      this.sun.position.x = Math.cos(sunAngle) * orbitRadius;
+      this.sun.position.x = skyCenterX + Math.cos(sunAngle) * orbitRadius;
       this.sun.position.y = Math.sin(sunAngle) * orbitRadius;
-      this.sun.position.z = Math.sin(sunAngle * 0.5) * 250;
+      this.sun.position.z = skyCenterZ + Math.sin(sunAngle * 0.5) * 180;
       this.sun.visible = this.sun.position.y > -80;
 
       // Dynamic color transition based on altitude (sunrise/sunset horizon vs zenith midday)
@@ -343,9 +458,10 @@ export class Environment {
 
     // 3. Update Rain Particle physics and center horizontally on active view for map-wide rainfall
     if ((this.weatherMode === 'rain' || this.weatherMode === 'thunderstorm') && this.rainParticles) {
-      if (this.app && this.app.camera) {
-        this.rainParticles.position.x = this.app.camera.position.x;
-        this.rainParticles.position.z = this.app.camera.position.z;
+      const activeCamera = this.app?.sceneManager?.camera;
+      if (activeCamera) {
+        this.rainParticles.position.x = activeCamera.position.x;
+        this.rainParticles.position.z = activeCamera.position.z;
       }
       const posAttr = this.rainParticles.geometry.attributes.position;
       const arr = posAttr.array;

@@ -23,6 +23,17 @@ export class InspectorHUD {
     }
   }
 
+  isEffectivelyVisible(object) {
+    const scene = this.app?.sceneManager?.scene;
+    let current = object;
+    while (current) {
+      if (current.visible === false) return false;
+      if (current === scene) return true;
+      current = current.parent;
+    }
+    return false;
+  }
+
   initClickEvent() {
     window.addEventListener('click', (event) => {
       // Don't raycast if clicking UI elements
@@ -36,7 +47,8 @@ export class InspectorHUD {
 
       this.raycaster.setFromCamera(this.mouse, this.app.sceneManager.camera);
       
-      const intersects = this.raycaster.intersectObjects(this.interactiveObjects, true);
+      const visibleObjects = this.interactiveObjects.filter(object => this.isEffectivelyVisible(object));
+      const intersects = this.raycaster.intersectObjects(visibleObjects, true);
       
       if (intersects.length > 0) {
         // Find top-most object with entityData

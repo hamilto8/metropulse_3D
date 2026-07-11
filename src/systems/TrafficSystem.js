@@ -5,6 +5,7 @@ import { Pedestrian } from '../entities/Pedestrian.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
+const UP_AXIS = Object.freeze(new THREE.Vector3(0, 1, 0));
 
 class TrafficNode {
   constructor(id, x, z) {
@@ -22,9 +23,14 @@ export class TrafficSystem {
     this.roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750];
     this.roadCoordsZ = [-100, -50, 0, 50, 100];
     this.laneOffset = 3.5; // Right-hand traffic lane center
+    this.targetMovingVehicleCount = 48;
+    this.nextVehicleSerial = 0;
+    this.populationCheckTimer = 2.0;
+    this.bridgePriorityEnabled = false;
+    this.placedRoadSegments = new Map();
 
     this.initWaypoints();
-    this.spawnVehicles(48);
+    this.spawnVehicles(this.targetMovingVehicleCount);
     this.spawnParkedVehicles();
     this.initKeyboardControls();
   }
@@ -52,9 +58,10 @@ export class TrafficSystem {
       // Check Honk with Shift key when controlling a vehicle!
       if (e.key === 'Shift' && this.controlledVehicle && !e.repeat) {
         if (this.app.audioSystem) {
-          if (this.controlledVehicle.isPolice) {
-            this.app.audioSystem.playSiren(1.5);
-          } else {
+          // Emergency siren toggling is handled once by InputManager. Avoid
+          // also playing a horn/siren here from this second keyboard listener.
+          const isEmergencyVehicle = this.controlledVehicle.isPolice || this.controlledVehicle.vType === 'AMBULANCE';
+          if (!isEmergencyVehicle) {
             this.app.audioSystem.playHonk();
           }
         }
@@ -105,6 +112,7 @@ export class TrafficSystem {
 
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
+      this.app.gameManager?.setMode?.('ACTION', { reason: 'vehicle-control' });
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
         this.app.uiManager.addAlert(`🏎️ Direct control engaged: ${vehicle.vType || 'VEHICLE'}`, 'info');
@@ -133,7 +141,11 @@ export class TrafficSystem {
 
       // Phase 1: Attach cannon-es PlayerVehicle if PhysicsWorld is available
       if (this.app && this.app.physicsWorld) {
-        if (vehicle.physicsBody) {
+        if (vehicle.physicsVehicle) {
+          vehicle.physicsVehicle.destroy();
+          vehicle.physicsVehicle = null;
+        }
+        if (vehicle.physicsBody && this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
           this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
         }
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
@@ -157,16 +169,32 @@ export class TrafficSystem {
       vehicle.physicsVehicle = null;
     }
     if (vehicle.physicsBody && this.app && this.app.physicsWorld) {
-      this.app.physicsWorld.world.addBody(vehicle.physicsBody);
+      // Move the lightweight AI collider to the last rendered player pose
+      // before restoring it. This prevents a stale collider from reappearing
+      // at the pre-hijack location for a frame.
+      vehicle.physicsBody.position.set(vehicle.mesh.position.x, vehicle.mesh.position.y + 1.05, vehicle.mesh.position.z);
+      vehicle.physicsBody.quaternion.set(vehicle.mesh.quaternion.x, vehicle.mesh.quaternion.y, vehicle.mesh.quaternion.z, vehicle.mesh.quaternion.w);
+      vehicle.physicsBody.velocity.set(0, 0, 0);
+      vehicle.physicsBody.angularVelocity.set(0, 0, 0);
+      vehicle.physicsBody.aabbNeedsUpdate = true;
+      if (!this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
+        this.app.physicsWorld.world.addBody(vehicle.physicsBody);
+      }
     }
 
     if (this.controlledVehicle === vehicle) {
       this.controlledVehicle = null;
     }
+    if (!this.app.pedestrianSystem?.controlledPedestrian) {
+      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'vehicle-release' });
+    }
     vehicle.info['Status'] = 'Cruising';
 
     if (this.app && this.app.audioSystem) {
       this.app.audioSystem.stopEngineSound();
+      if (vehicle.vType === 'AMBULANCE') {
+        this.app.audioSystem.stopAmbulanceSiren(vehicle);
+      }
     }
 
     // If there is an active mission in progress, fail the mission
@@ -199,6 +227,12 @@ export class TrafficSystem {
         vehicle.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
       }
       vehicle.speed = Math.max(8, vehicle.speed);
+    }
+
+    if (vehicle.physicsBody && this.app && this.app.physicsWorld) {
+      vehicle.physicsBody.position.set(vehicle.mesh.position.x, vehicle.mesh.position.y + 1.05, vehicle.mesh.position.z);
+      vehicle.physicsBody.quaternion.set(vehicle.mesh.quaternion.x, vehicle.mesh.quaternion.y, vehicle.mesh.quaternion.z, vehicle.mesh.quaternion.w);
+      vehicle.physicsBody.aabbNeedsUpdate = true;
     }
   }
 
@@ -253,26 +287,197 @@ export class TrafficSystem {
         ped.targetNode = closest.nextNodes[0] || closest;
       }
 
-      // Switch control to pedestrian
+      // Release the vehicle before taking pedestrian control. Doing this in
+      // the opposite order makes PedestrianSystem release the same vehicle a
+      // second time while switching modes.
+      this.releaseControl(v);
       this.app.pedestrianSystem.toggleUserControl(ped);
     }
 
     v.info['Driver'] = 'None (Exited)';
     ped.info['Activity'] = 'Walking streets';
 
-    // Release vehicle control (reverts it to AI/cruising flow)
-    this.releaseControl(v);
+    // If no pedestrian system is available, still return the vehicle to AI.
+    if (!this.app.pedestrianSystem) {
+      this.releaseControl(v);
+    }
+  }
+
+  getTerrainHeight(x, z) {
+    const pedestrians = this.app && this.app.pedestrianSystem;
+    if (pedestrians && typeof pedestrians.getTerrainHeight === 'function') {
+      return pedestrians.getTerrainHeight(x, z);
+    }
+    if (this.app && this.app.cityBuilder && typeof this.app.cityBuilder.getHillHeight === 'function' && x >= 420) {
+      return this.app.cityBuilder.getHillHeight(x, z) + 0.05;
+    }
+    return 0.05;
+  }
+
+  isOnPrimaryBridge(vehicle) {
+    const position = vehicle?.mesh?.position;
+    return Boolean(
+      position
+      && position.x >= 100
+      && position.x <= 210
+      && Math.abs(position.z) <= 16
+    );
+  }
+
+  toggleBridgePriority(forceEnabled = null) {
+    this.bridgePriorityEnabled = forceEnabled == null
+      ? !this.bridgePriorityEnabled
+      : Boolean(forceEnabled);
+
+    for (const vehicle of this.vehicles) {
+      if (!this.isOnPrimaryBridge(vehicle) || !vehicle.info || vehicle.userControlled) continue;
+      vehicle.info.Status = this.bridgePriorityEnabled
+        ? 'Bridge Priority Lane'
+        : 'Cruising';
+    }
+
+    return this.bridgePriorityEnabled;
+  }
+
+  getCongestionMetrics() {
+    const activeVehicles = this.vehicles.filter(vehicle => !vehicle.isParked);
+    if (activeVehicles.length === 0) {
+      return {
+        index: 0,
+        activeVehicles: 0,
+        stoppedVehicles: 0,
+        crashedVehicles: 0,
+        bridge: { index: 0, vehicles: 0, stoppedVehicles: 0 },
+        hotspots: []
+      };
+    }
+
+    let stoppedVehicles = 0;
+    let crashedVehicles = 0;
+    let bridgeVehicles = 0;
+    let bridgeStoppedVehicles = 0;
+
+    for (const vehicle of activeVehicles) {
+      const stopped = Math.abs(vehicle.speed || 0) < 1;
+      const crashed = Boolean(vehicle.crashed || vehicle.onFire);
+      if (stopped) stoppedVehicles += 1;
+      if (crashed) crashedVehicles += 1;
+      if (this.isOnPrimaryBridge(vehicle)) {
+        bridgeVehicles += 1;
+        if (stopped || crashed) bridgeStoppedVehicles += 1;
+      }
+    }
+
+    const congestionWeight = stoppedVehicles + crashedVehicles * 2;
+    return {
+      index: Math.max(0, Math.min(1, congestionWeight / activeVehicles.length)),
+      activeVehicles: activeVehicles.length,
+      stoppedVehicles,
+      crashedVehicles,
+      bridge: {
+        index: bridgeVehicles === 0 ? 0 : bridgeStoppedVehicles / bridgeVehicles,
+        vehicles: bridgeVehicles,
+        stoppedVehicles: bridgeStoppedVehicles
+      },
+      hotspots: (this.app?.trafficHeatmapSystem?.hotspots || []).slice(0, 5)
+    };
+  }
+
+  registerRoadSegment(building, spec = building?.spec) {
+    if (!building?.plot || spec?.generatorType !== 'ROAD_SEGMENT') return false;
+    const id = String(building.economyId || building.id || `road-${this.placedRoadSegments.size + 1}`);
+    if (this.placedRoadSegments.has(id)) return false;
+
+    const center = new THREE.Vector3(building.plot.x, 0, building.plot.z);
+    const rotationY = building.group?.rotation?.y || 0;
+    const halfWidth = Math.max(5, Number(building.plot.width || spec.footprint?.width || 30) * 0.5);
+    const halfDepth = Math.max(5, Number(building.plot.depth || spec.footprint?.depth || 30) * 0.5);
+    const directions = spec.roadType === 'INTERSECTION'
+      ? [
+          { suffix: 'N', offset: new THREE.Vector3(0, 0, -halfDepth) },
+          { suffix: 'S', offset: new THREE.Vector3(0, 0, halfDepth) },
+          { suffix: 'E', offset: new THREE.Vector3(halfWidth, 0, 0) },
+          { suffix: 'W', offset: new THREE.Vector3(-halfWidth, 0, 0) }
+        ]
+      : [
+          { suffix: 'N', offset: new THREE.Vector3(0, 0, -halfDepth) },
+          { suffix: 'S', offset: new THREE.Vector3(0, 0, halfDepth) }
+        ];
+
+    const centerNode = new TrafficNode(`USER_ROAD:${id}:CENTER`, center.x, center.z);
+    const segmentNodes = [centerNode];
+    this.nodes.set(centerNode.id, centerNode);
+
+    for (const { suffix, offset } of directions) {
+      offset.applyAxisAngle(UP_AXIS, rotationY);
+      const endpoint = center.clone().add(offset);
+      const endpointNode = new TrafficNode(`USER_ROAD:${id}:${suffix}`, endpoint.x, endpoint.z);
+      endpointNode.nextNodes.push(centerNode);
+      centerNode.nextNodes.push(endpointNode);
+      segmentNodes.push(endpointNode);
+      this.nodes.set(endpointNode.id, endpointNode);
+    }
+
+    const segmentNodeSet = new Set(segmentNodes);
+    for (const endpointNode of segmentNodes.slice(1)) {
+      const nearest = [...this.nodes.values()]
+        .filter(node => !segmentNodeSet.has(node))
+        .map(node => ({ node, distance: node.pos.distanceTo(endpointNode.pos) }))
+        .filter(candidate => candidate.distance <= 38)
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 2);
+      for (const { node } of nearest) {
+        if (!endpointNode.nextNodes.includes(node)) endpointNode.nextNodes.push(node);
+        if (!node.nextNodes.includes(endpointNode)) node.nextNodes.push(endpointNode);
+      }
+    }
+
+    building.trafficRoadId = id;
+    this.placedRoadSegments.set(id, {
+      id,
+      building,
+      spec,
+      nodes: segmentNodes,
+      connected: segmentNodes.some(node => node.nextNodes.some(next => !segmentNodeSet.has(next)))
+    });
+    return this.placedRoadSegments.get(id);
+  }
+
+  unregisterRoadSegment(building) {
+    const id = String(building?.trafficRoadId || building?.economyId || building?.id || '');
+    const record = this.placedRoadSegments.get(id);
+    if (!record) return false;
+
+    const removedNodes = new Set(record.nodes);
+    for (const node of this.nodes.values()) {
+      node.nextNodes = node.nextNodes.filter(nextNode => !removedNodes.has(nextNode));
+    }
+    for (const node of record.nodes) this.nodes.delete(node.id);
+    this.placedRoadSegments.delete(id);
+
+    const remainingNodes = [...this.nodes.values()].filter(node => node.nextNodes.length > 0);
+    for (const vehicle of this.vehicles) {
+      if (!removedNodes.has(vehicle.currentNode) && !removedNodes.has(vehicle.targetNode)) continue;
+      let closestNode = null;
+      let closestDistance = Infinity;
+      for (const node of remainingNodes) {
+        const distance = vehicle.mesh.position.distanceTo(node.pos);
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestNode = node;
+        }
+      }
+      vehicle.currentNode = closestNode;
+      vehicle.targetNode = closestNode?.nextNodes?.[0] || closestNode;
+    }
+    return true;
   }
 
   cullVehicle(v) {
     if (!v) return;
-    v.userControlled = false;
-    if (this.controlledVehicle === v) {
-      this.controlledVehicle = null;
-    }
-    if (this.app && this.app.uiManager && (this.app.uiManager.selectedEntity === v || !this.controlledVehicle)) {
-      this.app.uiManager.hideInspector();
-    }
+    const wasControlled = this.controlledVehicle === v || v.userControlled;
+    if (wasControlled) this.releaseControl(v);
+
     const prompt = document.getElementById('vehicle-enter-prompt');
     if (prompt) prompt.classList.add('hidden');
 
@@ -281,15 +486,12 @@ export class TrafficSystem {
         this.app.sceneManager.breakToFreeOrbit();
       }
     }
-    if (v.mesh && v.mesh.parent) {
-      v.mesh.parent.remove(v.mesh);
-    }
-    if (this.app && this.app.inspectorHud) {
-      this.app.inspectorHud.unregisterObject(v.mesh);
-    }
-    const idx = this.vehicles.indexOf(v);
-    if (idx !== -1) {
-      this.vehicles.splice(idx, 1);
+    // Water is a recoverable out-of-bounds condition. Reuse the entity rather
+    // than permanently shrinking the promised 48-vehicle simulation.
+    v.isParked = false;
+    this.respawnVehicle(v, true);
+    if (this.app && this.app.uiManager && this.app.uiManager.addAlert) {
+      this.app.uiManager.addAlert(wasControlled ? '🌊 Vehicle recovered from the river; direct control released.' : '🚗 Traffic vehicle recovered to the road network.', 'warn');
     }
   }
 
@@ -316,11 +518,11 @@ export class TrafficSystem {
     if (v.physicsVehicle) {
       v.physicsVehicle.applyInput(this.keys, delta);
       v.physicsVehicle.syncMesh();
-      v.speed = v.physicsVehicle.speedKmH;
+      v.speed = v.physicsVehicle.speedKmH / 3.6;
       Object.assign(v.info, v.physicsVehicle.info);
 
       if (this.app.audioSystem) {
-        this.app.audioSystem.updateEngineSound(v.speed, v.maxSpeed * 3.6);
+        this.app.audioSystem.updateEngineSound(v.physicsVehicle.speedKmH, v.maxSpeed * 3.6);
       }
 
       // Check collision with other AI vehicles (ALWAYS push apart physically; guard audio with cooldown)
@@ -350,6 +552,9 @@ export class TrafficSystem {
           // 3. Trigger audio & horn only once per impact interval
           if (v.bumpCooldown <= 0) {
             v.bumpCooldown = 0.55;
+            if (Math.abs(v.speed) > 8.0 && this.app.pedestrianSystem && typeof this.app.pedestrianSystem.reportCrime === 'function') {
+              this.app.pedestrianSystem.reportCrime(v.mesh.position, 'Reckless vehicle ramming reported');
+            }
             const audio = this.app?.audioSystem;
             if (audio) {
               audio.playBump();
@@ -371,9 +576,12 @@ export class TrafficSystem {
       if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) {
         for (const ped of this.app.pedestrianSystem.pedestrians) {
           if (ped.knockedDown) continue;
-          if (v.mesh.position.distanceTo(ped.mesh.position) < 3.2) {
+          if (Math.abs(v.speed) > 1.5 && v.mesh.position.distanceTo(ped.mesh.position) < 3.2) {
             const knockDir = ped.mesh.position.clone().sub(v.mesh.position).normalize();
             this.app.pedestrianSystem.knockDownPedestrian(ped, knockDir);
+            if (Math.abs(v.speed) > 2.0 && typeof this.app.pedestrianSystem.reportCrime === 'function') {
+              this.app.pedestrianSystem.reportCrime(v.mesh.position, 'Hit-and-run reported');
+            }
           }
         }
       }
@@ -497,7 +705,7 @@ export class TrafficSystem {
             other.crashed = true;
             other.crashTimer = 10.0;
             if (this.app.audioSystem) this.app.audioSystem.playExplosion();
-            if (this.app.explosionManager) this.app.explosionManager.spawnExplosion(other.mesh.position.clone());
+            if (this.app.explosionManager) this.app.explosionManager.createExplosion(other.mesh.position.clone());
             v.bumpCooldown = 0.5;
           } else {
             // CAR-TO-CAR COLLISION BOUNCE EFFECT!
@@ -676,10 +884,11 @@ export class TrafficSystem {
     const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
 
     for (let i = 0; i < count; i++) {
-      const typeIdx = i % types.length;
+      const serial = this.nextVehicleSerial++;
+      const typeIdx = serial % types.length;
       const vType = types[typeIdx];
-      const color = colors[i % colors.length];
-      const name = `${names[typeIdx]} #${i + 10}`;
+      const color = colors[serial % colors.length];
+      const name = `${names[typeIdx]} #${serial + 10}`;
 
       const vehicle = new Vehicle(vType, color, name);
       vehicle.crashed = false;
@@ -688,13 +897,21 @@ export class TrafficSystem {
       vehicle.normalMaxSpeed = vehicle.maxSpeed;
 
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
-      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][i % 3];
-      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[i % pedColors.length], `Driver of ${name}`);
+      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][serial % 3];
+      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[serial % pedColors.length], `Driver of ${name}`);
       if (vehicle.vType === 'MOTORBIKE' && vehicle.driverPedestrian) {
         vehicle.mountRider(vehicle.driverPedestrian);
       }
 
-      const startNode = outNodes[i % outNodes.length];
+      let startNode = outNodes[serial % outNodes.length];
+      for (let offset = 0; offset < outNodes.length; offset++) {
+        const candidate = outNodes[(serial + offset) % outNodes.length];
+        const occupied = this.vehicles.some(existing => existing.mesh.position.distanceTo(candidate.pos) < 6.0);
+        if (!occupied) {
+          startNode = candidate;
+          break;
+        }
+      }
       vehicle.mesh.position.copy(startNode.pos);
       vehicle.currentNode = startNode;
       vehicle.targetNode = startNode.nextNodes[0];
@@ -731,11 +948,25 @@ export class TrafficSystem {
       p.emergencyTarget = crashPos.clone();
       p.maxSpeed = 42; // High speed pursuit/response
       p.targetSpeed = 42;
+      p.sirenActive = true;
+    }
+  }
+
+  ensurePopulationFloor() {
+    const movingCount = this.vehicles.reduce((count, vehicle) => count + (!vehicle.isParked ? 1 : 0), 0);
+    if (movingCount < this.targetMovingVehicleCount) {
+      this.spawnVehicles(this.targetMovingVehicleCount - movingCount);
     }
   }
 
   update(delta) {
     const funMode = this.app.funMode;
+
+    this.populationCheckTimer -= delta;
+    if (this.populationCheckTimer <= 0) {
+      this.populationCheckTimer = 2.0;
+      this.ensurePopulationFloor();
+    }
 
     // Check collisions between cars in Fun Mode!
     if (funMode) {
@@ -790,11 +1021,18 @@ export class TrafficSystem {
       // Handle crashed state recovery
       if (v.crashed) {
         v.crashTimer -= delta;
+        if (v.physicsVehicle) {
+          v.physicsVehicle.applyCrashBrake();
+          v.physicsVehicle.syncMesh();
+          v.speed = v.physicsVehicle.speedKmH / 3.6;
+        }
         if (v.crashTimer <= 0) {
           // Clear accident and resume driving/parking
           v.crashed = false;
           v.mesh.rotation.z = 0;
-          if (v.isParked) {
+          if (v.userControlled && v.physicsVehicle) {
+            v.info['Status'] = '🎮 USER CONTROLLED';
+          } else if (v.isParked) {
             v.speed = 0;
             v.info['Status'] = '🅿️ Parked';
           } else {
@@ -808,6 +1046,8 @@ export class TrafficSystem {
             if (p.isPolice && p.emergencyTarget) {
               p.emergencyTarget = null;
               p.maxSpeed = p.normalMaxSpeed || 20;
+              p.targetSpeed = p.maxSpeed;
+              p.sirenActive = false;
             }
           }
         }
@@ -932,6 +1172,23 @@ export class TrafficSystem {
         if (v.stuckTimer === undefined) v.stuckTimer = 0;
         if (v.isReversing === undefined) v.isReversing = false;
         if (v.reverseTimer === undefined) v.reverseTimer = 0;
+        if (v.stuckRecoveryElapsed === undefined) v.stuckRecoveryElapsed = 0;
+
+        const tryingToMove = v.targetSpeed > 0 || isBlocked;
+        const stationaryOrRecovering = v.isReversing || (tryingToMove && Math.abs(v.speed) < 0.3);
+        if (stationaryOrRecovering) {
+          v.stuckRecoveryElapsed += delta;
+        } else {
+          v.stuckRecoveryElapsed = Math.max(0, v.stuckRecoveryElapsed - delta * 2.0);
+        }
+
+        // This timer deliberately survives individual reverse attempts. The
+        // old fallback inspected stuckTimer after resetting it to zero, so it
+        // was unreachable under a permanent obstruction.
+        if (v.stuckRecoveryElapsed > 12.0) {
+          this.respawnVehicle(v);
+          continue;
+        }
 
         if (v.isReversing) {
           v.reverseTimer -= delta;
@@ -962,11 +1219,6 @@ export class TrafficSystem {
             }
           }
 
-          // Absolute fallback: if stuck for 12.0s, respawn the vehicle to keep traffic moving!
-          if (v.stuckTimer > 12.0) {
-            this.respawnVehicle(v);
-            continue;
-          }
         }
       }
 
@@ -975,7 +1227,8 @@ export class TrafficSystem {
           if (isBlocked) {
             v.targetSpeed = 0;
           } else {
-            v.targetSpeed = v.maxSpeed;
+            const bridgeBoost = this.bridgePriorityEnabled && this.isOnPrimaryBridge(v) ? 1.25 : 1;
+            v.targetSpeed = v.maxSpeed * bridgeBoost;
           }
         } else if (!isBlocked) {
           v.targetSpeed = v.maxSpeed * 1.2;
@@ -1140,7 +1393,7 @@ export class TrafficSystem {
       }
 
       // 2. Update police/ambulance spatial siren audio
-      const hasActiveSiren = (v.isPolice && (v.emergencyTarget != null || (v.sirenTimer && v.sirenTimer > 0))) || (v.vType === 'AMBULANCE' && v.sirenActive === true);
+      const hasActiveSiren = (v.isPolice && (v.sirenActive || v.emergencyTarget != null || (v.sirenTimer && v.sirenTimer > 0))) || (v.vType === 'AMBULANCE' && v.sirenActive === true);
       if (hasActiveSiren && dist < maxAudibleDist) {
         const volumeMultiplier = Math.max(0, 1.0 - dist / maxAudibleDist);
 
@@ -1308,8 +1561,8 @@ export class TrafficSystem {
     });
   }
 
-  respawnVehicle(vehicle) {
-    if (!vehicle || vehicle.userControlled || vehicle.isParked) return;
+  respawnVehicle(vehicle, force = false) {
+    if (!vehicle || (!force && (vehicle.userControlled || vehicle.isParked))) return;
 
     // Filter for out nodes that are not currently occupied by other vehicles
     const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
@@ -1342,15 +1595,25 @@ export class TrafficSystem {
 
     // Reset vehicle variables
     vehicle.mesh.position.copy(bestNode.pos);
-    if (vehicle.physicsBody) {
-      vehicle.physicsBody.position.set(bestNode.pos.x, bestNode.pos.y + 1.05, bestNode.pos.z);
-      vehicle.physicsBody.velocity.set(0, 0, 0);
-      vehicle.physicsBody.angularVelocity.set(0, 0, 0);
-    }
-    
+    vehicle.mesh.position.y = this.getTerrainHeight(bestNode.pos.x, bestNode.pos.z);
     vehicle.currentNode = bestNode;
     vehicle.targetNode = bestNode.nextNodes[Math.floor(Math.random() * bestNode.nextNodes.length)] || bestNode.nextNodes[0];
+    if (vehicle.targetNode) {
+      vehicle.mesh.lookAt(vehicle.targetNode.pos.x, vehicle.mesh.position.y, vehicle.targetNode.pos.z);
+    }
+    if (vehicle.physicsBody) {
+      vehicle.physicsBody.position.set(vehicle.mesh.position.x, vehicle.mesh.position.y + 1.05, vehicle.mesh.position.z);
+      vehicle.physicsBody.quaternion.set(vehicle.mesh.quaternion.x, vehicle.mesh.quaternion.y, vehicle.mesh.quaternion.z, vehicle.mesh.quaternion.w);
+      vehicle.physicsBody.velocity.set(0, 0, 0);
+      vehicle.physicsBody.angularVelocity.set(0, 0, 0);
+      vehicle.physicsBody.aabbNeedsUpdate = true;
+      if (this.app.physicsWorld && !this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
+        this.app.physicsWorld.world.addBody(vehicle.physicsBody);
+      }
+    }
+
     vehicle.speed = 0;
+    vehicle.maxSpeed = vehicle.normalMaxSpeed || vehicle.maxSpeed;
     vehicle.targetSpeed = vehicle.maxSpeed;
     vehicle.crashed = false;
     vehicle.crashTimer = 0;
@@ -1358,6 +1621,8 @@ export class TrafficSystem {
     vehicle.stuckTimer = 0;
     vehicle.isReversing = false;
     vehicle.reverseTimer = 0;
+    vehicle.stuckRecoveryElapsed = 0;
+    vehicle.sirenActive = false;
     if (vehicle.info) {
       vehicle.info['Status'] = 'Cruising';
       vehicle.info['Mood'] = 'Relaxed ☀️';

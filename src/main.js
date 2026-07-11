@@ -23,16 +23,39 @@ import { CityEditorSystem } from './world/CityEditorSystem.js';
 import { CityEditorUI } from './ui/CityEditorUI.js';
 import { MinimapHUD } from './ui/MinimapHUD.js';
 import { InputManager } from './systems/InputManager.js';
+import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
+import { EconomySystem } from './systems/EconomySystem.js';
+import { GameManager } from './core/GameManager.js';
 
 class MetroPulseApp {
   constructor() {
     const container = document.getElementById('canvas-container');
-    
+
+    // Canonical state stores are renderer-agnostic and shared by both loops.
+    this.gameManager = new GameManager();
+    this.nextEconomyBuildingId = 1;
+    this.economySystem = new EconomySystem({
+      initialTreasury: 1_250_300,
+      passiveIncomeRate: 350,
+      population: 2450,
+      happiness: 72,
+      landValue: 100,
+      reputation: 0,
+      services: {
+        power: { capacity: 120, demand: 90 },
+        water: { capacity: 100, demand: 82 },
+        fire: { capacity: 70, demand: 60 }
+      },
+      eastDistrictUnlockCost: 500_000
+    });
+
     // 0. Physics World (cannon-es Phase 1 prototype)
     this.physicsWorld = new PhysicsWorld();
 
     // 1. Core Scene & Camera
     this.sceneManager = new SceneManager(this, container);
+    // Compatibility alias for systems that need the active camera.
+    this.camera = this.sceneManager.camera;
 
     // 2. Audio System
     this.audioSystem = new AudioSystem(this);
@@ -45,6 +68,7 @@ class MetroPulseApp {
 
     // 5. Build City Infrastructure
     this.cityBuilder = new CityBuilder(this.sceneManager.scene, this.inspectorHud, this.billboardCanvas);
+    this.cityBuilder.app = this;
     this.cityBuilder.build();
 
     // 6. Build Skyscrapers & Commercial Businesses
@@ -52,10 +76,16 @@ class MetroPulseApp {
     this.buildingFactory.app = this;
     this.buildingFactory.buildAll(this.cityBuilder.buildingPlots);
 
+    // Register the existing skyline as live economic data. User buildings use
+    // the same adapter through CityEditorSystem.
+    this.buildingFactory.buildings.forEach((building, index) => {
+      this.registerEconomyBuilding(building, `existing-${index + 1}`);
+    });
+
     // Register static obstacle colliders in PhysicsWorld (Buildings & Lamp Posts)
     for (const b of this.buildingFactory.buildings) {
       if (b.plot) {
-        this.physicsWorld.addStaticBoxCollider(
+        b.physicsBody = this.physicsWorld.addStaticBoxCollider(
           new THREE.Vector3(b.plot.x, (b.height || 40) * 0.5, b.plot.z),
           new THREE.Vector3(b.plot.width - 2, b.height || 40, b.plot.depth - 2)
         );
@@ -109,6 +139,7 @@ class MetroPulseApp {
     this.pedestrianSystem = new PedestrianSystem(this);
     this.physicsWorld.terrainSystem = this.pedestrianSystem;
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
+    this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
@@ -123,7 +154,10 @@ class MetroPulseApp {
     this.missionSystem = new MissionSystem(this, this.dialogueOverlay);
 
     // 12. Animation Loop Setup
-    this.clock = new THREE.Clock();
+    this.timer = new THREE.Timer();
+    this.timer.connect(document);
+    this.elapsedTime = 0;
+    this.economyAccumulator = 0;
     this.frameCount = 0;
     this.fpsTimer = 0;
     this.currentFps = 60;
@@ -142,6 +176,59 @@ class MetroPulseApp {
     requestAnimationFrame(this.animate);
   }
 
+  toEconomyBuilding(building, fallbackId = null) {
+    const spec = building?.spec || {};
+    const id = building?.economyId || fallbackId || `building-${this.nextEconomyBuildingId++}`;
+    building.economyId = id;
+    const estimatedEmployees = Number(building.employees ?? spec.employees ?? Math.max(0, Math.round((building.height || 20) * 8)));
+    const estimatedValue = Number(building.value ?? spec.value ?? spec.cost ?? Math.max(50_000, (building.height || 20) * 8_500));
+    const population = Number(spec.residents ?? building.residents ?? 0);
+    const serviceCapacity = {
+      power: Number(spec.powerSupply ?? 0),
+      water: Number(spec.waterSupply ?? 0),
+      fire: Number(spec.fireCoverage ?? 0)
+    };
+    const serviceDemand = {
+      power: Number(spec.powerDemand ?? (building.isUserPlaced ? 4 : 0)),
+      water: Number(spec.waterDemand ?? (building.isUserPlaced ? 3 : 0)),
+      fire: Number(spec.fireDemand ?? (building.isUserPlaced ? 2 : 0))
+    };
+    const sourcePosition = building.plot || building.group?.position;
+    const position = Number.isFinite(sourcePosition?.x) && Number.isFinite(sourcePosition?.z)
+      ? { x: sourcePosition.x, z: sourcePosition.z }
+      : undefined;
+
+    return {
+      id,
+      name: building.name || spec.name || id,
+      kind: spec.category || building.businessType || building.type || 'COMMERCIAL',
+      value: estimatedValue,
+      employees: estimatedEmployees,
+      population,
+      status: building.status || spec.status || 'Operational',
+      operational: !building.isDestroyed,
+      passiveIncomeRate: Math.max(0, Number(spec.incomePerMinute ?? (building.isUserPlaced ? 1200 : 900)) / 60),
+      happinessModifier: Number(spec.happiness ?? 0),
+      landValueModifier: Number(spec.happiness ?? 0) * 0.6 + (spec.amenityRadius ? 3 : 0),
+      position,
+      amenityRadius: Number(spec.amenityRadius ?? 0),
+      serviceCapacity,
+      serviceDemand
+    };
+  }
+
+  registerEconomyBuilding(building, fallbackId = null) {
+    if (!building) return null;
+    const record = this.toEconomyBuilding(building, fallbackId);
+    if (!this.economySystem.getBuilding(record.id)) this.economySystem.registerBuilding(record);
+    return record;
+  }
+
+  removeEconomyBuilding(building) {
+    if (!building?.economyId) return null;
+    return this.economySystem.removeBuilding(building.economyId);
+  }
+
   triggerRocketLaunch() {
     this.rocketLaunched = true;
     this.rocketCountdown = 0;
@@ -153,10 +240,12 @@ class MetroPulseApp {
     }
   }
 
-  animate() {
+  animate(timestamp) {
     requestAnimationFrame(this.animate);
 
-    const delta = Math.min(0.1, this.clock.getDelta());
+    this.timer.update(timestamp);
+    const delta = Math.min(0.1, this.timer.getDelta());
+    this.elapsedTime += delta;
     
     // FPS counter
     this.frameCount++;
@@ -180,16 +269,23 @@ class MetroPulseApp {
     this.pedestrianSystem.update(delta);
     this.explosionManager.update(delta);
     this.cometManager.update(delta);
+    this.trafficHeatmapSystem.update(delta);
     this.audioSystem.update(this.timeManager.timeVal, delta);
     if (this.missionSystem) this.missionSystem.update(delta);
     this.uiManager.updateInspectorLive();
+    this.uiManager.updateActionHUD();
     this.uiManager.updateRealEstateTracker(delta);
     this.uiManager.updateAlertFeed(delta);
     if (this.cityBuilder && this.cityBuilder.update) {
       this.cityBuilder.update(delta);
     }
+    this.economyAccumulator += delta;
+    if (this.economyAccumulator >= 1) {
+      this.economySystem.update(this.economyAccumulator);
+      this.economyAccumulator = 0;
+    }
     if (this.minimapHud) {
-      this.minimapHud.update(this.clock.getElapsedTime());
+      this.minimapHud.update(this.elapsedTime);
     }
 
     // Animate space rocket vapors, countdown & liftoff in Fun Mode

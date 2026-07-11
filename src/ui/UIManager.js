@@ -7,18 +7,34 @@ export class UIManager {
     this.clockDisplay = document.getElementById('clock-display');
     this.timePhase = document.getElementById('time-phase');
     this.timeIcon = document.getElementById('time-icon');
+    this.statSimTime = document.getElementById('stat-sim-time');
     this.btnTimePlay = document.getElementById('btn-time-play');
-    this.speedButtons = document.querySelectorAll('.speed-btn');
+    this.speedButtons = document.querySelectorAll('.speed-pill');
     
     // Header stat counters
     this.statVehicles = document.getElementById('stat-vehicles');
     this.statPedestrians = document.getElementById('stat-pedestrians');
     this.statFps = document.getElementById('stat-fps');
+    this.inspectorVehicleCount = document.getElementById('inspector-vehicle-count');
+    this.inspectorPedestrianCount = document.getElementById('inspector-pedestrian-count');
+    this.statPopulation = document.getElementById('stat-pop');
+    this.statMoney = document.getElementById('stat-money');
+    this.statEnergy = document.getElementById('stat-energy');
+    this.statWeather = document.getElementById('stat-weather');
+    this.statHappiness = document.getElementById('stat-happiness');
+    this.pulsePopulation = document.getElementById('pulse-population');
+    this.pulseCash = document.getElementById('pulse-cash');
+    this.pulseEnergy = document.getElementById('pulse-energy');
+    this.pulseHappiness = document.getElementById('pulse-happiness');
+    this.pulseLandValue = document.getElementById('pulse-land-value');
+    this.pulseReputation = document.getElementById('pulse-reputation');
+    this.pulseServices = document.getElementById('pulse-services');
     
     // Camera and Weather controls
     this.cameraButtons = document.querySelectorAll('[data-camera]');
     this.weatherButtons = document.querySelectorAll('[data-weather]');
     this.btnDynamicWeather = document.getElementById('btn-dynamic-weather');
+    this.heatmapToggle = document.getElementById('toggle-heatmap');
     
     // Audio controls
     this.btnMute = document.getElementById('btn-mute');
@@ -34,6 +50,8 @@ export class UIManager {
     // City Editor & Map Expansion control
     this.btnExpandCity = document.getElementById('btn-expand-city');
     this.expandCityLabel = document.getElementById('expand-city-label');
+    this.btnUnlockEast = document.getElementById('btn-unlock-east');
+    this.btnBridgePriority = document.getElementById('btn-bridge-priority');
 
     // Fun Mode controls
     this.btnFunMode = document.getElementById('btn-fun-mode');
@@ -59,14 +77,29 @@ export class UIManager {
     this.btnFollowTarget = document.getElementById('btn-follow-target');
     this.btnTakeControl = document.getElementById('btn-take-control');
     this.btnInteractSfx = document.getElementById('btn-interact-sfx');
+    this.btnCombatAction = document.getElementById('btn-combat-action');
     
     this.selectedEntity = null;
     this.isTimePlaying = true;
     this.timeSpeed = 1.0;
     this.alertFeedList = document.getElementById('alert-feed-list');
+    this.topAlertSummary = document.getElementById('top-alert-summary');
     this.alertTimer = 0;
+    this.speedometerHud = document.getElementById('street-speedometer');
+    this.speedometerValue = document.getElementById('speedometer-value');
+    this.speedometerGear = document.getElementById('speedometer-gear');
+    this.streetControlHint = document.getElementById('street-control-hint');
+    this.modeLabel = document.getElementById('current-mode-label');
 
     this.initEventListeners();
+
+    if (this.app.gameManager?.subscribe) {
+      this._unsubscribeGameState = this.app.gameManager.subscribe(event => this.syncGameState(event?.current || event), { emitCurrent: true });
+    }
+    if (this.app.economySystem?.subscribe) {
+      this._unsubscribeEconomy = this.app.economySystem.subscribe(event => this.updateEconomy(event?.current || event), { emitCurrent: true });
+    }
+    this.updateDynamicWeatherBtnState();
   }
 
   initEventListeners() {
@@ -114,7 +147,7 @@ export class UIManager {
       btn.addEventListener('click', () => {
         // Turning on manual weather disables dynamic weather cycle
         if (this.app.environment) {
-          this.app.environment.isDynamicWeather = false;
+          this.app.environment.setDynamicWeather(false);
           this.updateDynamicWeatherBtnState();
         }
 
@@ -122,9 +155,6 @@ export class UIManager {
         btn.classList.add('active');
         const weatherMode = btn.dataset.weather;
         this.app.environment.setWeather(weatherMode);
-        if (this.app.physicsWorld) {
-          this.app.physicsWorld.setWeatherFriction(weatherMode);
-        }
       });
     });
 
@@ -133,13 +163,8 @@ export class UIManager {
       this.btnDynamicWeather.addEventListener('click', () => {
         if (this.app.environment) {
           const env = this.app.environment;
-          env.isDynamicWeather = !env.isDynamicWeather;
+          env.setDynamicWeather(!env.isDynamicWeather);
           this.updateDynamicWeatherBtnState();
-
-          if (env.isDynamicWeather) {
-            // Immediate transition timer
-            env.weatherCycleTimer = 25.0 + Math.random() * 25.0;
-          }
         }
       });
     }
@@ -201,44 +226,19 @@ export class UIManager {
 
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if (e.key === 'f' || e.key === 'F') {
+      if ((e.key === 'f' || e.key === 'F') && !e.repeat) {
         this.toggleCityEditor();
+      } else if ((e.key === 'm' || e.key === 'M') && !e.repeat) {
+        this.handleModeToggle();
+      } else if ((e.key === 'x' || e.key === 'X') && !e.repeat && this.btnFunMode) {
+        this.setMayhem(!this.app.funMode, 'keyboard');
       }
     });
 
     // Fun Mode toggle
     if (this.btnFunMode) {
       this.btnFunMode.addEventListener('click', () => {
-        this.app.funMode = !this.app.funMode;
-        if (this.app.billboardCanvas) {
-          this.app.billboardCanvas.forceRedrawAll();
-        }
-        if (this.app.funMode) {
-          this.btnFunMode.classList.add('active');
-          if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: MAYHEM! 🔥';
-          if (this.newsChyron) this.newsChyron.classList.remove('hidden');
-          if (this.reTracker) {
-            this.reTracker.classList.remove('hidden');
-            this.resetRealEstateValue();
-          }
-          if (this.app.audioSystem && !this.app.audioSystem.isEnabled) {
-            this.app.audioSystem.toggleAudio();
-            if (this.btnMute) this.btnMute.classList.add('active');
-            if (this.muteIcon) this.muteIcon.textContent = '🔊';
-            if (this.muteLabel) this.muteLabel.textContent = 'SFX Active';
-            if (this.volumeSlider) this.volumeSlider.disabled = false;
-          }
-          if (this.app.audioSystem) this.app.audioSystem.playSiren(1.5);
-        } else {
-          this.btnFunMode.classList.remove('active');
-          if (this.funModeLabel) this.funModeLabel.textContent = 'Fun Mode: OFF';
-          if (this.newsChyron) this.newsChyron.classList.add('hidden');
-          if (this.reTracker) this.reTracker.classList.add('hidden');
-          this.resetRealEstateValue();
-          if (this.app.buildingFactory) {
-            this.app.buildingFactory.restoreAllBuildings();
-          }
-        }
+        this.setMayhem(!this.app.funMode, 'button');
       });
     }
 
@@ -288,6 +288,7 @@ export class UIManager {
               this.btnTakeControl.classList.remove('active');
             }
           }
+          this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'released-control' });
         }
       }
     });
@@ -300,16 +301,29 @@ export class UIManager {
 
         if (this.selectedEntity.type === 'VEHICLE') {
           const ts = this.app.trafficSystem;
+          const streetPedestrian = this.app.pedestrianSystem?.controlledPedestrian;
+          if (streetPedestrian) {
+            const distance = streetPedestrian.mesh.position.distanceTo(this.selectedEntity.mesh.position);
+            if (distance > 3.5) {
+              this.showToast('⚠️ Approach within 3.5 m to hijack this vehicle.');
+              return;
+            }
+            this.app.pedestrianSystem.handlePedestrianActionKey();
+            this.app.gameManager?.setMode?.('ACTION', { reason: 'hijack', target: this.selectedEntity });
+            return;
+          }
           const isNowControlled = ts.toggleUserControl(this.selectedEntity);
           this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
           // Phase 2: Cinematic swoop transition to street level or ascend back to macro view
           if (isNowControlled) {
+            this.app.gameManager?.setMode?.('ACTION', { reason: 'vehicle-control', target: this.selectedEntity });
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
           } else {
+            this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'vehicle-release' });
             this.app.sceneManager.stopFollowTarget();
             this.btnFollowTarget.innerHTML = '🎯 Follow Target';
             this.btnFollowTarget.classList.remove('active');
@@ -321,10 +335,12 @@ export class UIManager {
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
           if (isNowControlled) {
+            this.app.gameManager?.setMode?.('ACTION', { reason: 'pedestrian-control', target: this.selectedEntity });
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
           } else {
+            this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'pedestrian-release' });
             this.app.sceneManager.stopFollowTarget();
             this.btnFollowTarget.innerHTML = '🎯 Follow Target';
             this.btnFollowTarget.classList.remove('active');
@@ -334,7 +350,7 @@ export class UIManager {
     }
 
     // Trigger SFX / Interaction button
-    this.btnInteractSfx.addEventListener('click', () => {
+    if (this.btnInteractSfx) this.btnInteractSfx.addEventListener('click', () => {
       if (!this.selectedEntity) return;
 
       if (this.selectedEntity.type === 'VEHICLE') {
@@ -355,37 +371,26 @@ export class UIManager {
       }
     });
 
-    // Speed pill listeners (.speed-pill)
-    const speedPills = document.querySelectorAll('.speed-pill');
-    speedPills.forEach(btn => {
-      btn.addEventListener('click', () => {
-        speedPills.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.timeSpeed = parseFloat(btn.dataset.speed || 1);
-        this.app.timeManager.setSpeed(this.timeSpeed);
+    if (this.btnCombatAction) {
+      this.btnCombatAction.addEventListener('click', () => {
+        const pedestrian = this.app.pedestrianSystem?.controlledPedestrian;
+        if (!pedestrian) {
+          this.showToast('⚠️ Take walk control before using street combat.');
+          return;
+        }
+        if (!pedestrian.hasBaseballBat) {
+          this.showToast('🏏 Find a glowing baseball bat pickup first.');
+          return;
+        }
+        this.app.pedestrianSystem.swingBaseballBat();
       });
-    });
+    }
 
-    // Mode Selector dropdown
+    // Canonical mode toggle. ACTION mode is entered by taking direct control.
     const btnModeSelector = document.getElementById('btn-mode-selector');
-    const modeLabel = document.getElementById('current-mode-label');
     if (btnModeSelector) {
       btnModeSelector.addEventListener('click', () => {
-        if (!modeLabel) return;
-        const currentMode = modeLabel.textContent.trim();
-        if (currentMode === 'MANAGEMENT') {
-          modeLabel.textContent = 'CITY EDITOR';
-          this.toggleCityEditor();
-        } else if (currentMode === 'CITY EDITOR') {
-          modeLabel.textContent = 'MAYHEM / FUN';
-          if (this.btnFunMode) this.btnFunMode.click();
-        } else {
-          modeLabel.textContent = 'MANAGEMENT';
-          if (this.app.funMode && this.btnFunMode) this.btnFunMode.click();
-          if (this.app.cityEditorSystem && this.app.cityEditorSystem.enabled) {
-            this.toggleCityEditor();
-          }
-        }
+        this.handleModeToggle();
       });
     }
 
@@ -395,10 +400,11 @@ export class UIManager {
       card.addEventListener('click', () => {
         const zoneType = card.dataset.zone;
         if (this.cityEditorUI) {
-          if (!this.cityEditorUI.isVisible) this.cityEditorUI.show();
+          if (!this.cityEditorUI.isVisible && !this.cityEditorUI.show()) return;
           const categoryMap = {
-            residential: 'RESIDENTIAL',
-            commercial: 'COMMERCIAL',
+            res: 'RESIDENTIAL',
+            com: 'COMMERCIAL',
+            ind: 'INDUSTRIAL',
             office: 'COMMERCIAL',
             fire: 'CIVIC',
             power: 'UTILITIES',
@@ -411,7 +417,8 @@ export class UIManager {
           const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
           pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCat));
         }
-        if (modeLabel) modeLabel.textContent = 'CITY EDITOR';
+        if (this.app.cityEditorSystem?.setZoningMode) this.app.cityEditorSystem.setZoningMode(zoneType);
+        this.app.gameManager?.setMode?.('BUILDER', { reason: 'zoning' });
       });
     });
 
@@ -419,16 +426,59 @@ export class UIManager {
     infraBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         if (this.cityEditorUI) {
-          if (!this.cityEditorUI.isVisible) this.cityEditorUI.show();
-          this.cityEditorUI.currentCategory = 'INFRASTRUCTURE';
+          if (!this.cityEditorUI.isVisible && !this.cityEditorUI.show()) return;
+          const infraSpecMap = {
+            road: 'ROAD_STRAIGHT',
+            bridge: 'BRIDGE_DECK',
+            pipe: 'WATER_RECLAMATION',
+            power: 'SOLAR_GRID'
+          };
+          const specId = infraSpecMap[btn.dataset.infra];
+          if (specId) this.cityEditorUI.selectedSpecId = specId;
+          const targetCategory = btn.dataset.infra === 'pipe' || btn.dataset.infra === 'power'
+            ? 'UTILITIES'
+            : 'INFRASTRUCTURE';
+          this.cityEditorUI.currentCategory = targetCategory;
           this.cityEditorUI.currentPage = 0;
           this.cityEditorUI.renderCatalog();
           const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
-          pills.forEach(p => p.classList.toggle('active', p.dataset.category === 'INFRASTRUCTURE'));
+          pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCategory));
+          if (specId) {
+            this.app.cityEditorSystem?.selectBuilding?.(specId);
+            this.cityEditorUI.updateBlueprintPreview(this.app.cityEditorSystem?.selectedSpec);
+          }
         }
-        if (modeLabel) modeLabel.textContent = 'CITY EDITOR';
+        this.app.gameManager?.setMode?.('BUILDER', { reason: 'infrastructure' });
       });
     });
+
+    if (this.heatmapToggle) {
+      this.heatmapToggle.addEventListener('change', () => {
+        const enabled = this.heatmapToggle.checked;
+        this.app.trafficHeatmapSystem?.setVisible?.(enabled);
+        this.app.trafficHeatmapEnabled = enabled;
+        this.addAlert(enabled ? '🚦 Live congestion heat-map enabled.' : '🗺️ Traffic heat-map disabled.', 'info');
+      });
+    }
+
+    if (this.btnUnlockEast) {
+      this.btnUnlockEast.addEventListener('click', () => {
+        const result = this.app.economySystem?.unlockDistrict?.('EAST_CYBER_METROPOLIS', 500000);
+        if (result?.success || result === true) {
+          this.addAlert('🏙️ East Cyber-Metropolis unlocked for development.', 'success');
+        } else {
+          this.showToast(result?.reason || '⚠️ $500,000 capital investment required.');
+        }
+      });
+    }
+
+    if (this.btnBridgePriority) {
+      this.btnBridgePriority.addEventListener('click', () => {
+        const enabled = this.app.trafficSystem?.toggleBridgePriority?.();
+        this.btnBridgePriority.classList.toggle('active', !!enabled);
+        this.addAlert(enabled ? '🌉 Bridge priority lanes opened; cross-river flow boosted.' : '🌉 Bridge priority returned to normal routing.', 'info');
+      });
+    }
 
     // Action Toolbar buttons
     const btnToolbarControl = document.getElementById('btn-toolbar-control');
@@ -453,6 +503,165 @@ export class UIManager {
         }
       });
     }
+
+    const btnToolbarVehicles = document.getElementById('btn-toolbar-vehicles');
+    if (btnToolbarVehicles) {
+      btnToolbarVehicles.addEventListener('click', () => {
+        const vehicles = this.app.trafficSystem?.vehicles || [];
+        if (vehicles.length === 0) return;
+        this._vehicleCursor = ((this._vehicleCursor ?? -1) + 1) % vehicles.length;
+        this.showInspector(vehicles[this._vehicleCursor]);
+      });
+    }
+
+    const btnToolbarFilter = document.getElementById('btn-toolbar-filter');
+    if (btnToolbarFilter && this.heatmapToggle) {
+      btnToolbarFilter.addEventListener('click', () => {
+        this.heatmapToggle.checked = !this.heatmapToggle.checked;
+        this.heatmapToggle.dispatchEvent(new Event('change'));
+      });
+    }
+  }
+
+  handleModeToggle() {
+    const mode = this.app.gameManager?.mode || this.app.gameManager?.getSnapshot?.().mode || this.modeLabel?.textContent || 'MANAGEMENT';
+
+    if (mode === 'ACTION') {
+      const vehicle = this.app.trafficSystem?.controlledVehicle;
+      const pedestrian = this.app.pedestrianSystem?.controlledPedestrian;
+      if (vehicle) this.app.trafficSystem.releaseControl(vehicle);
+      if (pedestrian) this.app.pedestrianSystem.releaseControl(pedestrian);
+      this.app.sceneManager?.stopFollowTarget?.();
+      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'mode-toggle' });
+      return;
+    }
+
+    if (mode === 'BUILDER' || this.cityEditorUI?.isVisible) {
+      this.cityEditorUI?.hide?.();
+      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'mode-toggle' });
+      return;
+    }
+
+    this.toggleCityEditor();
+  }
+
+  syncGameState(snapshot = {}) {
+    const state = snapshot.state || snapshot;
+    const mode = state.mode || this.app.gameManager?.mode || 'MANAGEMENT';
+    if (mode === 'ACTION' && this.cityEditorUI?.isVisible) {
+      this.cityEditorUI.hide({ preserveMode: true });
+    }
+    if (this.modeLabel) {
+      this.modeLabel.textContent = mode === 'BUILDER' ? 'CITY BUILDER' : mode;
+    }
+    document.body.dataset.gameMode = mode.toLowerCase();
+
+    const mayhem = state.mayhemEnabled ?? state.mayhem;
+    if (typeof mayhem === 'boolean' && mayhem !== this.app.funMode) {
+      this.renderMayhemState(mayhem);
+    }
+  }
+
+  setMayhem(enabled, source = 'ui') {
+    const survivalActive = this.app.missionSystem?.activeMission?.missionType === 'SURVIVAL';
+    if (!enabled && survivalActive) {
+      this.showToast('☄️ Mayhem cannot be disabled during a survival mission.');
+      return false;
+    }
+
+    this.app.funMode = !!enabled;
+    if (this.app.gameManager?.mayhem !== this.app.funMode) {
+      this.app.gameManager?.setMayhem?.(this.app.funMode, source);
+    }
+    this.renderMayhemState(this.app.funMode);
+
+    if (this.app.billboardCanvas) this.app.billboardCanvas.forceRedrawAll();
+    if (this.app.funMode) {
+      if (this.app.audioSystem && !this.app.audioSystem.isEnabled) this.app.audioSystem.toggleAudio();
+      if (this.app.audioSystem) this.app.audioSystem.playSiren(1.5);
+      this.addAlert('☄️ MAYHEM activated: comet insurance markets are now bullish.', 'danger');
+    } else {
+      this.app.buildingFactory?.restoreAllBuildings?.();
+      this.addAlert('✅ Mayhem contained. Corporate continuity restored.', 'success');
+    }
+    return true;
+  }
+
+  renderMayhemState(enabled) {
+    this.app.funMode = !!enabled;
+    this.btnFunMode?.classList.toggle('active', !!enabled);
+    if (this.funModeLabel) this.funModeLabel.textContent = enabled ? 'Fun Mode: MAYHEM! 🔥' : 'Fun Mode: OFF';
+    this.newsChyron?.classList.toggle('hidden', !enabled);
+    this.reTracker?.classList.toggle('hidden', !enabled);
+    if (enabled) this.resetRealEstateValue();
+    else this.resetRealEstateValue();
+    if (this.btnMute && this.app.audioSystem?.isEnabled) this.btnMute.classList.add('active');
+    if (this.muteIcon) this.muteIcon.textContent = this.app.audioSystem?.isEnabled ? '🔊' : '🔇';
+    if (this.muteLabel) this.muteLabel.textContent = this.app.audioSystem?.isEnabled ? 'SFX Active' : 'Enable SFX';
+    if (this.volumeSlider) this.volumeSlider.disabled = !this.app.audioSystem?.isEnabled;
+  }
+
+  updateEconomy(snapshot = {}) {
+    const state = snapshot.state || snapshot;
+    const pulse = state.cityPulse || state;
+    const cash = Number(state.cash ?? state.treasury ?? state.budget ?? pulse.budget ?? 0);
+    const population = Math.max(0, Math.round(Number(state.population ?? pulse.population ?? 0)));
+    const energy = Math.max(0, Math.min(100, Math.round(Number(state.energy ?? state.energyPercent ?? pulse.energy ?? 0))));
+    const happiness = Math.max(0, Math.min(100, Math.round(Number(state.happiness ?? pulse.happiness ?? 0))));
+    const landValue = Math.max(0, Math.round(Number(state.landValue ?? pulse.landValue ?? 0)));
+    const reputation = Math.round(Number(state.reputation ?? 0));
+    const services = state.services || pulse.services || {};
+    const currency = `$${cash.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+
+    if (this.statPopulation) this.statPopulation.textContent = population.toLocaleString('en-US');
+    if (this.statMoney) this.statMoney.textContent = currency;
+    if (this.statEnergy) this.statEnergy.textContent = `${energy}%`;
+    if (this.statHappiness) this.statHappiness.textContent = `${happiness}%`;
+    if (this.pulsePopulation) this.pulsePopulation.textContent = population.toLocaleString('en-US');
+    if (this.pulseCash) this.pulseCash.textContent = currency;
+    if (this.pulseEnergy) this.pulseEnergy.textContent = `${energy}%`;
+    if (this.pulseHappiness) this.pulseHappiness.textContent = `${happiness}%`;
+    if (this.pulseLandValue) this.pulseLandValue.textContent = landValue.toLocaleString('en-US');
+    if (this.pulseReputation) this.pulseReputation.textContent = String(reputation);
+    if (this.pulseServices) {
+      const toCoverage = (service, fallback = 0) => {
+        if (typeof service === 'number') return service <= 1 ? service * 100 : service;
+        if (typeof service?.coverage === 'number') return service.coverage * 100;
+        return fallback;
+      };
+      const power = Math.round(toCoverage(services.power, energy));
+      const water = Math.round(toCoverage(services.water));
+      const fire = Math.round(toCoverage(services.fire));
+      this.pulseServices.textContent = `P ${power}% · W ${water}% · F ${fire}%`;
+    }
+
+    if (this.btnUnlockEast) {
+      const unlocked = state.unlockedDistricts?.includes?.('EAST_CYBER_METROPOLIS') || state.districts?.EAST_CYBER_METROPOLIS === true;
+      this.btnUnlockEast.disabled = !!unlocked;
+      this.btnUnlockEast.textContent = unlocked ? '✅ East District Unlocked' : '🏙️ Unlock East District ($500k)';
+    }
+  }
+
+  updateActionHUD() {
+    const vehicle = this.app.trafficSystem?.controlledVehicle || null;
+    const pedestrian = this.app.pedestrianSystem?.controlledPedestrian || null;
+    const active = vehicle || pedestrian;
+
+    this.speedometerHud?.classList.toggle('hidden', !vehicle);
+    this.streetControlHint?.classList.toggle('hidden', !active);
+
+    if (vehicle && this.speedometerValue) {
+      const speed = Math.max(0, Math.round(Math.abs(
+        vehicle.physicsVehicle?.speedKmH ?? vehicle.speedKmh ?? ((vehicle.speed || 0) * 3.6)
+      )));
+      this.speedometerValue.textContent = String(speed);
+      if (this.speedometerGear) this.speedometerGear.textContent = `GEAR ${vehicle.physicsVehicle?.gear || '—'}`;
+    }
+
+    if (this.statWeather && this.app.environment) {
+      const labels = { clear: '☀️ CLEAR', mist: '🌫️ MIST', rain: '🌧️ RAIN', thunderstorm: '⛈️ STORM' };
+      this.statWeather.textContent = labels[this.app.environment.weatherMode] || this.app.environment.weatherMode.toUpperCase();
+    }
   }
 
   updateTimeDisplay(timeVal) {
@@ -462,6 +671,7 @@ export class UIManager {
     const hoursStr = hours.toString().padStart(2, '0');
     const minutesStr = minutes.toString().padStart(2, '0');
     this.clockDisplay.textContent = `${hoursStr}:${minutesStr}`;
+    if (this.statSimTime) this.statSimTime.textContent = `${hoursStr}:${minutesStr}`;
 
     // Update slider position if not being dragged by user
     if (document.activeElement !== this.timeSlider) {
@@ -488,10 +698,14 @@ export class UIManager {
     if (this.statVehicles) this.statVehicles.textContent = vehiclesCount;
     if (this.statPedestrians) this.statPedestrians.textContent = pedestriansCount;
     if (this.statFps) this.statFps.textContent = `${Math.round(fps)} FPS`;
+    if (this.inspectorVehicleCount) this.inspectorVehicleCount.textContent = String(vehiclesCount);
+    if (this.inspectorPedestrianCount) this.inspectorPedestrianCount.textContent = String(pedestriansCount);
+    this.updateActionHUD();
   }
 
   showInspector(entity) {
     this.selectedEntity = entity;
+    this.syncLocalLandValue(entity);
     if (this.inspectorHud) this.inspectorHud.classList.remove('hidden');
     if (this.inspectorType) this.inspectorType.textContent = entity.type || 'OBJECT';
     if (this.inspectorTitle) this.inspectorTitle.textContent = entity.name || 'Unknown Entity';
@@ -525,12 +739,17 @@ export class UIManager {
       if (this.btnTakeControl) {
         this.btnTakeControl.classList.remove('hidden');
         const isControlled = (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle === entity && entity.userControlled);
-        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
+        const isStreetHijack = !!this.app.pedestrianSystem?.controlledPedestrian;
+        this.btnTakeControl.innerHTML = isControlled ? '🛑 Release Physics Drive' : (isStreetHijack ? '🏎️ Hijack Nearby Vehicle' : '🏎️ Take Control (Physics)');
         this.btnTakeControl.classList.toggle('active', isControlled);
       }
       if (this.btnInteractSfx) {
         this.btnInteractSfx.classList.remove('hidden');
         this.btnInteractSfx.innerHTML = entity.isPolice ? '🚨 Sound Siren' : '📯 Sound Honk';
+      }
+      if (this.btnCombatAction) {
+        this.btnCombatAction.classList.toggle('hidden', !this.app.pedestrianSystem?.controlledPedestrian);
+        this.btnCombatAction.textContent = '🏏 Strike Vehicle';
       }
     } else if (entity.type === 'PEDESTRIAN') {
       if (this.btnTakeControl) {
@@ -543,8 +762,14 @@ export class UIManager {
         this.btnInteractSfx.classList.remove('hidden');
         this.btnInteractSfx.innerHTML = '👋 Wave / Talk';
       }
+      if (this.btnCombatAction) {
+        const canCombat = !!this.app.pedestrianSystem?.controlledPedestrian && this.app.pedestrianSystem.controlledPedestrian !== entity;
+        this.btnCombatAction.classList.toggle('hidden', !canCombat);
+        this.btnCombatAction.textContent = '🏏 Melee Attack';
+      }
     } else if (entity.type === 'MISSION_PICKUP') {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
+      if (this.btnCombatAction) this.btnCombatAction.classList.add('hidden');
       if (this.btnInteractSfx) {
         this.btnInteractSfx.classList.remove('hidden');
         this.btnInteractSfx.innerHTML = '🚖 Start Fare Dialogue';
@@ -552,6 +777,7 @@ export class UIManager {
     } else {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
       if (this.btnInteractSfx) this.btnInteractSfx.classList.add('hidden');
+      if (this.btnCombatAction) this.btnCombatAction.classList.add('hidden');
     }
   }
 
@@ -583,11 +809,12 @@ export class UIManager {
     }
 
     if (!this.selectedEntity.info) return;
+    this.syncLocalLandValue(this.selectedEntity);
 
     // Keep Take Control action button live
     if (this.selectedEntity.type === 'VEHICLE' && this.btnTakeControl) {
       const isControlled = (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle === this.selectedEntity && this.selectedEntity.userControlled);
-      const targetText = isControlled ? '🛑 Release Physics Drive' : '🏎️ Take Control (Physics)';
+      const targetText = isControlled ? '🛑 Release Physics Drive' : (this.app.pedestrianSystem?.controlledPedestrian ? '🏎️ Hijack Nearby Vehicle' : '🏎️ Take Control (Physics)');
       if (this.btnTakeControl.innerHTML !== targetText) {
         this.btnTakeControl.innerHTML = targetText;
         this.btnTakeControl.classList.toggle('active', isControlled);
@@ -602,17 +829,39 @@ export class UIManager {
     }
 
     // Update live values like vehicle speed, coordinates, or battery
-    const rows = this.inspectorBody.querySelectorAll('.info-row');
+    const rows = this.inspectorBody.querySelectorAll('.attr-row');
     let idx = 0;
     for (const [key, value] of Object.entries(this.selectedEntity.info)) {
       if (rows[idx]) {
-        const valSpan = rows[idx].querySelector('.info-val');
+        const valSpan = rows[idx].querySelector('.attr-val');
         if (valSpan && valSpan.textContent !== String(value)) {
           valSpan.textContent = value;
         }
       }
       idx++;
     }
+  }
+
+  syncLocalLandValue(entity = this.selectedEntity) {
+    const economy = this.app?.economySystem;
+    const position = entity?.plot || entity?.group?.position;
+    if (
+      entity?.type !== 'BUILDING'
+      || !entity.info
+      || !Number.isFinite(position?.x)
+      || !Number.isFinite(position?.z)
+      || typeof economy?.getLandValueBreakdownAt !== 'function'
+    ) {
+      return null;
+    }
+
+    const breakdown = economy.getLandValueBreakdownAt(position.x, position.z);
+    const amenity = Math.round(breakdown.amenityModifier);
+    const mayhem = Math.round(breakdown.mayhemModifier);
+    const signed = value => `${value >= 0 ? '+' : ''}${value}`;
+    entity.info['Local Land Value'] = Math.round(breakdown.landValue).toLocaleString('en-US');
+    entity.info['Local Influences'] = `Amenities ${signed(amenity)} · Mayhem ${signed(mayhem)}`;
+    return breakdown;
   }
 
   updateRocketButtonDisplay() {
@@ -728,15 +977,22 @@ export class UIManager {
         btn.classList.remove('active');
       }
     });
-    if (this.app.physicsWorld) {
-      this.app.physicsWorld.setWeatherFriction(mode);
-    }
   }
 
   toggleCityEditor() {
     if (!this.cityEditorUI) return;
+    const enteringBuilder = !this.cityEditorUI.isVisible;
+    const hasDirectControl = Boolean(
+      this.app.trafficSystem?.controlledVehicle
+      || this.app.pedestrianSystem?.controlledPedestrian
+    );
+    if (enteringBuilder && (hasDirectControl || this.app.missionSystem?.activeMission)) {
+      this.showToast('⚠️ Return to Management with [M] before opening the City Editor.');
+      return false;
+    }
     this.cityEditorUI.toggle();
     const isActive = this.cityEditorUI.isVisible;
+    this.app.gameManager?.setMode?.(isActive ? 'BUILDER' : 'MANAGEMENT', { reason: 'city-editor' });
     if (this.btnExpandCity) {
       this.btnExpandCity.classList.toggle('active', isActive);
     }
@@ -744,6 +1000,7 @@ export class UIManager {
       this.expandCityLabel.textContent = isActive ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [F]';
     }
     this.addAlert(isActive ? '🏗️ City Editor active: Zoning and placement tools ready.' : '✅ City Editor closed. Simulation resumed.', 'info');
+    return isActive;
   }
 
   addAlert(message, type = 'info') {
@@ -761,6 +1018,10 @@ export class UIManager {
     item.innerHTML = `<span class="alert-time">${timeStr}</span> <span class="alert-msg">${message}</span>`;
 
     this.alertFeedList.insertBefore(item, this.alertFeedList.firstChild);
+    if (this.topAlertSummary) {
+      this.topAlertSummary.textContent = message.replace(/^[^\p{L}\p{N}]+/u, '').slice(0, 34).toUpperCase();
+      this.topAlertSummary.title = message;
+    }
 
     while (this.alertFeedList.children.length > 7) {
       this.alertFeedList.removeChild(this.alertFeedList.lastChild);
@@ -846,4 +1107,3 @@ export class UIManager {
     }
   }
 }
-

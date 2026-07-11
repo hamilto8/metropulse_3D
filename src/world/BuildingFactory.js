@@ -197,29 +197,40 @@ export class BuildingFactory {
     baseBox.receiveShadow = true;
     group.add(baseBox);
 
-    this.inspectorHud.registerObject(baseBox, {
+    const buildingObject = {
       type: 'BUILDING',
+      businessType: type,
       name: name,
+      group,
+      baseBox,
+      plot,
+      height,
+      employees,
+      residents: 0,
+      value: Math.max(150000, Math.round(height * 8500 + employees * 180)),
+      landValue: 100 + Math.round(height * 0.45),
+      status,
+      zone: type.includes('HOTEL') || type.includes('TOWER') || type.includes('BANK') ? 'COMMERCIAL' : 'OFFICE',
+      isUserPlaced: false,
+      isDestroyed: false,
+      rubbleGroup: null,
       info: {
         'Floors': Math.floor(height / 3.5),
         'Employees': employees,
+        'Value': `$${Math.max(150000, Math.round(height * 8500 + employees * 180)).toLocaleString('en-US')}`,
+        'Land Value': 100 + Math.round(height * 0.45),
+        'Zone': type.includes('HOTEL') || type.includes('TOWER') || type.includes('BANK') ? 'COMMERCIAL' : 'OFFICE',
         'Specialty': specialty,
         'Status': status
       }
-    });
+    };
+
+    this.inspectorHud.registerObject(baseBox, buildingObject);
 
     this.scene.add(group);
 
-    this.buildings.push({
-      group: group,
-      baseBox: baseBox,
-      plot: plot,
-      type: type,
-      name: name,
-      height: height,
-      isDestroyed: false,
-      rubbleGroup: null
-    });
+    this.buildings.push(buildingObject);
+    return buildingObject;
   }
 
   addSkyscraperDetails(group, w, height, d, baseColor, accentColorHex) {
@@ -499,20 +510,9 @@ export class BuildingFactory {
         this.addResidentialDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
       } else if (spec.generatorType === 'CIVIC') {
         this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      } else if (spec.generatorType === 'INDUSTRIAL' || spec.generatorType === 'UTILITY' || spec.generatorType === 'ENERGY_ARRAY') {
+        this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText || spec.name.toUpperCase());
       }
-    }
-
-    if (this.inspectorHud && baseBox) {
-      this.inspectorHud.registerObject(baseBox, {
-        type: `${spec.category} (USER PLACED)`,
-        name: spec.name,
-        info: {
-          'Category': spec.category,
-          'Footprint': `${w}m x ${d}m`,
-          'Height': `${height}m`,
-          'Status': 'User Constructed Structure 🏗️'
-        }
-      });
     }
 
     this.scene.add(group);
@@ -522,12 +522,35 @@ export class BuildingFactory {
       baseBox: baseBox,
       plot: { ...plot, width: w, depth: d },
       spec: spec,
-      type: spec.id,
+      type: 'BUILDING',
+      businessType: spec.id,
+      catalogId: spec.id,
       name: spec.name,
       height: height,
+      employees: Number(spec.employees || 0),
+      residents: Number(spec.residents || 0),
+      value: Number(spec.value ?? spec.cost ?? 0),
+      landValue: 100 + Number(spec.happiness || 0),
+      status: spec.status || 'Operational',
+      zone: spec.category,
       isUserPlaced: true,
-      isDestroyed: false
+      isDestroyed: false,
+      info: {
+        'Category': spec.category,
+        'Zone': spec.category,
+        'Footprint': `${w}m x ${d}m`,
+        'Height': `${height}m`,
+        'Employees': Number(spec.employees || 0),
+        'Residents': Number(spec.residents || 0),
+        'Value': `$${Number(spec.value ?? spec.cost ?? 0).toLocaleString('en-US')}`,
+        'Land Value': 100 + Number(spec.happiness || 0),
+        'Status': spec.status || 'User Constructed Structure 🏗️'
+      }
     };
+
+    if (this.inspectorHud && baseBox) {
+      this.inspectorHud.registerObject(baseBox, buildingObj);
+    }
 
     this.buildings.push(buildingObj);
     return buildingObj;
@@ -559,6 +582,8 @@ export class BuildingFactory {
         this.addResidentialDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor);
       } else if (spec.generatorType === 'CIVIC') {
         this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText);
+      } else if (spec.generatorType === 'INDUSTRIAL' || spec.generatorType === 'UTILITY' || spec.generatorType === 'ENERGY_ARRAY') {
+        this.addCivicDetails(group, w - 2, height, d - 2, spec.baseColor, spec.accentColor, spec.signText || spec.name.toUpperCase());
       }
     }
 
@@ -585,6 +610,47 @@ export class BuildingFactory {
   destroyBuilding(building) {
     if (building.isDestroyed) return;
     building.isDestroyed = true;
+    building.destroyedByMayhem = true;
+    building.destructionCount = (building.destructionCount || 0) + 1;
+    building.preDestructionStatus = building.status;
+    building.status = 'Destroyed';
+    if (building.info) building.info.Status = 'Destroyed by Mayhem';
+    if (building.baseBox && this.inspectorHud) {
+      this.inspectorHud.unregisterObject(building.baseBox);
+    }
+
+    if (this.app?.removeEconomyBuilding) {
+      building.destroyedEconomyRecord = this.app.removeEconomyBuilding(building);
+    }
+    if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+      this.app?.trafficSystem?.unregisterRoadSegment?.(building);
+    }
+    if (this.app?.economySystem) {
+      const mayhemPosition = Number.isFinite(building.plot?.x) && Number.isFinite(building.plot?.z)
+        ? { x: building.plot.x, z: building.plot.z }
+        : null;
+      const mayhemRadius = Math.max(
+        45,
+        Math.hypot(building.plot?.width || 30, building.plot?.depth || 30) * 1.25
+      );
+      building.mayhemIncidentId = `mayhem-building-${building.economyId || building.name}-${building.destructionCount}`;
+      this.app.economySystem.recordIncident({
+        id: building.mayhemIncidentId,
+        type: 'BUILDING_DESTROYED',
+        severity: Math.max(1, Math.round((building.height || 20) / 20)),
+        reputationDelta: -2,
+        happinessModifier: -3,
+        landValueModifier: -5,
+        ...(mayhemPosition ? {
+          position: mayhemPosition,
+          influenceRadius: mayhemRadius
+        } : {})
+      });
+    }
+
+    if (building.physicsBody && this.app && this.app.physicsWorld) {
+      this.app.physicsWorld.removeStaticCollider(building.physicsBody);
+    }
 
     if (this.app && this.app.uiManager) {
       this.app.uiManager.onBuildingDestroyed();
@@ -595,7 +661,10 @@ export class BuildingFactory {
 
     // Create Rubble pile in its exact plot!
     const rubbleGroup = new THREE.Group();
-    rubbleGroup.position.set(building.plot.x, 0, building.plot.z);
+    const rubbleY = Number.isFinite(building.plot.y)
+      ? building.plot.y
+      : (building.group?.position?.y || 0);
+    rubbleGroup.position.set(building.plot.x, rubbleY, building.plot.z);
 
     const w = building.plot.width - 6;
     const d = building.plot.depth - 6;
@@ -639,7 +708,8 @@ export class BuildingFactory {
     building.rubbleGroup = rubbleGroup;
 
     if (this.inspectorHud) {
-      this.inspectorHud.registerObject(rubbleGroup.children[0] || building.baseBox, {
+      building.rubbleInspectableMesh = rubbleGroup.children[0] || building.baseBox;
+      this.inspectorHud.registerObject(building.rubbleInspectableMesh, {
         type: 'DESTROYED BUILDING',
         name: `${building.name} (Rubble)`,
         info: {
@@ -653,11 +723,44 @@ export class BuildingFactory {
 
   restoreAllBuildings() {
     for (const b of this.buildings) {
-      if (b.isDestroyed) {
+      if (b.isDestroyed && b.destroyedByMayhem) {
         b.isDestroyed = false;
+        b.destroyedByMayhem = false;
         b.group.visible = true;
+        b.status = b.preDestructionStatus || b.spec?.status || 'Operational';
+        if (b.info) b.info.Status = b.status;
+        b.preDestructionStatus = null;
+        if (b.baseBox && this.inspectorHud) {
+          this.inspectorHud.registerObject(b.baseBox, b);
+        }
+        if (this.app?.registerEconomyBuilding) this.app.registerEconomyBuilding(b, b.economyId);
+        if (b.spec?.generatorType === 'ROAD_SEGMENT') {
+          this.app?.trafficSystem?.registerRoadSegment?.(b, b.spec);
+        }
+        if (b.mayhemIncidentId && this.app?.economySystem) {
+          this.app.economySystem.resolveIncident(b.mayhemIncidentId);
+          b.mayhemIncidentId = null;
+        }
+        if (b.physicsBody && this.app && this.app.physicsWorld) {
+          this.app.physicsWorld.restoreStaticCollider(b.physicsBody);
+        }
+        if (b.rubbleInspectableMesh && this.inspectorHud) {
+          this.inspectorHud.unregisterObject(b.rubbleInspectableMesh);
+          b.rubbleInspectableMesh = null;
+        }
         if (b.rubbleGroup) {
           this.scene.remove(b.rubbleGroup);
+          const geometries = new Set();
+          const materials = new Set();
+          b.rubbleGroup.traverse(child => {
+            if (child.geometry) geometries.add(child.geometry);
+            if (child.material) {
+              const childMaterials = Array.isArray(child.material) ? child.material : [child.material];
+              for (const material of childMaterials) materials.add(material);
+            }
+          });
+          for (const geometry of geometries) geometry.dispose();
+          for (const material of materials) material.dispose();
           b.rubbleGroup = null;
         }
       }

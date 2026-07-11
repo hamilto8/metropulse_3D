@@ -51,6 +51,13 @@ export class TimeManager {
     this.speed = speed;
   }
 
+  getFormattedTime() {
+    const normalized = ((this.timeVal % 24) + 24) % 24;
+    const hours = Math.floor(normalized);
+    const minutes = Math.floor((normalized - hours) * 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  }
+
   update(delta) {
     if (this.isPlaying) {
       const hoursPerSecond = (1.0 / 60.0) * this.speed;

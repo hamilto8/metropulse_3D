@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { CameraRig } from '../camera/CameraRig.js';
 
 export class SceneManager {
@@ -24,10 +27,22 @@ export class SceneManager {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.35;
     this.container.appendChild(this.renderer.domElement);
+
+    // A restrained bloom pass reinforces emissive signs, headlights, and
+    // weather flashes without washing out the management UI or daytime scene.
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      0.38,
+      0.22,
+      0.88
+    );
+    this.composer.addPass(this.bloomPass);
 
     // Controls setup
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -58,6 +73,10 @@ export class SceneManager {
     this.shakeIntensity = 0;
 
     this.initPresets();
+    this.activePreset = 'birdseye';
+    this.camera.position.copy(this.presets.birdseye.pos);
+    this.controls.target.copy(this.presets.birdseye.target);
+    this.controls.update();
     this.initResizeHandler();
   }
 
@@ -88,6 +107,9 @@ export class SceneManager {
   earthquakeShake(intensity = 2.5, duration = 0.8) {
     this.shakeIntensity = intensity;
     this.shakeTimer = duration;
+    if (this.cameraRig) {
+      this.cameraRig.triggerShake(intensity);
+    }
   }
 
   initPresets() {
@@ -130,9 +152,17 @@ export class SceneManager {
   }
 
   stopFollowTarget() {
+    const needsAscent = Boolean(
+      this.followTarget
+      || (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO')
+    );
     this.followTarget = null;
-    if (this.cameraRig) {
+    if (this.cameraRig && needsAscent) {
       this.cameraRig.ascendToMacro(1.0);
+    } else if (this.cameraRig) {
+      this.cameraRig.state = 'ORBIT_MACRO';
+      this.cameraRig.followTarget = null;
+      this.controls.enabled = true;
     }
   }
 
@@ -149,10 +179,13 @@ export class SceneManager {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+      this.composer?.setSize(window.innerWidth, window.innerHeight);
     });
   }
 
   update(delta) {
+    this.cameraRig?.removeAppliedShake?.();
+
     if (this.app && this.app.inputManager) {
       const rsX = this.app.inputManager.state.cameraPanX;
       const rsY = this.app.inputManager.state.cameraPanY;
@@ -282,6 +315,6 @@ export class SceneManager {
   }
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 }

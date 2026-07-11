@@ -11,8 +11,19 @@ export class CityEditorUI {
     this.selectedSpecId = BUILDING_CATALOG[0].id;
     this.isVisible = false;
     this.activeTool = 'SELECT'; // SELECT, MOVE, ROTATE, DELETE
+    this.previousTimeBarDisplay = '';
+    this.affordabilityRefreshTimer = null;
 
     this.initDOM();
+    this.unsubscribeEconomy = this.app.economySystem?.subscribe?.(() => {
+      if (!this.isVisible || this.affordabilityRefreshTimer) return;
+      this.affordabilityRefreshTimer = setTimeout(() => {
+        this.affordabilityRefreshTimer = null;
+        if (!this.isVisible) return;
+        this.renderCatalog();
+        this.refreshAffordability();
+      }, 250);
+    }) || null;
   }
 
   initDOM() {
@@ -41,8 +52,10 @@ export class CityEditorUI {
           <button class="tray-tab-pill active" data-category="ALL">All</button>
           <button class="tray-tab-pill" data-category="RESIDENTIAL">Residential</button>
           <button class="tray-tab-pill" data-category="COMMERCIAL">Commercial</button>
+          <button class="tray-tab-pill" data-category="INDUSTRIAL">Industrial</button>
           <button class="tray-tab-pill" data-category="CIVIC">Civic</button>
           <button class="tray-tab-pill" data-category="UTILITIES">Utilities</button>
+          <button class="tray-tab-pill" data-category="INFRASTRUCTURE">Infrastructure</button>
         </div>
 
         <!-- Main Tray Body Grid -->
@@ -61,10 +74,11 @@ export class CityEditorUI {
             <div class="blueprint-hologram-box">
               <div class="blueprint-hologram-icon" id="blueprint-icon">🏢</div>
               <div class="blueprint-hologram-label" id="blueprint-name">NeoTech Quantum Tower</div>
+              <div class="blueprint-hologram-label" id="blueprint-price" aria-live="polite"></div>
             </div>
             <button class="place-building-btn" id="btn-place-building">
               <span>📦</span>
-              <span>Place Building</span>
+              <span id="btn-place-building-label">Place Building</span>
             </button>
           </div>
         </div>
@@ -139,11 +153,16 @@ export class CityEditorUI {
     // Place Building button
     const placeBtn = this.container.querySelector('#btn-place-building');
     placeBtn.addEventListener('click', () => {
-      if (this.app.cityEditorSystem) {
-        this.app.cityEditorSystem.selectBuilding(this.selectedSpecId);
+      const editor = this.app.cityEditorSystem;
+      const spec = getBuildingSpec(this.selectedSpecId);
+      if (!editor || !spec) return;
+      if (!editor.canAfford(spec)) {
+        this.app.uiManager?.showToast(`💳 Insufficient credits for ${spec.name}`);
+        this.refreshAffordability();
+        return;
       }
+      editor.selectBuilding(this.selectedSpecId);
       if (this.app.uiManager && this.app.uiManager.addAlert) {
-        const spec = getBuildingSpec(this.selectedSpecId);
         this.app.uiManager.addAlert(`🏗️ Ready to place: ${spec.name}. Click street or parcel to build.`, 'info');
       }
     });
@@ -250,12 +269,20 @@ export class CityEditorUI {
       const formattedPrice = spec.cost
         ? `$${Number(spec.cost).toLocaleString()}`
         : `$350,000`;
+      const affordable = this.app.cityEditorSystem?.canAfford(spec) ?? true;
+
+      card.classList.toggle('unaffordable', !affordable);
+      card.setAttribute('aria-disabled', String(!affordable));
+      if (!affordable) {
+        card.style.opacity = '0.62';
+        card.title = `Insufficient credits for ${spec.name}`;
+      }
 
       card.innerHTML = `
         <div class="building-card-preview">${spec.icon || '🏢'}</div>
         <div class="building-card-title" title="${spec.name}">${spec.name}</div>
         <div class="building-card-stats">
-          <span class="building-card-price">${formattedPrice}</span>
+          <span class="building-card-price" style="color: ${affordable ? '#00ff88' : '#f87171'}">${formattedPrice}</span>
           <span class="building-card-dim">${spec.footprint.width}m x ${spec.footprint.depth}m</span>
         </div>
       `;
@@ -283,15 +310,59 @@ export class CityEditorUI {
     const nameEl = this.container.querySelector('#blueprint-name');
     if (iconEl) iconEl.textContent = spec.icon || '🏢';
     if (nameEl) nameEl.textContent = spec.name;
+    this.refreshAffordability(spec);
+  }
+
+  refreshAffordability(spec = getBuildingSpec(this.selectedSpecId)) {
+    if (!spec || !this.container) return;
+    const editor = this.app.cityEditorSystem;
+    const priceEl = this.container.querySelector('#blueprint-price');
+    const placeBtn = this.container.querySelector('#btn-place-building');
+    const placeLabel = this.container.querySelector('#btn-place-building-label');
+    const cost = editor?.getPlacementCost(spec) ?? Number(spec.cost || 0);
+    const affordable = editor?.canAfford(spec) ?? true;
+    const credits = editor?.getAvailableCredits?.() ?? null;
+
+    if (priceEl) {
+      const costText = `$${Number(cost).toLocaleString()}`;
+      const balanceText = credits == null ? '' : ` • Treasury $${Number(credits).toLocaleString()}`;
+      priceEl.textContent = `${costText}${balanceText}`;
+      priceEl.style.color = affordable ? '#00ff88' : '#f87171';
+    }
+    if (placeBtn) {
+      placeBtn.disabled = !affordable;
+      placeBtn.setAttribute('aria-disabled', String(!affordable));
+      placeBtn.title = affordable ? `Place ${spec.name}` : `Insufficient credits for ${spec.name}`;
+      placeBtn.style.opacity = affordable ? '1' : '0.55';
+      placeBtn.style.cursor = affordable ? 'pointer' : 'not-allowed';
+    }
+    if (placeLabel) {
+      placeLabel.textContent = affordable ? 'Place Building' : 'Insufficient Credits';
+    }
   }
 
   show() {
+    if (this.isVisible) {
+      this.refreshAffordability();
+      return false;
+    }
+    if (
+      this.app.trafficSystem?.controlledVehicle
+      || this.app.pedestrianSystem?.controlledPedestrian
+      || this.app.missionSystem?.activeMission
+    ) {
+      this.app.uiManager?.showToast('⚠️ Return to Management with [M] before opening the City Editor.');
+      return false;
+    }
     this.isVisible = true;
     this.container.style.display = 'flex';
 
     // Hide bottom time bar while editor is open to prevent overlap
-    const timeBar = document.getElementById('bottom-time-bar');
-    if (timeBar) timeBar.style.display = 'none';
+    const timeBar = document.querySelector('.bottom-time-bar');
+    if (timeBar) {
+      this.previousTimeBarDisplay = timeBar.style.display;
+      timeBar.style.display = 'none';
+    }
 
     // Ensure left sidebar is visible so CITY TOOLS is accessible
     const leftSidebar = document.getElementById('left-sidebar');
@@ -302,25 +373,57 @@ export class CityEditorUI {
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.activate();
     }
+    this.setGameMode('BUILDER');
+    this.syncEditorChrome(true);
+    this.renderCatalog();
+    this.refreshAffordability();
+    return true;
   }
 
-  hide() {
+  hide({ preserveMode = false } = {}) {
+    if (!this.isVisible) return false;
     this.isVisible = false;
     this.container.style.display = 'none';
 
-    const timeBar = document.getElementById('bottom-time-bar');
-    if (timeBar) timeBar.style.display = 'flex';
+    const timeBar = document.querySelector('.bottom-time-bar');
+    if (timeBar) timeBar.style.display = this.previousTimeBarDisplay;
 
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.deactivate();
     }
+    if (!preserveMode) this.setGameMode('MANAGEMENT');
+    this.syncEditorChrome(false);
+    return true;
   }
 
   toggle() {
     if (this.isVisible) {
-      this.hide();
-    } else {
-      this.show();
+      return this.hide();
+    }
+    return this.show();
+  }
+
+  setGameMode(mode) {
+    const gameManager = this.app.gameManager;
+    if (gameManager) {
+      const transitionMethods = ['requestMode', 'setMode', 'transitionTo', 'setState'];
+      for (const methodName of transitionMethods) {
+        if (typeof gameManager[methodName] === 'function') {
+          gameManager[methodName](mode, { reason: 'city-editor-ui', source: 'CityEditorUI' });
+          break;
+        }
+      }
+    }
+
+    const modeLabel = document.getElementById('current-mode-label');
+    if (modeLabel) modeLabel.textContent = mode === 'BUILDER' ? 'CITY EDITOR' : 'MANAGEMENT';
+  }
+
+  syncEditorChrome(active) {
+    const uiManager = this.app.uiManager;
+    if (uiManager?.btnExpandCity) uiManager.btnExpandCity.classList.toggle('active', active);
+    if (uiManager?.expandCityLabel) {
+      uiManager.expandCityLabel.textContent = active ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [F]';
     }
   }
 }
