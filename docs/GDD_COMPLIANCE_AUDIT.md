@@ -39,6 +39,21 @@ The direct functional P0–P3 contract now has implementation and rendered-start
 
 **Matrix outcome:** 71 requirements are **Met**, 4 are **Partial** (subjective experience acceptance, whole-application ECS/MVVM recommendations, and measured performance acceptance), and 5 explicitly future P4 requirements are **Deferred**.
 
+### Post-review compliance remediation (2026-07-11)
+
+An independent engineering/UI review found release-quality gaps outside the original startup-only verification boundary. The current working tree now includes the following additional remediation:
+
+- City Tools collapses to a persistent, keyboard-focusable rail instead of translating its reopen control off-screen; `aria-expanded`, labels, and titles remain synchronized.
+- Keyboard E and gamepad Y share one mission-first contextual action route, including Sabotage and nearby mission acceptance.
+- The City Editor now provides honest Place/Move/Rotate/Delete tools. Moving or rotating a user structure synchronizes its Three.js transform, footprint, physics collider, traffic-road registration, economy position, selection affordance, and saved state.
+- Catalog cards and carousel pages are semantic buttons with pressed state; camera presets have descriptive accessible names; accordions are real disclosure buttons; range inputs retain visible focus; dialogue is a labelled modal with Escape, focus containment, and focus restoration; reduced-motion preferences are honored.
+- The 375×812 editor uses a dedicated compact layout. Browser measurement reports `scrollWidth === clientWidth === 375`, with the catalog tray and transform toolbar entirely inside the viewport.
+- Dynamic alerts, mission prompts, and pedestrian prompts construct text nodes instead of interpolating runtime values into `innerHTML`. A restrictive browser Content Security Policy and referrer policy are declared in `index.html`.
+- A versioned local persistence layer restores treasury/economy records, user buildings, zoning, district unlocks, mission narrative/run state, time, weather, Mayhem, and heat-map settings. It provides automatic bounded writes plus explicit Save City and Start New City controls.
+- Initialization/unhandled-operation recovery now presents an actionable alert and preserves the local city session.
+
+Verification after remediation: **51 Node tests pass**, production build succeeds (49 modules), full-project syntax and whitespace checks pass, `npm audit` reports **0 vulnerabilities**, and interactive browser checks pass for sidebar collapse/reopen, mobile editor entry/layout, semantic catalog controls, explicit save, and reload restore with no console warnings or errors. The Three.js core chunk remains above Vite's advisory threshold; measured target-device performance and cross-browser street/mission acceptance remain the principal non-functional acceptance work.
+
 ## Requirement-to-implementation matrix
 
 ### 1. Product concept and dual-loop contract
@@ -228,14 +243,14 @@ The previous 1,000.45 kB application bundle is now split into 336.16 kB applicat
 
 ## Known residual limitations and acceptance work
 
-1. **No final-tree click-driven browser acceptance run.** Final desktop/narrow WebGL startup rendering is verified, but the in-app automation surface was unavailable. There is no browser evidence for pointer capture, keyboard focus, WebAudio unlock, camera transitions under input, actual mission completion, builder placement, or Mayhem restoration across Chrome/Safari/Firefox.
+1. **The click-driven acceptance run is targeted, not a full gameplay matrix.** Sidebar collapse/reopen, editor entry, semantic controls, 375×812 layout, explicit save, and reload restore are now browser-verified. Pointer capture, WebAudio unlock, full driving feel, actual mission completion, and Mayhem restoration still need a Chrome/Safari/Firefox gameplay matrix.
 2. **No design-reference comparison.** The screenshot referenced by the GDD was not embedded in the Markdown source. Current desktop/narrow screenshots were inspected for standalone usability, but not compared with the missing reference.
 3. **Builder depth beyond the written contract is compact.** Bridge management is one priority/speed lever and services use city-wide capacity/demand rather than localized outage simulation. Amenity and Mayhem land values are now spatial. The GDD's paid infrastructure/landmark expansion is implemented; it does not define an existing-asset upgrade tree.
 4. **Some interaction/content depth remains compact.** Race checkpoints/authored rivals and the Sabotage hold interaction are now distinct and tested, but rivals are deterministic competitors rather than physical AI cars. Intentional drift handling still lacks dynamic/browser acceptance. Broader combat polish is P4.
 5. **Mission-only visual acceptance remains outstanding.** The final startup canvas, HUD, bloom, and minimap composition were rendered, but procedural dialogue portraits, mission HUD progression, and action-camera readability were not exercised in the headless startup path.
 6. **Architecture is improved but not fully ECS/MVVM.** Keyboard ownership is centralized and performance policy is separated, but large simulation classes still combine mesh construction, AI, audio, and some DOM interactions.
 7. **Performance is policy-tested, not acceptance-tested.** Spatial indexing, low-poly proxies, distance tiers, animation cadence, and chunk separation now exist, but there is no target browser/device matrix, FPS percentile, frame-time, memory, load-time, or draw-call budget.
-8. **No persistence layer.** Treasury, unlocked district, zoning, mission/narrative state, and world destruction reset on reload. Persistence was not specified by the GDD, but it is a product-readiness limitation.
+8. **Persistence is implemented locally.** Treasury/economy data, user buildings, zoning, unlocks, mission narrative/run state, time, weather, Mayhem, and heat-map settings survive reload. Cloud synchronization and save migration beyond version 1 are future delivery capabilities rather than GDD requirements.
 9. **P4 remains intentionally incomplete.** Reverse-chronology campaign sequencing, expanded combat/content, modding, and future release/expansion packaging are deferred. The repository itself is already MIT-licensed.
 
 ## Recommended acceptance sequence

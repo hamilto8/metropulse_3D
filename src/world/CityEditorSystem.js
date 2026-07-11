@@ -56,6 +56,9 @@ export class CityEditorSystem {
 
     this.isActive = false;
     this.isDeleteMode = false;
+    this.toolMode = 'PLACE';
+    this.selectedStructure = null;
+    this.selectionHelper = null;
     this.gridSnap = true;
     this.snapSize = 10;
     this.rotationY = 0;
@@ -110,6 +113,7 @@ export class CityEditorSystem {
     window.removeEventListener('keydown', this.onKeyDown);
 
     this.disposeGhostGroup();
+    this.clearStructureSelection();
     this.currentHit.valid = false;
     return true;
   }
@@ -118,6 +122,8 @@ export class CityEditorSystem {
     const spec = getBuildingSpec(specId);
     if (!spec) return false;
     this.selectedSpec = spec;
+    this.toolMode = 'PLACE';
+    this.clearStructureSelection();
     this.zoningMode = null;
     this.isDeleteMode = false;
     this.updateGhostMesh();
@@ -129,6 +135,8 @@ export class CityEditorSystem {
     const definition = ZONE_DEFINITIONS[normalized];
     if (!definition) return false;
     this.zoningMode = definition.canonical;
+    this.toolMode = 'ZONE';
+    this.clearStructureSelection();
     this.isDeleteMode = false;
     this.disposeGhostGroup();
     this.app.uiManager?.showToast(`🗺️ Zoning tool active: ${normalized}`);
@@ -149,8 +157,10 @@ export class CityEditorSystem {
 
   toggleDeleteMode() {
     this.isDeleteMode = !this.isDeleteMode;
+    this.toolMode = this.isDeleteMode ? 'DELETE' : 'PLACE';
     this.zoningMode = null;
     if (this.isDeleteMode) {
+      this.clearStructureSelection();
       this.disposeGhostGroup();
     } else {
       this.updateGhostMesh();
@@ -158,7 +168,75 @@ export class CityEditorSystem {
     return this.isDeleteMode;
   }
 
+  setTool(tool) {
+    const normalized = String(tool || '').toUpperCase();
+    if (!['PLACE', 'MOVE', 'ROTATE', 'DELETE'].includes(normalized)) return false;
+    this.toolMode = normalized;
+    this.zoningMode = null;
+    this.isDeleteMode = normalized === 'DELETE';
+    if (normalized === 'PLACE') {
+      this.clearStructureSelection();
+      this.updateGhostMesh();
+    } else {
+      this.disposeGhostGroup();
+      if (normalized === 'DELETE') this.clearStructureSelection();
+    }
+    return true;
+  }
+
+  clearStructureSelection() {
+    this.selectedStructure = null;
+    if (this.selectionHelper) {
+      this.scene.remove(this.selectionHelper);
+      this.selectionHelper.geometry?.dispose?.();
+      this.selectionHelper.material?.dispose?.();
+      this.selectionHelper = null;
+    }
+  }
+
+  selectStructureAtMouse() {
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const buildings = (this.app.buildingFactory?.buildings || []).filter(building => (
+      building?.isUserPlaced && !building.isDestroyed && building.group
+    ));
+    for (const building of buildings.reverse()) {
+      if (this.raycaster.intersectObject(building.group, true).length === 0) continue;
+      this.clearStructureSelection();
+      this.selectedStructure = building;
+      this.selectedSpec = building.spec;
+      this.rotationY = building.group.rotation.y;
+      this.selectionHelper = new THREE.BoxHelper(building.group, 0x00f0ff);
+      this.selectionHelper.name = 'SelectedCityStructure';
+      this.scene.add(this.selectionHelper);
+      this.app.uiManager?.showToast(`✥ Selected ${building.name}. Click a valid destination to move it.`);
+      return building;
+    }
+    this.clearStructureSelection();
+    this.app.uiManager?.showToast('ℹ️ Select a structure built with the City Editor.');
+    return null;
+  }
+
   rotateSelection() {
+    if (this.selectedStructure && (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE')) {
+      const building = this.selectedStructure;
+      const isRoad = building.spec?.generatorType === 'ROAD_SEGMENT';
+      if (isRoad) this.app.trafficSystem?.unregisterRoadSegment?.(building, building.spec);
+      building.group.rotation.y = (building.group.rotation.y + Math.PI / 2) % (Math.PI * 2);
+      this.rotationY = building.group.rotation.y;
+      const quarterTurns = Math.round(this.rotationY / (Math.PI / 2)) % 2;
+      const width = building.spec?.footprint?.width || building.plot.width;
+      const depth = building.spec?.footprint?.depth || building.plot.depth;
+      building.plot.width = quarterTurns === 0 ? width : depth;
+      building.plot.depth = quarterTurns === 0 ? depth : width;
+      if (building.physicsBody?.quaternion) {
+        building.physicsBody.quaternion.setFromAxisAngle({ x: 0, y: 1, z: 0 }, this.rotationY);
+      }
+      if (isRoad) this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
+      this.selectionHelper?.update?.();
+      this.app.uiManager?.showToast(`↻ Rotated ${building.name} 90°.`);
+      this.app.persistenceSystem?.scheduleSave?.();
+      return this.rotationY;
+    }
     this.rotationY = (this.rotationY + Math.PI / 2) % (Math.PI * 2);
     if (this.ghostGroup) {
       this.ghostGroup.rotation.y = this.rotationY;
@@ -304,7 +382,12 @@ export class CityEditorSystem {
       : 0;
     const valid = this.zoningMode
       ? this.checkZoningValidity(targetX, targetZ, terrainY)
-      : this.checkPlacementValidity(targetX, targetZ, terrainY);
+      : this.checkPlacementValidity(
+        targetX,
+        targetZ,
+        terrainY,
+        this.toolMode === 'MOVE' ? this.selectedStructure : null
+      );
     this.currentHit = { x: targetX, y: terrainY, z: targetZ, valid };
 
     if (this.ghostGroup) {
@@ -314,7 +397,7 @@ export class CityEditorSystem {
     }
   }
 
-  checkPlacementValidity(x, z, y = 0) {
+  checkPlacementValidity(x, z, y = 0, ignoreBuilding = null) {
     if (!this.selectedSpec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
     if (y < -1.5) return false;
 
@@ -336,6 +419,7 @@ export class CityEditorSystem {
 
     const buildings = this.app.buildingFactory?.buildings || [];
     for (const building of buildings) {
+      if (building === ignoreBuilding) continue;
       if (!building || building.isDestroyed || !building.plot) continue;
       const width = building.plot.width || 30;
       const depth = building.plot.depth || 30;
@@ -612,9 +696,73 @@ export class CityEditorSystem {
 
   onPointerDown(event) {
     if (!this.isActive || event.button !== 0 || !this.isPointerOnEditorCanvas(event.target)) return false;
+    this.onPointerMove(event);
     if (this.isDeleteMode) return this.performDeleteAtMouse();
     if (this.zoningMode) return this.applyZoningAtCurrentHit();
+    if (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE') {
+      if (!this.selectedStructure) return Boolean(this.selectStructureAtMouse());
+      if (this.toolMode === 'ROTATE') return Boolean(this.selectStructureAtMouse());
+      return this.moveSelectedStructureToCurrentHit();
+    }
     return this.placeSelectedBuilding();
+  }
+
+  moveSelectedStructureToCurrentHit() {
+    const building = this.selectedStructure;
+    if (!building || !this.currentHit.valid) {
+      this.app.uiManager?.showToast('⚠️ Choose a valid, unoccupied destination.');
+      return false;
+    }
+    if (!this.checkPlacementValidity(this.currentHit.x, this.currentHit.z, this.currentHit.y, building)) {
+      this.app.uiManager?.showToast('⚠️ That destination is blocked or outside the unlocked city.');
+      return false;
+    }
+
+    if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+      this.app.trafficSystem?.unregisterRoadSegment?.(building, building.spec);
+    }
+    const economy = this.getEconomyController();
+    const previousPlot = { ...building.plot };
+    const previousEconomyRecord = building.economyId && economy?.getBuilding
+      ? economy.getBuilding(building.economyId)
+      : building.economyRecord;
+    try {
+      if (building.economyId && economy?.removeBuilding) economy.removeBuilding(building.economyId);
+      building.group.position.set(this.currentHit.x, this.currentHit.y, this.currentHit.z);
+      building.plot.x = this.currentHit.x;
+      building.plot.y = this.currentHit.y;
+      building.plot.z = this.currentHit.z;
+      if (building.physicsBody?.position) {
+        const height = building.spec?.height || building.height || 30;
+        building.physicsBody.position.set(this.currentHit.x, this.currentHit.y + height * 0.5, this.currentHit.z);
+      }
+      if (economy?.registerBuilding) {
+        building.economyRecord = economy.registerBuilding(this.createEconomyBuildingRecord(building, building.spec));
+      }
+      if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+        this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
+      }
+    } catch (error) {
+      console.error('City editor move failed; restoring the previous structure state.', error);
+      building.group.position.set(previousPlot.x, previousPlot.y, previousPlot.z);
+      Object.assign(building.plot, previousPlot);
+      if (building.physicsBody?.position) {
+        const height = building.spec?.height || building.height || 30;
+        building.physicsBody.position.set(previousPlot.x, previousPlot.y + height * 0.5, previousPlot.z);
+      }
+      if (previousEconomyRecord && economy?.registerBuilding && !economy.getBuilding?.(previousEconomyRecord.id)) {
+        building.economyRecord = economy.registerBuilding(previousEconomyRecord);
+      }
+      if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+        this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
+      }
+      this.app.uiManager?.showToast('⚠️ Move failed; the structure was restored safely.');
+      return false;
+    }
+    this.selectionHelper?.update?.();
+    this.app.uiManager?.addAlert?.(`✥ Moved ${building.name} to ${Math.round(building.plot.x)}, ${Math.round(building.plot.z)}.`, 'success');
+    this.app.persistenceSystem?.scheduleSave?.();
+    return true;
   }
 
   applyZoningAtCurrentHit() {
@@ -710,7 +858,68 @@ export class CityEditorSystem {
       `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.canonical}.`,
       'success'
     );
+    this.app.persistenceSystem?.scheduleSave?.();
     return true;
+  }
+
+  serializeWorldEdits() {
+    return {
+      version: 1,
+      buildings: (this.app.buildingFactory?.buildings || [])
+        .filter(building => building?.isUserPlaced && !building.isDestroyed && building.spec?.id)
+        .map(building => ({
+          economyId: building.economyId || null,
+          specId: building.spec.id,
+          plot: { ...building.plot },
+          rotationY: building.group?.rotation?.y || 0
+        })),
+      zones: [...this.zoneParcels.values()].map(parcel => ({
+        key: parcel.key,
+        x: parcel.x,
+        z: parcel.z,
+        zoneType: parcel.zoneType,
+        happinessModifier: parcel.happinessModifier,
+        landValueModifier: parcel.landValueModifier
+      }))
+    };
+  }
+
+  restoreZoneParcels(records = []) {
+    if (!Array.isArray(records)) throw new TypeError('Saved zone parcels must be an array');
+    for (const record of records) {
+      const definition = Object.values(ZONE_DEFINITIONS).find(entry => entry.canonical === record?.zoneType);
+      if (!definition || !Number.isFinite(record.x) || !Number.isFinite(record.z)) continue;
+      const key = typeof record.key === 'string'
+        ? record.key
+        : `${Math.round(record.x / this.snapSize)},${Math.round(record.z / this.snapSize)}`;
+      if (this.zoneParcels.has(key)) continue;
+      const y = this.app.cityBuilder?.getHillHeight?.(record.x, record.z) || 0;
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(this.snapSize * 3.6, this.snapSize * 3.6),
+        new THREE.MeshBasicMaterial({
+          color: definition.color,
+          transparent: true,
+          opacity: 0.16,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(record.x, y + 0.12, record.z);
+      mesh.renderOrder = 4;
+      mesh.userData.zoneType = definition.canonical;
+      this.zoneOverlayGroup.add(mesh);
+      this.zoneParcels.set(key, {
+        key,
+        x: record.x,
+        z: record.z,
+        zoneType: definition.canonical,
+        happinessModifier: Number(record.happinessModifier ?? definition.happiness),
+        landValueModifier: Number(record.landValueModifier ?? definition.landValue),
+        mesh
+      });
+    }
+    return this.zoneParcels.size;
   }
 
   performDeleteAtMouse() {
@@ -764,6 +973,8 @@ export class CityEditorSystem {
       this.app.uiManager?.showToast(
         `🗑️ Demolished: ${building.name}${refundApplied ? ` (+$${refundAmount.toLocaleString()} salvage)` : ''}`
       );
+      this.clearStructureSelection();
+      this.app.persistenceSystem?.scheduleSave?.();
       return true;
     }
     return false;
@@ -805,6 +1016,8 @@ export class CityEditorSystem {
     try {
       building = this.app.buildingFactory.placeUserBuilding(plot, this.selectedSpec, this.rotationY);
       if (!building) throw new Error('Building factory returned no structure');
+      building.plot.width = footprint.width;
+      building.plot.depth = footprint.depth;
 
       const generatorType = this.selectedSpec.generatorType;
       if (this.app.physicsWorld && generatorType !== 'ROAD_SEGMENT' && generatorType !== 'PARK_PLAZA') {
@@ -845,6 +1058,7 @@ export class CityEditorSystem {
       `🏗️ Constructed: ${this.selectedSpec.name}${chargedEconomy && cost > 0 ? ` (-$${cost.toLocaleString()})` : ''}`
     );
     this.app.uiManager?.addAlert?.(`🏗️ New structure registered: ${this.selectedSpec.name}`, 'success');
+    this.app.persistenceSystem?.scheduleSave?.();
 
     this.currentHit.valid = this.checkPlacementValidity(plot.x, plot.z, plot.y);
     this.updateGhostValidityAppearance(this.currentHit.valid);

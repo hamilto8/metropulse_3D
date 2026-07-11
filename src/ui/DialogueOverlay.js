@@ -35,6 +35,8 @@ export class DialogueOverlay {
     /** @type {import('../systems/MissionSystem.js').MissionSystem|null} */
     this.missionSystem = null;
     this.currentNodeId = 'start';
+    this.previousFocus = null;
+    this.onKeyDown = this.onKeyDown.bind(this);
 
     if (this.closeBtn) {
       this.closeBtn.addEventListener('click', () => this.hide());
@@ -48,12 +50,45 @@ export class DialogueOverlay {
    */
   showMissionDialogue(mission, missionSystem) {
     if (!this.overlay || !mission) return;
+    this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.currentMission = mission;
     this.missionSystem = missionSystem;
     this.currentNodeId = 'start';
 
     this.renderNode(this.currentNodeId);
     this.overlay.classList.remove('hidden');
+    document.addEventListener('keydown', this.onKeyDown);
+    queueMicrotask(() => {
+      const target = this.choicesEl?.querySelector('button') || this.closeBtn || this.overlay.querySelector('.dialogue-card');
+      target?.focus?.();
+    });
+  }
+
+  onKeyDown(event) {
+    if (!this.overlay || this.overlay.classList.contains('hidden')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.hide();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = [...this.overlay.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.classList.contains('hidden'));
+    if (focusable.length === 0) {
+      event.preventDefault();
+      this.overlay.querySelector('.dialogue-card')?.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   /**
@@ -283,5 +318,9 @@ export class DialogueOverlay {
     }
     this.currentMission = null;
     this.missionSystem = null; // Release reference to prevent stale callback leaks
+    document.removeEventListener('keydown', this.onKeyDown);
+    const focusTarget = this.previousFocus;
+    this.previousFocus = null;
+    focusTarget?.focus?.();
   }
 }

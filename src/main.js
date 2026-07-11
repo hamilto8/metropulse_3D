@@ -27,6 +27,7 @@ import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
 import { GameManager } from './core/GameManager.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
+import { PersistenceSystem } from './systems/PersistenceSystem.js';
 
 class MetroPulseApp {
   constructor() {
@@ -156,6 +157,8 @@ class MetroPulseApp {
     // 11.5 Phase 3 Mission Logic & Branching Dialogue Overlay
     this.dialogueOverlay = new DialogueOverlay();
     this.missionSystem = new MissionSystem(this, this.dialogueOverlay);
+    this.persistenceSystem = new PersistenceSystem(this);
+    this.persistenceSystem.restore();
 
     // 12. Animation Loop Setup
     this.timer = new THREE.Timer();
@@ -245,6 +248,7 @@ class MetroPulseApp {
   }
 
   animate(timestamp) {
+    if (this.fatalError) return;
     requestAnimationFrame(this.animate);
 
     this.timer.update(timestamp);
@@ -364,7 +368,37 @@ class MetroPulseApp {
   }
 }
 
+function showFatalError(title, error) {
+  let panel = document.getElementById('fatal-error-panel');
+  if (!panel) {
+    panel = document.createElement('section');
+    panel.id = 'fatal-error-panel';
+    panel.className = 'fatal-error-panel';
+    panel.setAttribute('role', 'alert');
+    panel.append(
+      Object.assign(document.createElement('h2'), { textContent: title }),
+      Object.assign(document.createElement('p'), { textContent: 'MetroPulse encountered a problem and paused safely. Reload the page to retry; your city is saved locally.' }),
+      Object.assign(document.createElement('button'), { textContent: 'Reload MetroPulse' })
+    );
+    panel.querySelector('button').addEventListener('click', () => window.location.reload());
+    document.body.appendChild(panel);
+  }
+  panel.dataset.error = error?.name || 'Error';
+}
+
 // Start application when DOM is ready
 window.addEventListener('DOMContentLoaded', () => {
-  window.app = new MetroPulseApp();
+  try {
+    window.app = new MetroPulseApp();
+  } catch (error) {
+    console.error('MetroPulse failed to initialize.', error);
+    showFatalError('Unable to start the city simulation', error);
+  }
+});
+
+window.addEventListener('unhandledrejection', event => {
+  console.error('MetroPulse encountered an unhandled operation.', event.reason);
+  if (window.app) window.app.fatalError = true;
+  window.app?.persistenceSystem?.saveNow?.();
+  showFatalError('The city simulation was interrupted', event.reason);
 });

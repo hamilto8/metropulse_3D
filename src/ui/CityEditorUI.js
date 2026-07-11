@@ -1,4 +1,5 @@
 import { BUILDING_CATALOG, getCatalogByCategory, getBuildingSpec } from '../world/BuildingCatalog.js';
+import { createTextElement } from './dom.js';
 
 export class CityEditorUI {
   constructor(app) {
@@ -10,7 +11,7 @@ export class CityEditorUI {
     this.pageSize = 4;
     this.selectedSpecId = BUILDING_CATALOG[0].id;
     this.isVisible = false;
-    this.activeTool = 'SELECT'; // SELECT, MOVE, ROTATE, DELETE
+    this.activeTool = 'PLACE'; // PLACE, MOVE, ROTATE, DELETE
     this.previousTimeBarDisplay = '';
     this.affordabilityRefreshTimer = null;
 
@@ -42,7 +43,7 @@ export class CityEditorUI {
           <div class="tray-search-bar">
             <span>🔍</span>
             <input type="text" id="editor-search-input" placeholder="Search buildings...">
-            <button class="tray-filter-btn" title="Filter Catalog">⏳</button>
+            <span class="tray-filter-status" title="Catalog search" aria-hidden="true">⌕</span>
           </div>
           <button class="tray-close-btn" id="btn-editor-close">✕ Exit Editor</button>
         </div>
@@ -86,11 +87,11 @@ export class CityEditorUI {
 
       <!-- Transform / Placement Toolbar (Bottom-Right) -->
       <div class="editor-transform-toolbar">
-        <button class="transform-tool-btn active" id="btn-tool-select" title="Select / Place Tool [S]">
+        <button class="transform-tool-btn active" id="btn-tool-select" title="Place selected structure">
           <span class="transform-icon">↗</span>
-          <span>Select</span>
+          <span>Place</span>
         </button>
-        <button class="transform-tool-btn" id="btn-tool-move" title="Toggle Grid Snap [G]">
+        <button class="transform-tool-btn" id="btn-tool-move" title="Select and move a user-built structure">
           <span class="transform-icon">✥</span>
           <span>Move</span>
         </button>
@@ -122,10 +123,15 @@ export class CityEditorUI {
 
     // Category tabs
     const tabButtons = this.container.querySelectorAll('.tray-tab-pill');
+    tabButtons.forEach(btn => btn.setAttribute('aria-pressed', String(btn.classList.contains('active'))));
     tabButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        tabButtons.forEach(b => b.classList.remove('active'));
+        tabButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         this.currentCategory = btn.dataset.category;
         this.currentPage = 0;
         this.renderCatalog();
@@ -174,24 +180,21 @@ export class CityEditorUI {
     const deleteTool = this.container.querySelector('#btn-tool-delete');
 
     selectTool.addEventListener('click', () => {
-      this.setActiveTool('SELECT');
-      if (this.app.cityEditorSystem && this.app.cityEditorSystem.isDeleteMode) {
-        this.app.cityEditorSystem.toggleDeleteMode();
-      }
+      this.setActiveTool('PLACE');
+      this.app.cityEditorSystem?.setTool?.('PLACE');
     });
 
     moveTool.addEventListener('click', () => {
       this.setActiveTool('MOVE');
-      if (this.app.cityEditorSystem) {
-        const state = this.app.cityEditorSystem.toggleGridSnap();
-        if (this.app.uiManager) {
-          this.app.uiManager.addAlert(`📐 Grid snap ${state ? 'ENABLED' : 'DISABLED'}`, 'info');
-        }
-      }
+      this.app.cityEditorSystem?.setTool?.('MOVE');
+      this.app.uiManager?.showToast('✥ Move tool: select a user-built structure, then click a valid destination.');
     });
 
     rotateTool.addEventListener('click', () => {
       if (this.app.cityEditorSystem) {
+        const hasSelection = Boolean(this.app.cityEditorSystem.selectedStructure);
+        this.setActiveTool(hasSelection ? 'ROTATE' : 'PLACE');
+        this.app.cityEditorSystem.setTool?.(hasSelection ? 'ROTATE' : 'PLACE');
         this.app.cityEditorSystem.rotateSelection();
       }
     });
@@ -199,7 +202,7 @@ export class CityEditorUI {
     deleteTool.addEventListener('click', () => {
       if (this.app.cityEditorSystem) {
         const isDel = this.app.cityEditorSystem.toggleDeleteMode();
-        this.setActiveTool(isDel ? 'DELETE' : 'SELECT');
+        this.setActiveTool(isDel ? 'DELETE' : 'PLACE');
       }
     });
 
@@ -216,8 +219,10 @@ export class CityEditorUI {
     const moveTool = this.container.querySelector('#btn-tool-move');
     const deleteTool = this.container.querySelector('#btn-tool-delete');
 
-    selectTool.classList.toggle('active', toolName === 'SELECT');
+    selectTool.classList.toggle('active', toolName === 'PLACE');
     moveTool.classList.toggle('active', toolName === 'MOVE');
+    const rotateTool = this.container.querySelector('#btn-tool-rotate');
+    rotateTool.classList.toggle('active', toolName === 'ROTATE');
     deleteTool.classList.toggle('active-danger', toolName === 'DELETE');
   }
 
@@ -244,8 +249,11 @@ export class CityEditorUI {
 
     // Render Dots
     for (let i = 0; i < totalPages; i++) {
-      const dot = document.createElement('div');
+      const dot = document.createElement('button');
+      dot.type = 'button';
       dot.className = `tray-dot ${i === this.currentPage ? 'active' : ''}`;
+      dot.setAttribute('aria-label', `Catalog page ${i + 1} of ${totalPages}`);
+      dot.setAttribute('aria-pressed', String(i === this.currentPage));
       dot.addEventListener('click', () => {
         this.currentPage = i;
         this.renderCatalog();
@@ -262,9 +270,11 @@ export class CityEditorUI {
     }
 
     pageItems.forEach(spec => {
-      const card = document.createElement('div');
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = `building-card ${spec.id === this.selectedSpecId ? 'selected' : ''}`;
       card.dataset.id = spec.id;
+      card.setAttribute('aria-pressed', String(spec.id === this.selectedSpecId));
 
       const formattedPrice = spec.cost
         ? `$${Number(spec.cost).toLocaleString()}`
@@ -278,19 +288,25 @@ export class CityEditorUI {
         card.title = `Insufficient credits for ${spec.name}`;
       }
 
-      card.innerHTML = `
-        <div class="building-card-preview">${spec.icon || '🏢'}</div>
-        <div class="building-card-title" title="${spec.name}">${spec.name}</div>
-        <div class="building-card-stats">
-          <span class="building-card-price" style="color: ${affordable ? '#00ff88' : '#f87171'}">${formattedPrice}</span>
-          <span class="building-card-dim">${spec.footprint.width}m x ${spec.footprint.depth}m</span>
-        </div>
-      `;
+      const preview = createTextElement('span', 'building-card-preview', spec.icon || '🏢');
+      preview.setAttribute('aria-hidden', 'true');
+      const title = createTextElement('span', 'building-card-title', spec.name);
+      title.title = spec.name;
+      const stats = document.createElement('span');
+      stats.className = 'building-card-stats';
+      const price = createTextElement('span', 'building-card-price', formattedPrice);
+      price.style.color = affordable ? '#00ff88' : '#f87171';
+      stats.append(price, createTextElement('span', 'building-card-dim', `${spec.footprint.width}m x ${spec.footprint.depth}m`));
+      card.append(preview, title, stats);
 
       card.addEventListener('click', () => {
         const allCards = grid.querySelectorAll('.building-card');
-        allCards.forEach(c => c.classList.remove('selected'));
+        allCards.forEach(c => {
+          c.classList.remove('selected');
+          c.setAttribute('aria-pressed', 'false');
+        });
         card.classList.add('selected');
+        card.setAttribute('aria-pressed', 'true');
         this.selectedSpecId = spec.id;
 
         this.updateBlueprintPreview(spec);
@@ -325,7 +341,7 @@ export class CityEditorUI {
 
     if (priceEl) {
       const costText = `$${Number(cost).toLocaleString()}`;
-      const balanceText = credits == null ? '' : ` • Treasury $${Number(credits).toLocaleString()}`;
+      const balanceText = credits == null ? '' : ` • Treasury $${Number(credits).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
       priceEl.textContent = `${costText}${balanceText}`;
       priceEl.style.color = affordable ? '#00ff88' : '#f87171';
     }
@@ -368,6 +384,13 @@ export class CityEditorUI {
     const leftSidebar = document.getElementById('left-sidebar');
     if (leftSidebar) {
       leftSidebar.classList.remove('hidden', 'collapsed');
+      const toggle = document.getElementById('btn-toggle-sidebar');
+      if (toggle) {
+        toggle.textContent = '◀';
+        toggle.setAttribute('aria-expanded', 'true');
+        toggle.setAttribute('aria-label', 'Collapse city tools sidebar');
+        toggle.title = 'Collapse City Tools';
+      }
     }
 
     if (this.app.cityEditorSystem) {

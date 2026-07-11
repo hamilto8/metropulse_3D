@@ -1,0 +1,201 @@
+import * as THREE from 'three';
+import { getBuildingSpec } from '../world/BuildingCatalog.js';
+
+export const SAVE_KEY = 'metropulse3d:city-session:v1';
+
+export class PersistenceSystem {
+  constructor(app, { storage, debounceMs = 5_000 } = {}) {
+    this.app = app;
+    if (storage !== undefined) {
+      this.storage = storage;
+    } else {
+      try {
+        this.storage = globalThis.localStorage;
+      } catch {
+        this.storage = null;
+      }
+    }
+    this.debounceMs = debounceMs;
+    this.timer = null;
+    this.restoring = false;
+    this.lastError = null;
+
+    this.unsubscribeEconomy = app.economySystem?.subscribe?.(() => this.scheduleSave()) || null;
+    this.unsubscribeGame = app.gameManager?.subscribe?.(() => this.scheduleSave()) || null;
+    this.onPageHide = () => this.saveNow();
+    this.onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') this.saveNow();
+    };
+    window.addEventListener('pagehide', this.onPageHide);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+  }
+
+  createSnapshot() {
+    return {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      economy: this.app.economySystem.serialize(),
+      world: this.app.cityEditorSystem.serializeWorldEdits(),
+      mission: {
+        completedMissionIds: [...(this.app.missionSystem?.narrativeState?.completedMissionIds || [])],
+        dialogueChoices: structuredClone(this.app.missionSystem?.narrativeState?.dialogueChoices || []),
+        chronologyStep: this.app.missionSystem?.narrativeState?.chronologyStep || 0,
+        runCounts: [...(this.app.missionSystem?.missionRunCounts || new Map()).entries()]
+      },
+      settings: {
+        time: this.app.timeManager?.timeVal,
+        timePlaying: this.app.timeManager?.isPlaying,
+        timeSpeed: this.app.timeManager?.speed,
+        weather: this.app.environment?.weatherMode,
+        dynamicWeather: this.app.environment?.isDynamicWeather,
+        mayhem: Boolean(this.app.funMode),
+        heatmap: Boolean(this.app.trafficHeatmapEnabled)
+      }
+    };
+  }
+
+  scheduleSave() {
+    if (this.restoring || !this.storage) return false;
+    if (this.timer) return true;
+    this.timer = setTimeout(() => this.saveNow(), this.debounceMs);
+    return true;
+  }
+
+  saveNow() {
+    if (this.restoring || !this.storage) return false;
+    clearTimeout(this.timer);
+    this.timer = null;
+    try {
+      this.storage.setItem(SAVE_KEY, JSON.stringify(this.createSnapshot()));
+      this.lastError = null;
+      return true;
+    } catch (error) {
+      this.lastError = error;
+      console.warn('MetroPulse could not save the city session.', error);
+      return false;
+    }
+  }
+
+  restore() {
+    if (!this.storage) return false;
+    let parsed;
+    try {
+      const raw = this.storage.getItem(SAVE_KEY);
+      if (!raw) return false;
+      parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== 1) throw new Error('Unsupported city save version');
+    } catch (error) {
+      this.lastError = error;
+      console.warn('MetroPulse ignored an invalid saved city session.', error);
+      return false;
+    }
+
+    this.restoring = true;
+    try {
+      this.app.economySystem.restore(parsed.economy);
+      this.restoreWorld(parsed.world);
+      this.restoreMission(parsed.mission);
+      this.restoreSettings(parsed.settings);
+      this.lastError = null;
+      this.app.uiManager?.addAlert?.('💾 Saved city session restored.', 'success');
+      return true;
+    } catch (error) {
+      this.lastError = error;
+      console.warn('MetroPulse could not restore the saved city session.', error);
+      return false;
+    } finally {
+      this.restoring = false;
+    }
+  }
+
+  restoreWorld(world = {}) {
+    if (world?.version !== 1 || !Array.isArray(world.buildings)) return false;
+    for (const saved of world.buildings) {
+      const spec = getBuildingSpec(saved.specId);
+      const plot = saved.plot;
+      if (!spec || !plot || !Number.isFinite(plot.x) || !Number.isFinite(plot.z)) continue;
+      if (plot.x < -190 || plot.x > 810 || plot.z < -390 || plot.z > 390) continue;
+      const rotationY = Number.isFinite(saved.rotationY) ? saved.rotationY : 0;
+      const quarterTurns = Math.abs(Math.round(rotationY / (Math.PI / 2))) % 2;
+      const safePlot = {
+        x: plot.x,
+        y: this.app.cityBuilder?.getHillHeight?.(plot.x, plot.z) || 0,
+        z: plot.z,
+        width: quarterTurns === 0 ? spec.footprint.width : spec.footprint.depth,
+        depth: quarterTurns === 0 ? spec.footprint.depth : spec.footprint.width
+      };
+      const building = this.app.buildingFactory.placeUserBuilding(safePlot, spec, rotationY);
+      building.plot.width = safePlot.width;
+      building.plot.depth = safePlot.depth;
+      building.economyId = saved.economyId || building.economyId;
+      if (this.app.physicsWorld && spec.generatorType !== 'ROAD_SEGMENT' && spec.generatorType !== 'PARK_PLAZA') {
+        const height = spec.height || 30;
+        building.physicsBody = this.app.physicsWorld.addStaticBoxCollider(
+          new THREE.Vector3(safePlot.x, safePlot.y + height * 0.5, safePlot.z),
+          new THREE.Vector3(Math.max(1, safePlot.width - 2), height, Math.max(1, safePlot.depth - 2))
+        );
+        building.physicsBody.quaternion.setFromAxisAngle({ x: 0, y: 1, z: 0 }, rotationY);
+      }
+      if (spec.generatorType === 'ROAD_SEGMENT') {
+        this.app.trafficSystem?.registerRoadSegment?.(building, spec);
+      }
+    }
+    this.app.cityEditorSystem.restoreZoneParcels(world.zones || []);
+    return true;
+  }
+
+  restoreMission(mission = {}) {
+    const system = this.app.missionSystem;
+    if (!system) return;
+    system.narrativeState.completedMissionIds = new Set(Array.isArray(mission.completedMissionIds) ? mission.completedMissionIds : []);
+    system.narrativeState.dialogueChoices = Array.isArray(mission.dialogueChoices) ? structuredClone(mission.dialogueChoices) : [];
+    system.narrativeState.chronologyStep = Number.isInteger(mission.chronologyStep) ? Math.max(0, mission.chronologyStep) : 0;
+    const runCounts = Array.isArray(mission.runCounts)
+      ? mission.runCounts.filter(entry => (
+        Array.isArray(entry)
+        && typeof entry[0] === 'string'
+        && Number.isInteger(entry[1])
+        && entry[1] >= 0
+      ))
+      : [];
+    system.missionRunCounts = new Map(runCounts);
+  }
+
+  restoreSettings(settings = {}) {
+    if (Number.isFinite(settings.time)) this.app.timeManager?.setTime?.(settings.time);
+    if (typeof settings.timePlaying === 'boolean') this.app.timeManager?.setPlaying?.(settings.timePlaying);
+    if (Number.isFinite(settings.timeSpeed) && settings.timeSpeed > 0) this.app.timeManager?.setSpeed?.(settings.timeSpeed);
+    if (typeof settings.weather === 'string') this.app.environment?.setWeather?.(settings.weather);
+    if (typeof settings.dynamicWeather === 'boolean') this.app.environment?.setDynamicWeather?.(settings.dynamicWeather);
+    if (typeof settings.mayhem === 'boolean') {
+      this.app.funMode = settings.mayhem;
+      this.app.gameManager?.setMayhem?.(settings.mayhem, 'persistence');
+      this.app.uiManager?.renderMayhemState?.(settings.mayhem);
+    }
+    if (typeof settings.heatmap === 'boolean') {
+      this.app.trafficHeatmapEnabled = settings.heatmap;
+      this.app.trafficHeatmapSystem?.setVisible?.(settings.heatmap);
+      if (this.app.uiManager?.heatmapToggle) this.app.uiManager.heatmapToggle.checked = settings.heatmap;
+    }
+  }
+
+  clear() {
+    try {
+      this.storage?.removeItem?.(SAVE_KEY);
+      return true;
+    } catch (error) {
+      this.lastError = error;
+      return false;
+    }
+  }
+
+  destroy() {
+    clearTimeout(this.timer);
+    this.unsubscribeEconomy?.();
+    this.unsubscribeGame?.();
+    window.removeEventListener('pagehide', this.onPageHide);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+  }
+}
+
+export default PersistenceSystem;

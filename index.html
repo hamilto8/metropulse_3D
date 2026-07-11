@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="theme-color" content="#070913" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests" />
     <title>MetroPulse 3D | Cyber-Modern Metropolis Simulation</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,16 +90,16 @@
       <aside class="glass-panel left-sidebar" id="left-sidebar">
         <div class="sidebar-header">
           <span class="sidebar-title">CITY TOOLS</span>
-          <button id="btn-toggle-sidebar" class="collapse-icon-btn" title="Toggle Sidebar" aria-label="Toggle city tools sidebar">✕</button>
+          <button id="btn-toggle-sidebar" class="collapse-icon-btn" title="Collapse City Tools" aria-label="Collapse city tools sidebar" aria-expanded="true" aria-controls="sidebar-content">◀</button>
         </div>
 
-        <div class="sidebar-content">
+        <div class="sidebar-content" id="sidebar-content">
           <!-- ZONING & BUILDING Accordion -->
           <div class="accordion-section">
-            <div class="accordion-header">
+            <button type="button" class="accordion-header" aria-expanded="true">
               <span>ZONING &amp; BUILDING</span>
               <span class="accordion-arrow">⌄</span>
-            </div>
+            </button>
             <div class="zoning-grid">
               <button class="zoning-card res-card" data-zone="res" title="Residential Zone">
                 <span class="zone-icon">🏡</span>
@@ -131,10 +134,10 @@
 
           <!-- INFRASTRUCTURE Accordion -->
           <div class="accordion-section">
-            <div class="accordion-header">
+            <button type="button" class="accordion-header" aria-expanded="true">
               <span>INFRASTRUCTURE</span>
               <span class="accordion-arrow">⌄</span>
-            </div>
+            </button>
             <div class="infra-grid">
               <button class="infra-btn" data-infra="road" title="Road Construction">
                 <span class="infra-icon">🛣️</span>
@@ -157,20 +160,20 @@
 
           <!-- VIEW & ATMOSPHERE Accordion -->
           <div class="accordion-section">
-            <div class="accordion-header">
+            <button type="button" class="accordion-header" aria-expanded="true">
               <span>VIEW &amp; ATMOSPHERE</span>
               <span class="accordion-arrow">⌄</span>
-            </div>
+            </button>
             <div class="view-atmo-content">
               <div class="sub-label">CAMERA PRESETS</div>
               <div class="camera-presets-grid">
-                <button class="cam-pill" data-camera="rocket" title="Rocket Launchpad">🚀</button>
-                <button class="cam-pill" data-camera="street" title="Street Level">🏙️</button>
-                <button class="cam-pill active" data-camera="birdseye" title="Bird's Eye">🚁</button>
-                <button class="cam-pill" data-camera="park" title="Central Park">🌳</button>
-                <button class="cam-pill" data-camera="downtown" title="Downtown">🚦</button>
-                <button class="cam-pill" data-camera="bridge" title="Suspension Bridge">🌉</button>
-                <button class="cam-pill" data-camera="free" title="Orbit">🌐</button>
+                <button class="cam-pill" data-camera="rocket" title="Rocket Launchpad" aria-label="Camera: Rocket Launchpad">🚀</button>
+                <button class="cam-pill" data-camera="street" title="Street Level" aria-label="Camera: Street Level">🏙️</button>
+                <button class="cam-pill active" data-camera="birdseye" title="Bird's Eye" aria-label="Camera: Bird's Eye" aria-pressed="true">🚁</button>
+                <button class="cam-pill" data-camera="park" title="Central Park" aria-label="Camera: Central Park">🌳</button>
+                <button class="cam-pill" data-camera="downtown" title="Downtown" aria-label="Camera: Downtown">🚦</button>
+                <button class="cam-pill" data-camera="bridge" title="Suspension Bridge" aria-label="Camera: Suspension Bridge">🌉</button>
+                <button class="cam-pill" data-camera="free" title="Orbit" aria-label="Camera: Free Orbit">🌐</button>
               </div>
 
               <div class="sub-label mt-2">ATMOSPHERE</div>
@@ -188,7 +191,7 @@
               <div class="overlay-toggle-row">
                 <span class="overlay-label">🚦 Traffic Heat-map</span>
                 <label class="switch">
-                  <input type="checkbox" id="toggle-heatmap">
+                  <input type="checkbox" id="toggle-heatmap" aria-label="Show traffic heat map">
                   <span class="slider round"></span>
                 </label>
               </div>
@@ -210,6 +213,8 @@
                 <button id="btn-launch-rocket" class="sidebar-action-btn launch-rocket-btn" type="button"><span id="launch-rocket-label">🚀 Launch Rocket (T-5:00)</span></button>
                 <button id="btn-unlock-east" class="sidebar-action-btn" type="button">🏙️ Unlock East District ($500k)</button>
                 <button id="btn-bridge-priority" class="sidebar-action-btn" type="button">🌉 Toggle Bridge Priority</button>
+                <button id="btn-save-city" class="sidebar-action-btn" type="button">💾 Save City</button>
+                <button id="btn-new-city" class="sidebar-action-btn danger-subtle" type="button">↺ Start New City</button>
               </div>
             </div>
           </div>
@@ -291,7 +296,7 @@
 
         <div class="time-scrubber-wrapper">
           <span class="scrub-label">00:00</span>
-          <input type="range" id="time-slider" min="0" max="24" step="0.05" value="17.25" />
+          <input type="range" id="time-slider" min="0" max="24" step="0.05" value="17.25" aria-label="Simulation time of day" />
           <span class="scrub-label">24:00</span>
         </div>
 
@@ -364,8 +369,8 @@
         <button id="btn-cancel-mission" class="mission-cancel-btn" title="Cancel Mission" aria-label="Cancel active mission">✕</button>
       </div>
 
-      <div id="dialogue-overlay" class="dialogue-overlay hidden">
-        <div class="dialogue-card">
+      <div id="dialogue-overlay" class="dialogue-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialogue-speaker" aria-describedby="dialogue-text">
+        <div class="dialogue-card" tabindex="-1">
           <div class="dialogue-header">
             <canvas class="dialogue-avatar" id="dialogue-avatar" width="112" height="112" aria-label="Passenger ink portrait"></canvas>
             <div class="dialogue-meta">

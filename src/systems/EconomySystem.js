@@ -33,6 +33,7 @@ export const ECONOMY_EVENTS = Object.freeze({
   SERVICE_CHANGED: 'SERVICE_CHANGED',
   CITY_PULSE_CHANGED: 'CITY_PULSE_CHANGED',
   DISTRICT_UNLOCKED: 'DISTRICT_UNLOCKED',
+  STATE_RESTORED: 'STATE_RESTORED',
   SNAPSHOT: 'SNAPSHOT'
 });
 
@@ -859,6 +860,94 @@ export class EconomySystem {
       throw new RangeError(`Unknown district: ${normalizedId}`);
     }
     return district.unlocked;
+  }
+
+  serialize() {
+    return {
+      version: 1,
+      treasury: this.#treasury,
+      basePassiveIncomeRate: this.#basePassiveIncomeRate,
+      basePopulation: this.#basePopulation,
+      baseHappiness: this.#baseHappiness,
+      baseLandValue: this.#baseLandValue,
+      reputation: this.#reputation,
+      narrativeProgress: this.#narrativeProgress,
+      baseServices: structuredClone(this.#baseServices),
+      buildings: structuredClone([...this.#buildings.values()]),
+      completedMissions: structuredClone([...this.#completedMissions.values()]),
+      incidents: structuredClone([...this.#incidents.values()]),
+      districts: structuredClone([...this.#districts.values()])
+    };
+  }
+
+  restore(state) {
+    assertRecord(state, 'economy state');
+    if (state.version !== 1) throw new RangeError(`Unsupported economy state version: ${String(state.version)}`);
+
+    const treasury = assertNonNegative(state.treasury, 'state.treasury');
+    const basePassiveIncomeRate = assertNonNegative(state.basePassiveIncomeRate, 'state.basePassiveIncomeRate');
+    const basePopulation = assertNonNegativeInteger(state.basePopulation, 'state.basePopulation');
+    const baseHappiness = assertPercentage(state.baseHappiness, 'state.baseHappiness');
+    const baseLandValue = assertNonNegative(state.baseLandValue, 'state.baseLandValue');
+    const reputation = assertFiniteNumber(state.reputation, 'state.reputation');
+    const narrativeProgress = assertNonNegativeInteger(state.narrativeProgress, 'state.narrativeProgress');
+    const baseServices = normalizeServiceBase(state.baseServices || {});
+
+    if (!Array.isArray(state.buildings) || !Array.isArray(state.completedMissions) || !Array.isArray(state.incidents)) {
+      throw new TypeError('Saved economy collections must be arrays');
+    }
+    const buildings = new Map(state.buildings.map(building => {
+      const normalized = normalizeBuilding(building);
+      return [normalized.id, normalized];
+    }));
+    const incidents = new Map(state.incidents.map(incident => {
+      const normalized = normalizeIncident(incident, this.#revision + 1);
+      return [normalized.id, normalized];
+    }));
+    const completedMissions = new Map(state.completedMissions.map(mission => {
+      assertRecord(mission, 'completed mission');
+      const id = assertId(mission.id, 'completed mission id');
+      return [id, deepFreeze({
+        id,
+        reward: assertNonNegative(mission.reward ?? 0, 'completed mission reward'),
+        narrativeProgressDelta: assertNonNegativeInteger(mission.narrativeProgressDelta ?? 0, 'completed mission narrative progress'),
+        reputationDelta: assertFiniteNumber(mission.reputationDelta ?? 0, 'completed mission reputation'),
+        satisfaction: mission.satisfaction == null ? null : assertPercentage(mission.satisfaction, 'completed mission satisfaction'),
+        completedAtRevision: assertNonNegativeInteger(mission.completedAtRevision ?? 0, 'completed mission revision')
+      })];
+    }));
+
+    const districts = new Map();
+    for (const district of state.districts || []) {
+      assertRecord(district, 'district');
+      const id = normalizeDistrictId(district.id);
+      assertBoolean(district.unlocked, 'district.unlocked');
+      districts.set(id, deepFreeze({
+        id,
+        name: typeof district.name === 'string' && district.name.trim() ? district.name.trim() : id,
+        unlockCost: assertNonNegative(district.unlockCost, 'district.unlockCost'),
+        unlocked: district.unlocked
+      }));
+    }
+    if (!districts.has(DISTRICT_IDS.EAST_CYBER_METROPOLIS)) {
+      throw new Error('Saved economy state is missing the East Cyber-Metropolis district');
+    }
+
+    this.#commit(ECONOMY_EVENTS.STATE_RESTORED, { version: state.version }, () => {
+      this.#treasury = treasury;
+      this.#basePassiveIncomeRate = basePassiveIncomeRate;
+      this.#basePopulation = basePopulation;
+      this.#baseHappiness = baseHappiness;
+      this.#baseLandValue = baseLandValue;
+      this.#reputation = reputation;
+      this.#narrativeProgress = narrativeProgress;
+      this.#baseServices = baseServices;
+      this.#buildings = buildings;
+      this.#completedMissions = completedMissions;
+      this.#incidents = incidents;
+      this.#districts = districts;
+    });
+    return this.snapshot();
   }
 
   snapshot() {

@@ -1,3 +1,5 @@
+import { createTextElement } from './dom.js';
+
 export class UIManager {
   constructor(app) {
     this.app = app;
@@ -52,6 +54,8 @@ export class UIManager {
     this.expandCityLabel = document.getElementById('expand-city-label');
     this.btnUnlockEast = document.getElementById('btn-unlock-east');
     this.btnBridgePriority = document.getElementById('btn-bridge-priority');
+    this.btnSaveCity = document.getElementById('btn-save-city');
+    this.btnNewCity = document.getElementById('btn-new-city');
 
     // Fun Mode controls
     this.btnFunMode = document.getElementById('btn-fun-mode');
@@ -103,6 +107,16 @@ export class UIManager {
   }
 
   initEventListeners() {
+    document.querySelectorAll('.accordion-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.closest('.accordion-section');
+        const collapsed = section?.classList.toggle('collapsed') || false;
+        header.setAttribute('aria-expanded', String(!collapsed));
+        const arrow = header.querySelector('.accordion-arrow');
+        if (arrow) arrow.textContent = collapsed ? '›' : '⌄';
+      });
+    });
+
     // Time slider dragging
     if (this.timeSlider) {
       this.timeSlider.addEventListener('input', (e) => {
@@ -135,8 +149,12 @@ export class UIManager {
     // Camera presets
     this.cameraButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        this.cameraButtons.forEach(b => b.classList.remove('active'));
+        this.cameraButtons.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-pressed', 'false');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
         const cameraMode = btn.dataset.camera;
         this.app.sceneManager.setCameraPreset(cameraMode);
       });
@@ -186,6 +204,9 @@ export class UIManager {
       btnToggleSidebar.addEventListener('click', () => {
         const isCollapsed = leftSidebar.classList.toggle('collapsed');
         btnToggleSidebar.textContent = isCollapsed ? '▶' : '◀';
+        btnToggleSidebar.setAttribute('aria-expanded', String(!isCollapsed));
+        btnToggleSidebar.setAttribute('aria-label', isCollapsed ? 'Expand city tools sidebar' : 'Collapse city tools sidebar');
+        btnToggleSidebar.title = isCollapsed ? 'Expand City Tools' : 'Collapse City Tools';
       });
     }
 
@@ -479,6 +500,18 @@ export class UIManager {
         this.addAlert(enabled ? '🌉 Bridge priority lanes opened; cross-river flow boosted.' : '🌉 Bridge priority returned to normal routing.', 'info');
       });
     }
+
+    this.btnSaveCity?.addEventListener('click', () => {
+      const saved = this.app.persistenceSystem?.saveNow?.();
+      this.showToast(saved ? '💾 City saved locally.' : '⚠️ City could not be saved in this browser.');
+    });
+
+    this.btnNewCity?.addEventListener('click', () => {
+      const confirmed = window.confirm('Start a new city? This permanently removes the saved local session.');
+      if (!confirmed) return;
+      this.app.persistenceSystem?.clear?.();
+      window.location.reload();
+    });
 
     // Action Toolbar buttons
     const btnToolbarControl = document.getElementById('btn-toolbar-control');
@@ -1019,9 +1052,14 @@ export class UIManager {
       ? this.app.timeManager.getFormattedTime()
       : 'LIVE';
 
+    const safeType = ['info', 'success', 'warn', 'danger'].includes(type) ? type : 'info';
     const item = document.createElement('div');
-    item.className = `alert-item alert-${type}`;
-    item.innerHTML = `<span class="alert-time">${timeStr}</span> <span class="alert-msg">${message}</span>`;
+    item.className = `alert-item alert-${safeType}`;
+    item.append(
+      createTextElement('span', 'alert-time', timeStr),
+      document.createTextNode(' '),
+      createTextElement('span', 'alert-msg', message)
+    );
 
     this.alertFeedList.insertBefore(item, this.alertFeedList.firstChild);
     if (this.topAlertSummary) {
@@ -1071,6 +1109,8 @@ export class UIManager {
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'city-editor-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-live', 'polite');
       toast.style.cssText = `
         position: fixed;
         top: 86px;

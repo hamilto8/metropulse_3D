@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Pedestrian } from '../entities/Pedestrian.js';
+import { setTextSegments } from '../ui/dom.js';
 
 /** Shared forward-axis vector — avoids per-frame allocation in 60-pedestrian movement loop */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -649,7 +650,11 @@ export class PedestrianSystem {
         document.body.appendChild(prompt);
       }
       
-      prompt.innerHTML = `🏎️ Press <span style="color: #00f0ff;">[E]</span> to Hijack ${closestVehicle.name.toUpperCase()}`;
+      setTextSegments(prompt, [
+        '🏎️ Press ',
+        { text: '[E / Gamepad Y]', className: 'prompt-accent' },
+        ` to Hijack ${closestVehicle.name.toUpperCase()}`
+      ]);
       prompt.classList.remove('hidden');
     } else if (closestPed) {
       // Pedestrian Talk prompt
@@ -675,7 +680,11 @@ export class PedestrianSystem {
         document.body.appendChild(prompt);
       }
 
-      prompt.innerHTML = `💬 Press <span style="color: #00f0ff;">[E]</span> to Talk to ${closestPed.name.toUpperCase()}`;
+      setTextSegments(prompt, [
+        '💬 Press ',
+        { text: '[E / Gamepad Y]', className: 'prompt-accent' },
+        ` to Talk to ${closestPed.name.toUpperCase()}`
+      ]);
       prompt.classList.remove('hidden');
     } else {
       // Check if near a baseball bat pickup
@@ -687,7 +696,10 @@ export class PedestrianSystem {
           if (dist < 4.0) {
             nearBat = true;
             if (prompt) {
-              prompt.innerHTML = '🏏 Walk over to pick up <span style="color: #00ff88;">BASEBALL BAT</span>';
+              setTextSegments(prompt, [
+                '🏏 Walk over to pick up ',
+                { text: 'BASEBALL BAT', className: 'prompt-success prompt-strong' }
+              ]);
               prompt.classList.remove('hidden');
             }
             break;
@@ -1203,7 +1215,13 @@ export class PedestrianSystem {
         // Show hit count prompt
         const prompt = document.getElementById('vehicle-enter-prompt');
         if (prompt) {
-          prompt.innerHTML = `🏏 <span style="color:#ff4500;">HIT!</span> ${v.name} — <span style="color:#ffaa00;">${v.batHits}/3</span> hits`;
+          setTextSegments(prompt, [
+            '🏏 ',
+            { text: 'HIT!', className: 'prompt-danger prompt-strong' },
+            ` ${v.name} — `,
+            { text: `${v.batHits}/3`, className: 'prompt-warning' },
+            ' hits'
+          ]);
           prompt.classList.remove('hidden');
           setTimeout(() => { prompt.classList.add('hidden'); }, 1200);
         }
@@ -1267,7 +1285,12 @@ export class PedestrianSystem {
         // Show hit prompt
         const prompt = document.getElementById('vehicle-enter-prompt');
         if (prompt) {
-          prompt.innerHTML = `🏏 <span style="color:#ff4500;">HIT!</span> ${other.name} is <span style="color:#ffaa00;">FLEEING!</span>`;
+          setTextSegments(prompt, [
+            '🏏 ',
+            { text: 'HIT!', className: 'prompt-danger prompt-strong' },
+            ` ${other.name} is `,
+            { text: 'FLEEING!', className: 'prompt-warning prompt-strong' }
+          ]);
           prompt.classList.remove('hidden');
           setTimeout(() => { prompt.classList.add('hidden'); }, 1500);
         }
@@ -1365,6 +1388,21 @@ export class PedestrianSystem {
       hud = document.createElement('div');
       hud.id = 'wanted-hud';
       hud.className = 'wanted-hud';
+      hud.setAttribute('role', 'status');
+      hud.setAttribute('aria-live', 'polite');
+      const title = document.createElement('div');
+      title.className = 'wanted-title';
+      title.textContent = '🚨 WANTED 🚨';
+      const subtitle = document.createElement('div');
+      subtitle.className = 'wanted-subtitle';
+      const barBackground = document.createElement('div');
+      barBackground.className = 'wanted-bar-bg';
+      const bar = document.createElement('div');
+      bar.className = 'wanted-bar';
+      this.wantedHudSubtitle = subtitle;
+      this.wantedHudBar = bar;
+      barBackground.appendChild(bar);
+      hud.append(title, subtitle, barBackground);
       document.body.appendChild(hud);
     }
 
@@ -1372,13 +1410,12 @@ export class PedestrianSystem {
     const escapeProgress = Math.max(0, 8.0 - this.escapeTimer);
     const progressPercent = Math.min(100, (this.escapeTimer / 8.0) * 100);
 
-    hud.innerHTML = `
-      <div class="wanted-title">🚨 WANTED 🚨</div>
-      <div class="wanted-subtitle">${this.escapeTimer > 0 ? `ESCAPING... (${escapeProgress.toFixed(1)}s)` : 'POLICE PURSUIT!'}</div>
-      <div class="wanted-bar-bg">
-        <div class="wanted-bar" style="width: ${progressPercent}%"></div>
-      </div>
-    `;
+    const subtitle = this.wantedHudSubtitle || hud.querySelector('.wanted-subtitle');
+    const bar = this.wantedHudBar || hud.querySelector('.wanted-bar');
+    this.wantedHudSubtitle = subtitle;
+    this.wantedHudBar = bar;
+    if (subtitle) subtitle.textContent = this.escapeTimer > 0 ? `ESCAPING... (${escapeProgress.toFixed(1)}s)` : 'POLICE PURSUIT!';
+    if (bar) bar.style.width = `${progressPercent}%`;
     hud.classList.remove('hidden');
   }
 }

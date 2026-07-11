@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import missionsData from '../data/missions.json' with { type: 'json' };
+import { setTextSegments } from '../ui/dom.js';
 
 // ─── Named Constants ────────────────────────────────────────────────────────
 /** Radius at which driving/following a vehicle triggers a pickup dialogue (metres) */
@@ -235,6 +236,8 @@ export class MissionSystem {
     if (!prompt) {
       prompt = document.createElement('div');
       prompt.id = 'mission-available-prompt';
+      prompt.setAttribute('role', 'status');
+      prompt.setAttribute('aria-live', 'polite');
       prompt.style.position = 'fixed';
       prompt.style.bottom = '18%';
       prompt.style.left = '50%';
@@ -255,7 +258,13 @@ export class MissionSystem {
       document.body.appendChild(prompt);
     }
 
-    prompt.innerHTML = `🌟 <span style="color: #00f0ff; font-weight: 800;">MISSION AVAILABLE!</span> Press <span style="color: #00f0ff; background: rgba(0,240,255,0.22); padding: 3px 10px; border-radius: 8px; border: 1px solid #00f0ff; margin: 0 4px;">[E]</span> for details (${mission.passengerName})`;
+    setTextSegments(prompt, [
+      '🌟 ',
+      { text: 'MISSION AVAILABLE!', className: 'prompt-accent prompt-strong' },
+      ' Press ',
+      { text: '[E / Gamepad Y]', className: 'prompt-key' },
+      ` for details (${mission.passengerName})`
+    ]);
     prompt.style.display = 'block';
     prompt.style.opacity = '1';
   }

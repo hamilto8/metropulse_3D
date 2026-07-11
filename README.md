@@ -11,6 +11,7 @@
 ## 🎮 Hybrid Game Loops
 
 - **Management / Builder:** Zone parcels, place data-driven buildings and infrastructure, manage power/water/fire coverage, inspect spatial amenity/Mayhem land values, monitor City Pulse, and invest to unlock the East Cyber-Metropolis.
+- **Persistent City Session:** Treasury, buildings, zoning, unlocks, mission progress, weather, time, overlays, and Mayhem state save locally and restore automatically, with explicit Save City and Start New City controls.
 - **Action / Street:** Possess pedestrians, collect a baseball bat, hijack nearby vehicles, drive with `cannon-es` RaycastVehicle physics, trigger police response, and complete timed taxi, courier, race, delivery, sabotage, and survival missions.
 - **Living Economy:** Placement costs, salvage refunds, operational-building income, services, incidents, repeat-safe mission payouts, and narrative progress all flow through one observable economy model.
 - **Mayhem Overlay:** Toggle comets, destruction, sirens, alerts, rubble, and satirical market feedback independently of the current management, builder, or action mode.
@@ -72,6 +73,7 @@
 
 ### 👁️ Interactive Object Inspector & Follow Camera
 - **Click-to-Inspect**: Click directly onto any moving car, pedestrian, or building to open a sleek HUD data card displaying live statistics (speed, battery level, employee count, business status).
+- **Complete City Editing**: Place, select, move, rotate, and demolish user-built structures while keeping physics colliders, traffic roads, economy records, and saved state synchronized.
 - **Follow Camera Mode**: Attach the camera to any moving vehicle or pedestrian to ride along with them across the suspension bridge and through the city streets!
 - **Camera Preset Sidebar**: Instant camera jump buttons for *"Bird's Eye View"*, *"Street Level"*, *"Central Park"*, *"Downtown Intersection"*, *"Bridge"*, and *"Free Orbit"*.
 - **Weather Controls**: Run the automatic **Clear → Mist → Rain → Thunderstorm** cycle or choose weather manually. Wet conditions affect visibility, pedestrians, audio, surfaces, and player-vehicle grip.
@@ -138,6 +140,7 @@ The compiled bundles will be output to the `/dist` directory, ready for deployme
 | **Quick Mode Switch** | `M` toggles Management / Builder; while in Action mode it releases direct control and returns to Management |
 | **Open City Editor** | `F`; select a catalog item, then click a valid parcel to place it |
 | **Rotate / Grid Snap** | `R` rotates the selected structure; `G` toggles placement snapping |
+| **Move Built Structure** | Open the City Editor, choose **Move**, select a user-built structure, then choose a valid destination |
 | **Toggle Mayhem** | `X` or the sidebar Mayhem control |
 | **Drive / Walk** | `WASD` or arrow keys; right-drag for chase mouse-look; `E` interacts, starts nearby missions, begins the timed hijack approach, or exits |
 | **Vehicle Actions** | `Space` handbrake, `Shift` horn or emergency siren, `R` recovers a physics vehicle |
@@ -157,6 +160,8 @@ npm run build
 ```
 
 The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, and editor-road graph integration.
+
+The interface includes keyboard-visible focus treatment, semantic editor controls, modal focus containment, reduced-motion support, a compact no-overflow mobile editor layout, and a recoverable collapsed City Tools rail. Street action play remains optimized for keyboard/mouse or gamepad input.
 
 ---
 

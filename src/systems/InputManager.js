@@ -252,11 +252,11 @@ export class InputManager {
       }
     }
 
-    // Y Button (Btn 3): Action / Enter vehicle / Interact
+    // Y Button (Btn 3): use the same priority-ordered contextual action as E.
+    // Keeping keyboard and gamepad on one route prevents mission interactions
+    // (notably Sabotage) from being shadowed by vehicle exit.
     if (this.justPressed('btn3', this.isButtonPressed(gp, 3))) {
-      if (this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian) {
-        this.app.pedestrianSystem.handlePedestrianActionKey();
-      }
+      this.handlePrimaryAction();
     }
 
     // Left Bumper (Btn 4): Honk Horn / Emergency Siren Toggle

@@ -323,3 +323,34 @@ test('subscriptions emit immutable snapshots and stop after unsubscribe', () => 
   assert.equal(unsubscribe(), false);
   assert.throws(() => economy.subscribe('listener'), /listener must be a function/);
 });
+
+test('versioned economy persistence restores treasury, buildings, missions, and districts', () => {
+  const source = new EconomySystem({
+    initialTreasury: 1_000,
+    passiveIncomeRate: 12,
+    population: 100,
+    happiness: 70,
+    landValue: 120,
+    eastDistrictUnlockCost: 500
+  });
+  source.registerBuilding({
+    id: 'saved-building',
+    name: 'Saved Plaza',
+    population: 20,
+    employees: 4,
+    position: { x: 10, z: 20 },
+    amenityRadius: 30
+  });
+  source.completeMission({ id: 'saved-mission', reward: 50, narrativeProgressDelta: 1 });
+  source.unlockEastDistrict();
+
+  const target = new EconomySystem({ eastDistrictUnlockCost: 500 });
+  const restored = target.restore(source.serialize());
+
+  assert.equal(restored.treasury, source.treasury);
+  assert.equal(restored.narrativeProgress, 1);
+  assert.equal(restored.buildings.some(building => building.id === 'saved-building'), true);
+  assert.equal(restored.completedMissions.some(mission => mission.id === 'saved-mission'), true);
+  assert.equal(target.isDistrictUnlocked(DISTRICT_IDS.EAST_CYBER_METROPOLIS), true);
+  assert.throws(() => target.restore({ version: 99 }), /Unsupported economy state version/);
+});
