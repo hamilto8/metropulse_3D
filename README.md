@@ -36,7 +36,7 @@
 ### 🌅 Dynamic Day - Night & Atmospheric Engine
 - **Time Slider & Clock**: Responsive 24-hour time slider (`00:00` to `24:00`) with real-time digital clock, time phase indicators (*Dawn*, *Daytime*, *Dusk*, *Nighttime*), play/pause time progression, and speed multipliers (`0.5x`, `1x`, `5x`, `15x`).
 - **Orbital Sun & Moon**: Real-time orbital calculation for sun and moon positions casting dynamic shadows (`PCFShadowMap`).
-- **Sky Atmosphere Transitions**: Smooth background and fog color interpolation from warm pink/amber dawn to bright azure daytime, deep purple dusk, and starry midnight navy.
+- **Adaptive Retro Night Lighting**: A gradient indigo sky, softened stars, cool moon/ambient fill, warm street-level light pools, restrained emissive windows and vehicle lights, and time-aware exposure/bloom keep nighttime readable without losing the low-poly retro aesthetic. Dawn, dusk, rain, mist, and storms each preserve their own palette and visibility profile.
 - **Automatic Night Illumination**: As dusk sets in (`18:00`), skyscraper window grids illuminate, bridge beacon towers pulse, streetlamps project warm cones of light onto the asphalt, neon storefronts intensify their bloom glow, and car headlights/taillights switch on!
 
 ### 🚗 Autonomous Traffic & Vehicle AI

@@ -4,6 +4,10 @@ import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
 import { getVehicleSeparation } from './VehicleSeparation.js';
 import {
+  getRiderEjectionImpact,
+  MOTORBIKE_RIDER_EJECTION
+} from './MotorbikeImpact.js';
+import {
   approachTrafficTargetSpeed,
   createPedestrianTrafficState,
   getPedestrianEmergencyStopDistance,
@@ -109,12 +113,11 @@ export class TrafficSystem {
           knockPos.add(offset);
           knockPos.y = this.getTerrainHeight(knockPos.x, knockPos.z);
 
-          npcPed.mesh.position.copy(knockPos);
-          npcPed.mesh.rotation.y = vehicle.mesh.rotation.y;
-
-          this.app.sceneManager.scene.add(npcPed.mesh);
-          this.app.pedestrianSystem.pedestrians.push(npcPed);
-          this.app.pedestrianSystem.knockDownPedestrian(npcPed, new THREE.Vector3(1.3, 0.2, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), vehicle.mesh.rotation.y));
+          this.registerPedestrianInWorld(npcPed, knockPos, vehicle.mesh.rotation.y);
+          this.app.pedestrianSystem.knockDownPedestrian(
+            npcPed,
+            new THREE.Vector3(1.3, 0.2, 0).applyAxisAngle(UP_AXIS, vehicle.mesh.rotation.y)
+          );
         }
       }
 
@@ -246,40 +249,19 @@ export class TrafficSystem {
     pos.add(offset);
     pos.y = this.getTerrainHeight(pos.x, pos.z);
 
-    ped.mesh.position.copy(pos);
-    ped.mesh.rotation.y = rotY;
-
     if (this.app.pedestrianSystem) {
-      this.app.pedestrianSystem.pedestrians.push(ped);
-      this.app.sceneManager.scene.add(ped.mesh);
-      if (this.app.inspectorHud) {
-        this.app.inspectorHud.registerObject(ped.mesh, ped);
-      }
-
-      // Assign nearest sidewalk node
-      const nodes = Array.from(this.app.pedestrianSystem.nodes.values());
-      let closest = nodes[0];
-      let minDist = Infinity;
-      for (const n of nodes) {
-        const d = pos.distanceTo(n.pos);
-        if (d < minDist) {
-          minDist = d;
-          closest = n;
-        }
-      }
-      if (closest) {
-        ped.currentNode = closest;
-        ped.targetNode = closest.nextNodes[0] || closest;
-      }
+      this.registerPedestrianInWorld(ped, pos, rotY);
 
       // Release the vehicle before taking pedestrian control. Doing this in
       // the opposite order makes PedestrianSystem release the same vehicle a
       // second time while switching modes.
-      this.releaseControl(v);
-      this.app.pedestrianSystem.toggleUserControl(ped);
+      // Camera ownership is independent from input ownership, so restore both
+      // through the same lifecycle used by collision-driven rider ejection.
+      this.resumePedestrianControl(v, ped);
     }
 
     v.info['Driver'] = 'None (Exited)';
+    if (v.driverPedestrian === ped) v.driverPedestrian = null;
     ped.info['Activity'] = 'Walking streets';
 
     // If no pedestrian system is available, still return the vehicle to AI.
@@ -298,6 +280,112 @@ export class TrafficSystem {
       return this.app.cityBuilder.getHillHeight(x, z) + 0.05;
     }
     return 0.05;
+  }
+
+  registerPedestrianInWorld(pedestrian, position, rotationY = 0) {
+    const pedestrianSystem = this.app?.pedestrianSystem;
+    const scene = this.app?.sceneManager?.scene;
+    if (
+      !pedestrian?.mesh
+      || !Array.isArray(pedestrianSystem?.pedestrians)
+      || !scene
+      || !position?.isVector3
+    ) return false;
+
+    pedestrian.mesh.position.copy(position);
+    pedestrian.mesh.rotation.y = Number.isFinite(rotationY) ? rotationY : 0;
+    pedestrian.mesh.visible = true;
+    if (!pedestrianSystem.pedestrians.includes(pedestrian)) {
+      pedestrianSystem.pedestrians.push(pedestrian);
+    }
+    if (!pedestrian.mesh.parent) scene.add(pedestrian.mesh);
+    this.app.inspectorHud?.registerObject?.(pedestrian.mesh, pedestrian);
+    this.assignNearestPedestrianNode(pedestrian, position);
+    return true;
+  }
+
+  assignNearestPedestrianNode(pedestrian, position) {
+    const nodes = Array.from(this.app?.pedestrianSystem?.nodes?.values?.() || []);
+    if (!pedestrian || !position?.isVector3 || nodes.length === 0) return false;
+    let closest = nodes[0];
+    let minDistanceSq = position.distanceToSquared(closest.pos);
+    for (let i = 1; i < nodes.length; i += 1) {
+      const distanceSq = position.distanceToSquared(nodes[i].pos);
+      if (distanceSq < minDistanceSq) {
+        minDistanceSq = distanceSq;
+        closest = nodes[i];
+      }
+    }
+    pedestrian.currentNode = closest;
+    pedestrian.targetNode = closest.nextNodes?.[0] || closest;
+    return true;
+  }
+
+  resumePedestrianControl(vehicle, pedestrian) {
+    if (!vehicle || !pedestrian || !this.app?.pedestrianSystem) return false;
+    this.releaseControl(vehicle);
+    const resumed = this.app.pedestrianSystem.toggleUserControl(pedestrian);
+    if (!resumed) return false;
+    this.app.sceneManager?.startFollowTarget?.(pedestrian);
+    this.app.uiManager?.hideInspector?.();
+    return true;
+  }
+
+  ejectMotorbikeRider(impact) {
+    const { motorbike, impactor, direction, closingSpeed } = impact || {};
+    const pedestrianSystem = this.app?.pedestrianSystem;
+    if (
+      !motorbike?.mountedRider
+      || !direction?.isVector3
+      || !Number.isFinite(closingSpeed)
+      || !pedestrianSystem?.knockDownPedestrian
+      || !Array.isArray(pedestrianSystem.pedestrians)
+      || !this.app?.sceneManager?.scene
+    ) return false;
+
+    const rider = motorbike.mountedRider;
+    const controlSession = this.controlledVehicle === motorbike ? this.controlSession : null;
+    const restoreUserControl = controlSession?.source === 'pedestrian'
+      && controlSession.pedestrian === rider;
+    motorbike.unmountRider();
+
+    const riderPosition = motorbike.mesh.position.clone().addScaledVector(
+      direction,
+      MOTORBIKE_RIDER_EJECTION.riderSpawnOffset
+    );
+    riderPosition.y = this.getTerrainHeight(riderPosition.x, riderPosition.z);
+    if (!this.registerPedestrianInWorld(rider, riderPosition, motorbike.mesh.rotation.y)) {
+      return false;
+    }
+
+    if (restoreUserControl) this.resumePedestrianControl(motorbike, rider);
+    motorbike.speed = 0;
+    motorbike.targetSpeed = 0;
+    motorbike.crashed = true;
+    motorbike.crashTimer = MOTORBIKE_RIDER_EJECTION.bikeCrashDuration;
+    motorbike.mesh.rotation.z = direction.x >= 0 ? -1.05 : 1.05;
+    motorbike.info.Status = 'Rider ejected';
+    motorbike.driverPedestrian = null;
+
+    pedestrianSystem.knockDownPedestrian(rider, direction, closingSpeed);
+    rider.info.Activity = '💥 Knocked off motorbike';
+    this.app.uiManager?.addAlert?.(
+      `🏍️ ${rider.name || 'Motorbike rider'} was knocked off by ${impactor?.name || 'a vehicle'}!`,
+      'warn'
+    );
+    return true;
+  }
+
+  handleRiderEjection(vehicleA, vehicleB, separationNormal) {
+    const impacts = [
+      getRiderEjectionImpact(vehicleB, vehicleA, separationNormal),
+      getRiderEjectionImpact(vehicleA, vehicleB, separationNormal?.clone?.().negate())
+    ];
+    let ejected = false;
+    for (const impact of impacts) {
+      if (impact) ejected = this.ejectMotorbikeRider(impact) || ejected;
+    }
+    return ejected;
   }
 
   moveVehicleHorizontally(vehicle, offset) {
@@ -321,6 +409,7 @@ export class TrafficSystem {
   resolveVehicleOverlap(vehicleA, vehicleB, { playerContact = false } = {}) {
     const separation = getVehicleSeparation(vehicleA, vehicleB);
     if (!separation) return false;
+    this.handleRiderEjection(vehicleA, vehicleB, separation.normal);
     const aMovable = !vehicleA.isParked || vehicleA.userControlled;
     const bMovable = !vehicleB.isParked || vehicleB.userControlled;
     const neitherMovable = !aMovable && !bMovable;

@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  createSuspensionBridge,
+  SUSPENSION_BRIDGE_LAYOUT
+} from './SuspensionBridge.js';
 
 export class CityBuilder {
   constructor(scene, inspectorHud, billboardCanvas) {
@@ -974,101 +978,20 @@ export class CityBuilder {
     this.scene.add(wallEast1);
 
     // 3. Grand Suspension Bridge at Z = 0
-    const bridgeGroup = new THREE.Group();
-
-    // Road Deck (X: 110 to 210, length 100)
-    const deckMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 18), deckMat);
-    deck.position.set(160, -0.45, 0);
-    deck.receiveShadow = true;
-    bridgeGroup.add(deck);
-    this.registerDrivableDeck(110, 210, -9, 9, 0);
-
-    // Bridge dividing lines & sidewalks
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
-    line.rotation.x = -Math.PI / 2;
-    line.position.set(160, 0.06, 0);
-    bridgeGroup.add(line);
-
-    const sideMat = new THREE.MeshStandardMaterial({ color: 0x333b4e });
-    const sideN = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
-    sideN.position.set(160, 0.15, -7.5);
-    bridgeGroup.add(sideN);
-
-    const sideS = new THREE.Mesh(new THREE.BoxGeometry(100, 0.4, 3), sideMat);
-    sideS.position.set(160, 0.15, 7.5);
-    bridgeGroup.add(sideS);
-
-    // Suspension Towers (at X = 138 and X = 182)
-    const towerMat = new THREE.MeshStandardMaterial({ color: 0xd9381e, roughness: 0.3, metalness: 0.6 });
-    const pillarGeo = new THREE.CylinderGeometry(1.2, 1.5, 65, 12);
-
-    for (const tx of [138, 182]) {
-      const pN = new THREE.Mesh(pillarGeo, towerMat);
-      pN.position.set(tx, 32.5, -8);
-      pN.castShadow = true;
-      bridgeGroup.add(pN);
-
-      const pS = new THREE.Mesh(pillarGeo, towerMat);
-      pS.position.set(tx, 32.5, 8);
-      pS.castShadow = true;
-      bridgeGroup.add(pS);
-
-      // Cross beams
-      for (const ty of [25, 45, 62]) {
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2, 16), towerMat);
-        beam.position.set(tx, ty, 0);
-        bridgeGroup.add(beam);
-      }
-
-      // Tower beacon lights
-      const beaconMat = new THREE.MeshBasicMaterial({ color: 0xff3300 });
-      const bN = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), beaconMat);
-      bN.position.set(tx, 66, -8);
-      bridgeGroup.add(bN);
-      const bS = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), beaconMat);
-      bS.position.set(tx, 66, 8);
-      bridgeGroup.add(bS);
-    }
-
-    // Suspension Cables & Suspenders
-    const cableMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.3 });
-    for (const cz of [-8, 8]) {
-      // Main swooping cables (approximate with 4 line cylinder segments)
-      const points = [
-        new THREE.Vector3(110, 4, cz),
-        new THREE.Vector3(138, 65, cz),
-        new THREE.Vector3(160, 15, cz),
-        new THREE.Vector3(182, 65, cz),
-        new THREE.Vector3(210, 4, cz)
-      ];
-      for (let i = 0; i < points.length - 1; i++) {
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const dist = p1.distanceTo(p2);
-        const cGeo = new THREE.CylinderGeometry(0.4, 0.4, dist, 6);
-        const cMesh = new THREE.Mesh(cGeo, cableMat);
-        cMesh.position.copy(p1).add(p2).multiplyScalar(0.5);
-        cMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
-        bridgeGroup.add(cMesh);
-      }
-
-      // Vertical suspenders every 8 units
-      for (let sx = 118; sx <= 202; sx += 8) {
-        if (Math.abs(sx - 138) < 3 || Math.abs(sx - 182) < 3) continue;
-        let cy = 15 + Math.pow((sx - 160) / 22, 2) * 50;
-        if (sx < 138) cy = 4 + ((sx - 110) / 28) * 61;
-        if (sx > 182) cy = 4 + ((210 - sx) / 28) * 61;
-        
-        const sLen = Math.max(1, cy - 1.0);
-        const sGeo = new THREE.CylinderGeometry(0.15, 0.15, sLen, 6);
-        const sMesh = new THREE.Mesh(sGeo, cableMat);
-        sMesh.position.set(sx, 1.0 + sLen / 2, cz);
-        bridgeGroup.add(sMesh);
-      }
-    }
+    const bridgeGroup = createSuspensionBridge();
+    const bridgeLayout = SUSPENSION_BRIDGE_LAYOUT;
+    this.registerDrivableDeck(
+      bridgeLayout.deckStartX,
+      bridgeLayout.deckEndX,
+      -bridgeLayout.deckWidth / 2,
+      bridgeLayout.deckWidth / 2,
+      0
+    );
     this.scene.add(bridgeGroup);
+
+    // Shared materials for the secondary river bridges below.
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
 
     // 4. Secondary Highway Truss Bridges at Z = -100, -50, 50, 100
     const trussMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.5, roughness: 0.5 });
@@ -1276,13 +1199,14 @@ export class CityBuilder {
     const roadCoordsZ = [-100, -50, 0, 50, 100];
     const lampMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
     const bulbMat = new THREE.MeshStandardMaterial({
-      color: 0xffaa00,
-      emissive: 0xffaa00,
+      color: 0xffd58a,
+      emissive: 0xffc46b,
       emissiveIntensity: 0 // Will turn on at night
     });
 
     const coneGeo = new THREE.ConeGeometry(2.5, 7, 8, 1, true);
     coneGeo.translate(0, -3.5, 0);
+    const poolGeo = new THREE.CircleGeometry(3.25, 16);
 
     const lampPositions = [];
     for (const r of roadCoordsX) {
@@ -1321,7 +1245,7 @@ export class CityBuilder {
 
       // High-perf volumetric cone (costs 0 GPU lighting evaluations!)
       const coneMat = new THREE.MeshBasicMaterial({
-        color: 0xffb84d,
+        color: 0xffd08a,
         transparent: true,
         opacity: 0, // Turn on at night
         blending: THREE.AdditiveBlending,
@@ -1331,11 +1255,33 @@ export class CityBuilder {
       cone.position.set(0, 7.5, 2.0);
       lampGroup.add(cone);
 
+      // A soft ground pool carries most of the illumination cue. This reads
+      // better than a large opaque cone while retaining the graphic retro style.
+      const poolMat = new THREE.MeshBasicMaterial({
+        color: 0xffc56e,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1
+      });
+      const pool = new THREE.Mesh(poolGeo, poolMat);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(0, 0.035, 2.0);
+      lampGroup.add(pool);
+
       lampGroup.position.set(lPos.x, 0.4, lPos.z);
       lampGroup.rotation.y = lPos.rot;
       this.scene.add(lampGroup);
 
-      this.streetlamps.push({ bulb: bulb, cone: coneMat, group: lampGroup, pos: lampGroup.position });
+      this.streetlamps.push({
+        bulb,
+        cone: coneMat,
+        pool: poolMat,
+        group: lampGroup,
+        pos: lampGroup.position
+      });
     }
   }
 

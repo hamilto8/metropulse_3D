@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { CameraRig } from '../camera/CameraRig.js';
+import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
 
 export class SceneManager {
   constructor(app, container) {
@@ -29,7 +30,8 @@ export class SceneManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.35;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMappingExposure = TIME_OF_DAY_VISUALS.dayExposure;
     this.container.appendChild(this.renderer.domElement);
 
     // A restrained bloom pass reinforces emissive signs, headlights, and
@@ -78,6 +80,31 @@ export class SceneManager {
     this.controls.target.copy(this.presets.birdseye.target);
     this.controls.update();
     this.initResizeHandler();
+  }
+
+  setTimeOfDayVisuals(nightFactor, weatherMode = 'clear') {
+    const factor = Number.isFinite(nightFactor)
+      ? THREE.MathUtils.clamp(nightFactor, 0, 1)
+      : 0;
+    const weatherLift = weatherMode === 'thunderstorm' ? 0.06 : (weatherMode === 'rain' ? 0.025 : 0);
+    this.renderer.toneMappingExposure = THREE.MathUtils.lerp(
+      TIME_OF_DAY_VISUALS.dayExposure,
+      TIME_OF_DAY_VISUALS.nightExposure,
+      factor
+    ) + weatherLift * factor;
+    if (this.bloomPass) {
+      this.bloomPass.strength = THREE.MathUtils.lerp(
+        TIME_OF_DAY_VISUALS.dayBloomStrength,
+        TIME_OF_DAY_VISUALS.nightBloomStrength,
+        factor
+      );
+      this.bloomPass.threshold = THREE.MathUtils.lerp(
+        TIME_OF_DAY_VISUALS.dayBloomThreshold,
+        TIME_OF_DAY_VISUALS.nightBloomThreshold,
+        factor
+      );
+      this.bloomPass.radius = THREE.MathUtils.lerp(0.2, 0.28, factor);
+    }
   }
 
   breakToFreeOrbit() {

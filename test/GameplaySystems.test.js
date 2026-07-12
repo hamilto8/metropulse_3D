@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import { PhysicsWorld } from '../src/physics/PhysicsWorld.js';
 import { PlayerVehicle } from '../src/entities/PlayerVehicle.js';
+import { Pedestrian } from '../src/entities/Pedestrian.js';
 import { Vehicle } from '../src/entities/Vehicle.js';
 import { TrafficSystem } from '../src/systems/TrafficSystem.js';
 import { PedestrianSystem } from '../src/systems/PedestrianSystem.js';
@@ -209,6 +210,8 @@ test('vehicle exit delegates terrain lookup and releases the vehicle exactly onc
 
   let releaseCount = 0;
   let pedestrianControlCount = 0;
+  let followedEntity = null;
+  let inspectorHidden = 0;
   traffic.releaseControl = target => {
     assert.equal(target, vehicle);
     releaseCount += 1;
@@ -225,10 +228,17 @@ test('vehicle exit delegates terrain lookup and releases the vehicle exactly onc
       pedestrians: [],
       nodes: new Map([['sidewalk', sidewalkNode]]),
       getTerrainHeight: () => 0.4,
-      toggleUserControl: () => { pedestrianControlCount += 1; }
+      toggleUserControl: () => {
+        pedestrianControlCount += 1;
+        return true;
+      }
     },
-    sceneManager: { scene: { add() {} } },
-    inspectorHud: { registerObject() {} }
+    sceneManager: {
+      scene: new THREE.Group(),
+      startFollowTarget(target) { followedEntity = target; }
+    },
+    inspectorHud: { registerObject() {} },
+    uiManager: { hideInspector() { inspectorHidden += 1; } }
   };
 
   assert.doesNotThrow(() => traffic.exitControlledVehicle());
@@ -236,6 +246,49 @@ test('vehicle exit delegates terrain lookup and releases the vehicle exactly onc
   assert.equal(pedestrianControlCount, 1);
   assert.equal(traffic.app.pedestrianSystem.pedestrians.length, 1);
   assert.equal(traffic.app.pedestrianSystem.pedestrians[0].mesh.position.y, 0.4);
+  assert.equal(followedEntity, traffic.app.pedestrianSystem.pedestrians[0]);
+  assert.equal(inspectorHidden, 1);
+  assert.equal(vehicle.driverPedestrian, null);
+});
+
+test('pedestrian vehicle exit does not duplicate an already registered pedestrian', () => {
+  installBrowserStubs();
+
+  const traffic = Object.create(TrafficSystem.prototype);
+  const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Repeat Exit Sedan');
+  const pedestrian = new Pedestrian('CASUAL', 0x2563eb, 'Returning Driver');
+  vehicle.userControlled = true;
+  vehicle.driverPedestrian = pedestrian;
+  traffic.controlledVehicle = vehicle;
+  traffic.controlSession = { source: 'pedestrian', pedestrian };
+  traffic.nodes = new Map();
+  traffic.getTerrainHeight = () => 0.2;
+  traffic.releaseControl = target => {
+    target.userControlled = false;
+    traffic.controlledVehicle = null;
+  };
+
+  const pedestrians = [pedestrian];
+  let followedEntity = null;
+  traffic.app = {
+    pedestrianSystem: {
+      pedestrians,
+      nodes: new Map(),
+      toggleUserControl(target) {
+        target.userControlled = true;
+        this.controlledPedestrian = target;
+        return true;
+      }
+    },
+    sceneManager: {
+      scene: new THREE.Group(),
+      startFollowTarget(target) { followedEntity = target; }
+    }
+  };
+
+  assert.equal(traffic.exitControlledVehicle(), true);
+  assert.equal(pedestrians.length, 1);
+  assert.equal(followedEntity, pedestrian);
 });
 
 test('camera-origin vehicle exit returns to management without creating a pedestrian', () => {

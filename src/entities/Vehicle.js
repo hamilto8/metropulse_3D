@@ -411,12 +411,15 @@ export class Vehicle {
   }
 
   setNightLights(enabled) {
-    const intensity = enabled ? 2.5 : 0;
+    const factor = typeof enabled === 'number'
+      ? THREE.MathUtils.clamp(enabled, 0, 1)
+      : (enabled ? 1 : 0);
+    const intensity = 1.2 * factor;
     for (const hl of this.headlights) {
       hl.material.emissiveIntensity = intensity;
     }
     for (const tl of this.taillights) {
-      tl.material.emissiveIntensity = enabled ? 1.5 : 0;
+      tl.material.emissiveIntensity = 0.78 * factor;
     }
   }
 

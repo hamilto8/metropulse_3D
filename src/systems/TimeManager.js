@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getNightFactor } from './TimeOfDayVisuals.js';
 
 export class TimeManager {
   constructor(app) {
@@ -37,6 +38,20 @@ export class TimeManager {
     this.moonLight = new THREE.DirectionalLight(0x88bbff, 0.0);
     this.moonLight.castShadow = false;
     this.app.sceneManager.scene.add(this.moonLight);
+
+    // A subtle violet-blue rim preserves simple silhouettes on shadowed
+    // façades without adding another expensive shadow pass.
+    this.cityFillLight = new THREE.DirectionalLight(0x8b78d8, 0);
+    this.cityFillLight.position.set(-420, 260, 330);
+    this.cityFillLight.castShadow = false;
+    this.app.sceneManager.scene.add(this.cityFillLight);
+
+    this.dayAmbientColor = new THREE.Color(0xffffff);
+    this.nightAmbientColor = new THREE.Color(0x8aa9dc);
+    this.dayHemiColor = new THREE.Color(0xe0f2fe);
+    this.nightHemiColor = new THREE.Color(0x7393d2);
+    this.dayGroundColor = new THREE.Color(0x334155);
+    this.nightGroundColor = new THREE.Color(0x3b466f);
   }
 
   setTime(timeVal) {
@@ -95,34 +110,34 @@ export class TimeManager {
     this.moonLight.position.y = Math.sin(moonAngle) * distance;
     this.moonLight.position.z = -Math.sin(sunAngle * 0.5) * 250;
 
-    if (this.timeVal >= 6.0 && this.timeVal < 18.0) {
-      const elevation = Math.sin(((this.timeVal - 6.0) / 12.0) * Math.PI);
-      this.sunLight.intensity = Math.max(0.65, elevation * 2.5 + 0.8);
-      this.moonLight.intensity = 0;
-      this.ambientLight.color.setHex(0xffffff);
-      this.ambientLight.intensity = 0.65 + elevation * 0.45;
-      if (this.hemiLight) {
-        this.hemiLight.intensity = 0.85 + elevation * 0.4;
-        this.hemiLight.color.setHex(0xe0f2fe);
-        this.hemiLight.groundColor.setHex(0x334155);
-      }
-    } else {
-      this.sunLight.intensity = 0;
-      let nightElev = 0;
-      if (this.timeVal >= 18.0) {
-        nightElev = Math.sin(((this.timeVal - 18.0) / 12.0) * Math.PI);
-      } else {
-        nightElev = Math.sin(((this.timeVal + 6.0) / 12.0) * Math.PI);
-      }
-      this.moonLight.intensity = Math.max(0.35, nightElev * 0.95);
-      this.ambientLight.color.setHex(0x5577aa);
-      this.ambientLight.intensity = 0.45;
-      if (this.hemiLight) {
-        this.hemiLight.intensity = 0.48;
-        this.hemiLight.color.setHex(0x384d66);
-        this.hemiLight.groundColor.setHex(0x1e293b);
-      }
+    const normalizedHour = ((this.timeVal % 24) + 24) % 24;
+    const nightFactor = getNightFactor(normalizedHour);
+    const daylightElevation = normalizedHour >= 6 && normalizedHour < 18
+      ? Math.sin(((normalizedHour - 6) / 12) * Math.PI)
+      : 0;
+    const nightElevation = normalizedHour >= 18
+      ? Math.sin(((normalizedHour - 18) / 12) * Math.PI)
+      : Math.sin(((normalizedHour + 6) / 12) * Math.PI);
+
+    this.sunLight.intensity = (1 - nightFactor) * (0.62 + daylightElevation * 2.68);
+    this.moonLight.intensity = nightFactor * (0.58 + Math.max(0, nightElevation) * 0.62);
+    this.ambientLight.color.copy(this.dayAmbientColor).lerp(this.nightAmbientColor, nightFactor);
+    this.ambientLight.intensity = THREE.MathUtils.lerp(
+      0.7 + daylightElevation * 0.42,
+      0.76,
+      nightFactor
+    );
+    if (this.hemiLight) {
+      this.hemiLight.intensity = THREE.MathUtils.lerp(
+        0.88 + daylightElevation * 0.35,
+        0.8,
+        nightFactor
+      );
+      this.hemiLight.color.copy(this.dayHemiColor).lerp(this.nightHemiColor, nightFactor);
+      this.hemiLight.groundColor.copy(this.dayGroundColor).lerp(this.nightGroundColor, nightFactor);
     }
+    this.cityFillLight.intensity = 0.34 * nightFactor;
+    this.app.sceneManager?.setTimeOfDayVisuals?.(nightFactor, this.app.environment?.weatherMode);
 
     const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
     if (isFunMode) {
@@ -131,8 +146,12 @@ export class TimeManager {
       if (this.sunLight.intensity > 0) {
         this.sunLight.color.setHex(0xff3311);
       }
+      this.cityFillLight.color.setHex(0xff4433);
+      this.cityFillLight.intensity = Math.max(0.32, this.cityFillLight.intensity);
     } else {
       this.sunLight.color.setHex(0xfff8ee);
+      this.moonLight.color.setHex(0xa8c7ff);
+      this.cityFillLight.color.setHex(0x8b78d8);
     }
 
     // Apply lightning flash light override
@@ -146,15 +165,7 @@ export class TimeManager {
   }
 
   updateNightIllumination() {
-    let nightFactor = 0;
-    if (this.timeVal >= 17.0 && this.timeVal <= 18.5) {
-      nightFactor = (this.timeVal - 17.0) / 1.5;
-    } else if (this.timeVal > 18.5 || this.timeVal < 5.5) {
-      nightFactor = 1.0;
-    } else if (this.timeVal >= 5.5 && this.timeVal <= 7.0) {
-      nightFactor = 1.0 - (this.timeVal - 5.5) / 1.5;
-    }
-    nightFactor = Math.max(0, Math.min(1, nightFactor));
+    const nightFactor = getNightFactor(this.timeVal);
 
     // 1. Building emissive materials & neon signs
     if (this.app.buildingFactory && this.app.buildingFactory.nightLights) {
@@ -167,17 +178,18 @@ export class TimeManager {
     // 2. Streetlamp bulbs & high-perf volumetric cones
     if (this.app.cityBuilder && this.app.cityBuilder.streetlamps) {
       for (const lamp of this.app.cityBuilder.streetlamps) {
-        lamp.bulb.material.emissiveIntensity = 0.3 + 2.2 * nightFactor;
+        lamp.bulb.material.emissiveIntensity = 0.12 + 1.02 * nightFactor;
         if (lamp.cone) {
-          lamp.cone.opacity = 0.18 * nightFactor;
+          lamp.cone.opacity = 0.038 * nightFactor;
         }
+        if (lamp.pool) lamp.pool.opacity = 0.15 * nightFactor;
       }
     }
 
     // 3. Vehicle headlights & taillights
     if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
       for (const vehicle of this.app.trafficSystem.vehicles) {
-        vehicle.setNightLights(nightFactor > 0.3);
+        vehicle.setNightLights(nightFactor);
       }
     }
   }

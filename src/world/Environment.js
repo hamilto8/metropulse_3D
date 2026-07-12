@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import {
+  applyWeatherToSky,
+  getNightFactor,
+  getSkyPalette
+} from '../systems/TimeOfDayVisuals.js';
 
 export class Environment {
   constructor(scene, inspectorHud = null, app = null) {
@@ -53,7 +58,40 @@ export class Environment {
   }
 
   initSkyAndStars() {
-    // 1. Starfield
+    // 1. Low-poly-friendly gradient sky dome. It preserves the simple retro
+    // art direction while avoiding a flat near-black void at night.
+    const skyGeometry = new THREE.SphereGeometry(620, 32, 16);
+    this.skyMaterial = new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      depthTest: false,
+      fog: false,
+      uniforms: {
+        topColor: { value: new THREE.Color(0x2f72d8) },
+        horizonColor: { value: new THREE.Color(0x72b8ef) }
+      },
+      vertexShader: `
+        varying float vSkyHeight;
+        void main() {
+          vSkyHeight = normalize(position).y * 0.5 + 0.5;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 horizonColor;
+        varying float vSkyHeight;
+        void main() {
+          float blend = smoothstep(0.18, 0.78, vSkyHeight);
+          gl_FragColor = vec4(mix(horizonColor, topColor, blend), 1.0);
+        }
+      `
+    });
+    this.skyDome = new THREE.Mesh(skyGeometry, this.skyMaterial);
+    this.skyDome.renderOrder = -100;
+    this.scene.add(this.skyDome);
+
+    // 2. Starfield
     const starCount = 1200;
     const starGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
@@ -73,8 +111,8 @@ export class Environment {
 
     starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.starMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 1.5,
+      color: 0xc7dcff,
+      size: 1.25,
       transparent: true,
       opacity: 0 // Start invisible (daytime)
     });
@@ -82,7 +120,7 @@ export class Environment {
     this.starfield = new THREE.Points(starGeo, this.starMat);
     this.scene.add(this.starfield);
 
-    // 2. Moon
+    // 3. Moon
     const moonGeo = new THREE.SphereGeometry(68, 32, 32);
     const moonMat = new THREE.MeshStandardMaterial({
       color: 0xffffdd,
@@ -105,7 +143,7 @@ export class Environment {
       });
     }
 
-    // 3. Sun (Larger, brighter, layered realistic solar sphere)
+    // 4. Sun (Larger, brighter, layered realistic solar sphere)
     const sunGeo = new THREE.SphereGeometry(110, 48, 48);
     const sunMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -315,42 +353,12 @@ export class Environment {
       this.scene.fog.density = this.weatherFogDensities[this.weatherMode] * altitudeScale;
     }
 
-    // 1. Sky & Fog color transitions based on time of day
-    const dayColor = new THREE.Color(0x3882f6); // Bright blue
-    const nightColor = new THREE.Color(0x070913); // Deep navy/black
-    const dawnColor = new THREE.Color(0xf69d3c); // Warm orange
-    const duskColor = new THREE.Color(0xff5e62);
-
-    let targetBg = new THREE.Color();
-    let starOpacity = 0;
-
-    if (timeVal >= 5.0 && timeVal < 7.0) {
-      // Dawn transition (Night -> Dawn -> Day)
-      const t = (timeVal - 5.0) / 2.0;
-      targetBg.copy(nightColor).lerp(dawnColor, t).lerp(dayColor, Math.max(0, (t - 0.5) * 2));
-      starOpacity = 1.0 - t;
-    } else if (timeVal >= 7.0 && timeVal < 17.0) {
-      // Daytime
-      targetBg.copy(dayColor);
-      starOpacity = 0;
-    } else if (timeVal >= 17.0 && timeVal < 19.0) {
-      // Dusk transition (Day -> Dusk -> Night)
-      const t = (timeVal - 17.0) / 2.0;
-      targetBg.copy(dayColor).lerp(duskColor, t).lerp(nightColor, Math.max(0, (t - 0.5) * 2));
-      starOpacity = t;
-    } else {
-      // Nighttime
-      targetBg.copy(nightColor);
-      starOpacity = 1.0;
-    }
-
-    if (this.weatherMode === 'mist') {
-      targetBg.lerp(new THREE.Color(0x112233), 0.5);
-    } else if (this.weatherMode === 'rain') {
-      targetBg.lerp(new THREE.Color(0x1a222a), 0.6);
-    } else if (this.weatherMode === 'thunderstorm') {
-      targetBg.lerp(new THREE.Color(0x0e1115), 0.75); // Dark stormy clouds
-    }
+    // 1. Sky & fog color transitions use separate zenith/horizon colors so
+    // the street silhouette remains readable without making night look like day.
+    const skyPalette = applyWeatherToSky(getSkyPalette(timeVal), this.weatherMode);
+    const targetBg = skyPalette.top.clone();
+    const targetFog = skyPalette.horizon.clone().lerp(targetBg, 0.3);
+    let starOpacity = getNightFactor(timeVal) * 0.82;
 
     // Update delayed thunder timer
     if (this.thunderTimer > 0) {
@@ -410,8 +418,9 @@ export class Environment {
     const isFunMode = (this.app && this.app.funMode) || (window.app && window.app.funMode);
     if (isFunMode) {
       targetBg.setHex(0x4a1205); // Fiery orange-red apocalyptic sky!
+      targetFog.setHex(0x5a1806);
       this.scene.background.copy(targetBg);
-      this.scene.fog.color.setHex(0x5a1806);
+      this.scene.fog.color.copy(targetFog);
       starOpacity = 0.35;
     } else {
       if (this.weatherMode === 'thunderstorm' && this.flashIntensity > 0) {
@@ -420,8 +429,12 @@ export class Environment {
         this.scene.fog.color.copy(flashColor);
       } else {
         this.scene.background.copy(targetBg);
-        this.scene.fog.color.copy(targetBg);
+        this.scene.fog.color.copy(targetFog);
       }
+    }
+    if (this.skyMaterial) {
+      this.skyMaterial.uniforms.topColor.value.copy(targetBg);
+      this.skyMaterial.uniforms.horizonColor.value.copy(targetFog);
     }
     this.starMat.opacity = starOpacity;
 
@@ -439,6 +452,10 @@ export class Environment {
     if (this.starfield && activeCamera) {
       this.starfield.position.x = skyCenterX;
       this.starfield.position.z = skyCenterZ;
+    }
+    if (this.skyDome && activeCamera) {
+      this.skyDome.position.x = skyCenterX;
+      this.skyDome.position.z = skyCenterZ;
     }
     
     if (this.moon) {

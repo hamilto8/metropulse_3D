@@ -240,7 +240,7 @@ export class BuildingFactory {
       emissive: accentColorHex,
       emissiveIntensity: 0 // Turned on at dusk
     });
-    this.nightLights.push({ mat: ribMat, maxIntensity: 0.8 });
+    this.nightLights.push({ mat: ribMat, kind: 'NEON', maxIntensity: 0.68 });
 
     const ribGeo = new THREE.BoxGeometry(1.5, height, 1.5);
     const corners = [
@@ -255,13 +255,13 @@ export class BuildingFactory {
 
     // 2. Window Grids (Optimized with InstancedMesh to save ~3,000 draw calls!)
     const winMat = new THREE.MeshStandardMaterial({
-      color: 0x9ed8f0,
-      emissive: 0xffe8a0,
-      emissiveIntensity: 0.22,
+      color: 0x82abc5,
+      emissive: 0xffd58a,
+      emissiveIntensity: 0.14,
       roughness: 0.15,
       metalness: 0.45
     });
-    this.nightLights.push({ mat: winMat, baseIntensity: 0.22, maxIntensity: 0.95 });
+    this.nightLights.push({ mat: winMat, kind: 'WINDOW', baseIntensity: 0.14, maxIntensity: 0.54 });
 
     const rows = Math.floor(height / 4);
     const cols = Math.floor(w / 4);
@@ -310,7 +310,7 @@ export class BuildingFactory {
     const lobbyGlassMat = new THREE.MeshStandardMaterial({
       color: 0xa8e0ff,
       emissive: 0xddeeff,
-      emissiveIntensity: 0.35,
+      emissiveIntensity: 0.22,
       roughness: 0.1,
       metalness: 0.5
     });
@@ -344,7 +344,7 @@ export class BuildingFactory {
       emissive: neonColorHex,
       emissiveIntensity: 0
     });
-    this.nightLights.push({ mat: neonMat, maxIntensity: 1.5 });
+    this.nightLights.push({ mat: neonMat, kind: 'NEON', maxIntensity: 1.15 });
 
     const neonBar = new THREE.Mesh(new THREE.BoxGeometry(w - 4, 1.8, 0.6), neonMat);
     neonBar.position.set(0, 6.2, d / 2 + 0.5);
@@ -355,7 +355,7 @@ export class BuildingFactory {
       emissive: 0xffeedd,
       emissiveIntensity: 0
     });
-    this.nightLights.push({ mat: storeWinMat, maxIntensity: 0.8 });
+    this.nightLights.push({ mat: storeWinMat, kind: 'WINDOW', maxIntensity: 0.5 });
 
     const storeWin = new THREE.Mesh(new THREE.PlaneGeometry(w - 6, 3.5), storeWinMat);
     storeWin.position.set(0, 2.5, d / 2 + 0.1);
@@ -368,7 +368,7 @@ export class BuildingFactory {
       emissive: accentColorHex,
       emissiveIntensity: 0
     });
-    this.nightLights.push({ mat: balconyMat, maxIntensity: 0.6 });
+    this.nightLights.push({ mat: balconyMat, kind: 'NEON', maxIntensity: 0.48 });
 
     const levels = Math.floor(height / 6);
     for (let i = 1; i < levels; i++) {
@@ -394,7 +394,7 @@ export class BuildingFactory {
       emissive: accentColorHex,
       emissiveIntensity: 0
     });
-    this.nightLights.push({ mat: archMat, maxIntensity: 0.9 });
+    this.nightLights.push({ mat: archMat, kind: 'NEON', maxIntensity: 0.72 });
     const arch = new THREE.Mesh(new THREE.BoxGeometry(w - 6, 1.6, 2), archMat);
     arch.position.set(0, 8.8, d / 2 + 1);
     group.add(arch);
