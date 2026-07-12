@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import { TrafficSystem } from '../src/systems/TrafficSystem.js';
 import { CityBuilder } from '../src/world/CityBuilder.js';
+import { getVehicleProfile } from '../src/entities/VehicleProfiles.js';
 
 function vehicle({ x, z, speed = 10, parked = false, crashed = false, onFire = false } = {}) {
   return {
@@ -48,6 +49,44 @@ test('congestion metrics exclude parked traffic and expose bridge load', () => {
   assert.equal(metrics.index, 1);
   assert.deepEqual(metrics.bridge, { index: 0.5, vehicles: 2, stoppedVehicles: 1 });
   assert.equal(metrics.hotspots.length, 1);
+});
+
+test('user-to-AI contact resolves in the road plane without blocking adjacent lanes', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const playerMesh = new THREE.Group();
+  const chassisBody = {
+    position: new THREE.Vector3(0, 1, 0),
+    velocity: new THREE.Vector3(0, 0, 8),
+    angularVelocity: new THREE.Vector3(1, 0, 1),
+    aabbNeedsUpdate: false
+  };
+  const player = {
+    vType: 'SEDAN',
+    mesh: playerMesh,
+    physicsVehicle: { chassisBody }
+  };
+  const leadVehicle = {
+    vType: 'SEDAN',
+    mesh: new THREE.Group(),
+    speed: 8
+  };
+  leadVehicle.mesh.position.set(0, 0, 3.5);
+
+  const originalY = chassisBody.position.y;
+  assert.equal(traffic.resolveUserVehicleContact(player, leadVehicle), true);
+  assert.equal(chassisBody.position.y, originalY);
+  assert.ok(chassisBody.position.z < 0);
+  assert.ok(chassisBody.angularVelocity.x < 1);
+  assert.equal(chassisBody.aabbNeedsUpdate, true);
+
+  const adjacentVehicle = {
+    vType: 'BUS',
+    mesh: new THREE.Group(),
+    speed: 8
+  };
+  adjacentVehicle.mesh.position.set(7, 0, 0);
+  assert.equal(traffic.resolveUserVehicleContact(player, adjacentVehicle), false);
+  assert.equal(getVehicleProfile('BUS').length, 10.5);
 });
 
 test('editor road segments join and leave the live traffic graph safely', () => {

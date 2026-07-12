@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
-import { PhysicsWorld } from '../src/physics/PhysicsWorld.js';
+import { PhysicsWorld, PHYSICS_GROUPS } from '../src/physics/PhysicsWorld.js';
 import { CityBuilder } from '../src/world/CityBuilder.js';
 import { PlayerVehicle } from '../src/entities/PlayerVehicle.js';
 
@@ -40,6 +40,30 @@ test('countryside physics rays hit the unified terrain across both Z hemispheres
       `physics/render height mismatch at ${x},${z}`
     );
   }
+});
+
+test('translated static bodies update broad-phase bounds at their visible positions', () => {
+  const physics = new PhysicsWorld();
+  const samples = [[0, physics.groundBodies[0]], [330, physics.groundBodies[1]]];
+
+  for (const [x, expectedBody] of samples) {
+    const result = new CANNON.RaycastResult();
+    physics.world.raycastClosest(
+      new CANNON.Vec3(x, 10, 0),
+      new CANNON.Vec3(x, -10, 0),
+      { collisionFilterGroup: PHYSICS_GROUPS.PLAYER, collisionFilterMask: PHYSICS_GROUPS.SURFACE },
+      result
+    );
+    assert.equal(result.hasHit, true, `missing ground at x=${x}`);
+    assert.equal(result.body, expectedBody);
+  }
+
+  const obstacle = physics.addStaticBoxCollider(
+    { x: 300, y: 2, z: 50 },
+    { x: 4, y: 4, z: 4 }
+  );
+  assert.ok(obstacle.aabb.lowerBound.x >= 298);
+  assert.ok(obstacle.aabb.upperBound.x <= 302);
 });
 
 test('built-in bridge decks are traversable and open water remains hazardous', () => {
@@ -130,4 +154,48 @@ test('a physics vehicle maintains wheel contact while driving a countryside rout
   } finally {
     globalThis.window = previousWindow;
   }
+});
+
+test('a user-driven vehicle crosses the city-to-countryside bridge without snagging', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const builder = createTerrainModel();
+    builder.registerDrivableDeck(380, 420, -7, 7, 0);
+    const physics = new PhysicsWorld();
+    physics.terrainSystem = builder;
+    physics.initCountrysideTerrain(builder);
+
+    const mesh = new THREE.Group();
+    mesh.position.set(330, 0, 0);
+    mesh.rotation.y = Math.PI / 2;
+    const vehicle = new PlayerVehicle(mesh, physics);
+    let supportedFrames = 0;
+    let waterFrames = 0;
+    let maximumTilt = 0;
+
+    for (let frame = 0; frame < 700; frame++) {
+      vehicle.applyInput({ w: true }, 1 / 120);
+      physics.step(1 / 120);
+      vehicle.syncMesh();
+      if (vehicle.raycastVehicle.wheelInfos.some(wheel => wheel.isInContact)) supportedFrames++;
+      if (builder.isInWater(mesh.position)) waterFrames++;
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(mesh.quaternion);
+      maximumTilt = Math.max(maximumTilt, Math.acos(THREE.MathUtils.clamp(up.y, -1, 1)));
+    }
+
+    assert.ok(mesh.position.x > 450, `vehicle failed to cross bridge: ${mesh.position.x}`);
+    assert.ok(supportedFrames / 700 > 0.95, 'bridge crossing lost wheel support');
+    assert.equal(waterFrames, 0);
+    assert.ok(maximumTilt < 0.2, `bridge seam destabilized chassis: ${maximumTilt}`);
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
+test('city traffic lanes override overlapping sidewalk terrain', () => {
+  const builder = createTerrainModel();
+  assert.equal(builder.getTerrainHeight(-96.5, -75), 0);
+  assert.equal(builder.getTerrainHeight(-75, -75), 0.7);
 });

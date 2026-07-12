@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
+import { getVehicleProfile } from '../entities/VehicleProfiles.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -95,6 +96,7 @@ export class TrafficSystem {
         if (vehicle.physicsBody && this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
           this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
         }
+        vehicle.mesh.position.y = this.getTerrainHeight(vehicle.mesh.position.x, vehicle.mesh.position.z);
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
       }
 
@@ -259,6 +261,54 @@ export class TrafficSystem {
       return this.app.cityBuilder.getHillHeight(x, z) + 0.05;
     }
     return 0.05;
+  }
+
+  resolveUserVehicleContact(player, other) {
+    const physicsVehicle = player?.physicsVehicle;
+    const body = physicsVehicle?.chassisBody;
+    if (!body || !other?.mesh || other === player) return false;
+
+    const playerProfile = getVehicleProfile(player.vType);
+    const otherProfile = getVehicleProfile(other.vType);
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.mesh.quaternion);
+    forward.y = 0;
+    if (forward.lengthSq() < 0.001) forward.set(0, 0, 1);
+    forward.normalize();
+    const right = new THREE.Vector3(forward.z, 0, -forward.x);
+    const relative = other.mesh.position.clone().sub(player.mesh.position);
+    relative.y = 0;
+
+    const longitudinal = relative.dot(forward);
+    const lateral = relative.dot(right);
+    const longitudinalLimit = (playerProfile.length + otherProfile.length) * 0.5;
+    const lateralLimit = (playerProfile.width + otherProfile.width) * 0.5;
+    const longitudinalPenetration = longitudinalLimit - Math.abs(longitudinal);
+    const lateralPenetration = lateralLimit - Math.abs(lateral);
+    if (longitudinalPenetration <= 0 || lateralPenetration <= 0) return false;
+
+    const resolveLaterally = lateralPenetration < longitudinalPenetration;
+    const normal = (resolveLaterally ? right : forward).multiplyScalar(
+      -Math.sign(resolveLaterally ? lateral : longitudinal) || 1
+    );
+    const penetration = resolveLaterally ? lateralPenetration : longitudinalPenetration;
+    const correction = Math.min(0.75, Math.max(0.05, penetration * 0.55));
+    body.position.x += normal.x * correction;
+    body.position.z += normal.z * correction;
+
+    const inwardSpeed = body.velocity.x * normal.x + body.velocity.z * normal.z;
+    if (inwardSpeed < 0) {
+      body.velocity.x -= normal.x * inwardSpeed * 1.05;
+      body.velocity.z -= normal.z * inwardSpeed * 1.05;
+    }
+    body.velocity.x += normal.x * Math.min(1.5, penetration * 0.4);
+    body.velocity.z += normal.z * Math.min(1.5, penetration * 0.4);
+    body.angularVelocity.x *= 0.5;
+    body.angularVelocity.z *= 0.5;
+    body.aabbNeedsUpdate = true;
+
+    other.mesh.position.addScaledVector(normal, -Math.min(0.25, correction * 0.3));
+    other.speed = Math.max(0, Number(other.speed || 0) * 0.65);
+    return true;
   }
 
   isOnPrimaryBridge(vehicle) {
@@ -472,32 +522,16 @@ export class TrafficSystem {
         this.app.audioSystem.updateEngineSound(v.physicsVehicle.speedKmH, v.maxSpeed * 3.6);
       }
 
-      // Check collision with other AI vehicles (ALWAYS push apart physically; guard audio with cooldown)
+      // AI kinematic bodies are intentionally excluded from wheel/chassis
+      // raycasts. Resolve vehicle contact once in the horizontal plane so a
+      // traffic jam cannot roll or launch the player on a narrow bridge.
       if (v.bumpCooldown > 0) {
         v.bumpCooldown -= delta;
       }
-      const collisionCandidates = this.app.performanceSystem?.nearbyVehicles(v.mesh.position, 4.8) || this.vehicles;
+      const collisionCandidates = this.app.performanceSystem?.nearbyVehicles(v.mesh.position, 8) || this.vehicles;
       for (const other of collisionCandidates) {
         if (other === v) continue;
-        if (v.mesh.position.distanceTo(other.mesh.position) < 4.8) {
-          const bounceDir = v.mesh.position.clone().sub(other.mesh.position);
-          bounceDir.y = 0;
-          if (bounceDir.lengthSq() === 0) bounceDir.set(1, 0, 0);
-          bounceDir.normalize();
-
-          // 1. Physically push/bounce player vehicle away
-          if (v.physicsVehicle && v.physicsVehicle.chassisBody) {
-            v.physicsVehicle.chassisBody.velocity.x += bounceDir.x * 8.5;
-            v.physicsVehicle.chassisBody.velocity.z += bounceDir.z * 8.5;
-          } else {
-            v.mesh.position.addScaledVector(bounceDir, 1.1);
-          }
-
-          // 2. Physically push computer-controlled vehicle away
-          other.mesh.position.addScaledVector(bounceDir, -1.1);
-          other.speed = -Math.abs(other.speed || 10) * 0.45;
-
-          // 3. Trigger audio & horn only once per impact interval
+        if (this.resolveUserVehicleContact(v, other)) {
           if (v.bumpCooldown <= 0) {
             v.bumpCooldown = 0.55;
             if (Math.abs(v.speed) > 8.0 && this.app.pedestrianSystem && typeof this.app.pedestrianSystem.reportCrime === 'function') {

@@ -1,5 +1,14 @@
 import * as CANNON from 'cannon-es';
 
+export const PHYSICS_GROUPS = Object.freeze({
+  SURFACE: 1,
+  STATIC_OBSTACLE: 2,
+  TRAFFIC: 4,
+  PLAYER: 8
+});
+
+const ALL_PHYSICS_GROUPS = Object.values(PHYSICS_GROUPS).reduce((mask, group) => mask | group, 0);
+
 export class PhysicsWorld {
   constructor() {
     this.world = new CANNON.World();
@@ -51,11 +60,20 @@ export class PhysicsWorld {
     this.groundBody = this.groundBodies[0];
   }
 
+  setBodyTransform(body, position, rotationY = 0) {
+    body.position.set(position.x, position.y, position.z);
+    if (rotationY) body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
+    body.aabbNeedsUpdate = true;
+    body.updateAABB();
+    return body;
+  }
+
   addSurfaceBox(position, size, { rotationY = 0 } = {}) {
     const shape = new CANNON.Box(new CANNON.Vec3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
     const body = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.groundMaterial, shape });
-    body.position.set(position.x, position.y, position.z);
-    if (rotationY) body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
+    body.collisionFilterGroup = PHYSICS_GROUPS.SURFACE;
+    body.collisionFilterMask = ALL_PHYSICS_GROUPS;
+    this.setBodyTransform(body, position, rotationY);
     this.world.addBody(body);
     return body;
   }
@@ -90,6 +108,8 @@ export class PhysicsWorld {
       }
     }
     const terrainBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.groundMaterial });
+    terrainBody.collisionFilterGroup = PHYSICS_GROUPS.SURFACE;
+    terrainBody.collisionFilterMask = ALL_PHYSICS_GROUPS;
     terrainBody.addShape(new CANNON.Trimesh(vertices, indices));
     this.world.addBody(terrainBody);
     this.countrysideTerrainBody = terrainBody;
@@ -161,8 +181,9 @@ export class PhysicsWorld {
       material: this.obstacleMaterial,
       shape: boxShape
     });
-    boxBody.position.set(position.x, position.y, position.z);
-    if (rotationY) boxBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
+    boxBody.collisionFilterGroup = PHYSICS_GROUPS.STATIC_OBSTACLE;
+    boxBody.collisionFilterMask = ALL_PHYSICS_GROUPS;
+    this.setBodyTransform(boxBody, position, rotationY);
     this.world.addBody(boxBody);
     this.staticBodies.push(boxBody);
     return boxBody;
@@ -197,7 +218,9 @@ export class PhysicsWorld {
       material: this.obstacleMaterial,
       shape: boxShape
     });
-    boxBody.position.set(position.x, position.y, position.z);
+    boxBody.collisionFilterGroup = PHYSICS_GROUPS.TRAFFIC;
+    boxBody.collisionFilterMask = PHYSICS_GROUPS.STATIC_OBSTACLE;
+    this.setBodyTransform(boxBody, position);
     this.world.addBody(boxBody);
     return boxBody;
   }

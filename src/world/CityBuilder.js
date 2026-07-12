@@ -264,7 +264,7 @@ export class CityBuilder {
     return false;
   }
 
-  registerDrivableDeck(minX, maxX, minZ, maxZ, height = 0.05) {
+  registerDrivableDeck(minX, maxX, minZ, maxZ, height = 0) {
     if (!this.drivableDecks) this.drivableDecks = [];
     this.drivableDecks.push({ minX, maxX, minZ, maxZ, height });
   }
@@ -287,6 +287,14 @@ export class CityBuilder {
 
     if ((x >= 135 && x <= 185) || (x >= 380 && x <= 420)) return -4;
     if (x >= 420) return this.getHillHeight(x, z);
+
+    // Traffic lanes take precedence over overlapping decorative sidewalk
+    // meshes. The visual blocks extend four metres into the outer lanes.
+    const cityRoadX = [-100, -50, 0, 50, 100, 210, 260, 310];
+    const cityRoadZ = [-100, -50, 0, 50, 100];
+    const onCityRoad = cityRoadX.some(roadX => Math.abs(x - roadX) <= 7)
+      || cityRoadZ.some(roadZ => Math.abs(z - roadZ) <= 7);
+    if (onCityRoad) return 0;
 
     if (x < -60 && z < -60 && x > -100 && z > -100) return 0.7;
     const blockCentersX = [-75, -25, 25, 75, 235, 285];
@@ -878,11 +886,6 @@ export class CityBuilder {
         sidewalk.position.set(bx, 0.2, bz);
         sidewalk.receiveShadow = true;
         this.scene.add(sidewalk);
-        this.surfaceColliders.push({
-          position: { x: bx, y: 0.2, z: bz },
-          size: { x: blockSize + sidewalkWidth * 2, y: 0.4, z: blockSize + sidewalkWidth * 2 },
-          kind: 'sidewalk-block'
-        });
 
         this.sidewalkNetwork.push(new THREE.Vector3(bx, 0.4, bz));
 
@@ -979,7 +982,7 @@ export class CityBuilder {
     deck.position.set(160, -0.45, 0);
     deck.receiveShadow = true;
     bridgeGroup.add(deck);
-    this.registerDrivableDeck(110, 210, -9, 9, 0.05);
+    this.registerDrivableDeck(110, 210, -9, 9, 0);
 
     // Bridge dividing lines & sidewalks
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
@@ -1079,7 +1082,7 @@ export class CityBuilder {
       bLine.rotation.x = -Math.PI / 2;
       bLine.position.set(160, 0.06, bz);
       this.scene.add(bLine);
-      this.registerDrivableDeck(110, 210, bz - 8, bz + 8, 0.05);
+      this.registerDrivableDeck(110, 210, bz - 8, bz + 8, 0);
 
       // Side rail trusses
       const railN = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
@@ -1124,7 +1127,7 @@ export class CityBuilder {
     deck.position.set(400, -0.45, bz);
     deck.receiveShadow = true;
     this.scene.add(deck);
-    this.registerDrivableDeck(380, 420, bz - bridgeWidth / 2, bz + bridgeWidth / 2, 0.05);
+    this.registerDrivableDeck(380, 420, bz - bridgeWidth / 2, bz + bridgeWidth / 2, 0);
 
     // Visible stone piers remain below the deck. The former rotated 15 m
     // half-cylinder protruded above the road and behaved like a giant ramp.

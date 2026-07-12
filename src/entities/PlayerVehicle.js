@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { PHYSICS_GROUPS } from '../physics/PhysicsWorld.js';
+import { getVehicleProfile } from './VehicleProfiles.js';
 
 export class PlayerVehicle {
   constructor(mesh, physicsWorld, initialPosition = null, initialRotation = null, vType = 'SEDAN') {
@@ -73,60 +75,17 @@ export class PlayerVehicle {
   }
 
   initPhysics(pos, rot) {
-    let mass = 1200;
-    let width = 2.0, height = 1.4, length = 4.2;
-    let wheelRadius = 0.4, suspensionRestLength = 0.45, suspensionStiffness = 48;
-    let maxSuspensionForce = 100000;
-    
-    if (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') {
-      mass = 950;
-      width = 2.1; height = 1.05; length = 4.4;
-      wheelRadius = 0.45;
-      suspensionRestLength = 0.38;
-      suspensionStiffness = 68;
-    } else if (this.vType === 'BUS') {
-      mass = 4800;
-      width = 2.6; height = 3.2; length = 10.5;
-      wheelRadius = 0.6;
-      suspensionRestLength = 0.6;
-      suspensionStiffness = 120;
-      maxSuspensionForce = 350000;
-    } else if (this.vType === 'TRUCK') {
-      mass = 3500;
-      width = 2.4; height = 3.0; length = 7.5;
-      wheelRadius = 0.55;
-      suspensionRestLength = 0.55;
-      suspensionStiffness = 95;
-      maxSuspensionForce = 250000;
-    } else if (this.vType === 'AMBULANCE') {
-      mass = 2400;
-      width = 2.3; height = 2.4; length = 6.2;
-      wheelRadius = 0.5;
-      suspensionRestLength = 0.5;
-      suspensionStiffness = 75;
-      maxSuspensionForce = 180000;
-    } else if (this.vType === 'ICECREAM') {
-      mass = 1900;
-      width = 2.2; height = 2.3; length = 5.8;
-      wheelRadius = 0.48;
-      suspensionRestLength = 0.48;
-      suspensionStiffness = 65;
-      maxSuspensionForce = 150000;
-    } else if (this.vType === 'DUMP_TRUCK') {
-      mass = 4200;
-      width = 2.5; height = 2.9; length = 7.8;
-      wheelRadius = 0.6;
-      suspensionRestLength = 0.58;
-      suspensionStiffness = 110;
-      maxSuspensionForce = 300000;
-    } else if (this.vType === 'MOTORBIKE') {
-      mass = 250;
-      width = 0.7; height = 1.0; length = 2.2;
-      wheelRadius = 0.35;
-      suspensionRestLength = 0.35;
-      suspensionStiffness = 55;
-      maxSuspensionForce = 80000;
-    }
+    const {
+      mass,
+      width,
+      height,
+      length,
+      wheelRadius,
+      suspensionRestLength,
+      suspensionStiffness,
+      maxSuspensionForce
+    } = getVehicleProfile(this.vType);
+    this.footprint = Object.freeze({ width, length });
 
     // 1. Chassis rigid body
     const chassisShape = new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, length / 2));
@@ -134,6 +93,11 @@ export class PlayerVehicle {
       mass: mass,
       material: this.physicsWorld.wheelMaterial
     });
+    // AI traffic is resolved by TrafficSystem's planar arcade contact model.
+    // Excluding its kinematic boxes here also prevents wheel rays from
+    // mistaking another vehicle for a road surface and launching the chassis.
+    this.chassisBody.collisionFilterGroup = PHYSICS_GROUPS.PLAYER;
+    this.chassisBody.collisionFilterMask = PHYSICS_GROUPS.SURFACE | PHYSICS_GROUPS.STATIC_OBSTACLE;
     this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, height * 0.15, 0));
     
     const initialY = pos.y + this.meshOffset;
