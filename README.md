@@ -140,6 +140,8 @@ Keyboard/mouse and Xbox controllers can be swapped at any time. The command ribb
 
 Time, weather, audio, overlays, camera presets, Mayhem, saving, and district controls remain available through the City Tools sidebar. On small screens it starts as a compact rail and expands on demand.
 
+HUD regions are mode-aware: Mayhem news, adaptive controls, and simulation time use one collision-free command stack; market telemetry and vehicle speed occupy a separate right rail. City Tools collapses to a labelled rail during direct control and can be reopened without leaving the vehicle or pedestrian.
+
 ## ✅ Verification
 
 ```bash

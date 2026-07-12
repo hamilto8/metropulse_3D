@@ -97,19 +97,21 @@ export class UIManager {
     this.adaptiveContextLabel = document.getElementById('adaptive-context-label');
     this.adaptiveControlActions = document.getElementById('adaptive-control-actions');
     this.modeLabel = document.getElementById('current-mode-label');
+    this.leftSidebar = document.getElementById('left-sidebar');
+    this.sidebarContent = document.getElementById('sidebar-content');
+    this.btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    this.bottomToolbar = document.querySelector('.bottom-right-toolbar');
+    this._lastGameMode = null;
+    this._sidebarWasCollapsedBeforeAction = null;
+    document.body.dataset.inspector = 'closed';
 
     this.initEventListeners();
     if (window.matchMedia?.('(max-width: 780px)').matches) {
-      const sidebar = document.getElementById('left-sidebar');
-      const toggle = document.getElementById('btn-toggle-sidebar');
-      sidebar?.classList.add('collapsed');
-      if (toggle) {
-        toggle.textContent = '▶';
-        toggle.setAttribute('aria-expanded', 'false');
-        toggle.setAttribute('aria-label', 'Expand city tools sidebar');
-        toggle.title = 'Expand City Tools';
-      }
+      this.leftSidebar?.classList.add('no-transition');
+      this.leftSidebar?.classList.add('collapsed');
+      requestAnimationFrame(() => requestAnimationFrame(() => this.leftSidebar?.classList.remove('no-transition')));
     }
+    this.renderSidebarToggleState(this.leftSidebar?.classList.contains('collapsed'));
 
     if (this.app.gameManager?.subscribe) {
       this._unsubscribeGameState = this.app.gameManager.subscribe(event => this.syncGameState(event?.current || event), { emitCurrent: true });
@@ -207,8 +209,8 @@ export class UIManager {
     // Collapsible Top Header & Left Sidebar controls
     const topHeader = document.getElementById('top-header');
     const btnToggleHeader = document.getElementById('btn-toggle-header');
-    const leftSidebar = document.getElementById('left-sidebar');
-    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    const leftSidebar = this.leftSidebar;
+    const btnToggleSidebar = this.btnToggleSidebar;
 
     if (btnToggleHeader && topHeader) {
       btnToggleHeader.addEventListener('click', () => {
@@ -219,11 +221,7 @@ export class UIManager {
 
     if (btnToggleSidebar && leftSidebar) {
       btnToggleSidebar.addEventListener('click', () => {
-        const isCollapsed = leftSidebar.classList.toggle('collapsed');
-        btnToggleSidebar.textContent = isCollapsed ? '▶' : '◀';
-        btnToggleSidebar.setAttribute('aria-expanded', String(!isCollapsed));
-        btnToggleSidebar.setAttribute('aria-label', isCollapsed ? 'Expand city tools sidebar' : 'Collapse city tools sidebar');
-        btnToggleSidebar.title = isCollapsed ? 'Expand City Tools' : 'Collapse City Tools';
+        this.toggleCityTools();
       });
     }
 
@@ -550,8 +548,13 @@ export class UIManager {
     const btnToolbarVehicles = document.getElementById('btn-toolbar-vehicles');
     if (btnToolbarVehicles) {
       btnToolbarVehicles.addEventListener('click', () => {
-        const vehicles = this.app.trafficSystem?.vehicles || [];
-        if (vehicles.length === 0) return;
+        const vehicles = (this.app.trafficSystem?.vehicles || []).filter(vehicle => (
+          !vehicle.crashed && !vehicle.onFire && !vehicle.isDestroyed && vehicle.mesh?.parent
+        ));
+        if (vehicles.length === 0) {
+          this.showToast('No operational vehicles are currently available.');
+          return;
+        }
         this._vehicleCursor = ((this._vehicleCursor ?? -1) + 1) % vehicles.length;
         this.showInspector(vehicles[this._vehicleCursor]);
       });
@@ -588,6 +591,51 @@ export class UIManager {
     this.toggleCityEditor();
   }
 
+  renderSidebarToggleState(collapsed) {
+    if (!this.btnToggleSidebar) return;
+    const actionMode = document.body.dataset.gameMode === 'action';
+    this.btnToggleSidebar.textContent = collapsed ? (actionMode ? '☰' : '▶') : '◀';
+    this.btnToggleSidebar.setAttribute('aria-expanded', String(!collapsed));
+    this.btnToggleSidebar.setAttribute('aria-label', collapsed ? 'Expand city tools sidebar' : 'Collapse city tools sidebar');
+    this.btnToggleSidebar.title = collapsed ? 'Expand City Tools' : 'Collapse City Tools';
+    if (this.sidebarContent) {
+      this.sidebarContent.inert = Boolean(collapsed);
+      this.sidebarContent.setAttribute('aria-hidden', String(Boolean(collapsed)));
+    }
+  }
+
+  toggleCityTools() {
+    if (!this.leftSidebar) return false;
+    const actionMode = document.body.dataset.gameMode === 'action';
+    if (actionMode) {
+      const expanded = this.leftSidebar.classList.toggle('action-expanded');
+      this.renderSidebarToggleState(!expanded);
+      return expanded;
+    }
+    const collapsed = this.leftSidebar.classList.toggle('collapsed');
+    this.renderSidebarToggleState(collapsed);
+    return !collapsed;
+  }
+
+  syncSidebarForMode(mode) {
+    if (!this.leftSidebar || mode === this._lastGameMode) return;
+
+    if (mode === 'ACTION') {
+      this._sidebarWasCollapsedBeforeAction = this.leftSidebar.classList.contains('collapsed');
+      this.leftSidebar.classList.remove('collapsed', 'action-expanded');
+      this.renderSidebarToggleState(true);
+    } else if (this._lastGameMode === 'ACTION') {
+      this.leftSidebar.classList.remove('action-expanded');
+      this.leftSidebar.classList.toggle('collapsed', Boolean(this._sidebarWasCollapsedBeforeAction));
+      this.renderSidebarToggleState(Boolean(this._sidebarWasCollapsedBeforeAction));
+      this._sidebarWasCollapsedBeforeAction = null;
+    } else {
+      this.renderSidebarToggleState(this.leftSidebar.classList.contains('collapsed'));
+    }
+
+    this._lastGameMode = mode;
+  }
+
   syncGameState(snapshot = {}) {
     const state = snapshot.state || snapshot;
     const mode = state.mode || this.app.gameManager?.mode || 'MANAGEMENT';
@@ -598,16 +646,21 @@ export class UIManager {
       this.modeLabel.textContent = mode === 'BUILDER' ? 'CITY BUILDER' : mode;
     }
     document.body.dataset.gameMode = mode.toLowerCase();
+    this.syncSidebarForMode(mode);
     const managementOnly = [
-      document.getElementById('left-sidebar'),
       document.getElementById('bottom-time-bar'),
-      document.querySelector('.bottom-right-toolbar')
+      this.bottomToolbar
     ];
     for (const element of managementOnly) {
       if (!element) continue;
       const unavailable = mode !== 'MANAGEMENT';
       element.inert = unavailable;
       element.setAttribute('aria-hidden', String(unavailable));
+    }
+    if (this.leftSidebar) {
+      const unavailable = mode === 'BUILDER';
+      this.leftSidebar.inert = unavailable;
+      this.leftSidebar.setAttribute('aria-hidden', String(unavailable));
     }
     this.updateAdaptiveControls(true);
 
@@ -644,6 +697,7 @@ export class UIManager {
 
   renderMayhemState(enabled) {
     this.app.funMode = !!enabled;
+    document.body.dataset.mayhem = enabled ? 'on' : 'off';
     this.btnFunMode?.classList.toggle('active', !!enabled);
     if (this.funModeLabel) this.funModeLabel.textContent = enabled ? 'Fun Mode: MAYHEM! 🔥' : 'Fun Mode: OFF';
     this.newsChyron?.classList.toggle('hidden', !enabled);
@@ -827,6 +881,7 @@ export class UIManager {
 
   showInspector(entity) {
     this.selectedEntity = entity;
+    document.body.dataset.inspector = 'open';
     this.syncLocalLandValue(entity);
     if (this.inspectorHud) this.inspectorHud.classList.remove('hidden');
     if (this.inspectorType) this.inspectorType.textContent = entity.type || 'OBJECT';
@@ -911,6 +966,7 @@ export class UIManager {
 
   hideInspector() {
     this.selectedEntity = null;
+    document.body.dataset.inspector = 'closed';
     if (this.inspectorHud) this.inspectorHud.classList.add('hidden');
   }
 
@@ -1198,32 +1254,18 @@ export class UIManager {
     if (!toast) {
       toast = document.createElement('div');
       toast.id = 'city-editor-toast';
+      toast.className = 'hud-toast';
       toast.setAttribute('role', 'status');
       toast.setAttribute('aria-live', 'polite');
-      toast.style.cssText = `
-        position: fixed;
-        top: 86px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(11, 16, 33, 0.92);
-        color: #00f0ff;
-        border: 1px solid #00f0ff;
-        padding: 10px 24px;
-        border-radius: 999px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        z-index: 3000;
-        pointer-events: none;
-        box-shadow: 0 0 20px rgba(0, 240, 255, 0.35);
-        transition: opacity 0.3s ease;
-      `;
       document.body.appendChild(toast);
     }
     toast.textContent = message;
     toast.style.opacity = '1';
+    document.body.classList.add('toast-visible');
     clearTimeout(this._toastTimeout);
     this._toastTimeout = setTimeout(() => {
       toast.style.opacity = '0';
+      document.body.classList.remove('toast-visible');
     }, 3200);
   }
 

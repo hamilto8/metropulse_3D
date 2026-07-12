@@ -608,7 +608,7 @@ export class BuildingFactory {
 
 
   destroyBuilding(building) {
-    if (building.isDestroyed) return;
+    if (!building || building.isDestroyed) return false;
     building.isDestroyed = true;
     building.destroyedByMayhem = true;
     building.destructionCount = (building.destructionCount || 0) + 1;
@@ -633,7 +633,15 @@ export class BuildingFactory {
         45,
         Math.hypot(building.plot?.width || 30, building.plot?.depth || 30) * 1.25
       );
-      building.mayhemIncidentId = `mayhem-building-${building.economyId || building.name}-${building.destructionCount}`;
+      const incidentPrefix = `mayhem-building-${building.economyId || building.name}`;
+      let incidentSequence = building.destructionCount;
+      let incidentId = `${incidentPrefix}-${incidentSequence}`;
+      while (this.app.economySystem.hasIncident?.(incidentId)) {
+        incidentSequence += 1;
+        incidentId = `${incidentPrefix}-${incidentSequence}`;
+      }
+      building.destructionCount = incidentSequence;
+      building.mayhemIncidentId = incidentId;
       this.app.economySystem.recordIncident({
         id: building.mayhemIncidentId,
         type: 'BUILDING_DESTROYED',
@@ -719,6 +727,7 @@ export class BuildingFactory {
         }
       });
     }
+    return true;
   }
 
   restoreAllBuildings() {

@@ -41,57 +41,71 @@ export class PhysicsWorld {
   }
 
   initGround() {
-    // Static ground slab at Y = -1 with thickness 2 (top surface exactly at Y = 0.0)
-    // CANNON.Box uses halfExtents, so (500, 1, 500) creates a 1000x2x1000 ground block
-    const groundShape = new CANNON.Box(new CANNON.Vec3(500, 1, 500));
-    const groundBody = new CANNON.Body({
-      type: CANNON.Body.STATIC,
-      material: this.groundMaterial,
-      shape: groundShape
-    });
-    groundBody.position.set(0, -1, 0);
-    this.world.addBody(groundBody);
-    this.groundBody = groundBody;
+    // Match the two rendered city land masses. The former 1000 m slab covered
+    // the rivers and overlapped x=400..500 of the countryside heightfield,
+    // causing wheel rays to alternate between flat ground and the hillside.
+    this.groundBodies = [
+      this.addSurfaceBox({ x: -182.5, y: -1, z: 0 }, { x: 635, y: 2, z: 800 }),
+      this.addSurfaceBox({ x: 282.5, y: -1, z: 0 }, { x: 195, y: 2, z: 800 })
+    ];
+    this.groundBody = this.groundBodies[0];
+  }
+
+  addSurfaceBox(position, size, { rotationY = 0 } = {}) {
+    const shape = new CANNON.Box(new CANNON.Vec3(size.x * 0.5, size.y * 0.5, size.z * 0.5));
+    const body = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.groundMaterial, shape });
+    body.position.set(position.x, position.y, position.z);
+    if (rotationY) body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
+    this.world.addBody(body);
+    return body;
   }
 
   initCountrysideTerrain(cityBuilder) {
     if (!cityBuilder || typeof cityBuilder.getHillHeight !== 'function') return;
 
-    // Create a continuous, smooth CANNON.Heightfield covering the countryside (X: 400 to 820, Z: -400 to 400)
-    // This creates a seamless triangulated physics terrain with ZERO vertical steps or invisible walls.
-    const startX = 400;
-    const startZ = 400;
+    // cannon-es Heightfield left one-sided raycast gaps in the negative-Z half
+    // of this rotated terrain. An explicit consistently-wound Trimesh keeps
+    // every wheel ray on the same surface used by the rendered countryside.
+    const startX = 420;
+    const startZ = -400;
     const elementSize = 5;
-    const numX = 85;
+    const numX = 82;
     const numY = 161;
-
-    const matrix = [];
+    const vertices = [];
+    const indices = [];
     for (let i = 0; i < numX; i++) {
-      matrix.push([]);
       for (let j = 0; j < numY; j++) {
         const worldX = startX + i * elementSize;
-        const worldZ = startZ - j * elementSize;
-        const h = cityBuilder.getHillHeight(worldX, worldZ);
-        matrix[i].push(h);
+        const worldZ = startZ + j * elementSize;
+        vertices.push(worldX, cityBuilder.getHillHeight(worldX, worldZ), worldZ);
       }
     }
+    for (let i = 0; i < numX - 1; i++) {
+      for (let j = 0; j < numY - 1; j++) {
+        const a = i * numY + j;
+        const b = (i + 1) * numY + j;
+        const c = (i + 1) * numY + j + 1;
+        const d = i * numY + j + 1;
+        indices.push(a, c, b, a, d, c);
+      }
+    }
+    const terrainBody = new CANNON.Body({ type: CANNON.Body.STATIC, material: this.groundMaterial });
+    terrainBody.addShape(new CANNON.Trimesh(vertices, indices));
+    this.world.addBody(terrainBody);
+    this.countrysideTerrainBody = terrainBody;
 
-    const hfShape = new CANNON.Heightfield(matrix, {
-      elementSize: elementSize
-    });
-
-    const hfBody = new CANNON.Body({
-      type: CANNON.Body.STATIC,
-      material: this.groundMaterial
-    });
-    hfBody.addShape(hfShape);
-
-    // Position at start corner and rotate -PI/2 around X axis so CANNON local Z maps to world +Y
-    hfBody.position.set(startX, 0, startZ);
-    hfBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-
-    this.world.addBody(hfBody);
-    this.countrysideTerrainBody = hfBody;
+    for (const deck of cityBuilder.drivableDecks || []) {
+      this.addSurfaceBox(
+        { x: (deck.minX + deck.maxX) * 0.5, y: deck.height - 0.5, z: (deck.minZ + deck.maxZ) * 0.5 },
+        { x: deck.maxX - deck.minX, y: 1, z: deck.maxZ - deck.minZ }
+      );
+    }
+    for (const surface of cityBuilder.surfaceColliders || []) {
+      this.addSurfaceBox(surface.position, surface.size, { rotationY: surface.rotationY || 0 });
+    }
+    for (const obstacle of cityBuilder.sceneryColliders || []) {
+      this.addStaticBoxCollider(obstacle.position, obstacle.size, { rotationY: obstacle.rotationY || 0 });
+    }
   }
 
   setWeatherFriction(weatherMode) {
@@ -134,7 +148,7 @@ export class PhysicsWorld {
     this.playerVehicles.delete(vehicle);
   }
 
-  addStaticBoxCollider(position, size) {
+  addStaticBoxCollider(position, size, { rotationY = 0 } = {}) {
     // size is THREE.Vector3 or object with width, height, depth
     const halfExtents = new CANNON.Vec3(
       (size.x || size.width || 1) * 0.5,
@@ -148,6 +162,7 @@ export class PhysicsWorld {
       shape: boxShape
     });
     boxBody.position.set(position.x, position.y, position.z);
+    if (rotationY) boxBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rotationY);
     this.world.addBody(boxBody);
     this.staticBodies.push(boxBody);
     return boxBody;

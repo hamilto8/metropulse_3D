@@ -1390,6 +1390,10 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   transform: translateX(calc(-100% - 24px));
 }
 
+.left-sidebar.no-transition {
+  transition: none !important;
+}
+
 /* Toggle Buttons for Header and Sidebar */
 .header-toggle-btn {
   position: absolute;
@@ -3749,5 +3753,425 @@ body[data-input-method="gamepad"] :focus-visible {
   .bottom-right-toolbar,
   .minimap-hud {
     display: none;
+  }
+}
+
+/* ── HUD layout system v2: explicit zones, no overlapping bottom chrome ── */
+
+.hud-bottom-stack {
+  position: fixed;
+  right: 176px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 316px;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  pointer-events: none;
+}
+
+@media (min-width: 1181px) {
+  body[data-game-mode="management"][data-mayhem="on"] .hud-bottom-stack > .news-chyron {
+    align-self: flex-start;
+    width: min(1100px, calc(100% - 170px));
+  }
+}
+
+.hud-bottom-stack > .news-chyron,
+.hud-bottom-stack > .adaptive-control-hud,
+.hud-bottom-stack > .bottom-time-bar {
+  position: relative;
+  inset: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+}
+
+.hud-bottom-stack > .bottom-time-bar {
+  width: min(570px, 100%);
+  pointer-events: auto;
+}
+
+.hud-bottom-stack > .adaptive-control-hud {
+  width: max-content;
+  max-width: 100%;
+}
+
+.hud-bottom-stack > .news-chyron {
+  width: min(1100px, 100%);
+  min-height: 40px;
+  border: 1px solid rgba(255, 87, 51, 0.8);
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(30, 8, 15, 0.96), rgba(67, 16, 24, 0.96), rgba(30, 8, 15, 0.96));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.48), 0 0 20px rgba(255, 56, 28, 0.3);
+}
+
+.hud-bottom-stack .chyron-badge {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  padding: 8px 13px;
+  background: linear-gradient(135deg, #e73b1d, #ff6b2c);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  animation: none;
+}
+
+.hud-bottom-stack .chyron-ticker-container {
+  padding: 7px 0;
+}
+
+.hud-bottom-stack .chyron-ticker-text {
+  font-size: 0.82rem;
+  letter-spacing: 0.025em;
+  animation-duration: 58s;
+}
+
+.top-header-container {
+  z-index: 100;
+}
+
+.mission-hud {
+  top: 112px;
+  z-index: 90;
+  max-width: calc(100vw - 40px);
+}
+
+.minimap-hud {
+  z-index: 70;
+}
+
+.inspector-hud {
+  z-index: 60;
+}
+
+.bottom-right-toolbar,
+.real-estate-tracker,
+.street-speedometer {
+  z-index: 90;
+}
+
+.real-estate-tracker {
+  right: 18px;
+  bottom: 128px;
+}
+
+body[data-inspector="open"] .real-estate-tracker:not(.hidden) {
+  top: 78px;
+  right: 170px;
+  bottom: auto;
+}
+
+body[data-game-mode="action"] .bottom-time-bar,
+body[data-game-mode="builder"] .bottom-time-bar,
+body[data-game-mode="action"] .bottom-right-toolbar,
+body[data-game-mode="builder"] .bottom-right-toolbar {
+  display: none;
+}
+
+body[data-game-mode="action"] .hud-bottom-stack {
+  right: 176px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 76px;
+}
+
+body[data-game-mode="builder"] .hud-bottom-stack {
+  top: 86px;
+  right: 180px;
+  bottom: auto;
+  left: 310px;
+}
+
+body[data-game-mode="action"] .adaptive-control-hud,
+body[data-game-mode="builder"] .adaptive-control-hud {
+  opacity: 1;
+  transform: none;
+}
+
+body[data-game-mode="action"] .hud-bottom-stack > .adaptive-control-hud,
+body[data-game-mode="builder"] .hud-bottom-stack > .adaptive-control-hud {
+  inset: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.hud-toast {
+  position: fixed;
+  top: 112px;
+  left: 50%;
+  z-index: 3000;
+  max-width: min(620px, calc(100vw - 32px));
+  padding: 10px 20px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(0, 240, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(7, 12, 27, 0.94);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.25);
+  color: #9af8ff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+body[data-game-mode="builder"] .hud-toast {
+  top: 142px;
+}
+
+body[data-control-context="dialogue"] .hud-bottom-stack {
+  z-index: 320;
+}
+
+body[data-control-context="dialogue"] .news-chyron,
+body[data-control-context="dialogue"] .bottom-time-bar {
+  display: none;
+}
+
+.dialogue-overlay {
+  z-index: 300;
+}
+
+/* Direct control keeps City Tools reachable as a compact, expandable rail. */
+body[data-game-mode="action"] .left-sidebar {
+  width: 52px;
+  padding: 12px;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+  transition: width 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease, transform 0.24s ease;
+}
+
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded) .sidebar-content,
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded) .sidebar-title {
+  display: none;
+}
+
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded) .sidebar-header {
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded) {
+  min-height: 112px;
+}
+
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded)::after {
+  content: 'CITY TOOLS';
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  color: #7dd3fc;
+  font: 800 0.55rem var(--font-mono);
+  letter-spacing: 0.12em;
+  writing-mode: vertical-rl;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+body[data-game-mode="action"] .left-sidebar:not(.action-expanded) .collapse-icon-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(0, 240, 255, 0.14);
+  color: #fff;
+}
+
+body[data-game-mode="action"] .left-sidebar.action-expanded {
+  width: 284px;
+  max-height: calc(100vh - 110px);
+  padding: 14px;
+  overflow: visible;
+  background: rgba(7, 12, 27, 0.94);
+  box-shadow: 0 20px 65px rgba(0, 0, 0, 0.62), inset 0 1px rgba(255, 255, 255, 0.06);
+}
+
+body[data-game-mode="action"] .left-sidebar.action-expanded .sidebar-content {
+  display: flex;
+}
+
+body[data-game-mode="action"] .left-sidebar.action-expanded .sidebar-title {
+  display: inline;
+}
+
+body[data-game-mode="action"] .street-speedometer {
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+body[data-game-mode="action"] .real-estate-tracker {
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+body[data-game-mode="builder"] .real-estate-tracker {
+  display: none;
+}
+
+body[data-game-mode="action"][data-control-context="vehicle"] .real-estate-tracker {
+  bottom: max(160px, calc(env(safe-area-inset-bottom) + 160px));
+}
+
+@media (max-width: 1180px) {
+  .hud-bottom-stack {
+    right: 310px;
+    left: 310px;
+  }
+
+  body[data-game-mode="action"] .hud-bottom-stack {
+    right: 166px;
+    left: 70px;
+  }
+
+  body[data-game-mode="builder"] .hud-bottom-stack {
+    right: 20px;
+    left: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .hud-bottom-stack {
+    right: 276px;
+    left: 190px;
+  }
+
+  .real-estate-tracker {
+    width: 240px;
+  }
+
+  .re-value {
+    font-size: 1.25rem;
+  }
+
+  body[data-inspector="open"] .real-estate-tracker:not(.hidden) {
+    top: 112px;
+  }
+}
+
+@media (max-width: 780px) {
+  .hud-bottom-stack,
+  body[data-game-mode="action"] .hud-bottom-stack {
+    top: auto;
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: 10px;
+    gap: 6px;
+  }
+
+  body[data-game-mode="builder"] .hud-bottom-stack {
+    top: 10px;
+    right: 10px;
+    bottom: auto;
+    left: 10px;
+  }
+
+  .hud-bottom-stack > .adaptive-control-hud,
+  body[data-game-mode="action"] .hud-bottom-stack > .adaptive-control-hud {
+    width: 100%;
+  }
+
+  .hud-bottom-stack > .bottom-time-bar {
+    width: 100%;
+  }
+
+  .hud-bottom-stack .chyron-badge {
+    flex: 0 0 42px;
+    justify-content: center;
+    overflow: hidden;
+    padding-inline: 9px;
+    font-size: 0;
+  }
+
+  .hud-bottom-stack .chyron-badge::first-letter {
+    font-size: 0.85rem;
+  }
+
+  .hud-bottom-stack .chyron-ticker-text {
+    font-size: 0.72rem;
+  }
+
+  body[data-game-mode="action"] .left-sidebar,
+  body[data-game-mode="action"] .left-sidebar.action-expanded {
+    top: 142px;
+    left: 10px;
+  }
+
+  body[data-game-mode="action"] .left-sidebar.action-expanded {
+    width: min(284px, calc(100vw - 20px));
+    max-height: calc(100vh - 226px);
+  }
+
+  .real-estate-tracker,
+  body[data-game-mode="action"] .real-estate-tracker,
+  body[data-game-mode="action"][data-control-context="vehicle"] .real-estate-tracker {
+    top: 176px;
+    right: 10px;
+    bottom: auto;
+    width: min(220px, calc(100vw - 82px));
+  }
+
+  body[data-game-mode="action"] .street-speedometer {
+    right: 10px;
+    bottom: 116px;
+    width: 104px;
+    height: 104px;
+  }
+
+  .mission-hud {
+    top: 150px;
+    width: calc(100vw - 20px);
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 16px;
+  }
+
+  .mission-hud-badge {
+    display: none;
+  }
+
+  .hud-toast,
+  body[data-game-mode="builder"] .hud-toast {
+    top: 176px;
+    padding: 8px 13px;
+    border-radius: 12px;
+    font-size: 0.74rem;
+  }
+
+  body[data-game-mode="builder"] .hud-toast {
+    top: 10px;
+  }
+
+  body[data-game-mode="builder"][data-mayhem="on"] .hud-toast {
+    top: 56px;
+  }
+
+  body[data-game-mode="builder"].toast-visible .hud-bottom-stack > .adaptive-control-hud {
+    opacity: 0;
+  }
+
+  .buildings-palette-tray,
+  .editor-transform-toolbar,
+  .adaptive-control-hud,
+  .news-chyron,
+  .bottom-time-bar,
+  .real-estate-tracker,
+  .left-sidebar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .buildings-palette-tray,
+  .editor-transform-toolbar {
+    background: rgba(7, 12, 27, 0.985);
   }
 }

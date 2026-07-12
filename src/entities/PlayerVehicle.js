@@ -12,6 +12,9 @@ export class PlayerVehicle {
     this.speedKmH = 0;
     this.gear = 1;
     this.gripMultiplier = 1.0;
+    this.lastSafePose = null;
+    this.safePoseHistory = [];
+    this.safePoseFrame = 0;
     this.info = {
       'Status': '🏎️ PHYSICS ACTION MODE',
       'Engine': this.getEngineName(vType),
@@ -33,6 +36,10 @@ export class PlayerVehicle {
     else if (this.vType === 'MOTORBIKE') this.meshOffset = 0.40;
 
     this.initPhysics(startPos, startRot);
+    this.lastSafePose = {
+      position: this.chassisBody.position.clone(),
+      quaternion: this.chassisBody.quaternion.clone()
+    };
   }
 
   getEngineName(vType) {
@@ -366,6 +373,22 @@ export class PlayerVehicle {
   syncMesh() {
     if (!this.mesh || !this.chassisBody) return;
 
+    const terrainSystem = this.physicsWorld?.terrainSystem || null;
+    const terrainY = terrainSystem?.getTerrainHeight?.(
+      this.chassisBody.position.x,
+      this.chassisBody.position.z
+    ) ?? 0;
+    const positionIsFinite = Number.isFinite(this.chassisBody.position.x)
+      && Number.isFinite(this.chassisBody.position.y)
+      && Number.isFinite(this.chassisBody.position.z);
+    const withinWorld = terrainSystem?.isWithinDrivableBounds?.(
+      this.chassisBody.position.x,
+      this.chassisBody.position.z
+    ) ?? true;
+    if (!positionIsFinite || !withinWorld || this.chassisBody.position.y < terrainY - 2.5) {
+      this.recoverToSafePose();
+    }
+
     // 1. Anti-Flip Auto-Righting Protection: Prevent vehicle from flipping upside down or rolling over sideways
     const upVec = new CANNON.Vec3(0, 1, 0);
     this.chassisBody.quaternion.vmult(upVec, upVec);
@@ -373,7 +396,6 @@ export class PlayerVehicle {
       const forwardCheck = new CANNON.Vec3(0, 0, 1);
       this.chassisBody.quaternion.vmult(forwardCheck, forwardCheck);
       const yaw = Math.atan2(forwardCheck.x, forwardCheck.z);
-      const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
       const frontH = terrainSystem ? terrainSystem.getTerrainHeight(this.chassisBody.position.x + forwardCheck.x * 2.2, this.chassisBody.position.z + forwardCheck.z * 2.2) : 0;
       const backH = terrainSystem ? terrainSystem.getTerrainHeight(this.chassisBody.position.x - forwardCheck.x * 2.2, this.chassisBody.position.z - forwardCheck.z * 2.2) : 0;
       const pitch = Math.atan2(frontH - backH, 4.4);
@@ -382,38 +404,9 @@ export class PlayerVehicle {
       this.chassisBody.angularVelocity.set(0, 0, 0);
     }
 
-    // 2. Ensure vehicle never clips through terrain or road surfaces and stays flush on wheels
-    let terrainY = 0.0;
-    const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
-    if (terrainSystem) {
-      terrainY = terrainSystem.getTerrainHeight(this.chassisBody.position.x, this.chassisBody.position.z);
-    }
-    const minChassisY = terrainY + (this.meshOffset || 0.55);
-    if (this.chassisBody.position.y < minChassisY) {
-      this.chassisBody.position.y = minChassisY;
-      if (this.chassisBody.velocity.y < 0) {
-        this.chassisBody.velocity.y = 0;
-      }
-    }
-
-    if (terrainSystem && this.chassisBody.position.y <= minChassisY + 0.85) {
-      const forwardVec = new CANNON.Vec3(0, 0, 1);
-      const rightVec = new CANNON.Vec3(1, 0, 0);
-      this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
-      this.chassisBody.quaternion.vmult(rightVec, rightVec);
-
-      const frontH = terrainSystem.getTerrainHeight(this.chassisBody.position.x + forwardVec.x * 2.2, this.chassisBody.position.z + forwardVec.z * 2.2);
-      const backH = terrainSystem.getTerrainHeight(this.chassisBody.position.x - forwardVec.x * 2.2, this.chassisBody.position.z - forwardVec.z * 2.2);
-      const leftH = terrainSystem.getTerrainHeight(this.chassisBody.position.x - rightVec.x * 1.2, this.chassisBody.position.z - rightVec.z * 1.2);
-      const rightH = terrainSystem.getTerrainHeight(this.chassisBody.position.x + rightVec.x * 1.2, this.chassisBody.position.z + rightVec.z * 1.2);
-
-      const targetPitch = Math.atan2(frontH - backH, 4.4);
-      const targetRoll = Math.atan2(leftH - rightH, 2.4);
-      const yaw = Math.atan2(forwardVec.x, forwardVec.z);
-      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-targetPitch, yaw, targetRoll, 'YXZ'));
-      this.chassisBody.quaternion.slerp(new CANNON.Quaternion(q.x, q.y, q.z, q.w), 0.45, this.chassisBody.quaternion);
-      this.chassisBody.angularVelocity.z *= 0.1;
-    }
+    // RaycastVehicle suspension owns pitch, roll, and road contact. The former
+    // per-frame terrain quaternion override fought the solver at each hill
+    // sample boundary and could force the chassis through its own wheel plane.
 
     // Sync chassis transform to visual Three.js mesh
     this.mesh.position.copy(this.chassisBody.position);
@@ -437,10 +430,62 @@ export class PlayerVehicle {
     else this.gear = 5;
 
     this.info['Speed'] = `${this.speedKmH} km/h (Gear ${this.gear})`;
+
+    const contactCount = this.raycastVehicle.wheelInfos.reduce(
+      (count, wheel) => count + (wheel.isInContact ? 1 : 0),
+      0
+    );
+    if (contactCount >= Math.min(2, this.raycastVehicle.wheelInfos.length) && upVec.y > 0.7) {
+      this.safePoseFrame += 1;
+      if (this.speedKmH > 3 || this.safePoseHistory.length === 0) {
+        this.lastSafePose = {
+          position: this.chassisBody.position.clone(),
+          quaternion: this.chassisBody.quaternion.clone()
+        };
+        if (this.safePoseFrame >= 30 || this.safePoseHistory.length === 0) {
+          this.safePoseHistory.push(this.lastSafePose);
+          if (this.safePoseHistory.length > 8) this.safePoseHistory.shift();
+          this.safePoseFrame = 0;
+        }
+      }
+    }
+  }
+
+  recoverToSafePose() {
+    if (!this.chassisBody) return false;
+    const historicalPose = this.safePoseHistory[Math.max(0, this.safePoseHistory.length - 4)];
+    const safePose = historicalPose || this.lastSafePose;
+    if (safePose) {
+      this.chassisBody.position.copy(safePose.position);
+      this.chassisBody.position.y += 0.35;
+      this.chassisBody.quaternion.copy(safePose.quaternion);
+    } else {
+      if (!Number.isFinite(this.chassisBody.position.x)) this.chassisBody.position.x = this.mesh?.position?.x || 0;
+      if (!Number.isFinite(this.chassisBody.position.z)) this.chassisBody.position.z = this.mesh?.position?.z || 0;
+      const terrainY = this.physicsWorld?.terrainSystem?.getTerrainHeight?.(
+        this.chassisBody.position.x,
+        this.chassisBody.position.z
+      ) ?? 0;
+      this.chassisBody.position.y = terrainY + Math.max(1.1, this.meshOffset + 0.5);
+      const forward = new CANNON.Vec3(0, 0, 1);
+      this.chassisBody.quaternion.vmult(forward, forward);
+      this.chassisBody.quaternion.setFromAxisAngle(
+        new CANNON.Vec3(0, 1, 0),
+        Math.atan2(forward.x, forward.z)
+      );
+    }
+    this.chassisBody.velocity.set(0, 0, 0);
+    this.chassisBody.angularVelocity.set(0, 0, 0);
+    this.chassisBody.aabbNeedsUpdate = true;
+    return true;
   }
 
   resetPosition() {
     if (!this.chassisBody) return;
+    if (this.lastSafePose) {
+      this.recoverToSafePose();
+      return;
+    }
     let terrainY = 0.0;
     const terrainSystem = this.physicsWorld ? this.physicsWorld.terrainSystem : null;
     if (terrainSystem) {

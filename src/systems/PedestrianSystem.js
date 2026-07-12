@@ -1058,6 +1058,9 @@ export class PedestrianSystem {
   }
 
   getTerrainHeight(x, z) {
+    if (typeof this.app?.cityBuilder?.getTerrainHeight === 'function') {
+      return this.app.cityBuilder.getTerrainHeight(x, z);
+    }
     const userBridgeHeight = this.app?.cityBuilder?.getUserBridgeDeckHeight?.(x, z);
     if (userBridgeHeight !== null && userBridgeHeight !== undefined) return userBridgeHeight;
 

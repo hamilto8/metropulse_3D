@@ -217,6 +217,15 @@ test('incidents create active City Pulse modifiers and persistent reputation eff
   assert.equal(state.incidents[0].active, false);
 });
 
+test('incident identifiers can be checked before recording persistent world events', () => {
+  const economy = new EconomySystem();
+
+  assert.equal(economy.hasIncident('mayhem-building-existing-1-1'), false);
+  economy.recordIncident({ id: 'mayhem-building-existing-1-1' });
+  assert.equal(economy.hasIncident('mayhem-building-existing-1-1'), true);
+  assert.throws(() => economy.hasIncident(''), /incident id must be a non-empty string/);
+});
+
 test('service and City Pulse setters preserve domain invariants', () => {
   const economy = new EconomySystem();
 

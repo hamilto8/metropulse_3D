@@ -119,8 +119,13 @@ class MetroPulseApp {
     // Space Billboard
     const billboardCenterHeight = this.cityBuilder.getHillHeight(622, -160);
     this.physicsWorld.addStaticBoxCollider(
-      new THREE.Vector3(622, billboardCenterHeight + 11.0, -160),
-      new THREE.Vector3(32, 22, 2)
+      new THREE.Vector3(622, billboardCenterHeight + 19.0, -160),
+      new THREE.Vector3(33, 20, 2)
+    );
+    const missionControlHeight = this.cityBuilder.getHillHeight(735, -245);
+    this.physicsWorld.addStaticBoxCollider(
+      new THREE.Vector3(735, missionControlHeight + 5.3, -245),
+      new THREE.Vector3(18, 10, 12)
     );
 
     // 7. Environment (Sky, Moon, Stars, Weather)
@@ -143,7 +148,7 @@ class MetroPulseApp {
     // 10. Pedestrian Simulation
     this.pedestrianSystem = new PedestrianSystem(this);
     this.performanceSystem = new PerformanceSystem(this);
-    this.physicsWorld.terrainSystem = this.pedestrianSystem;
+    this.physicsWorld.terrainSystem = this.cityBuilder;
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
     this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
 

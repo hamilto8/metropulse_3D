@@ -59,6 +59,24 @@ test('static colliders can be removed for rubble and restored without duplicatio
   assert.equal(physics.world.bodies.filter(body => body === collider).length, 1);
 });
 
+test('physics vehicles recover to their last supported pose after falling below terrain', () => {
+  const physics = new PhysicsWorld();
+  physics.terrainSystem = { getTerrainHeight() { return 0; } };
+  const mesh = new THREE.Group();
+  const vehicle = new PlayerVehicle(mesh, physics, new THREE.Vector3(12, 0, -8));
+  const safeX = vehicle.chassisBody.position.x;
+  const safeZ = vehicle.chassisBody.position.z;
+
+  vehicle.chassisBody.position.set(40, -20, 40);
+  vehicle.syncMesh();
+
+  assert.equal(vehicle.chassisBody.position.x, safeX);
+  assert.equal(vehicle.chassisBody.position.z, safeZ);
+  assert.ok(vehicle.chassisBody.position.y > 0);
+  assert.equal(vehicle.chassisBody.velocity.length(), 0);
+  vehicle.destroy();
+});
+
 test('vehicle speed uses m/s internally and preserves high-priority status', () => {
   const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Unit Test Sedan');
   vehicle.speed = 10;

@@ -725,6 +725,10 @@ export class EconomySystem {
     );
   }
 
+  hasIncident(id) {
+    return this.#incidents.has(assertId(id, 'incident id'));
+  }
+
   resolveIncident(id) {
     const normalizedId = assertId(id, 'incident id');
     const incident = this.#incidents.get(normalizedId);

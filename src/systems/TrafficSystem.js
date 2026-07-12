@@ -585,7 +585,7 @@ export class TrafficSystem {
     // 3. Move vehicle along its orientation
     const moveStep = v.speed * delta;
     v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-    v.mesh.position.y = 0;
+    v.mesh.position.y = this.getTerrainHeight(v.mesh.position.x, v.mesh.position.z);
 
     // 4. Solid Obstacle Collision Check (Buildings & Lamp Posts!)
     let hitObstacle = false;

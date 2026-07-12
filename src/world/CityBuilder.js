@@ -12,6 +12,9 @@ export class CityBuilder {
       lanes: []
     };
     this.sidewalkNetwork = [];
+    this.drivableDecks = [];
+    this.surfaceColliders = [];
+    this.sceneryColliders = [];
   }
 
   build() {
@@ -228,6 +231,12 @@ export class CityBuilder {
     houseGroup.rotation.y = (Math.random() - 0.5) * 0.15;
 
     this.scene.add(houseGroup);
+    this.sceneryColliders.push({
+      position: { x, y: terrainY + wallHeight / 2, z },
+      size: { x: wallWidth, y: wallHeight, z: wallDepth },
+      rotationY: houseGroup.rotation.y,
+      kind: 'suburban-house'
+    });
   }
 
   isInWater(pos) {
@@ -239,21 +248,64 @@ export class CityBuilder {
     const userBridgeHeight = this.getUserBridgeDeckHeight(x, z);
     if (userBridgeHeight !== null && y >= userBridgeHeight - 1) return false;
 
+    const builtInBridgeHeight = this.getBuiltInBridgeDeckHeight(x, z);
+    if (builtInBridgeHeight !== null && y >= builtInBridgeHeight - 1) return false;
+
     // River 1 (X: 135 to 185)
     if (x >= 135 && x <= 185) {
-      // Safe on suspension bridge deck (Z near 0 within deck half-width 9.5, Y >= -0.5)
-      const onBridge = Math.abs(z) <= 9.5 && y >= -0.5;
-      if (!onBridge) return true;
+      return true;
     }
 
     // River 2 (X: 380 to 420)
     if (x >= 380 && x <= 420) {
-      // Safe on any of the 5 stone arch bridges (Z near -100, -50, 0, 50, 100 within bridge half-width 9.5, Y >= -0.5)
-      const onBridge = y >= -0.5 && [-100, -50, 0, 50, 100].some(bz => Math.abs(z - bz) <= 9.5);
-      if (!onBridge) return true;
+      return true;
     }
 
     return false;
+  }
+
+  registerDrivableDeck(minX, maxX, minZ, maxZ, height = 0.05) {
+    if (!this.drivableDecks) this.drivableDecks = [];
+    this.drivableDecks.push({ minX, maxX, minZ, maxZ, height });
+  }
+
+  getBuiltInBridgeDeckHeight(x, z) {
+    for (const deck of this.drivableDecks || []) {
+      if (x >= deck.minX && x <= deck.maxX && z >= deck.minZ && z <= deck.maxZ) {
+        return deck.height;
+      }
+    }
+    return null;
+  }
+
+  getTerrainHeight(x, z) {
+    const userBridgeHeight = this.getUserBridgeDeckHeight(x, z);
+    if (userBridgeHeight !== null) return userBridgeHeight;
+
+    const bridgeHeight = this.getBuiltInBridgeDeckHeight(x, z);
+    if (bridgeHeight !== null) return bridgeHeight;
+
+    if ((x >= 135 && x <= 185) || (x >= 380 && x <= 420)) return -4;
+    if (x >= 420) return this.getHillHeight(x, z);
+
+    if (x < -60 && z < -60 && x > -100 && z > -100) return 0.7;
+    const blockCentersX = [-75, -25, 25, 75, 235, 285];
+    const blockCentersZ = [-75, -25, 25, 75];
+    for (const bx of blockCentersX) {
+      for (const bz of blockCentersZ) {
+        if (Math.abs(x - bx) < 22 && Math.abs(z - bz) < 22) return 0.4;
+      }
+    }
+    return 0;
+  }
+
+  isWithinDrivableBounds(x, z) {
+    return Number.isFinite(x)
+      && Number.isFinite(z)
+      && x >= -498
+      && x <= 818
+      && z >= -398
+      && z <= 398;
   }
 
   getUserBridgeDeckHeight(x, z) {
@@ -370,7 +422,9 @@ export class CityBuilder {
   getHillHeightRaw(x, z) {
     if (x >= 420) {
       const factor = Math.min(1.0, (x - 420) / 100);
-      return (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 8 + Math.sin(x * 0.02) * 15) * factor;
+      // Preserve the rural silhouette without the former 20%+ road grades,
+      // which unloaded suspension and launched vehicles at intersections.
+      return (Math.sin(x * 0.05) * Math.cos(z * 0.04) * 1.8 + Math.sin(x * 0.02) * 3.4) * factor;
     }
     return 0.0;
   }
@@ -388,7 +442,7 @@ export class CityBuilder {
     const rawHeight = this.getHillHeightRaw(x, z);
 
     // Special Rocket Launch Pad & Mission Control Facility Area (X: 660 to 765, Z: -90 to -315)
-    if (x >= 660 && x <= 765 && z <= -90 && z >= -315) {
+    if (x >= 630 && x <= 795 && z <= -70 && z >= -345) {
       const h_start = this.getIntersectionHeight(700, -100);
       const h_pad = this.getHillHeightRaw(700, -280);
 
@@ -416,25 +470,55 @@ export class CityBuilder {
 
       // Horizontal access road to Mission Control (Z = -245, X from 700 to 735)
       if (x >= 700 && x <= 735 && Math.abs(z - -245) <= 6.5) {
-        targetHeight = h_pad;
+        const accessT = (-245 - -100) / (-280 - -100);
+        const smoothAccessT = accessT * accessT * (3 - 2 * accessT);
+        const accessJunctionHeight = h_start + (h_pad - h_start) * smoothAccessT;
+        const spurT = Math.min(1, (x - 700) / 10);
+        const smoothSpurT = spurT * spurT * (3 - 2 * spurT);
+        targetHeight = accessJunctionHeight + (h_pad - accessJunctionHeight) * smoothSpurT;
       }
 
       if (targetHeight !== null) {
         return targetHeight;
       }
 
-      // Smooth blend within 15 units of any pad/road edge
-      let minDistToFeature = Infinity;
+      // Blend toward the local feature elevation. The old implementation
+      // blended every shoulder toward the distant launch-pad elevation, which
+      // created a multi-metre cliff beside the access-road junction.
+      const blendCandidates = [];
+      // South of the main east-west road, feather the access road into the
+      // hills. At the junction itself the regular intersection profiler must
+      // remain authoritative or the two shoulder formulas form a seam.
       if (z <= -100 && z >= -280) {
-        minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToRoadX - 7.5));
+        const t = (z - -100) / (-280 - -100);
+        const smoothRoadT = t * t * (3 - 2 * t);
+        blendCandidates.push({
+          distance: Math.max(0, distToRoadX - 7.5),
+          height: h_start + (h_pad - h_start) * smoothRoadT
+        });
       }
-      minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToPad - 22));
-      minDistToFeature = Math.min(minDistToFeature, Math.max(0, distToFacility - 20));
+      blendCandidates.push(
+        { distance: Math.max(0, distToPad - 22), height: h_pad },
+        { distance: Math.max(0, distToFacility - 20), height: h_pad }
+      );
+      if (x >= 700 && x <= 735) {
+        blendCandidates.push({ distance: Math.max(0, Math.abs(z + 245) - 6.5), height: h_pad });
+      }
+      const strongestFeature = blendCandidates.reduce((strongest, candidate) => {
+        if (candidate.distance >= 20) return strongest;
+        const t = candidate.distance / 20;
+        const edgeBlend = 1 - t * t * (3 - 2 * t);
+        const influence = edgeBlend * (candidate.influenceScale ?? 1);
+        return influence > strongest.influence ? { ...candidate, influence } : strongest;
+      }, { influence: 0, height: rawHeight });
 
-      if (minDistToFeature < 15.0) {
-        const t = minDistToFeature / 15.0;
-        const smoothT = t * t * (3 - 2 * t);
-        return h_pad + (rawHeight - h_pad) * smoothT;
+      if (strongestFeature.influence > 0) {
+        const normalRoadDistance = Math.max(0, Math.abs(z + 100) - 8);
+        const normalRoadT = Math.min(1, normalRoadDistance / 20);
+        const normalRoadInfluence = 1 - normalRoadT * normalRoadT * (3 - 2 * normalRoadT);
+        if (strongestFeature.influence > normalRoadInfluence) {
+          return rawHeight + (strongestFeature.height - rawHeight) * strongestFeature.influence;
+        }
       }
     }
 
@@ -462,8 +546,9 @@ export class CityBuilder {
       }
     }
 
-    const roadHalfWidth = 7.5;
-    const blendDistance = 15.0;
+    const roadHalfWidth = 8.0;
+    const blendDistance = 20.0;
+    const verticalRoadCore = z >= -100 && z <= 100;
 
     // 1. Inside any intersection plateau
     if (minDistX <= roadHalfWidth && minDistZ <= roadHalfWidth) {
@@ -513,8 +598,8 @@ export class CityBuilder {
         }
       }
     }
-    const startZ = rz1 === -100 ? -100 : rz1 + roadHalfWidth;
-    const endZ = rz2 === 100 ? 100 : rz2 - roadHalfWidth;
+    const startZ = rz1 + roadHalfWidth;
+    const endZ = rz2 - roadHalfWidth;
     const h1_z = this.getIntersectionHeight(rx, rz1);
     const h2_z = this.getIntersectionHeight(rx, rz2);
     let h_vert = h1_z;
@@ -532,19 +617,27 @@ export class CityBuilder {
     if (minDistZ <= roadHalfWidth) {
       return h_horiz;
     }
-    if (minDistX <= roadHalfWidth) {
+    if (verticalRoadCore && minDistX <= roadHalfWidth) {
       return h_vert;
     }
 
     // 5. Smooth blending zone around roads
     const distToHoriz = minDistZ - roadHalfWidth;
-    const distToVert = minDistX - roadHalfWidth;
+    const distToVert = Math.hypot(
+      Math.max(0, minDistX - roadHalfWidth),
+      Math.max(0, Math.abs(z) - 100)
+    );
     const nearestRoadDist = Math.min(distToHoriz, distToVert);
 
     if (nearestRoadDist < blendDistance) {
       const t = nearestRoadDist / blendDistance;
       const smoothT = t * t * (3 - 2 * t);
-      const nearestRoadHeight = distToHoriz < distToVert ? h_horiz : h_vert;
+      const horizontalWeight = Math.max(0, blendDistance - distToHoriz) ** 2;
+      const verticalWeight = Math.max(0, blendDistance - distToVert) ** 2;
+      const totalWeight = horizontalWeight + verticalWeight;
+      const nearestRoadHeight = totalWeight > 0
+        ? (h_horiz * horizontalWeight + h_vert * verticalWeight) / totalWeight
+        : rawHeight;
       return nearestRoadHeight + (rawHeight - nearestRoadHeight) * smoothT;
     }
 
@@ -785,6 +878,11 @@ export class CityBuilder {
         sidewalk.position.set(bx, 0.2, bz);
         sidewalk.receiveShadow = true;
         this.scene.add(sidewalk);
+        this.surfaceColliders.push({
+          position: { x: bx, y: 0.2, z: bz },
+          size: { x: blockSize + sidewalkWidth * 2, y: 0.4, z: blockSize + sidewalkWidth * 2 },
+          kind: 'sidewalk-block'
+        });
 
         this.sidewalkNetwork.push(new THREE.Vector3(bx, 0.4, bz));
 
@@ -881,6 +979,7 @@ export class CityBuilder {
     deck.position.set(160, -0.45, 0);
     deck.receiveShadow = true;
     bridgeGroup.add(deck);
+    this.registerDrivableDeck(110, 210, -9, 9, 0.05);
 
     // Bridge dividing lines & sidewalks
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
@@ -972,22 +1071,23 @@ export class CityBuilder {
     const trussMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.5, roughness: 0.5 });
     for (const bz of [-100, -50, 50, 100]) {
       const bDeck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 16), deckMat);
-      bDeck.position.set(160, 0.5, bz);
+      bDeck.position.set(160, -0.45, bz);
       bDeck.receiveShadow = true;
       this.scene.add(bDeck);
 
       const bLine = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
       bLine.rotation.x = -Math.PI / 2;
-      bLine.position.set(160, 1.02, bz);
+      bLine.position.set(160, 0.06, bz);
       this.scene.add(bLine);
+      this.registerDrivableDeck(110, 210, bz - 8, bz + 8, 0.05);
 
       // Side rail trusses
       const railN = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
-      railN.position.set(160, 2.0, bz - 7.5);
+      railN.position.set(160, 1.3, bz - 7.5);
       this.scene.add(railN);
 
       const railS = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
-      railS.position.set(160, 2.0, bz + 7.5);
+      railS.position.set(160, 1.3, bz + 7.5);
       this.scene.add(railS);
     }
 
@@ -1024,14 +1124,16 @@ export class CityBuilder {
     deck.position.set(400, -0.45, bz);
     deck.receiveShadow = true;
     this.scene.add(deck);
+    this.registerDrivableDeck(380, 420, bz - bridgeWidth / 2, bz + bridgeWidth / 2, 0.05);
 
-    // Arch support
+    // Visible stone piers remain below the deck. The former rotated 15 m
+    // half-cylinder protruded above the road and behaved like a giant ramp.
     const archMat = new THREE.MeshStandardMaterial({ color: 0x4a433f, roughness: 0.8 });
-    const arch = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, bridgeWidth + 1.8, 16, 1, false, 0, Math.PI), archMat);
-    arch.rotation.z = Math.PI / 2;
-    arch.rotation.x = Math.PI / 2;
-    arch.position.set(400, -2.8, bz);
-    this.scene.add(arch);
+    for (const pierX of [387, 413]) {
+      const pier = new THREE.Mesh(new THREE.BoxGeometry(4, 4, bridgeWidth + 1.8), archMat);
+      pier.position.set(pierX, -2, bz);
+      this.scene.add(pier);
+    }
 
     // Stone side rails
     const railMat = new THREE.MeshStandardMaterial({ color: 0x5a534f, roughness: 0.8 });
@@ -1047,7 +1149,7 @@ export class CityBuilder {
     const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
     const line = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.4), lineMat);
     line.rotation.x = -Math.PI / 2;
-    line.position.set(400, 1.02, bz);
+    line.position.set(400, 0.06, bz);
     this.scene.add(line);
   }
 
@@ -1065,6 +1167,11 @@ export class CityBuilder {
     grass.position.set(parkCenter.x, 0.45, parkCenter.z);
     grass.receiveShadow = true;
     this.scene.add(grass);
+    this.surfaceColliders.push({
+      position: { x: parkCenter.x, y: 0.45, z: parkCenter.z },
+      size: { x: parkSize, y: 0.5, z: parkSize },
+      kind: 'park'
+    });
 
     const pathMat = new THREE.MeshStandardMaterial({ color: 0x8c857b, roughness: 0.9 });
     const path1 = new THREE.Mesh(new THREE.PlaneGeometry(parkSize * 1.3, 3), pathMat);
@@ -1152,6 +1259,11 @@ export class CityBuilder {
 
     treeGroup.position.set(x, y, z);
     this.scene.add(treeGroup);
+    this.sceneryColliders.push({
+      position: { x, y: y + 2.5, z },
+      size: { x: 1.2, y: 5, z: 1.2 },
+      kind: 'tree-trunk'
+    });
   }
 
   createStreetFurniture() {
