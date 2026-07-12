@@ -12,6 +12,10 @@ export class Pedestrian {
     this.hasBaseballBat = false;
     this.swingTimer = 0;
     this.batMesh = null;
+    this.knockedDown = false;
+    this.knockdownTimer = 0;
+    this.knockbackVelocity = null;
+    this.knockbackSpin = 0;
 
     this.info = {
       'Name': name,

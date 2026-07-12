@@ -89,6 +89,52 @@ test('user-to-AI contact resolves in the road plane without blocking adjacent la
   assert.equal(getVehicleProfile('BUS').length, 10.5);
 });
 
+test('AI traffic yields and honks for most pedestrians, then proceeds after impatience timeout', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const vehicle = {
+    mesh: new THREE.Group(),
+    isParked: false,
+    speed: 8,
+    info: {}
+  };
+  const pedestrian = { mesh: new THREE.Group(), knockedDown: false, isHijacking: false };
+  vehicle.mesh.rotation.y = 0;
+  pedestrian.mesh.position.set(0, 0, 3);
+  traffic.app = {
+    pedestrianSystem: { pedestrians: [pedestrian] },
+    audioSystem: { playHonk() { honks += 1; } }
+  };
+  let honks = 0;
+  const originalRandom = Math.random;
+  Math.random = () => 0.1;
+  try {
+    assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), true);
+    assert.equal(honks, 1);
+    assert.equal(traffic.updatePedestrianYield(vehicle, 1.2), true);
+    assert.equal(honks, 2);
+    assert.equal(traffic.updatePedestrianYield(vehicle, 2.3), false);
+    assert.equal(vehicle.pedestrianYieldState.released, true);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('AI traffic can ignore a pedestrian encounter to preserve natural variation', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const vehicle = { mesh: new THREE.Group(), isParked: false, info: {} };
+  const pedestrian = { mesh: new THREE.Group(), knockedDown: false, isHijacking: false };
+  pedestrian.mesh.position.set(0, 0, 3);
+  traffic.app = { pedestrianSystem: { pedestrians: [pedestrian] }, audioSystem: { playHonk() {} } };
+  const originalRandom = Math.random;
+  Math.random = () => 0.99;
+  try {
+    assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), false);
+    assert.equal(vehicle.pedestrianYieldState.shouldYield, false);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
 test('editor road segments join and leave the live traffic graph safely', () => {
   const traffic = Object.create(TrafficSystem.prototype);
   const existingNode = {

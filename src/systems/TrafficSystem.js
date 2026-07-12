@@ -28,6 +28,9 @@ export class TrafficSystem {
     this.chainReactionRadius = 10;
     this.chainReactionDelay = 4;
     this.destroyedVehicleLifetime = 30;
+    this.pedestrianYieldProbability = 0.78;
+    this.pedestrianYieldDuration = 3.5;
+    this.pedestrianYieldHonkInterval = 1.1;
     this.nextVehicleSerial = 0;
     this.populationCheckTimer = 2.0;
     this.bridgePriorityEnabled = false;
@@ -659,7 +662,7 @@ export class TrafficSystem {
           if (ped.knockedDown) continue;
           if (Math.abs(v.speed) > 1.5 && v.mesh.position.distanceTo(ped.mesh.position) < 3.2) {
             const knockDir = ped.mesh.position.clone().sub(v.mesh.position).normalize();
-            this.app.pedestrianSystem.knockDownPedestrian(ped, knockDir);
+            this.app.pedestrianSystem.knockDownPedestrian(ped, knockDir, v.speed);
             if (Math.abs(v.speed) > 2.0 && typeof this.app.pedestrianSystem.reportCrime === 'function') {
               this.app.pedestrianSystem.reportCrime(v.mesh.position, 'Hit-and-run reported');
             }
@@ -1033,6 +1036,74 @@ export class TrafficSystem {
     }
   }
 
+  findBlockingPedestrian(vehicle, maxDistance = 5.8) {
+    const pedestrians = this.app.pedestrianSystem?.pedestrians || [];
+    if (!vehicle?.mesh || pedestrians.length === 0) return null;
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(vehicle.mesh.quaternion);
+    forward.y = 0;
+    if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
+    forward.normalize();
+    const right = new THREE.Vector3(forward.z, 0, -forward.x);
+    let closest = null;
+    let closestDistance = maxDistance;
+    for (const pedestrian of pedestrians) {
+      if (!pedestrian?.mesh || pedestrian.knockedDown || pedestrian.isHijacking) continue;
+      const offset = pedestrian.mesh.position.clone().sub(vehicle.mesh.position);
+      offset.y = 0;
+      const distance = offset.length();
+      if (distance >= closestDistance) continue;
+      const forwardDistance = offset.dot(forward);
+      const lateralDistance = Math.abs(offset.dot(right));
+      if (forwardDistance < -1.2 || forwardDistance > maxDistance || lateralDistance > 1.9) continue;
+      closest = { pedestrian, distance, forwardDistance, lateralDistance };
+      closestDistance = distance;
+    }
+    return closest;
+  }
+
+  updatePedestrianYield(vehicle, delta) {
+    if (!vehicle || vehicle.isParked || vehicle.emergencyTarget || vehicle.crashed) {
+      vehicle && (vehicle.pedestrianYieldState = null);
+      return false;
+    }
+    const blocker = this.findBlockingPedestrian(vehicle);
+    if (!blocker) {
+      vehicle.pedestrianYieldState = null;
+      return false;
+    }
+
+    let state = vehicle.pedestrianYieldState;
+    if (!state || state.pedestrian !== blocker.pedestrian) {
+      state = vehicle.pedestrianYieldState = {
+        pedestrian: blocker.pedestrian,
+        shouldYield: Math.random() < (this.pedestrianYieldProbability ?? 0.78),
+        elapsed: 0,
+        hornCooldown: 0,
+        released: false
+      };
+    }
+    state.elapsed += Math.max(0, delta);
+    state.hornCooldown -= Math.max(0, delta);
+
+    if (state.shouldYield && state.elapsed < (this.pedestrianYieldDuration ?? 3.5)) {
+      if (state.hornCooldown <= 0) {
+        this.app.audioSystem?.playHonk?.(true);
+        state.hornCooldown = this.pedestrianYieldHonkInterval ?? 1.1;
+        vehicle.info.Status = '📯 Waiting for pedestrian';
+        vehicle.info.Mood = 'Impatient & Honking';
+      }
+      return true;
+    }
+
+    if (!state.released) {
+      state.released = true;
+      this.app.audioSystem?.playHonk?.(true);
+      vehicle.info.Status = '⚠️ Impatient driver proceeding';
+      vehicle.info.Mood = 'Impatient & Proceeding';
+    }
+    return false;
+  }
+
   ensurePopulationFloor() {
     const movingCount = this.vehicles.reduce((count, vehicle) => count + (!vehicle.isParked ? 1 : 0), 0);
     if (movingCount < this.targetMovingVehicleCount) {
@@ -1231,13 +1302,18 @@ export class TrafficSystem {
       }
 
       // Stuck and Reversing logic for AI vehicles to prevent gridlocks
+      const pedestrianBlocked = this.updatePedestrianYield(v, delta);
+      if (pedestrianBlocked) {
+        isBlocked = true;
+      }
+
       if (!v.userControlled && !v.isParked && !v.crashed && !v.emergencyTarget) {
         if (v.stuckTimer === undefined) v.stuckTimer = 0;
         if (v.isReversing === undefined) v.isReversing = false;
         if (v.reverseTimer === undefined) v.reverseTimer = 0;
         if (v.stuckRecoveryElapsed === undefined) v.stuckRecoveryElapsed = 0;
 
-        const tryingToMove = v.targetSpeed > 0 || isBlocked;
+        const tryingToMove = pedestrianBlocked ? false : (v.targetSpeed > 0 || isBlocked);
         const stationaryOrRecovering = v.isReversing || (tryingToMove && Math.abs(v.speed) < 0.3);
         if (stationaryOrRecovering) {
           v.stuckRecoveryElapsed += delta;
@@ -1265,7 +1341,7 @@ export class TrafficSystem {
             }
           }
         } else {
-          const isTryingToMove = (v.targetSpeed > 0 || isBlocked);
+          const isTryingToMove = pedestrianBlocked ? false : (v.targetSpeed > 0 || isBlocked);
           const isNearlyStopped = (v.speed < 0.3);
           if (isTryingToMove && isNearlyStopped) {
             v.stuckTimer += delta;

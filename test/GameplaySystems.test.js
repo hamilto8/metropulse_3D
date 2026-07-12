@@ -146,6 +146,29 @@ test('police emergency state drives visible strobe lights independently of count
   assert.equal(police.sirenTimer, 0);
 });
 
+test('vehicle impacts throw pedestrians backward and keep them down briefly', () => {
+  installBrowserStubs();
+  const system = Object.create(PedestrianSystem.prototype);
+  system.app = { cityBuilder: { getTerrainHeight() { return 0; } }, audioSystem: { playBump() {} } };
+  const pedestrian = {
+    mesh: new THREE.Group(),
+    knockedDown: false,
+    speed: 2,
+    targetSpeed: 2,
+    info: { Activity: 'Walking', Mood: 'Energized' },
+    legL: { rotation: { x: 0 } },
+    legR: { rotation: { x: 0 } },
+    armL: { rotation: { x: 0 } },
+    armR: { rotation: { x: 0 } }
+  };
+  assert.equal(system.knockDownPedestrian(pedestrian, new THREE.Vector3(0, 0, 1), 20), undefined);
+  assert.equal(pedestrian.knockedDown, true);
+  assert.ok(pedestrian.knockbackVelocity.z > 3);
+  assert.ok(pedestrian.knockbackVelocity.y > 2);
+  assert.equal(pedestrian.knockdownTimer, 4);
+  assert.equal(pedestrian.info.Mood, 'Dazed on Ground');
+});
+
 test('vehicle exit delegates terrain lookup and releases the vehicle exactly once', () => {
   installBrowserStubs();
 

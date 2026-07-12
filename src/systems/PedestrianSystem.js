@@ -186,16 +186,22 @@ export class PedestrianSystem {
     }
   }
 
-  knockDownPedestrian(p, knockDir) {
+  knockDownPedestrian(p, knockDir, impactSpeed = 8) {
     if (!p || p.knockedDown) return;
     p.knockedDown = true;
-    p.knockdownTimer = 4.5; // Stay knocked down for 4.5 seconds before getting back up!
+    p.knockdownTimer = 4.0; // Recover after a few seconds on the ground.
     p.speed = 0;
     p.targetSpeed = 0;
 
-    if (knockDir) {
-      p.mesh.position.addScaledVector(knockDir, 1.8);
-    }
+    const direction = knockDir?.clone?.() || new THREE.Vector3(0, 0, 1);
+    direction.y = 0;
+    if (direction.lengthSq() < 1e-6) direction.set(0, 0, 1);
+    direction.normalize();
+    const throwStrength = THREE.MathUtils.clamp(Math.abs(Number(impactSpeed)) * 0.22, 3.5, 8.5);
+    p.mesh.position.addScaledVector(direction, 0.25);
+    p.knockbackVelocity = direction.multiplyScalar(throwStrength);
+    p.knockbackVelocity.y = THREE.MathUtils.clamp(2.5 + Math.abs(Number(impactSpeed)) * 0.12, 2.5, 5.5);
+    p.knockbackSpin = (Math.random() - 0.5) * 9;
 
     // Fall on their butts onto the ground
     p.mesh.rotation.x = -1.4; // Tilted back sitting on butt
@@ -417,6 +423,18 @@ export class PedestrianSystem {
       // 0. Check knockdown recovery
       if (p.knockedDown) {
         p.knockdownTimer -= delta;
+        if (p.knockbackVelocity) {
+          p.knockbackVelocity.y -= 18 * delta;
+          p.mesh.position.addScaledVector(p.knockbackVelocity, delta);
+          p.knockbackVelocity.x *= Math.max(0, 1 - delta * 3.5);
+          p.knockbackVelocity.z *= Math.max(0, 1 - delta * 3.5);
+          p.mesh.rotation.y += (p.knockbackSpin || 0) * delta;
+          const ground = this.getTerrainHeight(p.mesh.position.x, p.mesh.position.z);
+          if (p.mesh.position.y <= ground) {
+            p.mesh.position.y = ground;
+            p.knockbackVelocity.y = 0;
+          }
+        }
         if (p.knockdownTimer <= 0) {
           p.knockedDown = false;
           p.mesh.rotation.x = 0;
@@ -429,6 +447,8 @@ export class PedestrianSystem {
             p.armL.rotation.x = 0;
             p.armR.rotation.x = 0;
           }
+          p.knockbackVelocity = null;
+          p.knockbackSpin = 0;
           if (p.normalActivity) p.info['Activity'] = p.normalActivity;
           p.info['Mood'] = 'Recovered & Walking';
         } else {
@@ -447,7 +467,7 @@ export class PedestrianSystem {
           if (dist < hitDist && v.speed > 2.0) {
             // HIT BY A CAR!
             const pushDir = pos.clone().sub(v.mesh.position).normalize();
-            this.knockDownPedestrian(p, pushDir);
+            this.knockDownPedestrian(p, pushDir, v.speed);
             if (v.userControlled) {
               this.reportCrime(v.mesh.position, 'Hit-and-run reported');
             }
