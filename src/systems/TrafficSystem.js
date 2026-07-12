@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
-import { getVehicleProfile } from '../entities/VehicleProfiles.js';
+import { getVehicleSeparation } from './VehicleSeparation.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -39,7 +39,7 @@ export class TrafficSystem {
     return this.app?.inputManager?.keys || {};
   }
 
-  toggleUserControl(vehicle) {
+  toggleUserControl(vehicle, { source = 'camera', pedestrian = null } = {}) {
     if (!vehicle) return false;
     if (vehicle.userControlled && this.controlledVehicle === vehicle) {
       this.releaseControl(vehicle);
@@ -60,6 +60,7 @@ export class TrafficSystem {
 
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
+      this.controlSession = Object.freeze({ source, pedestrian });
       this.app.gameManager?.setMode?.('ACTION', { reason: 'vehicle-control' });
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
@@ -134,6 +135,7 @@ export class TrafficSystem {
     if (this.controlledVehicle === vehicle) {
       this.controlledVehicle = null;
     }
+    this.controlSession = null;
     if (!this.app.pedestrianSystem?.controlledPedestrian) {
       this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'vehicle-release' });
     }
@@ -187,13 +189,21 @@ export class TrafficSystem {
 
   exitControlledVehicle() {
     const v = this.controlledVehicle;
-    if (!v) return;
+    if (!v) return false;
+    const session = this.controlSession || { source: 'camera', pedestrian: null };
+
+    if (session.source !== 'pedestrian') {
+      this.releaseControl(v);
+      this.app.sceneManager?.stopFollowTarget?.();
+      this.app.uiManager?.hideInspector?.();
+      return true;
+    }
 
     if (v.vType === 'MOTORBIKE' && v.mountedRider) {
       v.unmountRider();
     }
 
-    let ped = v.driverPedestrian;
+    let ped = session.pedestrian || v.driverPedestrian;
     if (!ped) {
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
       ped = new Pedestrian('CASUAL', pedColors[Math.floor(Math.random() * pedColors.length)], `Driver of ${v.name}`);
@@ -250,6 +260,7 @@ export class TrafficSystem {
     if (!this.app.pedestrianSystem) {
       this.releaseControl(v);
     }
+    return true;
   }
 
   getTerrainHeight(x, z) {
@@ -263,52 +274,57 @@ export class TrafficSystem {
     return 0.05;
   }
 
+  moveVehicleHorizontally(vehicle, offset) {
+    const body = vehicle?.physicsVehicle?.chassisBody;
+    if (body) {
+      body.position.x += offset.x;
+      body.position.z += offset.z;
+      body.aabbNeedsUpdate = true;
+      vehicle.mesh.position.x = body.position.x;
+      vehicle.mesh.position.z = body.position.z;
+      return;
+    }
+    vehicle.mesh.position.add(offset);
+    if (vehicle.physicsBody) {
+      vehicle.physicsBody.position.x = vehicle.mesh.position.x;
+      vehicle.physicsBody.position.z = vehicle.mesh.position.z;
+      vehicle.physicsBody.aabbNeedsUpdate = true;
+    }
+  }
+
+  resolveVehicleOverlap(vehicleA, vehicleB, { playerContact = false } = {}) {
+    const separation = getVehicleSeparation(vehicleA, vehicleB);
+    if (!separation) return false;
+    const aMovable = !vehicleA.isParked || vehicleA.userControlled;
+    const bMovable = !vehicleB.isParked || vehicleB.userControlled;
+    const neitherMovable = !aMovable && !bMovable;
+    const aShare = neitherMovable ? 0.5 : (aMovable ? (bMovable ? 0.5 : 1) : 0);
+    const bShare = neitherMovable ? 0.5 : (bMovable ? (aMovable ? 0.5 : 1) : 0);
+    this.moveVehicleHorizontally(vehicleA, separation.normal.clone().multiplyScalar(separation.depth * aShare));
+    this.moveVehicleHorizontally(vehicleB, separation.normal.clone().multiplyScalar(-separation.depth * bShare));
+
+    const removeInwardVelocity = (vehicle, normal) => {
+      const body = vehicle.physicsVehicle?.chassisBody;
+      if (!body) return;
+      const inwardSpeed = body.velocity.x * normal.x + body.velocity.z * normal.z;
+      if (inwardSpeed < 0) {
+        body.velocity.x -= normal.x * inwardSpeed;
+        body.velocity.z -= normal.z * inwardSpeed;
+      }
+      body.angularVelocity.x *= 0.45;
+      body.angularVelocity.z *= 0.45;
+    };
+    removeInwardVelocity(vehicleA, separation.normal);
+    removeInwardVelocity(vehicleB, separation.normal.clone().negate());
+    if (playerContact) vehicleB.speed = Math.max(0, Number(vehicleB.speed || 0) * 0.65);
+    return true;
+  }
+
   resolveUserVehicleContact(player, other) {
     const physicsVehicle = player?.physicsVehicle;
     const body = physicsVehicle?.chassisBody;
     if (!body || !other?.mesh || other === player) return false;
-
-    const playerProfile = getVehicleProfile(player.vType);
-    const otherProfile = getVehicleProfile(other.vType);
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(player.mesh.quaternion);
-    forward.y = 0;
-    if (forward.lengthSq() < 0.001) forward.set(0, 0, 1);
-    forward.normalize();
-    const right = new THREE.Vector3(forward.z, 0, -forward.x);
-    const relative = other.mesh.position.clone().sub(player.mesh.position);
-    relative.y = 0;
-
-    const longitudinal = relative.dot(forward);
-    const lateral = relative.dot(right);
-    const longitudinalLimit = (playerProfile.length + otherProfile.length) * 0.5;
-    const lateralLimit = (playerProfile.width + otherProfile.width) * 0.5;
-    const longitudinalPenetration = longitudinalLimit - Math.abs(longitudinal);
-    const lateralPenetration = lateralLimit - Math.abs(lateral);
-    if (longitudinalPenetration <= 0 || lateralPenetration <= 0) return false;
-
-    const resolveLaterally = lateralPenetration < longitudinalPenetration;
-    const normal = (resolveLaterally ? right : forward).multiplyScalar(
-      -Math.sign(resolveLaterally ? lateral : longitudinal) || 1
-    );
-    const penetration = resolveLaterally ? lateralPenetration : longitudinalPenetration;
-    const correction = Math.min(0.75, Math.max(0.05, penetration * 0.55));
-    body.position.x += normal.x * correction;
-    body.position.z += normal.z * correction;
-
-    const inwardSpeed = body.velocity.x * normal.x + body.velocity.z * normal.z;
-    if (inwardSpeed < 0) {
-      body.velocity.x -= normal.x * inwardSpeed * 1.05;
-      body.velocity.z -= normal.z * inwardSpeed * 1.05;
-    }
-    body.velocity.x += normal.x * Math.min(1.5, penetration * 0.4);
-    body.velocity.z += normal.z * Math.min(1.5, penetration * 0.4);
-    body.angularVelocity.x *= 0.5;
-    body.angularVelocity.z *= 0.5;
-    body.aabbNeedsUpdate = true;
-
-    other.mesh.position.addScaledVector(normal, -Math.min(0.25, correction * 0.3));
-    other.speed = Math.max(0, Number(other.speed || 0) * 0.65);
-    return true;
+    return this.resolveVehicleOverlap(player, other, { playerContact: true });
   }
 
   isOnPrimaryBridge(vehicle) {
@@ -513,10 +529,13 @@ export class TrafficSystem {
 
     // Delegate to cannon-es physics vehicle if active
     if (v.physicsVehicle) {
-      v.physicsVehicle.applyInput(this.keys, delta);
+      const autoRecovered = v.physicsVehicle.applyInput(this.keys, delta);
       v.physicsVehicle.syncMesh();
       v.speed = v.physicsVehicle.speedKmH / 3.6;
       Object.assign(v.info, v.physicsVehicle.info);
+      if (autoRecovered) {
+        this.app.uiManager?.showToast?.('Vehicle repositioned on the last safe road surface', 'warn');
+      }
 
       if (this.app.audioSystem) {
         this.app.audioSystem.updateEngineSound(v.physicsVehicle.speedKmH, v.maxSpeed * 3.6);
@@ -550,7 +569,6 @@ export class TrafficSystem {
               }, 80);
             }
           }
-          break;
         }
       }
 
@@ -1290,7 +1308,23 @@ export class TrafficSystem {
       }
     }
 
+    this.resolveTrafficOverlaps();
     this.updateAmbientEngineAudio(delta);
+  }
+
+  resolveTrafficOverlaps(iterations = 2) {
+    const index = new Map(this.vehicles.map((vehicle, i) => [vehicle, i]));
+    for (let pass = 0; pass < iterations; pass += 1) {
+      for (let i = 0; i < this.vehicles.length; i += 1) {
+        const vehicle = this.vehicles[i];
+        if (!vehicle?.mesh || vehicle.crashed) continue;
+        const candidates = this.app.performanceSystem?.nearbyVehicles(vehicle.mesh.position, 13) || this.vehicles;
+        for (const other of candidates) {
+          if (!other?.mesh || other.crashed || (index.get(other) ?? -1) <= i) continue;
+          this.resolveVehicleOverlap(vehicle, other);
+        }
+      }
+    }
   }
 
   updateAmbientEngineAudio(delta) {

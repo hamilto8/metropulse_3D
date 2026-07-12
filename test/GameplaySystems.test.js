@@ -116,6 +116,7 @@ test('vehicle exit delegates terrain lookup and releases the vehicle exactly onc
   vehicle.userControlled = true;
   vehicle.mesh.position.set(12, 0, 8);
   traffic.controlledVehicle = vehicle;
+  traffic.controlSession = { source: 'pedestrian', pedestrian: null };
   traffic.nodes = new Map();
 
   let releaseCount = 0;
@@ -147,6 +148,25 @@ test('vehicle exit delegates terrain lookup and releases the vehicle exactly onc
   assert.equal(pedestrianControlCount, 1);
   assert.equal(traffic.app.pedestrianSystem.pedestrians.length, 1);
   assert.equal(traffic.app.pedestrianSystem.pedestrians[0].mesh.position.y, 0.4);
+});
+
+test('camera-origin vehicle exit returns to management without creating a pedestrian', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Camera Test Sedan');
+  vehicle.userControlled = true;
+  traffic.controlledVehicle = vehicle;
+  traffic.controlSession = { source: 'camera', pedestrian: null };
+  let released = 0;
+  let pedestrians = 0;
+  traffic.releaseControl = () => { released += 1; traffic.controlledVehicle = null; };
+  traffic.app = {
+    pedestrianSystem: { toggleUserControl: () => { pedestrians += 1; } },
+    sceneManager: { stopFollowTarget() {} },
+    uiManager: { hideInspector() {} }
+  };
+  assert.equal(traffic.exitControlledVehicle(), true);
+  assert.equal(released, 1);
+  assert.equal(pedestrians, 0);
 });
 
 test('wanted police response follows the player after switching into a vehicle', () => {

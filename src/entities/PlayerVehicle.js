@@ -17,6 +17,8 @@ export class PlayerVehicle {
     this.lastSafePose = null;
     this.safePoseHistory = [];
     this.safePoseFrame = 0;
+    this.stuckElapsed = 0;
+    this.recoveryCooldown = 0;
     this.info = {
       'Status': '🏎️ PHYSICS ACTION MODE',
       'Engine': this.getEngineName(vType),
@@ -194,7 +196,7 @@ export class PlayerVehicle {
   }
 
   applyInput(keys, delta) {
-    if (!keys || !this.chassisBody) return;
+    if (!keys || !this.chassisBody) return false;
 
     // Freeze controls while a dialogue modal is open
     const dialogueOpen = window.app?.dialogueOverlay?.currentMission != null;
@@ -205,7 +207,7 @@ export class PlayerVehicle {
         this.raycastVehicle.setBrake(80, i);
       }
       this.chassisBody.angularVelocity.y *= 0.7;
-      return;
+      return false;
     }
 
     // Get analog inputs from InputManager or fall back to keys
@@ -332,6 +334,23 @@ export class PlayerVehicle {
       this.raycastVehicle.applyEngineForce(engineForce, i);
       this.raycastVehicle.setBrake(brakeForce, i);
     }
+
+    this.recoveryCooldown = Math.max(0, this.recoveryCooldown - delta);
+    const driveIntent = Math.max(analogThrottle, analogBrake) > 0.55 && !isHandbrake;
+    const horizontalSpeed = Math.hypot(this.chassisBody.velocity.x, this.chassisBody.velocity.z);
+    const groundedWheels = this.raycastVehicle.wheelInfos.filter((wheel) => wheel.isInContact).length;
+    if (driveIntent && horizontalSpeed < 0.45 && groundedWheels >= 2) {
+      this.stuckElapsed += Math.max(0, delta);
+    } else {
+      this.stuckElapsed = Math.max(0, this.stuckElapsed - delta * 2);
+    }
+    if (this.stuckElapsed >= 2.75 && this.recoveryCooldown <= 0) {
+      this.recoverToSafePose();
+      this.stuckElapsed = 0;
+      this.recoveryCooldown = 4;
+      return true;
+    }
+    return false;
   }
 
   syncMesh() {

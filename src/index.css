@@ -4175,3 +4175,80 @@ body[data-game-mode="action"][data-control-context="vehicle"] .real-estate-track
     background: rgba(7, 12, 27, 0.985);
   }
 }
+
+/* Final time-bar contract: intentionally last to supersede legacy HUD rules. */
+.hud-bottom-stack > .bottom-time-bar {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 40px minmax(210px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: min(760px, 100%);
+  min-height: 60px;
+  padding: 8px 12px;
+  overflow: hidden;
+  transform: none;
+}
+.bottom-time-bar .time-display { min-width: 0; }
+.bottom-time-bar .time-icon,
+.bottom-time-bar .time-play-btn {
+  box-sizing: border-box;
+  inline-size: 40px;
+  block-size: 40px;
+  min-inline-size: 40px;
+  min-block-size: 40px;
+  aspect-ratio: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  flex: none;
+  line-height: 1;
+  transform: none;
+}
+.bottom-time-bar .time-scrubber-wrapper {
+  display: grid;
+  grid-template-columns: auto minmax(100px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bottom-time-bar #time-slider { width: 100%; min-width: 0; margin: 0; }
+.bottom-time-bar .speed-selector {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(48px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+.bottom-time-bar .speed-pill {
+  box-sizing: border-box;
+  min-width: 48px;
+  min-height: 34px;
+  padding: 0 9px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.bottom-time-bar .time-value,
+.bottom-time-bar .scrubber-time { font-variant-numeric: tabular-nums; }
+@media (max-width: 1180px) and (min-width: 781px) {
+  .hud-bottom-stack > .bottom-time-bar {
+    grid-template-columns: minmax(126px, auto) 38px minmax(150px, 1fr) auto;
+    gap: 8px;
+  }
+  .bottom-time-bar .time-icon,
+  .bottom-time-bar .time-play-btn {
+    inline-size: 38px;
+    block-size: 38px;
+    min-inline-size: 38px;
+    min-block-size: 38px;
+  }
+  .bottom-time-bar .speed-selector { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+  .bottom-time-bar .speed-pill { min-width: 44px; padding-inline: 7px; }
+}
+@media (max-width: 780px) {
+  .hud-bottom-stack > .bottom-time-bar {
+    grid-template-columns: minmax(0, 1fr) 40px;
+    width: 100%;
+  }
+  .bottom-time-bar .time-scrubber-wrapper,
+  .bottom-time-bar .speed-selector { display: none; }
+}

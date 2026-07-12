@@ -864,7 +864,10 @@ export class PedestrianSystem {
     const { pedestrian, vehicle } = transition;
     pedestrian.isHijacking = false;
 
-    const success = this.app.trafficSystem.toggleUserControl(vehicle);
+    const success = this.app.trafficSystem.toggleUserControl(vehicle, {
+      source: 'pedestrian',
+      pedestrian
+    });
     if (!success) {
       vehicle.targetSpeed = vehicle.preHijackTargetSpeed || vehicle.maxSpeed;
       pedestrian.info.Activity = 'Hijack failed';
