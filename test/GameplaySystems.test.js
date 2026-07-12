@@ -7,6 +7,7 @@ import { PlayerVehicle } from '../src/entities/PlayerVehicle.js';
 import { Vehicle } from '../src/entities/Vehicle.js';
 import { TrafficSystem } from '../src/systems/TrafficSystem.js';
 import { PedestrianSystem } from '../src/systems/PedestrianSystem.js';
+import { updatePedestrianKnockdown } from '../src/systems/PedestrianImpact.js';
 import { SceneManager } from '../src/world/SceneManager.js';
 
 function installBrowserStubs() {
@@ -161,12 +162,38 @@ test('vehicle impacts throw pedestrians backward and keep them down briefly', ()
     armL: { rotation: { x: 0 } },
     armR: { rotation: { x: 0 } }
   };
-  assert.equal(system.knockDownPedestrian(pedestrian, new THREE.Vector3(0, 0, 1), 20), undefined);
+  assert.equal(system.knockDownPedestrian(pedestrian, new THREE.Vector3(0, 0, 1), 20), true);
   assert.equal(pedestrian.knockedDown, true);
-  assert.ok(pedestrian.knockbackVelocity.z > 3);
-  assert.ok(pedestrian.knockbackVelocity.y > 2);
+  assert.ok(pedestrian.knockdownState.velocity.z > 3);
+  assert.ok(pedestrian.knockdownState.velocity.y > 2);
   assert.equal(pedestrian.knockdownTimer, 4);
   assert.equal(pedestrian.info.Mood, 'Dazed on Ground');
+
+  for (let i = 0; i < 250; i += 1) {
+    updatePedestrianKnockdown(pedestrian, 1 / 60, () => 0);
+  }
+  assert.equal(pedestrian.knockedDown, false);
+  assert.equal(pedestrian.knockdownState, null);
+  assert.equal(pedestrian.mesh.position.y, 0);
+  assert.equal(pedestrian.mesh.rotation.x, 0);
+  assert.equal(pedestrian.mesh.rotation.z, 0);
+});
+
+test('pedestrian knockdown sanitizes invalid impact speed and terrain values', () => {
+  const system = Object.create(PedestrianSystem.prototype);
+  system.app = { audioSystem: { playBump() {} } };
+  const pedestrian = {
+    mesh: new THREE.Group(),
+    knockedDown: false,
+    speed: 1,
+    targetSpeed: 1,
+    info: { Activity: 'Walking', Mood: 'Calm' }
+  };
+  assert.equal(system.knockDownPedestrian(pedestrian, null, Number.NaN), true);
+  updatePedestrianKnockdown(pedestrian, Number.NaN, () => Number.NaN);
+  assert.equal(Number.isFinite(pedestrian.mesh.position.x), true);
+  assert.equal(Number.isFinite(pedestrian.mesh.position.y), true);
+  assert.equal(Number.isFinite(pedestrian.mesh.position.z), true);
 });
 
 test('vehicle exit delegates terrain lookup and releases the vehicle exactly once', () => {
@@ -406,4 +433,16 @@ test('traffic and pedestrian population floors replace missing ambient agents', 
   pedestrians.pedestrians.pop();
   pedestrians.ensurePopulationFloor();
   assert.equal(pedestrians.pedestrians.length, 60);
+  const archetypeCounts = pedestrians.pedestrians.reduce((counts, pedestrian) => {
+    counts[pedestrian.archetype] = (counts[pedestrian.archetype] || 0) + 1;
+    return counts;
+  }, {});
+  assert.deepEqual(archetypeCounts, {
+    CASUAL: 18,
+    BUSINESS: 12,
+    JOGGER: 9,
+    TOURIST: 9,
+    CAFE_READER: 6,
+    CRIMINAL: 6
+  });
 });

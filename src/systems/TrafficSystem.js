@@ -3,6 +3,28 @@ import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
 import { getVehicleSeparation } from './VehicleSeparation.js';
+import {
+  approachTrafficTargetSpeed,
+  createPedestrianTrafficState,
+  getPedestrianEmergencyStopDistance,
+  getPedestrianYieldKinematics,
+  updatePedestrianTrafficState
+} from './TrafficPedestrianBehavior.js';
+import {
+  advanceHitAndRunState,
+  createHitAndRunState,
+  DEFAULT_HIT_AND_RUN_PURSUIT,
+  getPursuitSpeed,
+  selectNearbyPolice
+} from './HitAndRunPursuit.js';
+import {
+  enforceLaneCorridor,
+  findTrafficObstacleAhead,
+  getNavigationSpeedLimit,
+  getTrafficObstacleSnapshot,
+  hasReachedNavigationTarget,
+  TRAFFIC_NAVIGATION
+} from './TrafficNavigation.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -28,9 +50,11 @@ export class TrafficSystem {
     this.chainReactionRadius = 10;
     this.chainReactionDelay = 4;
     this.destroyedVehicleLifetime = 30;
-    this.pedestrianYieldProbability = 0.78;
-    this.pedestrianYieldDuration = 3.5;
-    this.pedestrianYieldHonkInterval = 1.1;
+    this.pedestrianImpatienceProbability = 0.2;
+    this.pedestrianImpatienceDelay = 3.5;
+    this.hitAndRunPursuitConfig = { ...DEFAULT_HIT_AND_RUN_PURSUIT };
+    this.navigationConfig = { ...TRAFFIC_NAVIGATION };
+    this.random = Math.random;
     this.nextVehicleSerial = 0;
     this.populationCheckTimer = 2.0;
     this.bridgePriorityEnabled = false;
@@ -100,9 +124,7 @@ export class TrafficSystem {
           vehicle.physicsVehicle.destroy();
           vehicle.physicsVehicle = null;
         }
-        if (vehicle.physicsBody && this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
-          this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
-        }
+        if (vehicle.physicsBody) this.app.physicsWorld.removeKinematicCollider(vehicle.physicsBody);
         vehicle.mesh.position.y = this.getTerrainHeight(vehicle.mesh.position.x, vehicle.mesh.position.z);
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
       }
@@ -133,9 +155,7 @@ export class TrafficSystem {
       vehicle.physicsBody.velocity.set(0, 0, 0);
       vehicle.physicsBody.angularVelocity.set(0, 0, 0);
       vehicle.physicsBody.aabbNeedsUpdate = true;
-      if (!this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
-        this.app.physicsWorld.world.addBody(vehicle.physicsBody);
-      }
+      this.app.physicsWorld.restoreKinematicCollider(vehicle.physicsBody);
     }
 
     if (this.controlledVehicle === vehicle) {
@@ -534,6 +554,7 @@ export class TrafficSystem {
   explodeVehicle(vehicle) {
     if (!vehicle?.mesh || vehicle.isDestroyed) return false;
     const origin = vehicle.mesh.position.clone();
+    if (vehicle.hitAndRunState) this.clearHitAndRunPursuit(vehicle);
     if (this.controlledVehicle === vehicle || vehicle.userControlled) {
       this.releaseControl(vehicle);
     }
@@ -571,6 +592,7 @@ export class TrafficSystem {
 
   removeDestroyedVehicle(vehicle) {
     if (!vehicle || !this.vehicles.includes(vehicle)) return false;
+    if (vehicle.hitAndRunState) this.clearHitAndRunPursuit(vehicle);
     if (this.controlledVehicle === vehicle) this.releaseControl(vehicle);
     if (vehicle.mountedRider) vehicle.unmountRider();
     if (vehicle.fireMesh) {
@@ -581,9 +603,7 @@ export class TrafficSystem {
     }
     vehicle.physicsVehicle?.destroy?.();
     vehicle.physicsVehicle = null;
-    if (vehicle.physicsBody && this.app.physicsWorld?.world?.bodies?.includes(vehicle.physicsBody)) {
-      this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
-    }
+    if (vehicle.physicsBody) this.app.physicsWorld?.removeKinematicCollider?.(vehicle.physicsBody);
     this.app.inspectorHud?.unregisterObject?.(vehicle.mesh);
     vehicle.mesh.parent?.remove(vehicle.mesh);
     const index = this.vehicles.indexOf(vehicle);
@@ -1019,7 +1039,7 @@ export class TrafficSystem {
   }
 
   dispatchPolice(crashPos) {
-    const policeVehicles = this.vehicles.filter(v => v.isPolice && !v.crashed);
+    const policeVehicles = this.vehicles.filter(v => v.isPolice && !v.crashed && !v.pursuitTarget);
     
     // Sort police by distance to crash site
     policeVehicles.sort((a, b) => {
@@ -1036,16 +1056,176 @@ export class TrafficSystem {
     }
   }
 
-  findBlockingPedestrian(vehicle, maxDistance = 5.8) {
+  handleNpcPedestrianHit(offender, pedestrian) {
+    if (
+      !offender?.mesh?.position
+      || offender.userControlled
+      || offender.isPolice
+      || offender.isParked
+      || offender.crashed
+      || offender.isDestroyed
+      || offender.hitAndRunState
+    ) {
+      return false;
+    }
+
+    const config = this.hitAndRunPursuitConfig || DEFAULT_HIT_AND_RUN_PURSUIT;
+    const origin = pedestrian?.mesh?.position || offender.mesh.position;
+    const responders = selectNearbyPolice(this.vehicles, origin, config);
+    const state = createHitAndRunState(offender, responders, config);
+    offender.hitAndRunState = state;
+    offender.maxSpeed = state.escapeSpeed;
+    offender.targetSpeed = state.escapeSpeed;
+    if (offender.info) {
+      offender.info.Status = responders.length > 0 ? '🚨 Fleeing police' : '⚠️ Fleeing hit-and-run';
+      offender.info.Mood = 'Panicked & Fleeing';
+    }
+
+    for (const police of responders) {
+      police.pursuitTarget = offender;
+      police.emergencyTarget = offender.mesh.position.clone();
+      const responseSpeed = Number.isFinite(config.policeMaxSpeed)
+        ? config.policeMaxSpeed
+        : DEFAULT_HIT_AND_RUN_PURSUIT.policeMaxSpeed;
+      police.maxSpeed = responseSpeed;
+      police.targetSpeed = responseSpeed;
+      police.sirenActive = true;
+      police.sirenTimer = Math.max(police.sirenTimer || 0, 5);
+      if (police.info) police.info.Status = '🚨 HIT-AND-RUN PURSUIT';
+    }
+
+    const message = responders.length > 0
+      ? `🚨 HIT-AND-RUN: ${responders.length} nearby police unit${responders.length === 1 ? '' : 's'} pursuing the vehicle!`
+      : '⚠️ HIT-AND-RUN: vehicle fleeing; no nearby police unit available.';
+    this.app.uiManager?.addAlert?.(message, responders.length > 0 ? 'danger' : 'warn');
+    return true;
+  }
+
+  clearHitAndRunPursuit(offender) {
+    const state = offender?.hitAndRunState;
+    if (!state) return false;
+    offender.hitAndRunState = null;
+    offender.maxSpeed = state.normalMaxSpeed;
+    offender.targetSpeed = state.normalMaxSpeed;
+    if (!offender.crashed && !offender.isDestroyed && offender.info) {
+      offender.info.Status = 'Cruising';
+      offender.info.Mood = 'Relieved';
+    }
+
+    for (const police of this.vehicles) {
+      if (police?.pursuitTarget !== offender) continue;
+      police.pursuitTarget = null;
+      police.emergencyTarget = null;
+      police.maxSpeed = police.normalMaxSpeed || 20;
+      police.targetSpeed = police.maxSpeed;
+      police.sirenActive = false;
+      police.sirenTimer = 0;
+      if (police.info) police.info.Status = 'Cruising';
+    }
+    return true;
+  }
+
+  updateHitAndRunPursuits(delta) {
+    for (const offender of this.vehicles) {
+      const state = offender?.hitAndRunState;
+      if (!state) continue;
+      if (offender.crashed || offender.isDestroyed || !advanceHitAndRunState(state, delta)) {
+        this.clearHitAndRunPursuit(offender);
+        continue;
+      }
+
+      offender.maxSpeed = state.escapeSpeed;
+      offender.targetSpeed = state.escapeSpeed;
+      if (offender.info) offender.info.Status = '🚨 Fleeing police';
+      for (const police of state.responders) {
+        if (!this.vehicles.includes(police) || police.crashed || police.isDestroyed) continue;
+        if (police.pursuitTarget !== offender) continue;
+        police.emergencyTarget = offender.mesh.position.clone();
+        police.sirenActive = true;
+        police.sirenTimer = Math.max(police.sirenTimer || 0, 1);
+      }
+    }
+  }
+
+  updatePoliceEmergencyResponse(vehicle, delta) {
+    const pursuitTarget = vehicle.pursuitTarget;
+    if (pursuitTarget && (!this.vehicles.includes(pursuitTarget) || pursuitTarget.crashed || pursuitTarget.isDestroyed)) {
+      this.clearHitAndRunPursuit(pursuitTarget);
+      return false;
+    }
+    const targetPosition = pursuitTarget?.mesh?.position || vehicle.emergencyTarget;
+    if (!targetPosition) return false;
+    const safeDelta = Number.isFinite(delta) ? Math.max(0, Math.min(delta, 0.1)) : 0;
+
+    vehicle.emergencyTarget = targetPosition.clone();
+    const distance = vehicle.mesh.position.distanceTo(targetPosition);
+    if (!pursuitTarget && distance < 10) {
+      vehicle.speed = 0;
+      vehicle.targetSpeed = 0;
+    } else {
+      vehicle.targetSpeed = pursuitTarget
+        ? getPursuitSpeed(vehicle, pursuitTarget, distance, this.hitAndRunPursuitConfig)
+        : vehicle.maxSpeed;
+      if (vehicle.speed < vehicle.targetSpeed) {
+        vehicle.speed = Math.min(vehicle.targetSpeed, vehicle.speed + vehicle.acceleration * 2 * safeDelta);
+      } else if (vehicle.speed > vehicle.targetSpeed) {
+        vehicle.speed = Math.max(vehicle.targetSpeed, vehicle.speed - vehicle.acceleration * 2.4 * safeDelta);
+      }
+
+      const navigationTarget = this.getPursuitNavigationTarget(vehicle, targetPosition);
+      const direction = navigationTarget.clone().sub(vehicle.mesh.position);
+      direction.y = 0;
+      if (direction.lengthSq() > 1e-6) {
+        direction.normalize();
+        const targetAngle = Math.atan2(direction.x, direction.z);
+        let difference = targetAngle - vehicle.mesh.rotation.y;
+        while (difference < -Math.PI) difference += Math.PI * 2;
+        while (difference > Math.PI) difference -= Math.PI * 2;
+        vehicle.mesh.rotation.y += difference * 8 * safeDelta;
+      }
+
+      vehicle.mesh.translateOnAxis(FORWARD_AXIS, vehicle.speed * safeDelta);
+      enforceLaneCorridor(vehicle, this.navigationConfig);
+      vehicle.mesh.position.y = this.app.pedestrianSystem
+        ? this.app.pedestrianSystem.getTerrainHeight(vehicle.mesh.position.x, vehicle.mesh.position.z) - 0.05
+        : 0;
+    }
+    vehicle.sirenActive = true;
+    vehicle.sirenTimer = Math.max(vehicle.sirenTimer || 0, 1);
+    vehicle.update(safeDelta);
+    return true;
+  }
+
+  getPursuitNavigationTarget(vehicle, offenderPosition) {
+    const currentTarget = vehicle?.targetNode;
+    if (!currentTarget?.pos) return offenderPosition;
+    if (hasReachedNavigationTarget(vehicle)) {
+      vehicle.currentNode = currentTarget;
+      const candidates = currentTarget.nextNodes?.filter(node => node?.pos) || [];
+      if (candidates.length > 0) {
+        vehicle.targetNode = candidates.reduce((best, node) => (
+          node.pos.distanceToSquared(offenderPosition) < best.pos.distanceToSquared(offenderPosition)
+            ? node
+            : best
+        ));
+      }
+    }
+    return vehicle.targetNode?.pos || offenderPosition;
+  }
+
+  findBlockingPedestrian(vehicle, maxDistance = null) {
     const pedestrians = this.app.pedestrianSystem?.pedestrians || [];
     if (!vehicle?.mesh || pedestrians.length === 0) return null;
+    const detectionDistance = Number.isFinite(maxDistance)
+      ? Math.max(1, maxDistance)
+      : getPedestrianYieldKinematics(vehicle).detectionDistance;
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(vehicle.mesh.quaternion);
     forward.y = 0;
     if (forward.lengthSq() < 1e-6) forward.set(0, 0, 1);
     forward.normalize();
     const right = new THREE.Vector3(forward.z, 0, -forward.x);
     let closest = null;
-    let closestDistance = maxDistance;
+    let closestDistance = detectionDistance;
     for (const pedestrian of pedestrians) {
       if (!pedestrian?.mesh || pedestrian.knockedDown || pedestrian.isHijacking) continue;
       const offset = pedestrian.mesh.position.clone().sub(vehicle.mesh.position);
@@ -1054,7 +1234,7 @@ export class TrafficSystem {
       if (distance >= closestDistance) continue;
       const forwardDistance = offset.dot(forward);
       const lateralDistance = Math.abs(offset.dot(right));
-      if (forwardDistance < -1.2 || forwardDistance > maxDistance || lateralDistance > 1.9) continue;
+      if (forwardDistance < -1.2 || forwardDistance > detectionDistance || lateralDistance > 1.9) continue;
       closest = { pedestrian, distance, forwardDistance, lateralDistance };
       closestDistance = distance;
     }
@@ -1062,7 +1242,7 @@ export class TrafficSystem {
   }
 
   updatePedestrianYield(vehicle, delta) {
-    if (!vehicle || vehicle.isParked || vehicle.emergencyTarget || vehicle.crashed) {
+    if (!vehicle || vehicle.isParked || vehicle.emergencyTarget || vehicle.hitAndRunState || vehicle.crashed) {
       vehicle && (vehicle.pedestrianYieldState = null);
       return false;
     }
@@ -1074,33 +1254,30 @@ export class TrafficSystem {
 
     let state = vehicle.pedestrianYieldState;
     if (!state || state.pedestrian !== blocker.pedestrian) {
-      state = vehicle.pedestrianYieldState = {
-        pedestrian: blocker.pedestrian,
-        shouldYield: Math.random() < (this.pedestrianYieldProbability ?? 0.78),
-        elapsed: 0,
-        hornCooldown: 0,
-        released: false
-      };
+      state = vehicle.pedestrianYieldState = createPedestrianTrafficState(
+        blocker.pedestrian,
+        this.random,
+        { impatienceProbability: this.pedestrianImpatienceProbability }
+      );
     }
-    state.elapsed += Math.max(0, delta);
-    state.hornCooldown -= Math.max(0, delta);
+    const action = updatePedestrianTrafficState(state, delta, {
+      impatienceDelay: this.pedestrianImpatienceDelay
+    });
+    state.forwardDistance = blocker.forwardDistance;
 
-    if (state.shouldYield && state.elapsed < (this.pedestrianYieldDuration ?? 3.5)) {
-      if (state.hornCooldown <= 0) {
-        this.app.audioSystem?.playHonk?.(true);
-        state.hornCooldown = this.pedestrianYieldHonkInterval ?? 1.1;
-        vehicle.info.Status = '📯 Waiting for pedestrian';
-        vehicle.info.Mood = 'Impatient & Honking';
-      }
+    if (action.shouldYield) {
+      const emergencyStopDistance = getPedestrianEmergencyStopDistance(vehicle);
+      if (blocker.forwardDistance <= emergencyStopDistance) vehicle.speed = 0;
+      vehicle.info.Status = state.impatient ? 'Waiting behind pedestrian' : 'Yielding to pedestrian';
+      vehicle.info.Mood = state.impatient ? 'Growing Impatient' : 'Waiting Patiently';
       return true;
     }
 
-    if (!state.released) {
-      state.released = true;
+    if (action.shouldHonk) {
       this.app.audioSystem?.playHonk?.(true);
-      vehicle.info.Status = '⚠️ Impatient driver proceeding';
-      vehicle.info.Mood = 'Impatient & Proceeding';
     }
+    vehicle.info.Status = '⚠️ Impatient driver proceeding';
+    vehicle.info.Mood = 'Impatient & Proceeding';
     return false;
   }
 
@@ -1130,12 +1307,14 @@ export class TrafficSystem {
 
   update(delta) {
     const funMode = this.app.funMode;
+    const trafficObstacleSnapshot = getTrafficObstacleSnapshot(this.app.physicsWorld);
 
     this.populationCheckTimer -= delta;
     if (this.populationCheckTimer <= 0) {
       this.populationCheckTimer = 2.0;
       this.ensurePopulationFloor();
     }
+    this.updateHitAndRunPursuits(delta);
 
     // Check collisions between cars in Fun Mode!
     if (funMode) {
@@ -1194,7 +1373,7 @@ export class TrafficSystem {
           
           // Release any responding police cars
           for (const p of this.vehicles) {
-            if (p.isPolice && p.emergencyTarget) {
+            if (p.isPolice && p.emergencyTarget && !p.pursuitTarget) {
               p.emergencyTarget = null;
               p.maxSpeed = p.normalMaxSpeed || 20;
               p.targetSpeed = p.maxSpeed;
@@ -1232,31 +1411,7 @@ export class TrafficSystem {
 
       // Handle emergency police rushing to crash site
       if (v.isPolice && v.emergencyTarget) {
-        const distToCrash = pos.distanceTo(v.emergencyTarget);
-        if (distToCrash < 10.0) {
-          // Arrived at the scene of the accident! Secure the area
-          v.speed = 0;
-          v.targetSpeed = 0;
-        } else {
-          v.targetSpeed = v.maxSpeed;
-          if (v.speed < v.targetSpeed) {
-            v.speed = Math.min(v.targetSpeed, v.speed + v.acceleration * 2 * delta);
-          }
-          // Steer directly towards accident scene at high speed
-          const dir = v.emergencyTarget.clone().sub(pos).normalize();
-          const targetAngle = Math.atan2(dir.x, dir.z);
-
-          let currentAngle = v.mesh.rotation.y;
-          let diff = targetAngle - currentAngle;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          v.mesh.rotation.y += diff * 8.0 * delta;
-
-          const moveStep = v.speed * delta;
-          v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-          v.mesh.position.y = this.app.pedestrianSystem ? this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z) - 0.05 : 0;
-        }
-        v.update(delta);
+        this.updatePoliceEmergencyResponse(v, delta);
         continue;
       }
 
@@ -1299,6 +1454,17 @@ export class TrafficSystem {
             }
           }
         }
+      }
+
+      const streetObstacle = findTrafficObstacleAhead(
+        v,
+        this.app.physicsWorld,
+        this.navigationConfig,
+        trafficObstacleSnapshot
+      );
+      if (streetObstacle) {
+        isBlocked = true;
+        if (v.info) v.info.Status = 'Avoiding street obstacle';
       }
 
       // Stuck and Reversing logic for AI vehicles to prevent gridlocks
@@ -1367,23 +1533,22 @@ export class TrafficSystem {
             v.targetSpeed = 0;
           } else {
             const bridgeBoost = this.bridgePriorityEnabled && this.isOnPrimaryBridge(v) ? 1.25 : 1;
-            v.targetSpeed = v.maxSpeed * bridgeBoost;
+            const cruiseSpeed = v.maxSpeed * bridgeBoost;
+            v.targetSpeed = Math.min(
+              cruiseSpeed,
+              getNavigationSpeedLimit(v, this.navigationConfig)
+            );
           }
         } else if (!isBlocked) {
           v.targetSpeed = v.maxSpeed * 1.2;
         }
       }
 
-      if (v.speed < v.targetSpeed) {
-        v.speed = Math.min(v.targetSpeed, v.speed + v.acceleration * delta);
-      } else if (v.speed > v.targetSpeed) {
-        v.speed = Math.max(v.targetSpeed, v.speed - v.acceleration * 1.8 * delta);
-      }
+      v.speed = approachTrafficTargetSpeed(v, delta, pedestrianBlocked);
 
       // 2. Steer along road graph towards target node
       if (v.targetNode) {
-        const dist2D = Math.hypot(pos.x - v.targetNode.pos.x, pos.z - v.targetNode.pos.z);
-        if (dist2D < 4.5 && !v.isReversing) {
+        if (hasReachedNavigationTarget(v) && !v.isReversing) {
           v.currentNode = v.targetNode;
           if (v.currentNode.nextNodes && v.currentNode.nextNodes.length > 0) {
             v.targetNode = v.currentNode.nextNodes[Math.floor(Math.random() * v.currentNode.nextNodes.length)];
@@ -1406,6 +1571,7 @@ export class TrafficSystem {
 
           const moveStep = v.speed * delta;
           v.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
+          enforceLaneCorridor(v, this.navigationConfig);
 
           if (this.app.pedestrianSystem) {
             const currentH = this.app.pedestrianSystem.getTerrainHeight(v.mesh.position.x, v.mesh.position.z);
@@ -1457,6 +1623,9 @@ export class TrafficSystem {
     }
 
     this.resolveTrafficOverlaps();
+    for (const vehicle of this.vehicles) {
+      enforceLaneCorridor(vehicle, this.navigationConfig);
+    }
     this.updateAmbientEngineAudio(delta);
   }
 
@@ -1717,6 +1886,7 @@ export class TrafficSystem {
 
   respawnVehicle(vehicle, force = false) {
     if (!vehicle || (!force && (vehicle.userControlled || vehicle.isParked))) return;
+    if (vehicle.hitAndRunState) this.clearHitAndRunPursuit(vehicle);
 
     // Filter for out nodes that are not currently occupied by other vehicles
     const outNodes = Array.from(this.nodes.values()).filter(n => n.id.includes('_OUT') && n.nextNodes.length > 0);
@@ -1761,9 +1931,7 @@ export class TrafficSystem {
       vehicle.physicsBody.velocity.set(0, 0, 0);
       vehicle.physicsBody.angularVelocity.set(0, 0, 0);
       vehicle.physicsBody.aabbNeedsUpdate = true;
-      if (this.app.physicsWorld && !this.app.physicsWorld.world.bodies.includes(vehicle.physicsBody)) {
-        this.app.physicsWorld.world.addBody(vehicle.physicsBody);
-      }
+      this.app.physicsWorld?.restoreKinematicCollider?.(vehicle.physicsBody);
     }
 
     vehicle.speed = 0;

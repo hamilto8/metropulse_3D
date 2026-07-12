@@ -4,7 +4,14 @@ import * as THREE from 'three';
 
 import { TrafficSystem } from '../src/systems/TrafficSystem.js';
 import { CityBuilder } from '../src/world/CityBuilder.js';
+import { Vehicle } from '../src/entities/Vehicle.js';
 import { getVehicleProfile } from '../src/entities/VehicleProfiles.js';
+import {
+  approachTrafficTargetSpeed,
+  createPedestrianTrafficState,
+  getPedestrianYieldKinematics
+} from '../src/systems/TrafficPedestrianBehavior.js';
+import { DEFAULT_HIT_AND_RUN_PURSUIT } from '../src/systems/HitAndRunPursuit.js';
 
 function vehicle({ x, z, speed = 10, parked = false, crashed = false, onFire = false } = {}) {
   return {
@@ -89,7 +96,7 @@ test('user-to-AI contact resolves in the road plane without blocking adjacent la
   assert.equal(getVehicleProfile('BUS').length, 10.5);
 });
 
-test('AI traffic yields and honks for most pedestrians, then proceeds after impatience timeout', () => {
+test('impatient traffic waits briefly, honks once, then proceeds', () => {
   const traffic = Object.create(TrafficSystem.prototype);
   const vehicle = {
     mesh: new THREE.Group(),
@@ -104,35 +111,209 @@ test('AI traffic yields and honks for most pedestrians, then proceeds after impa
     pedestrianSystem: { pedestrians: [pedestrian] },
     audioSystem: { playHonk() { honks += 1; } }
   };
+  traffic.random = () => 0.1;
   let honks = 0;
-  const originalRandom = Math.random;
-  Math.random = () => 0.1;
-  try {
-    assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), true);
-    assert.equal(honks, 1);
-    assert.equal(traffic.updatePedestrianYield(vehicle, 1.2), true);
-    assert.equal(honks, 2);
-    assert.equal(traffic.updatePedestrianYield(vehicle, 2.3), false);
-    assert.equal(vehicle.pedestrianYieldState.released, true);
-  } finally {
-    Math.random = originalRandom;
-  }
+  assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), true);
+  assert.equal(honks, 0);
+  assert.equal(traffic.updatePedestrianYield(vehicle, 3.5), false);
+  assert.equal(honks, 1);
+  assert.equal(traffic.updatePedestrianYield(vehicle, 1), false);
+  assert.equal(honks, 1);
+  assert.equal(vehicle.pedestrianYieldState.released, true);
 });
 
-test('AI traffic can ignore a pedestrian encounter to preserve natural variation', () => {
+test('patient traffic remains stopped until the pedestrian corridor clears', () => {
   const traffic = Object.create(TrafficSystem.prototype);
   const vehicle = { mesh: new THREE.Group(), isParked: false, info: {} };
   const pedestrian = { mesh: new THREE.Group(), knockedDown: false, isHijacking: false };
   pedestrian.mesh.position.set(0, 0, 3);
-  traffic.app = { pedestrianSystem: { pedestrians: [pedestrian] }, audioSystem: { playHonk() {} } };
-  const originalRandom = Math.random;
-  Math.random = () => 0.99;
-  try {
-    assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), false);
-    assert.equal(vehicle.pedestrianYieldState.shouldYield, false);
-  } finally {
-    Math.random = originalRandom;
+  let honks = 0;
+  traffic.app = {
+    pedestrianSystem: { pedestrians: [pedestrian] },
+    audioSystem: { playHonk() { honks += 1; } }
+  };
+  traffic.random = () => 0.9;
+  assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), true);
+  assert.equal(traffic.updatePedestrianYield(vehicle, 30), true);
+  assert.equal(vehicle.pedestrianYieldState.impatient, false);
+  assert.equal(honks, 0);
+
+  pedestrian.mesh.position.set(10, 0, 10);
+  assert.equal(traffic.updatePedestrianYield(vehicle, 0.1), false);
+  assert.equal(vehicle.pedestrianYieldState, null);
+});
+
+test('pedestrian detection distance includes reaction time, braking, and safe clearance', () => {
+  for (const fixture of [
+    { vType: 'SEDAN', speed: 20, acceleration: 12, targetSpeed: 0 },
+    { vType: 'SPORTS_CAR', speed: 32, acceleration: 18, targetSpeed: 0 },
+    { vType: 'BUS', speed: 15, acceleration: 12, targetSpeed: 0 },
+    { vType: 'POLICE', speed: 42, acceleration: 12, targetSpeed: 0 }
+  ]) {
+    const kinematics = getPedestrianYieldKinematics(fixture);
+    assert.ok(kinematics.detectionDistance > kinematics.stoppingDistance);
+
+    let remainingDistance = kinematics.detectionDistance;
+    while (fixture.speed > 0) {
+      fixture.speed = approachTrafficTargetSpeed(fixture, 1 / 60, true);
+      remainingDistance -= fixture.speed / 60;
+    }
+    assert.ok(remainingDistance >= 3.1, `${fixture.vType} stopped with only ${remainingDistance}m clearance`);
   }
+});
+
+test('moving traffic detects a user-controlled pedestrian beyond the former fixed look-ahead', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const car = {
+    mesh: new THREE.Group(),
+    vType: 'SEDAN',
+    speed: 20,
+    acceleration: 12,
+    info: {}
+  };
+  const pedestrian = {
+    mesh: new THREE.Group(),
+    userControlled: true,
+    knockedDown: false,
+    isHijacking: false
+  };
+  pedestrian.mesh.position.set(0, 0, 10);
+  traffic.app = { pedestrianSystem: { pedestrians: [pedestrian] } };
+
+  const blocker = traffic.findBlockingPedestrian(car);
+  assert.equal(blocker?.pedestrian, pedestrian);
+  assert.equal(blocker?.forwardDistance, 10);
+});
+
+test('patient drivers apply a close-range fail-safe before pedestrian contact', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const car = {
+    mesh: new THREE.Group(),
+    vType: 'SEDAN',
+    isParked: false,
+    speed: 20,
+    acceleration: 12,
+    info: {}
+  };
+  const pedestrian = { mesh: new THREE.Group(), knockedDown: false, isHijacking: false };
+  pedestrian.mesh.position.set(0, 0, 3);
+  traffic.app = { pedestrianSystem: { pedestrians: [pedestrian] } };
+  traffic.random = () => 0.9;
+
+  assert.equal(traffic.updatePedestrianYield(car, 1 / 60), true);
+  assert.equal(car.speed, 0);
+  assert.equal(car.info.Status, 'Yielding to pedestrian');
+});
+
+test('NPC hit-and-run assigns only nearby available police and accelerates the offender', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const offender = new Vehicle('SEDAN', 0xcc3300, 'Test Offender');
+  const nearbyPolice = new Vehicle('POLICE', 0xffffff, 'Nearby Unit');
+  const farPolice = new Vehicle('POLICE', 0xffffff, 'Far Unit');
+  const busyPolice = new Vehicle('POLICE', 0xffffff, 'Busy Unit');
+  const pedestrian = { mesh: new THREE.Group() };
+  offender.mesh.position.set(0, 0, 0);
+  pedestrian.mesh.position.set(0, 0, 1);
+  nearbyPolice.mesh.position.set(20, 0, 0);
+  farPolice.mesh.position.set(100, 0, 0);
+  busyPolice.mesh.position.set(10, 0, 0);
+  busyPolice.emergencyTarget = new THREE.Vector3(5, 0, 5);
+  offender.normalMaxSpeed = offender.maxSpeed;
+  nearbyPolice.normalMaxSpeed = nearbyPolice.maxSpeed;
+  farPolice.normalMaxSpeed = farPolice.maxSpeed;
+  busyPolice.normalMaxSpeed = busyPolice.maxSpeed;
+  traffic.vehicles = [offender, nearbyPolice, farPolice, busyPolice];
+  traffic.hitAndRunPursuitConfig = { ...DEFAULT_HIT_AND_RUN_PURSUIT };
+  const alerts = [];
+  traffic.app = { uiManager: { addAlert(message, level) { alerts.push({ message, level }); } } };
+
+  assert.equal(traffic.handleNpcPedestrianHit(offender, pedestrian), true);
+  assert.ok(offender.maxSpeed > offender.normalMaxSpeed);
+  assert.equal(offender.targetSpeed, offender.maxSpeed);
+  assert.equal(nearbyPolice.pursuitTarget, offender);
+  assert.equal(nearbyPolice.sirenActive, true);
+  assert.equal(farPolice.pursuitTarget, undefined);
+  assert.equal(busyPolice.pursuitTarget, undefined);
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].level, 'danger');
+  assert.match(alerts[0].message, /1 nearby police unit pursuing/);
+});
+
+test('hit-and-run police tracks the moving offender and pursuit cleanup restores traffic state', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const offender = new Vehicle('SEDAN', 0xcc3300, 'Moving Offender');
+  const police = new Vehicle('POLICE', 0xffffff, 'Pursuit Unit');
+  offender.normalMaxSpeed = offender.maxSpeed;
+  police.normalMaxSpeed = police.maxSpeed;
+  offender.mesh.position.set(0, 0, 20);
+  police.mesh.position.set(0, 0, 0);
+  traffic.vehicles = [offender, police];
+  traffic.hitAndRunPursuitConfig = {
+    ...DEFAULT_HIT_AND_RUN_PURSUIT,
+    pursuitDuration: 0.2
+  };
+  traffic.app = {
+    pedestrianSystem: { getTerrainHeight() { return 0; } },
+    uiManager: { addAlert() {} }
+  };
+
+  assert.equal(traffic.handleNpcPedestrianHit(offender, null), true);
+  offender.mesh.position.set(0, 0, 24);
+  traffic.updateHitAndRunPursuits(0.1);
+  assert.deepEqual(police.emergencyTarget.toArray(), [0, 0, 24]);
+  assert.equal(traffic.updatePoliceEmergencyResponse(police, 0.1), true);
+  assert.ok(police.mesh.position.z > 0);
+  assert.equal(police.sirenActive, true);
+
+  traffic.updateHitAndRunPursuits(0.2);
+  assert.equal(offender.hitAndRunState, null);
+  assert.equal(offender.maxSpeed, offender.normalMaxSpeed);
+  assert.equal(police.pursuitTarget, null);
+  assert.equal(police.emergencyTarget, null);
+  assert.equal(police.sirenActive, false);
+});
+
+test('hit-and-run pursuit chooses the road-graph branch closest to the fleeing vehicle', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const police = new Vehicle('POLICE', 0xffffff, 'Routing Unit');
+  const west = { pos: new THREE.Vector3(-20, 0, 10), nextNodes: [] };
+  const north = { pos: new THREE.Vector3(0, 0, 20), nextNodes: [] };
+  const junction = {
+    pos: new THREE.Vector3(0, 0, 0),
+    nextNodes: [west, north]
+  };
+  police.mesh.position.set(0, 0, 0);
+  police.targetNode = junction;
+
+  const navigationTarget = traffic.getPursuitNavigationTarget(
+    police,
+    new THREE.Vector3(0, 0, 40)
+  );
+  assert.equal(police.currentNode, junction);
+  assert.equal(police.targetNode, north);
+  assert.equal(navigationTarget, north.pos);
+});
+
+test('driver disposition policy assigns approximately twenty percent as impatient', () => {
+  const pedestrian = {};
+  const sampleSize = 1000;
+  let impatient = 0;
+  for (let index = 0; index < sampleSize; index += 1) {
+    const state = createPedestrianTrafficState(
+      pedestrian,
+      () => (index + 0.5) / sampleSize,
+      { impatienceProbability: 0.2 }
+    );
+    if (state.impatient) impatient += 1;
+  }
+  assert.equal(impatient, 200);
+
+  const sanitized = createPedestrianTrafficState(
+    pedestrian,
+    () => { throw new Error('bad random source'); },
+    { impatienceProbability: Number.NaN }
+  );
+  assert.equal(sanitized.impatient, false);
 });
 
 test('editor road segments join and leave the live traffic graph safely', () => {

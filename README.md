@@ -47,16 +47,21 @@
   - City Yellow **Taxis**
   - **Police Cruisers** with dynamic flashing red & blue siren light bars!
   - **Ambulances**, **Ice Cream Vans**, **Dump Trucks**, and **Motorbikes**
-- **Vehicle Safety & Recovery**: Oriented vehicle separation prevents traffic and player vehicles from clipping through one another. User-driven vehicles recover to a verified safe road pose if they become immobilized or leave the supported terrain.
-- **Pedestrian-aware Traffic**: Most AI drivers yield and periodically honk when a pedestrian blocks their lane. After a short patience window, drivers proceed with intentionally varied behavior instead of deadlocking traffic.
+- **Vehicle Safety & Recovery**: Oriented vehicle separation prevents traffic and player vehicles from clipping through one another. Turn-aware speed control, overshoot-safe waypoint advancement, obstacle sensing, and lane-corridor enforcement keep AI traffic on the road. User-driven vehicles recover to a verified safe road pose if they become immobilized or leave the supported terrain.
+- **Pedestrian-aware Traffic**: Speed-aware look-ahead and braking let roughly 80% of AI drivers stop with clearance and remain stopped until a pedestrian clears their lane. The other 20% become impatient after a short delay, honk once, and proceed despite the obstruction.
+- **NPC Hit-and-Run Pursuits**: When an AI driver strikes a pedestrian, the vehicle accelerates away while nearby available police activate their lights and sirens, select road-aware pursuit routes, and chase the moving offender before returning to regular patrol.
 - **Impact Response**: Vehicle impacts throw pedestrians backward with speed-based knockback, vertical lift, spin, terrain-aware landing, and a timed recovery state.
 - **Vehicle Fire & Chain Reactions**: Bat-damaged vehicles can ignite and explode. Nearby vehicles catch fire within the configured blast radius, explode after a delay, and remain as temporary wrecks before being culled and replaced so the moving traffic floor is preserved.
 - **Realistic Physics & Animation**: Rotating wheel cylinders matched to driving speed and realistic deceleration.
 
 ### 🚶 Expressive Pedestrian Crowd Simulation
-- **60 Low-Poly Humanoids**: Stylized characters with articulated heads, torsos, arms, and legs actively exploring both city districts and crossing the suspension bridge.
-- **Pedestrian Classes**: Business professionals carrying briefcases, casual citizens in colorful hoodies, and joggers moving at higher speeds around Central Park.
+- **60 Varied Low-Poly Citizens**: Profile-driven skin tones, hairstyles, hats, clothing palettes, proportions, and accessories create a visibly broader population without duplicating model logic.
+- **Pedestrian Archetypes**: Residents, professionals with briefcases, dedicated joggers, camera-carrying tourists, café readers, and suspicious troublemakers expose distinct activities and moods in the inspector.
+- **Ambient City Life**: Joggers run sidewalk loops, tourists alternate between exploring and photographing landmarks, and seated patrons read books at furnished sidewalk cafés.
+- **Bounded NPC Conflict**: Criminal NPCs periodically select an unclaimed nearby target, confront and punch NPCs or the user-controlled pedestrian, then disengage under strict range, duration, reservation, and cooldown rules.
 - **Smart Walking AI**: Natural limb-swinging animation while walking along sidewalk loops and crosswalks.
+- **Collision-safe Direct Control**: Controlled pedestrians use swept, sliding collision against active building, wall, lamp, and scenery physics bodies, including moved and rotated user-built structures.
+- **Street-object Collision**: Parked vehicles, café tables, and café chairs participate in the shared collision registry, blocking pedestrians and player vehicles while also informing AI traffic avoidance.
 
 ### 🏢 Architecture & Custom Business Storefronts
 - **Sleek Skyscrapers**: Glass towers with architectural bevels and procedural window grid room lights.
@@ -76,7 +81,7 @@
 - **Nighttime Soundscape**: Deep ambient drone and nocturnal crickets (pulsed high-frequency triangle modulation).
 - **Interactive SFX**: Sawtooth car honking, Doppler-effect police siren wail, tornado sirens, crowd panic, and UI sound feedback.
 
-Traffic horns are also used contextually: impatient AI drivers honk at obstructing pedestrians, while collisions and emergency responses produce separate bump, siren, and warning cues.
+Traffic horns are also used contextually: a small subset of impatient AI drivers honk once at obstructing pedestrians, while collisions and emergency responses produce separate bump, siren, and warning cues.
 
 ### 👁️ Interactive Object Inspector & Follow Camera
 - **Click-to-Inspect**: Click directly onto any moving car, pedestrian, or building to open a sleek HUD data card displaying live statistics (speed, battery level, employee count, business status).

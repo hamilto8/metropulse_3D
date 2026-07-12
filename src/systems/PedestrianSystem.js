@@ -1,6 +1,22 @@
 import * as THREE from 'three';
 import { Pedestrian } from '../entities/Pedestrian.js';
+import { createPedestrianDescriptor } from '../entities/PedestrianArchetypes.js';
 import { setTextSegments } from '../ui/dom.js';
+import { createCafeSeating } from '../world/CafeSeating.js';
+import {
+  startPedestrianKnockdown,
+  resetPedestrianKnockdown,
+  updatePedestrianKnockdown
+} from './PedestrianImpact.js';
+import { movePedestrianWithCollisions } from './PedestrianCollision.js';
+import {
+  advanceTouristBehavior,
+  beginAggression,
+  createNpcBehaviorState,
+  finishAggression,
+  NPC_BEHAVIOR,
+  selectAggressionTarget
+} from './NpcBehavior.js';
 
 /** Shared forward-axis vector — avoids per-frame allocation in 60-pedestrian movement loop */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -27,8 +43,11 @@ export class PedestrianSystem {
     this.targetPedestrianCount = 60;
     this.nextPedestrianSerial = 0;
     this.populationCheckTimer = 2.0;
+    this.random = Math.random;
+    this.nextCafeSeatIndex = 0;
     
     this.initWaypoints();
+    this.cafeSeats = createCafeSeating(this.app.sceneManager?.scene, this.app.physicsWorld);
     this.spawnPedestrians(this.targetPedestrianCount);
     this.baseballBats = [];
     this.isWanted = false;
@@ -142,9 +161,16 @@ export class PedestrianSystem {
     }
   }
 
+  randomValue() {
+    try {
+      const value = Number(this.random?.());
+      return Number.isFinite(value) ? Math.max(0, Math.min(0.999999, value)) : 0.5;
+    } catch {
+      return 0.5;
+    }
+  }
+
   spawnPedestrians(count) {
-    const types = ['BUSINESS', 'CASUAL', 'JOGGER', 'CASUAL', 'BUSINESS', 'CASUAL'];
-    const colors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed, 0x0891b2, 0xe11d48, 0x475569];
     const firstNames = ['Alex', 'Jordan', 'Elena', 'Marcus', 'Sophia', 'Liam', 'Chloe', 'David', 'Maya', 'Lucas', 'Zoe', 'Daniel'];
     const lastNames = ['V.', 'K.', 'M.', 'S.', 'R.', 'T.', 'L.', 'H.', 'W.', 'P.', 'B.', 'N.'];
 
@@ -152,30 +178,40 @@ export class PedestrianSystem {
 
     for (let i = 0; i < count; i++) {
       const serial = this.nextPedestrianSerial++;
-      const pType = types[serial % types.length];
-      const color = colors[serial % colors.length];
-      const fname = firstNames[Math.floor(Math.random() * firstNames.length)];
-      const lname = lastNames[Math.floor(Math.random() * lastNames.length)];
+      const descriptor = createPedestrianDescriptor(serial, this.random);
+      const fname = firstNames[Math.floor(this.randomValue() * firstNames.length)];
+      const lname = lastNames[Math.floor(this.randomValue() * lastNames.length)];
       const name = `${fname} ${lname}`;
 
-      const ped = new Pedestrian(pType, color, name);
+      const behaviorState = createNpcBehaviorState(descriptor.archetype, this.random);
+      const ped = new Pedestrian(descriptor.archetype, descriptor.color, name, {
+        ...descriptor,
+        behaviorState
+      });
 
       // Pick starting node
-      let startNode = allNodes[serial % allNodes.length];
-      for (let offset = 0; offset < allNodes.length; offset++) {
-        const candidate = allNodes[(serial + offset) % allNodes.length];
-        const occupied = this.pedestrians.some(existing => existing.mesh.position.distanceTo(candidate.pos) < 1.2);
-        if (!occupied) {
-          startNode = candidate;
-          break;
+      if (descriptor.archetype === 'CAFE_READER' && this.cafeSeats.length > 0) {
+        const seat = this.cafeSeats[this.nextCafeSeatIndex++ % this.cafeSeats.length];
+        ped.cafeSeat = seat;
+        ped.mesh.position.set(seat.x, seat.y, seat.z);
+        ped.mesh.rotation.y = seat.rotation;
+        ped.currentNode = null;
+        ped.targetNode = null;
+      } else {
+        let startNode = allNodes[serial % allNodes.length];
+        for (let offset = 0; offset < allNodes.length; offset++) {
+          const candidate = allNodes[(serial + offset) % allNodes.length];
+          const occupied = this.pedestrians.some(existing => existing.mesh.position.distanceTo(candidate.pos) < 1.2);
+          if (!occupied) {
+            startNode = candidate;
+            break;
+          }
         }
-      }
-      ped.mesh.position.copy(startNode.pos);
-      ped.currentNode = startNode;
-      ped.targetNode = startNode.nextNodes[Math.floor(Math.random() * startNode.nextNodes.length)];
+        ped.mesh.position.copy(startNode.pos);
+        ped.currentNode = startNode;
+        ped.targetNode = startNode.nextNodes[Math.floor(this.randomValue() * startNode.nextNodes.length)];
 
-      if (ped.targetNode) {
-        ped.mesh.lookAt(ped.targetNode.pos);
+        if (ped.targetNode) ped.mesh.lookAt(ped.targetNode.pos);
       }
 
       this.app.sceneManager.scene.add(ped.mesh);
@@ -187,33 +223,10 @@ export class PedestrianSystem {
   }
 
   knockDownPedestrian(p, knockDir, impactSpeed = 8) {
-    if (!p || p.knockedDown) return;
-    p.knockedDown = true;
-    p.knockdownTimer = 4.0; // Recover after a few seconds on the ground.
-    p.speed = 0;
-    p.targetSpeed = 0;
-
-    const direction = knockDir?.clone?.() || new THREE.Vector3(0, 0, 1);
-    direction.y = 0;
-    if (direction.lengthSq() < 1e-6) direction.set(0, 0, 1);
-    direction.normalize();
-    const throwStrength = THREE.MathUtils.clamp(Math.abs(Number(impactSpeed)) * 0.22, 3.5, 8.5);
-    p.mesh.position.addScaledVector(direction, 0.25);
-    p.knockbackVelocity = direction.multiplyScalar(throwStrength);
-    p.knockbackVelocity.y = THREE.MathUtils.clamp(2.5 + Math.abs(Number(impactSpeed)) * 0.12, 2.5, 5.5);
-    p.knockbackSpin = (Math.random() - 0.5) * 9;
-
-    // Fall on their butts onto the ground
-    p.mesh.rotation.x = -1.4; // Tilted back sitting on butt
-    p.mesh.rotation.z = (Math.random() - 0.5) * 0.4;
-    if (p.legL && p.legR) {
-      p.legL.rotation.x = -1.2; // Legs sticking forward
-      p.legR.rotation.x = -1.2;
+    if (p?.archetype === 'CRIMINAL' && p.behaviorState?.target) {
+      finishAggression(p, p.behaviorState, this.random);
     }
-    if (p.armL && p.armR) {
-      p.armL.rotation.x = -0.8; // Arms thrown back/up
-      p.armR.rotation.x = -0.8;
-    }
+    if (!startPedestrianKnockdown(p, knockDir, impactSpeed)) return false;
 
     if (!p.normalActivity) p.normalActivity = p.info['Activity'];
     p.info['Activity'] = '💥 Knocked Down by Car!';
@@ -222,6 +235,153 @@ export class PedestrianSystem {
     if (this.app && this.app.audioSystem) {
       this.app.audioSystem.playBump();
     }
+    return true;
+  }
+
+  moveControlledPedestrian(pedestrian, distance) {
+    if (!pedestrian?.mesh || !Number.isFinite(distance)) return false;
+    const displacement = new THREE.Vector3(0, 0, distance).applyQuaternion(pedestrian.mesh.quaternion);
+    displacement.y = 0;
+    const movement = movePedestrianWithCollisions(
+      pedestrian.mesh.position,
+      displacement,
+      this.app?.physicsWorld
+    );
+    pedestrian.mesh.position.x = movement.position.x;
+    pedestrian.mesh.position.z = movement.position.z;
+    return movement.collided;
+  }
+
+  updateNpcSpecialBehavior(pedestrian, delta, isRaining, index) {
+    const state = pedestrian?.behaviorState;
+    if (!state) return false;
+    const safeDelta = Number.isFinite(delta) ? Math.max(0, Math.min(delta, 0.1)) : 0;
+
+    if (pedestrian.archetype === 'CAFE_READER') {
+      pedestrian.speed = 0;
+      pedestrian.targetSpeed = 0;
+      state.mode = 'SITTING_READING';
+      pedestrian.info.Activity = '📖 Reading at Sidewalk Café';
+      pedestrian.info.Mood = 'Quietly Absorbed';
+      if (pedestrian.cafeSeat) {
+        pedestrian.mesh.position.set(
+          pedestrian.cafeSeat.x,
+          pedestrian.cafeSeat.y,
+          pedestrian.cafeSeat.z
+        );
+        pedestrian.mesh.rotation.y = pedestrian.cafeSeat.rotation;
+      }
+      if (this.app.performanceSystem?.shouldAnimate(pedestrian, index) ?? true) {
+        pedestrian.update(safeDelta, isRaining);
+      }
+      return true;
+    }
+
+    if (pedestrian.archetype === 'TOURIST') {
+      const mode = advanceTouristBehavior(state, safeDelta, this.random);
+      if (mode === 'TAKING_PHOTO') {
+        pedestrian.targetSpeed = 0;
+        pedestrian.speed = Math.max(0, pedestrian.speed - 12 * safeDelta);
+        pedestrian.info.Activity = '📸 Photographing the Skyline';
+        pedestrian.info.Mood = 'Delighted';
+        if (this.app.performanceSystem?.shouldAnimate(pedestrian, index) ?? true) {
+          pedestrian.update(safeDelta, isRaining);
+        }
+        return true;
+      }
+      pedestrian.info.Activity = '🗺️ Exploring Landmarks';
+      pedestrian.info.Mood = 'Curious';
+      return false;
+    }
+
+    if (pedestrian.archetype !== 'CRIMINAL') return false;
+    return this.updateCriminalBehavior(pedestrian, state, safeDelta, isRaining, index);
+  }
+
+  updateCriminalBehavior(criminal, state, delta, isRaining, index) {
+    if (state.mode === 'LOITERING') {
+      state.timer = Math.max(0, (Number.isFinite(state.timer) ? state.timer : 0) - delta);
+      criminal.info.Activity = '👀 Loitering Suspiciously';
+      criminal.info.Mood = 'Hostile';
+      if (state.timer <= 0) {
+        const target = selectAggressionTarget(
+          criminal,
+          this.pedestrians,
+          this.controlledPedestrian,
+          NPC_BEHAVIOR
+        );
+        if (target && beginAggression(criminal, state, target)) {
+          criminal.info.Activity = `🥊 Picking a Fight with ${target.name || 'Citizen'}`;
+          target.info && (target.info.Mood = 'Alarmed');
+          if (target === this.controlledPedestrian) {
+            this.app.uiManager?.addAlert?.(`⚠️ ${criminal.name} is coming after you!`, 'warn');
+          }
+        } else {
+          state.timer = 3;
+        }
+      }
+      return false;
+    }
+
+    if (state.mode !== 'CHASING') return false;
+    const target = state.target;
+    state.chaseElapsed += delta;
+    state.attackCooldown = Math.max(0, state.attackCooldown - delta);
+    const distance = target?.mesh?.position
+      ? criminal.mesh.position.distanceTo(target.mesh.position)
+      : Infinity;
+    if (
+      !target?.mesh
+      || !this.pedestrians.includes(target)
+      || target.knockedDown
+      || target.isHijacking
+      || distance > NPC_BEHAVIOR.aggressionRadius * 1.75
+      || state.chaseElapsed >= NPC_BEHAVIOR.chaseDuration
+    ) {
+      finishAggression(criminal, state, this.random);
+      criminal.info.Activity = '👀 Loitering Suspiciously';
+      return false;
+    }
+
+    criminal.info.Activity = `🥊 Confronting ${target.name || 'Citizen'}`;
+    criminal.info.Mood = 'Aggressive';
+    const direction = target.mesh.position.clone().sub(criminal.mesh.position);
+    direction.y = 0;
+    if (direction.lengthSq() > 1e-6) {
+      direction.normalize();
+      criminal.mesh.rotation.y = Math.atan2(direction.x, direction.z);
+    }
+
+    if (distance <= NPC_BEHAVIOR.attackRange && state.attackCooldown <= 0) {
+      state.attackCooldown = NPC_BEHAVIOR.attackCooldown;
+      criminal.attackTimer = 0.35;
+      const landed = this.knockDownPedestrian(target, direction, 7);
+      if (landed && target === this.controlledPedestrian) {
+        this.app.uiManager?.addAlert?.(`💥 ${criminal.name} knocked you down!`, 'danger');
+      }
+      finishAggression(criminal, state, this.random);
+      criminal.info.Activity = '🚶 Leaving the Scene';
+      criminal.info.Mood = 'Defiant';
+      criminal.update(delta, isRaining);
+      return true;
+    }
+
+    criminal.targetSpeed = criminal.normalMaxSpeed * 1.35;
+    criminal.speed = Math.min(criminal.targetSpeed, criminal.speed + 12 * delta);
+    const displacement = new THREE.Vector3(0, 0, criminal.speed * delta).applyQuaternion(criminal.mesh.quaternion);
+    displacement.y = 0;
+    const movement = movePedestrianWithCollisions(
+      criminal.mesh.position,
+      displacement,
+      this.app.physicsWorld
+    );
+    criminal.mesh.position.x = movement.position.x;
+    criminal.mesh.position.z = movement.position.z;
+    criminal.mesh.position.y = this.getTerrainHeight(criminal.mesh.position.x, criminal.mesh.position.z);
+    if (this.app.performanceSystem?.shouldAnimate(criminal, index) ?? true) {
+      criminal.update(delta, isRaining);
+    }
+    return true;
   }
 
   reportCrime(position, reason = 'Criminal activity reported', showAlert = true) {
@@ -265,7 +425,7 @@ export class PedestrianSystem {
   clearPoliceResponse() {
     if (!this.app.trafficSystem || !this.app.trafficSystem.vehicles) return;
     for (const vehicle of this.app.trafficSystem.vehicles) {
-      if (!vehicle.isPolice || vehicle.userControlled) continue;
+      if (!vehicle.isPolice || vehicle.userControlled || vehicle.pursuitTarget) continue;
       vehicle.emergencyTarget = null;
       vehicle.maxSpeed = vehicle.normalMaxSpeed || 20;
       vehicle.targetSpeed = vehicle.maxSpeed;
@@ -340,7 +500,13 @@ export class PedestrianSystem {
       
       // Update police targets to track the player
       if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-        const policeVehicles = this.app.trafficSystem.vehicles.filter(v => v.isPolice && !v.crashed && v !== controlledVehicle && !v.userControlled);
+        const policeVehicles = this.app.trafficSystem.vehicles.filter(v => (
+          v.isPolice
+          && !v.crashed
+          && v !== controlledVehicle
+          && !v.userControlled
+          && !v.pursuitTarget
+        ));
         let minPoliceDist = Infinity;
 
         for (const pv of policeVehicles) {
@@ -422,37 +588,16 @@ export class PedestrianSystem {
 
       // 0. Check knockdown recovery
       if (p.knockedDown) {
-        p.knockdownTimer -= delta;
-        if (p.knockbackVelocity) {
-          p.knockbackVelocity.y -= 18 * delta;
-          p.mesh.position.addScaledVector(p.knockbackVelocity, delta);
-          p.knockbackVelocity.x *= Math.max(0, 1 - delta * 3.5);
-          p.knockbackVelocity.z *= Math.max(0, 1 - delta * 3.5);
-          p.mesh.rotation.y += (p.knockbackSpin || 0) * delta;
-          const ground = this.getTerrainHeight(p.mesh.position.x, p.mesh.position.z);
-          if (p.mesh.position.y <= ground) {
-            p.mesh.position.y = ground;
-            p.knockbackVelocity.y = 0;
-          }
-        }
-        if (p.knockdownTimer <= 0) {
-          p.knockedDown = false;
-          p.mesh.rotation.x = 0;
-          p.mesh.rotation.z = 0;
-          if (p.legL && p.legR) {
-            p.legL.rotation.x = 0;
-            p.legR.rotation.x = 0;
-          }
-          if (p.armL && p.armR) {
-            p.armL.rotation.x = 0;
-            p.armR.rotation.x = 0;
-          }
-          p.knockbackVelocity = null;
-          p.knockbackSpin = 0;
+        const remainsDown = updatePedestrianKnockdown(
+          p,
+          delta,
+          (x, z) => this.getTerrainHeight(x, z)
+        );
+        if (!remainsDown) {
           if (p.normalActivity) p.info['Activity'] = p.normalActivity;
           p.info['Mood'] = 'Recovered & Walking';
         } else {
-          continue; // Stay knocked down sitting on butt on the ground!
+          continue;
         }
       }
 
@@ -467,9 +612,13 @@ export class PedestrianSystem {
           if (dist < hitDist && v.speed > 2.0) {
             // HIT BY A CAR!
             const pushDir = pos.clone().sub(v.mesh.position).normalize();
-            this.knockDownPedestrian(p, pushDir, v.speed);
-            if (v.userControlled) {
-              this.reportCrime(v.mesh.position, 'Hit-and-run reported');
+            const wasKnockedDown = this.knockDownPedestrian(p, pushDir, v.speed);
+            if (wasKnockedDown) {
+              if (v.userControlled) {
+                this.reportCrime(v.mesh.position, 'Hit-and-run reported');
+              } else {
+                this.app.trafficSystem.handleNpcPedestrianHit?.(v, p);
+              }
             }
             break;
           } else if (dist < 4.5 && v.speed > 1.0) {
@@ -535,11 +684,10 @@ export class PedestrianSystem {
           p.speed = Math.max(p.targetSpeed, p.speed - 16 * delta);
         }
 
-        // Translate pedestrian
-        if (Math.abs(p.speed) > 0.05) {
-          const moveStep = p.speed * delta;
-          p.mesh.translateOnAxis(FORWARD_AXIS, moveStep);
-        }
+        // Swept circle movement prevents keyboard and controller traversal
+        // from tunneling through active static building/scenery colliders.
+        const moveStep = Math.abs(p.speed) > 0.05 ? p.speed * delta : 0;
+        this.moveControlledPedestrian(p, moveStep);
 
         // Jump physics update
         const terrainHeight = this.getTerrainHeight(pos.x, pos.z);
@@ -559,6 +707,8 @@ export class PedestrianSystem {
         p.update(delta, isRaining);
         continue;
       }
+
+      if (this.updateNpcSpecialBehavior(p, delta, isRaining, i)) continue;
 
       if (isBlocked) {
         p.targetSpeed = 0;
@@ -585,7 +735,7 @@ export class PedestrianSystem {
           if (candidates.length === 0) candidates = p.currentNode.nextNodes;
           
           if (candidates.length > 0) {
-            p.targetNode = candidates[Math.floor(Math.random() * candidates.length)];
+            p.targetNode = candidates[Math.floor(this.randomValue() * candidates.length)];
           }
         }
 
@@ -981,6 +1131,10 @@ export class PedestrianSystem {
       if (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
         this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
       }
+      if (pedestrian.archetype === 'CRIMINAL' && pedestrian.behaviorState?.target) {
+        finishAggression(pedestrian, pedestrian.behaviorState, this.random);
+      }
+      if (pedestrian.behaviorState) pedestrian.behaviorState.mode = 'WALKING';
       
       pedestrian.userControlled = true;
       this.controlledPedestrian = pedestrian;
@@ -996,6 +1150,8 @@ export class PedestrianSystem {
 
   cullPedestrian(p) {
     if (!p) return;
+    if (p.behaviorState?.target) finishAggression(p, p.behaviorState, this.random);
+    if (p.attackedBy?.behaviorState) finishAggression(p.attackedBy, p.attackedBy.behaviorState, this.random);
     const wasControlled = this.controlledPedestrian === p || p.userControlled;
     if (wasControlled) this.releaseControl(p);
 
@@ -1028,7 +1184,7 @@ export class PedestrianSystem {
       p.targetNode = closestNode.nextNodes[0] || closestNode;
       p.mesh.lookAt(p.targetNode.pos);
     }
-    p.knockedDown = false;
+    resetPedestrianKnockdown(p);
     p.isJumping = false;
     p.jumpVelocity = 0;
     p.speed = 0;
@@ -1049,8 +1205,15 @@ export class PedestrianSystem {
       this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'pedestrian-release' });
     }
     
-    pedestrian.info['Mood'] = 'Energized';
-    pedestrian.info['Activity'] = pedestrian.pType === 'JOGGER' ? 'Evening Run' : (pedestrian.pType === 'BUSINESS' ? 'Commuting to Office' : 'Strolling Downtown');
+    pedestrian.info['Mood'] = pedestrian.defaultMood || 'Energized';
+    pedestrian.info['Activity'] = pedestrian.defaultActivity || 'Strolling Downtown';
+    if (pedestrian.behaviorState) {
+      if (pedestrian.archetype === 'CAFE_READER') pedestrian.behaviorState.mode = 'SITTING_READING';
+      else if (pedestrian.archetype === 'JOGGER') pedestrian.behaviorState.mode = 'JOGGING';
+      else if (pedestrian.archetype === 'CRIMINAL') {
+        finishAggression(pedestrian, pedestrian.behaviorState, this.random);
+      } else pedestrian.behaviorState.mode = 'WALKING';
+    }
     
     const prompt = document.getElementById('vehicle-enter-prompt');
     if (prompt) prompt.classList.add('hidden');

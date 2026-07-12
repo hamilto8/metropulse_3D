@@ -43,6 +43,7 @@ export class PhysicsWorld {
     this.world.addContactMaterial(this.wheelObstacleContact);
 
     this.staticBodies = [];
+    this.kinematicBodies = [];
     this.playerVehicles = new Set();
     this.weatherMode = 'clear';
     this.weatherGripMultiplier = 1.0;
@@ -222,7 +223,19 @@ export class PhysicsWorld {
     boxBody.collisionFilterMask = PHYSICS_GROUPS.STATIC_OBSTACLE;
     this.setBodyTransform(boxBody, position);
     this.world.addBody(boxBody);
+    this.kinematicBodies.push(boxBody);
     return boxBody;
+  }
+
+  removeKinematicCollider(body) {
+    if (!body) return;
+    if (this.world.bodies.includes(body)) this.world.removeBody(body);
+  }
+
+  restoreKinematicCollider(body) {
+    if (!body) return;
+    if (!this.world.bodies.includes(body)) this.world.addBody(body);
+    if (!this.kinematicBodies.includes(body)) this.kinematicBodies.push(body);
   }
 
   step(delta) {
