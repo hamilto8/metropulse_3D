@@ -40,12 +40,17 @@
 - **Automatic Night Illumination**: As dusk sets in (`18:00`), skyscraper window grids illuminate, bridge beacon towers pulse, streetlamps project warm cones of light onto the asphalt, neon storefronts intensify their bloom glow, and car headlights/taillights switch on!
 
 ### 🚗 Autonomous Traffic & Vehicle AI
-- **48 AI Vehicles**: Navigating an expanded multi-lane city and bridge road graph with waypoint steering, turning at intersections, and collision avoidance braking.
+- **48 Moving AI Vehicles**: Navigating an expanded multi-lane city, bridge, suburban, and countryside road graph with waypoint steering, turning at intersections, collision avoidance braking, stuck recovery, and automatic population replacement.
 - **11 Distinct Vehicle Types**, including:
   - Sleek **Sedans** & aerodynamic **Sports Cars**
   - City Transit **Buses** & Delivery **Trucks**
   - City Yellow **Taxis**
   - **Police Cruisers** with dynamic flashing red & blue siren light bars!
+  - **Ambulances**, **Ice Cream Vans**, **Dump Trucks**, and **Motorbikes**
+- **Vehicle Safety & Recovery**: Oriented vehicle separation prevents traffic and player vehicles from clipping through one another. User-driven vehicles recover to a verified safe road pose if they become immobilized or leave the supported terrain.
+- **Pedestrian-aware Traffic**: Most AI drivers yield and periodically honk when a pedestrian blocks their lane. After a short patience window, drivers proceed with intentionally varied behavior instead of deadlocking traffic.
+- **Impact Response**: Vehicle impacts throw pedestrians backward with speed-based knockback, vertical lift, spin, terrain-aware landing, and a timed recovery state.
+- **Vehicle Fire & Chain Reactions**: Bat-damaged vehicles can ignite and explode. Nearby vehicles catch fire within the configured blast radius, explode after a delay, and remain as temporary wrecks before being culled and replaced so the moving traffic floor is preserved.
 - **Realistic Physics & Animation**: Rotating wheel cylinders matched to driving speed and realistic deceleration.
 
 ### 🚶 Expressive Pedestrian Crowd Simulation
@@ -70,6 +75,8 @@
 - **Daytime Soundscape**: Soft city rumble (low-pass filtered brown noise) and intermittent sine wave arpeggio bird chirps.
 - **Nighttime Soundscape**: Deep ambient drone and nocturnal crickets (pulsed high-frequency triangle modulation).
 - **Interactive SFX**: Sawtooth car honking, Doppler-effect police siren wail, tornado sirens, crowd panic, and UI sound feedback.
+
+Traffic horns are also used contextually: impatient AI drivers honk at obstructing pedestrians, while collisions and emergency responses produce separate bump, siren, and warning cues.
 
 ### 👁️ Interactive Object Inspector & Follow Camera
 - **Click-to-Inspect**: Click directly onto any moving car, pedestrian, or building to open a sleek HUD data card displaying live statistics (speed, battery level, employee count, business status).
@@ -115,6 +122,14 @@ npm run build
 ```
 The compiled bundles will be output to the `/dist` directory, ready for deployment to GitHub Pages, Vercel, Netlify, or any static hosting service.
 
+To publish the current production build to the repository’s static GitHub Pages branch:
+
+```bash
+npm run deploy
+```
+
+This runs the production build first and publishes `/dist` to `gh-pages` using the repository base path `/metropulse_3D/`.
+
 ---
 
 ## 🛠️ Technology Stack
@@ -149,7 +164,7 @@ npm test
 npm run build
 ```
 
-The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, editor-road graph integration, adaptive control bindings, input-context priority, controller edge handling, and stick-drift rejection.
+The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, editor-road graph integration, vehicle separation and recovery, vehicle fire-chain cleanup, pedestrian yielding and honking, pedestrian knockback, adaptive control bindings, input-context priority, controller edge handling, and stick-drift rejection.
 
 The interface includes keyboard-visible focus treatment, spatial D-Pad focus navigation, semantic editor controls, modal focus containment, reduced-motion support, a compact no-overflow mobile editor layout, and a recoverable collapsed City Tools rail. Management, building, driving, walking, missions, and dialogue support live keyboard/mouse ↔ Xbox switching.
 
