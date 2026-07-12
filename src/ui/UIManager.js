@@ -93,9 +93,23 @@ export class UIManager {
     this.speedometerValue = document.getElementById('speedometer-value');
     this.speedometerGear = document.getElementById('speedometer-gear');
     this.streetControlHint = document.getElementById('street-control-hint');
+    this.adaptiveContextIcon = document.getElementById('adaptive-context-icon');
+    this.adaptiveContextLabel = document.getElementById('adaptive-context-label');
+    this.adaptiveControlActions = document.getElementById('adaptive-control-actions');
     this.modeLabel = document.getElementById('current-mode-label');
 
     this.initEventListeners();
+    if (window.matchMedia?.('(max-width: 780px)').matches) {
+      const sidebar = document.getElementById('left-sidebar');
+      const toggle = document.getElementById('btn-toggle-sidebar');
+      sidebar?.classList.add('collapsed');
+      if (toggle) {
+        toggle.textContent = '▶';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'Expand city tools sidebar');
+        toggle.title = 'Expand City Tools';
+      }
+    }
 
     if (this.app.gameManager?.subscribe) {
       this._unsubscribeGameState = this.app.gameManager.subscribe(event => this.syncGameState(event?.current || event), { emitCurrent: true });
@@ -104,6 +118,9 @@ export class UIManager {
       this._unsubscribeEconomy = this.app.economySystem.subscribe(event => this.updateEconomy(event?.current || event), { emitCurrent: true });
     }
     this.updateDynamicWeatherBtnState();
+    document.body.dataset.inputMethod = this.app.inputManager?.activeInterface?.toLowerCase?.() || 'keyboard';
+    this.updateControlDeviceBadge(this.app.inputManager?.activeInterface || 'KEYBOARD');
+    this.updateAdaptiveControls(true);
   }
 
   initEventListeners() {
@@ -245,17 +262,6 @@ export class UIManager {
       });
     }
 
-    window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      if ((e.key === 'f' || e.key === 'F') && !e.repeat) {
-        this.toggleCityEditor();
-      } else if ((e.key === 'm' || e.key === 'M') && !e.repeat) {
-        this.handleModeToggle();
-      } else if ((e.key === 'x' || e.key === 'X') && !e.repeat && this.btnFunMode) {
-        this.setMayhem(!this.app.funMode, 'keyboard');
-      }
-    });
-
     // Fun Mode toggle
     if (this.btnFunMode) {
       this.btnFunMode.addEventListener('click', () => {
@@ -343,6 +349,7 @@ export class UIManager {
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
+            this.hideInspector();
           } else {
             this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'vehicle-release' });
             this.app.sceneManager.stopFollowTarget();
@@ -360,6 +367,7 @@ export class UIManager {
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
+            this.hideInspector();
           } else {
             this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'pedestrian-release' });
             this.app.sceneManager.stopFollowTarget();
@@ -527,7 +535,9 @@ export class UIManager {
     if (btnToolbarNext) {
       btnToolbarNext.addEventListener('click', () => {
         if (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians.length > 0) {
-          const peds = this.app.pedestrianSystem.pedestrians;
+          const peds = this.app.pedestrianSystem.pedestrians.filter(pedestrian => (
+            !pedestrian.knockedDown && pedestrian.mesh?.parent
+          ));
           const randomPed = peds[Math.floor(Math.random() * peds.length)];
           if (randomPed) {
             this.showInspector(randomPed);
@@ -588,6 +598,18 @@ export class UIManager {
       this.modeLabel.textContent = mode === 'BUILDER' ? 'CITY BUILDER' : mode;
     }
     document.body.dataset.gameMode = mode.toLowerCase();
+    const managementOnly = [
+      document.getElementById('left-sidebar'),
+      document.getElementById('bottom-time-bar'),
+      document.querySelector('.bottom-right-toolbar')
+    ];
+    for (const element of managementOnly) {
+      if (!element) continue;
+      const unavailable = mode !== 'MANAGEMENT';
+      element.inert = unavailable;
+      element.setAttribute('aria-hidden', String(unavailable));
+    }
+    this.updateAdaptiveControls(true);
 
     const mayhem = state.mayhemEnabled ?? state.mayhem;
     if (typeof mayhem === 'boolean' && mayhem !== this.app.funMode) {
@@ -681,7 +703,7 @@ export class UIManager {
     const active = vehicle || pedestrian;
 
     this.speedometerHud?.classList.toggle('hidden', !vehicle);
-    this.streetControlHint?.classList.toggle('hidden', !active);
+    this.streetControlHint?.classList.remove('hidden');
 
     if (vehicle && this.speedometerValue) {
       const speed = Math.max(0, Math.round(Math.abs(
@@ -694,6 +716,73 @@ export class UIManager {
     if (this.statWeather && this.app.environment) {
       const labels = { clear: '☀️ CLEAR', mist: '🌫️ MIST', rain: '🌧️ RAIN', thunderstorm: '⛈️ STORM' };
       this.statWeather.textContent = labels[this.app.environment.weatherMode] || this.app.environment.weatherMode.toUpperCase();
+    }
+    this.updateAdaptiveControls();
+  }
+
+  activateSelectedEntity() {
+    if (!this.selectedEntity) {
+      this.showToast('Select a citizen, vehicle, building, or mission beacon first.');
+      return false;
+    }
+    if (this.selectedEntity.type === 'MISSION_PICKUP' && !this.btnInteractSfx?.classList.contains('hidden')) {
+      this.btnInteractSfx.click();
+      return true;
+    }
+    if ((this.selectedEntity.type === 'VEHICLE' || this.selectedEntity.type === 'PEDESTRIAN') && !this.btnTakeControl?.classList.contains('hidden')) {
+      this.btnTakeControl.click();
+      return true;
+    }
+    if (!this.btnInteractSfx?.classList.contains('hidden')) {
+      this.btnInteractSfx.click();
+      return true;
+    }
+    return false;
+  }
+
+  updateAdaptiveControls(force = false) {
+    const inputManager = this.app?.inputManager;
+    if (!inputManager || !this.adaptiveControlActions) return;
+    const context = inputManager.getControlContext?.() || 'MANAGEMENT';
+    const inputInterface = inputManager.activeInterface || 'KEYBOARD';
+    document.body.dataset.controlContext = context.toLowerCase();
+    const signature = `${context}:${inputInterface}`;
+    if (!force && signature === this._adaptiveControlsSignature) return;
+    this._adaptiveControlsSignature = signature;
+
+    const contextDetails = {
+      MANAGEMENT: ['◇', 'MANAGEMENT'],
+      BUILDER: ['▦', 'CITY BUILDER'],
+      VEHICLE: ['◉', 'DRIVING'],
+      PEDESTRIAN: ['◆', 'ON FOOT'],
+      DIALOGUE: ['●', 'DIALOGUE']
+    };
+    const [icon, label] = contextDetails[context] || contextDetails.MANAGEMENT;
+    if (this.adaptiveContextIcon) this.adaptiveContextIcon.textContent = icon;
+    if (this.adaptiveContextLabel) this.adaptiveContextLabel.textContent = label;
+
+    this.adaptiveControlActions.replaceChildren();
+    for (const binding of inputManager.getActiveBindings?.() || []) {
+      const item = document.createElement('span');
+      item.className = 'adaptive-control-item';
+      item.dataset.action = binding.action;
+
+      const tokenGroup = document.createElement('span');
+      tokenGroup.className = 'control-token-group';
+      const tokens = inputInterface === 'GAMEPAD' ? binding.gamepad : binding.keyboard;
+      for (const token of tokens) {
+        const tokenElement = document.createElement('span');
+        tokenElement.className = `control-token control-token-${token.kind}`;
+        if (token.tone) tokenElement.dataset.tone = token.tone;
+        tokenElement.textContent = token.label;
+        tokenGroup.appendChild(tokenElement);
+      }
+
+      const actionLabel = document.createElement('span');
+      actionLabel.className = 'control-action-label';
+      actionLabel.textContent = binding.label;
+      item.append(tokenGroup, actionLabel);
+      this.adaptiveControlActions.appendChild(item);
     }
   }
 
@@ -1143,13 +1232,22 @@ export class UIManager {
     if (newInterface === 'GAMEPAD') {
       this.inputDeviceBadge.classList.add('gamepad-active');
       this.inputDeviceIcon.textContent = '🎮';
-      this.inputDeviceLabel.textContent = 'XBOX CONTROLLER';
-      this.inputDeviceBadge.title = 'Active Control Scheme: Xbox Gamepad Connected (RT/LT Throttle, LS Steer, RS Orbit)';
+      this.inputDeviceLabel.textContent = 'XBOX';
+      this.inputDeviceBadge.title = 'Xbox controller active — move the mouse or press a key to switch instantly';
     } else {
       this.inputDeviceBadge.classList.remove('gamepad-active');
-      this.inputDeviceIcon.textContent = '⌨️+🖱️';
-      this.inputDeviceLabel.textContent = 'KEYBOARD';
-      this.inputDeviceBadge.title = 'Active Control Scheme: Keyboard & Mouse Active';
+      this.inputDeviceIcon.textContent = '⌨';
+      this.inputDeviceLabel.textContent = 'KEYBOARD + MOUSE';
+      this.inputDeviceBadge.title = 'Keyboard and mouse active — use the controller to switch instantly';
+    }
+    document.body.dataset.inputMethod = newInterface.toLowerCase();
+    this.updateAdaptiveControls(true);
+  }
+
+  updateGamepadConnection(connected, id = '') {
+    this.inputDeviceBadge?.classList.toggle('gamepad-connected', Boolean(connected));
+    if (connected) {
+      this.showToast(`🎮 Controller ready${id ? `: ${id.replace(/\s*\([^)]*\)\s*/g, '').trim()}` : ''}`);
     }
   }
 }

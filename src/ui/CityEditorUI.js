@@ -104,9 +104,14 @@ export class CityEditorUI {
           <span>Delete</span>
         </button>
       </div>
+
+      <div class="controller-builder-cursor" id="controller-builder-cursor" aria-hidden="true">
+        <span></span>
+      </div>
     `;
 
     document.body.appendChild(this.container);
+    this.controllerCursorEl = this.container.querySelector('#controller-builder-cursor');
     this.bindEvents();
     this.renderCatalog();
     this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
@@ -424,6 +429,13 @@ export class CityEditorUI {
       return this.hide();
     }
     return this.show();
+  }
+
+  updateControllerCursor(position = { x: 0, y: 0 }) {
+    const cursor = this.controllerCursorEl;
+    if (!cursor) return;
+    cursor.style.left = `${((position.x + 1) * 0.5) * window.innerWidth}px`;
+    cursor.style.top = `${((1 - position.y) * 0.5) * window.innerHeight}px`;
   }
 
   setGameMode(mode) {

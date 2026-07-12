@@ -262,7 +262,7 @@ export class MissionSystem {
       '🌟 ',
       { text: 'MISSION AVAILABLE!', className: 'prompt-accent prompt-strong' },
       ' Press ',
-      { text: '[E / Gamepad Y]', className: 'prompt-key' },
+      { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
       ` for details (${mission.passengerName})`
     ]);
     prompt.style.display = 'block';
@@ -777,7 +777,8 @@ export class MissionSystem {
       if (dist >= MISSION_COMPLETE_RADIUS || Math.abs(activeVehicle.speed || 0) > 1) {
         this.sabotageActive = false;
         this.sabotageProgress = 0;
-        this.app?.uiManager?.showToast?.('⚠️ Signal lost. Stop on target and press E to retry.');
+        const action = this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E';
+        this.app?.uiManager?.showToast?.(`⚠️ Signal lost. Stop on target and press ${action} to retry.`);
       } else {
         this.sabotageProgress += delta;
         const remaining = Math.max(0, this.activeMission.sabotageDuration - this.sabotageProgress);
@@ -799,7 +800,10 @@ export class MissionSystem {
         if (this.hudTitleEl) this.hudTitleEl.textContent = `${this.activeMission.title}: checkpoint ${this.routeIndex + 1}/${this.routePoints.length}`;
         this.app?.uiManager?.showToast?.(`🏁 Checkpoint ${this.routeIndex}/${this.routePoints.length - 1} cleared`);
       } else if (objective === 'SABOTAGE') {
-        if (this.hudDistEl) this.hudDistEl.textContent = 'STOP · PRESS E';
+        if (this.hudDistEl) {
+          const action = this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E';
+          this.hudDistEl.textContent = `STOP · PRESS ${action.toUpperCase()}`;
+        }
       } else {
         this.completeMission();
       }

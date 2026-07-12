@@ -128,29 +128,17 @@ The compiled bundles will be output to the `/dist` directory, ready for deployme
 
 ## 🎮 Controls & Usage Guide
 
-| Action | Control |
-| :--- | :--- |
-| **Orbit Camera** | Left Mouse Drag |
-| **Pan Camera** | Right Mouse Drag / Shift + Left Drag |
-| **Zoom In / Out** | Mouse Wheel Scroll |
-| **Adjust Time of Day** | Drag bottom Time Slider (`00:00` to `24:00`) |
-| **Play / Pause Time** | Click `⏸️` / `▶️` button on bottom bar |
-| **Time Speed** | Click `0.5x`, `1x`, `5x`, or `15x` speed multiplier buttons |
-| **Toggle Fun Mode** | Click `🔥 Fun Mode: OFF / MAYHEM! 🔥` on left sidebar to unleash comets, rubble, sirens & satirical chyron |
-| **Quick Mode Switch** | `M` toggles Management / Builder; while in Action mode it releases direct control and returns to Management |
-| **Open City Editor** | `F`; select a catalog item, then click a valid parcel to place it |
-| **Rotate / Grid Snap** | `R` rotates the selected structure; `G` toggles placement snapping |
-| **Move Built Structure** | Open the City Editor, choose **Move**, select a user-built structure, then choose a valid destination |
-| **Toggle Mayhem** | `X` or the sidebar Mayhem control |
-| **Drive / Walk** | `WASD` or arrow keys; right-drag for chase mouse-look; `E` interacts, starts nearby missions, begins the timed hijack approach, or exits |
-| **Vehicle Actions** | `Space` handbrake, `Shift` horn or emergency siren, `R` recovers a physics vehicle |
-| **Pedestrian Actions** | `Space` jumps; click attacks after collecting a baseball bat |
-| **Inspect Object** | Left Click on any vehicle, pedestrian, or building |
-| **Follow Target** | Click `👁️ Follow Camera` in the Inspector HUD card |
-| **Trigger SFX** | Click `📯 Sound Honk` or `🚨 Sound Siren` in Inspector HUD |
-| **Enable Audio** | Click `🔇 Enable SFX` on left sidebar |
-| **Change Weather** | Select Clear, Mist, Rain, or Storm, or toggle the automatic dynamic cycle |
-| **Camera Presets** | Click `🚁 Bird's Eye`, `🏙️ Street Level`, `🌳 Central Park`, `🚦 Downtown`, `🌉 Bridge`, or `🌐 Free Orbit` |
+Keyboard/mouse and Xbox controllers can be swapped at any time. The command ribbon detects the most recently used device, changes every visible prompt immediately, and shows only the actions relevant to Management, Builder, Driving, On Foot, or Dialogue. Controller stick drift is filtered so it cannot steal the active control scheme.
+
+| Context | Keyboard & Mouse | Xbox Controller |
+| :--- | :--- | :--- |
+| **Management** | Drag to orbit, click to select, `Tab` to navigate controls, `F` for Builder, `M` to change mode | Right Stick to orbit, D-Pad to navigate, `A` to activate, View for Builder, Menu to change mode |
+| **City Builder** | Move pointer to aim, click to place/apply, `R` rotate, `Delete` demolish, `Esc` back, `G` grid snap | Left Stick moves the placement reticle, `A` places/applies, `Y` rotates, `X` selects Delete, D-Pad navigates the catalog, `B` returns to the canvas or exits |
+| **Driving** | `W/S` accelerate/brake, `A/D` steer, `Space` handbrake, `E` interact/exit, `Shift` horn/siren, right-drag look, `R` reset | `RT/LT` accelerate/brake, Left Stick steer, `A` handbrake, `Y` interact/exit, `LB` horn/siren, Right Stick look, `RB` camera, View reset |
+| **On Foot** | `WASD` move, `Space` jump, `E` interact/hijack, click attack, right-drag look, `M` return | Left Stick move, `A` jump, `Y` interact/hijack, `X` attack, Right Stick look, `B` or Menu return |
+| **Dialogue / UI** | `Tab` navigate, `Enter` confirm, `Esc` back | D-Pad navigate, `A` confirm, `B` back |
+
+Time, weather, audio, overlays, camera presets, Mayhem, saving, and district controls remain available through the City Tools sidebar. On small screens it starts as a compact rail and expands on demand.
 
 ## ✅ Verification
 
@@ -159,9 +147,9 @@ npm test
 npm run build
 ```
 
-The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, and editor-road graph integration.
+The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, editor-road graph integration, adaptive control bindings, input-context priority, controller edge handling, and stick-drift rejection.
 
-The interface includes keyboard-visible focus treatment, semantic editor controls, modal focus containment, reduced-motion support, a compact no-overflow mobile editor layout, and a recoverable collapsed City Tools rail. Street action play remains optimized for keyboard/mouse or gamepad input.
+The interface includes keyboard-visible focus treatment, spatial D-Pad focus navigation, semantic editor controls, modal focus containment, reduced-motion support, a compact no-overflow mobile editor layout, and a recoverable collapsed City Tools rail. Management, building, driving, walking, missions, and dialogue support live keyboard/mouse ↔ Xbox switching.
 
 ---
 

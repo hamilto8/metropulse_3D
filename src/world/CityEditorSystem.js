@@ -78,6 +78,8 @@ export class CityEditorSystem {
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2(0, 0);
+    this.groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    this.intersectPoint = new THREE.Vector3();
 
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerDown = this.onPointerDown.bind(this);
@@ -359,19 +361,28 @@ export class CityEditorSystem {
 
     const rect = this.rendererElement.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.updateHitFromNdc(x, y);
+  }
+
+  updateControllerCursor(x, y) {
+    if (!this.isActive || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+    return this.updateHitFromNdc(x, y);
+  }
+
+  updateHitFromNdc(x, y) {
+    this.mouse.set(x, y);
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersectPoint = new THREE.Vector3();
-    if (!this.raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), intersectPoint)) {
+    if (!this.raycaster.ray.intersectPlane(this.groundPlane, this.intersectPoint)) {
       this.currentHit.valid = false;
       this.updateGhostValidityAppearance(false);
-      return;
+      return false;
     }
 
-    let targetX = intersectPoint.x;
-    let targetZ = intersectPoint.z;
+    let targetX = this.intersectPoint.x;
+    let targetZ = this.intersectPoint.z;
     if (this.gridSnap) {
       targetX = Math.round(targetX / this.snapSize) * this.snapSize;
       targetZ = Math.round(targetZ / this.snapSize) * this.snapSize;
@@ -395,6 +406,7 @@ export class CityEditorSystem {
       this.ghostGroup.rotation.y = this.rotationY;
       this.updateGhostValidityAppearance(valid);
     }
+    return valid;
   }
 
   checkPlacementValidity(x, z, y = 0, ignoreBuilding = null) {
@@ -697,6 +709,18 @@ export class CityEditorSystem {
   onPointerDown(event) {
     if (!this.isActive || event.button !== 0 || !this.isPointerOnEditorCanvas(event.target)) return false;
     this.onPointerMove(event);
+    if (this.isDeleteMode) return this.performDeleteAtMouse();
+    if (this.zoningMode) return this.applyZoningAtCurrentHit();
+    if (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE') {
+      if (!this.selectedStructure) return Boolean(this.selectStructureAtMouse());
+      if (this.toolMode === 'ROTATE') return Boolean(this.selectStructureAtMouse());
+      return this.moveSelectedStructureToCurrentHit();
+    }
+    return this.placeSelectedBuilding();
+  }
+
+  performControllerAction() {
+    if (!this.isActive) return false;
     if (this.isDeleteMode) return this.performDeleteAtMouse();
     if (this.zoningMode) return this.applyZoningAtCurrentHit();
     if (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE') {
@@ -1070,17 +1094,9 @@ export class CityEditorSystem {
     const tagName = event.target?.tagName;
     if (tagName === 'INPUT' || tagName === 'TEXTAREA' || event.target?.isContentEditable) return;
 
-    if (event.key === 'r' || event.key === 'R') {
-      this.rotateSelection();
-    } else if (event.key === 'g' || event.key === 'G') {
+    if (event.key === 'g' || event.key === 'G') {
       const snapped = this.toggleGridSnap();
       this.app.uiManager?.showToast(`Grid Snapping: ${snapped ? `ON (${this.snapSize}m)` : 'OFF'}`);
-    } else if (event.key === 'Escape') {
-      if (this.app.uiManager?.cityEditorUI?.isVisible) {
-        this.app.uiManager.cityEditorUI.hide();
-      } else {
-        this.deactivate();
-      }
     }
   }
 }

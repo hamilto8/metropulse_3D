@@ -56,11 +56,11 @@
 
         <!-- Right Stats Pill -->
         <div class="glass-pill top-pill-right">
-          <div class="stat-pill-item" title="Active Vehicles">
+          <div class="stat-pill-item stat-sim-detail" title="Active Vehicles">
             <span class="stat-icon">🚗</span>
             <span id="stat-vehicles" class="stat-val">60</span>
           </div>
-          <div class="stat-pill-item" title="Active Pedestrians">
+          <div class="stat-pill-item stat-sim-detail" title="Active Pedestrians">
             <span class="stat-icon">🚶</span>
             <span id="stat-pedestrians" class="stat-val">59</span>
           </div>
@@ -79,7 +79,7 @@
             <span class="stat-icon">🚨</span>
             <span id="top-alert-summary" class="stat-val">GRID ONLINE</span>
           </div>
-          <div class="stat-pill-item input-badge-item" id="input-device-badge" title="Active Control Scheme">
+          <div class="stat-pill-item input-badge-item" id="input-device-badge" title="Active Control Scheme" role="status" aria-live="polite">
             <span id="input-device-icon" class="stat-icon">⌨️</span>
             <span id="input-device-label" class="stat-val">PC</span>
           </div>
@@ -94,6 +94,36 @@
         </div>
 
         <div class="sidebar-content" id="sidebar-content">
+          <div class="accordion-section city-pulse-section">
+            <button type="button" class="accordion-header" aria-expanded="true">
+              <span>CITY PULSE</span>
+              <span class="accordion-arrow">⌄</span>
+            </button>
+            <div class="city-pulse-card">
+              <div class="pulse-rows">
+                <div class="pulse-row"><span>Population</span> <strong id="pulse-population">2,450</strong></div>
+                <div class="pulse-row"><span>Cash</span> <strong id="pulse-cash" class="cash-cyan">$1,250,300</strong></div>
+                <div class="pulse-row"><span>Energy</span> <strong id="pulse-energy" class="energy-cyan">90%</strong></div>
+                <div class="pulse-row"><span>Happiness</span> <strong id="pulse-happiness">72%</strong></div>
+                <div class="pulse-row"><span>Land Value</span> <strong id="pulse-land-value">100</strong></div>
+                <div class="pulse-row"><span>Reputation</span> <strong id="pulse-reputation">0</strong></div>
+                <div class="pulse-row pulse-services-row"><span>Services</span> <strong id="pulse-services">P 90% · W 80% · F 65%</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-section activity-section collapsed">
+            <button type="button" class="accordion-header" aria-expanded="false">
+              <span>RECENT ACTIVITY</span>
+              <span class="accordion-arrow">›</span>
+            </button>
+            <div class="alert-feed-card">
+              <div class="alert-list" id="alert-feed-list">
+                <div class="alert-item alert-info"><span class="alert-time">08:00</span> <span class="alert-msg">Simulation initialized. City grid active.</span></div>
+              </div>
+            </div>
+          </div>
+
           <!-- ZONING & BUILDING Accordion -->
           <div class="accordion-section">
             <button type="button" class="accordion-header" aria-expanded="true">
@@ -259,29 +289,6 @@
         </div>
       </aside>
 
-      <!-- Bottom-Left Dual Widgets (CITY PULSE & ALERT FEED) -->
-      <div class="bottom-left-widgets">
-        <div class="glass-panel city-pulse-card">
-          <div class="card-top-tag"><span class="icon">📊</span> CITY PULSE</div>
-          <div class="pulse-rows">
-            <div class="pulse-row"><span>Population</span> <strong id="pulse-population">2,450</strong></div>
-            <div class="pulse-row"><span>Cash</span> <strong id="pulse-cash" class="cash-cyan">$1,250,300</strong></div>
-            <div class="pulse-row"><span>Energy</span> <strong id="pulse-energy" class="energy-cyan">90%</strong></div>
-            <div class="pulse-row"><span>Happiness</span> <strong id="pulse-happiness">72%</strong></div>
-            <div class="pulse-row"><span>Land Value</span> <strong id="pulse-land-value">100</strong></div>
-            <div class="pulse-row"><span>Reputation</span> <strong id="pulse-reputation">0</strong></div>
-            <div class="pulse-row"><span>Services</span> <strong id="pulse-services">P 90% · W 80% · F 65%</strong></div>
-          </div>
-        </div>
-
-        <div class="glass-panel alert-feed-card">
-          <div class="card-top-tag alert-tag"><span class="icon">🚨</span> LIVE CITY ALERTS</div>
-          <div class="alert-list" id="alert-feed-list">
-            <div class="alert-item alert-info"><span class="alert-time">08:00</span> <span class="alert-msg">Simulation initialized. City grid active.</span></div>
-          </div>
-        </div>
-      </div>
-
       <!-- Bottom-Center Time Scrubber Bar -->
       <footer id="bottom-time-bar" class="glass-panel bottom-time-bar">
         <div class="time-display">
@@ -309,20 +316,20 @@
       </footer>
 
       <!-- Bottom-Right Quick Action Toolbar -->
-      <div class="bottom-right-toolbar">
-        <button class="action-toolbar-btn" id="btn-toolbar-control" title="Take Direct Control">
+      <div class="bottom-right-toolbar" aria-label="Quick actions">
+        <button class="action-toolbar-btn" id="btn-toolbar-control" title="Take Direct Control" aria-label="Take Direct Control">
           <span class="icon">👆</span>
           <span class="label">Take Direct Control</span>
         </button>
-        <button class="action-toolbar-btn" id="btn-toolbar-next" title="Select Next Citizen">
+        <button class="action-toolbar-btn" id="btn-toolbar-next" title="Select Next Citizen" aria-label="Select Next Citizen">
           <span class="icon">🔀</span>
           <span class="label">Select Next Citizen</span>
         </button>
-        <button class="action-toolbar-btn" id="btn-toolbar-vehicles" title="Vehicle List">
+        <button class="action-toolbar-btn" id="btn-toolbar-vehicles" title="Select Next Vehicle" aria-label="Select Next Vehicle">
           <span class="icon">🚗</span>
           <span class="label">Vehicle List</span>
         </button>
-        <button class="action-toolbar-btn" id="btn-toolbar-filter" title="Filter Map">
+        <button class="action-toolbar-btn" id="btn-toolbar-filter" title="Toggle Traffic Heat-map" aria-label="Toggle Traffic Heat-map">
           <span class="icon">🎯</span>
           <span class="label">Filter</span>
         </button>
@@ -334,7 +341,13 @@
         <span class="speedometer-unit">KM/H</span>
         <span id="speedometer-gear" class="speedometer-gear">GEAR —</span>
       </div>
-      <div id="street-control-hint" class="street-control-hint hidden">WASD move · Right-drag mouse look · E interact/exit · Shift horn/siren · Space brake/jump · Click attack · M return to management</div>
+      <div id="street-control-hint" class="adaptive-control-hud" role="status" aria-live="polite">
+        <div class="adaptive-context">
+          <span id="adaptive-context-icon" aria-hidden="true">◇</span>
+          <span id="adaptive-context-label">MANAGEMENT</span>
+        </div>
+        <div id="adaptive-control-actions" class="adaptive-control-actions"></div>
+      </div>
 
       <!-- Fun Mode market feedback and satirical news -->
       <div id="real-estate-tracker" class="real-estate-tracker hidden">
@@ -353,7 +366,7 @@
       </div>
 
       <!-- Hidden overlays for missions / dialogue / news / arrest -->
-      <div id="mission-hud" class="mission-hud hidden">
+      <div id="mission-hud" class="mission-hud hidden" aria-live="polite">
         <div class="mission-hud-badge">🎯 ACTIVE MISSION</div>
         <div class="mission-hud-info">
           <div class="mission-hud-title" id="mission-hud-title">Passenger Name</div>

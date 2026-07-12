@@ -478,8 +478,17 @@ export class PedestrianSystem {
 
         const ts = this.app.trafficSystem;
         const keys = ts ? ts.keys : null;
-        
-        if (keys) {
+        const inputManager = this.app.inputManager;
+        const usingGamepad = inputManager?.activeInterface === 'GAMEPAD';
+
+        if (usingGamepad) {
+          const moveX = inputManager.state.moveX || 0;
+          const moveY = inputManager.state.moveY || 0;
+          if (Math.abs(moveX) > 0.05) p.mesh.rotation.y -= moveX * 3.2 * delta;
+          p.targetSpeed = Math.abs(moveY) > 0.05
+            ? p.maxSpeed * moveY
+            : 0;
+        } else if (keys) {
           const isW = keys['w'] || keys['arrowup'];
           const isS = keys['s'] || keys['arrowdown'];
           const isA = keys['a'] || keys['arrowleft'];
@@ -652,7 +661,7 @@ export class PedestrianSystem {
       
       setTextSegments(prompt, [
         '🏎️ Press ',
-        { text: '[E / Gamepad Y]', className: 'prompt-accent' },
+        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
         ` to Hijack ${closestVehicle.name.toUpperCase()}`
       ]);
       prompt.classList.remove('hidden');
@@ -682,7 +691,7 @@ export class PedestrianSystem {
 
       setTextSegments(prompt, [
         '💬 Press ',
-        { text: '[E / Gamepad Y]', className: 'prompt-accent' },
+        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
         ` to Talk to ${closestPed.name.toUpperCase()}`
       ]);
       prompt.classList.remove('hidden');
