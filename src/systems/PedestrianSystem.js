@@ -1241,20 +1241,8 @@ export class PedestrianSystem {
           setTimeout(() => { prompt.classList.add('hidden'); }, 1200);
         }
 
-        if (v.batHits >= 3 && !v.onFire) {
-          v.onFire = true;
-          v.fireTimer = 5.0;
-          v.info['Status'] = '🔥 ON FIRE!';
-
-          // Add fire visual
-          const fireGeo = new THREE.SphereGeometry(1.2, 8, 8);
-          const fireMat = new THREE.MeshBasicMaterial({
-            color: 0xff4500, transparent: true, opacity: 0.7
-          });
-          const fireMesh = new THREE.Mesh(fireGeo, fireMat);
-          fireMesh.position.y = 2.0;
-          v.mesh.add(fireMesh);
-          v.fireMesh = fireMesh;
+        if (v.batHits >= 3) {
+          this.app.trafficSystem.igniteVehicle(v, { delay: 5.0 });
 
           // Dispatch police for destruction
           this.reportCrime(ped.mesh.position, 'Vehicle destruction reported', false);

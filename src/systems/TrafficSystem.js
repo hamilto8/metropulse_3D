@@ -25,6 +25,9 @@ export class TrafficSystem {
     this.roadCoordsZ = [-100, -50, 0, 50, 100];
     this.laneOffset = 3.5; // Right-hand traffic lane center
     this.targetMovingVehicleCount = 48;
+    this.chainReactionRadius = 10;
+    this.chainReactionDelay = 4;
+    this.destroyedVehicleLifetime = 30;
     this.nextVehicleSerial = 0;
     this.populationCheckTimer = 2.0;
     this.bridgePriorityEnabled = false;
@@ -506,6 +509,83 @@ export class TrafficSystem {
     if (this.app && this.app.uiManager && this.app.uiManager.addAlert) {
       this.app.uiManager.addAlert(wasControlled ? '🌊 Vehicle recovered from the river; direct control released.' : '🚗 Traffic vehicle recovered to the road network.', 'warn');
     }
+  }
+
+  igniteVehicle(vehicle, { delay = this.chainReactionDelay } = {}) {
+    if (!vehicle?.mesh || vehicle.isDestroyed || vehicle.onFire) return false;
+    vehicle.onFire = true;
+    vehicle.fireTimer = Math.max(0.25, Number(delay) || this.chainReactionDelay);
+    vehicle.crashed = false;
+    vehicle.speed = 0;
+    vehicle.targetSpeed = 0;
+    vehicle.info.Status = '🔥 ON FIRE!';
+
+    const fireGeo = new THREE.SphereGeometry(1.2, 8, 8);
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff4500, transparent: true, opacity: 0.7 });
+    vehicle.fireMesh = new THREE.Mesh(fireGeo, fireMat);
+    vehicle.fireMesh.position.y = 2;
+    vehicle.mesh.add(vehicle.fireMesh);
+    return true;
+  }
+
+  explodeVehicle(vehicle) {
+    if (!vehicle?.mesh || vehicle.isDestroyed) return false;
+    const origin = vehicle.mesh.position.clone();
+    if (this.controlledVehicle === vehicle || vehicle.userControlled) {
+      this.releaseControl(vehicle);
+    }
+    vehicle.onFire = false;
+    vehicle.isDestroyed = true;
+    vehicle.destroyedTimer = this.destroyedVehicleLifetime;
+    vehicle.crashed = true;
+    vehicle.crashTimer = this.destroyedVehicleLifetime;
+    vehicle.speed = 0;
+    vehicle.targetSpeed = 0;
+    vehicle.info.Status = '💥 DESTROYED';
+    vehicle.info.Damage = '💥 Wrecked';
+    if (vehicle.fireMesh) {
+      vehicle.mesh.remove(vehicle.fireMesh);
+      vehicle.fireMesh.geometry.dispose();
+      vehicle.fireMesh.material.dispose();
+      vehicle.fireMesh = null;
+    }
+    this.app.explosionManager?.createExplosion?.(origin);
+    this.app.audioSystem?.playExplosion?.();
+
+    if (!vehicle.chainReactionTriggered) {
+      vehicle.chainReactionTriggered = true;
+      const radiusSq = this.chainReactionRadius ** 2;
+      for (const other of this.vehicles) {
+        if (other === vehicle || other.isDestroyed || other.onFire || !other.mesh) continue;
+        if (other.mesh.position.distanceToSquared(origin) <= radiusSq) {
+          this.igniteVehicle(other);
+        }
+      }
+    }
+    this.dispatchPolice(origin);
+    return true;
+  }
+
+  removeDestroyedVehicle(vehicle) {
+    if (!vehicle || !this.vehicles.includes(vehicle)) return false;
+    if (this.controlledVehicle === vehicle) this.releaseControl(vehicle);
+    if (vehicle.mountedRider) vehicle.unmountRider();
+    if (vehicle.fireMesh) {
+      vehicle.mesh.remove(vehicle.fireMesh);
+      vehicle.fireMesh.geometry.dispose();
+      vehicle.fireMesh.material.dispose();
+      vehicle.fireMesh = null;
+    }
+    vehicle.physicsVehicle?.destroy?.();
+    vehicle.physicsVehicle = null;
+    if (vehicle.physicsBody && this.app.physicsWorld?.world?.bodies?.includes(vehicle.physicsBody)) {
+      this.app.physicsWorld.world.removeBody(vehicle.physicsBody);
+    }
+    this.app.inspectorHud?.unregisterObject?.(vehicle.mesh);
+    vehicle.mesh.parent?.remove(vehicle.mesh);
+    const index = this.vehicles.indexOf(vehicle);
+    this.vehicles.splice(index, 1);
+    return true;
   }
 
   updateUserControlledVehicle(v, delta) {
@@ -1011,6 +1091,15 @@ export class TrafficSystem {
 
       // Handle crashed state recovery
       if (v.crashed) {
+        if (v.isDestroyed) {
+          v.destroyedTimer -= delta;
+          v.update(delta);
+          if (v.destroyedTimer <= 0) {
+            this.removeDestroyedVehicle(v);
+            this.spawnVehicles(1);
+          }
+          continue;
+        }
         v.crashTimer -= delta;
         if (v.physicsVehicle) {
           v.physicsVehicle.applyCrashBrake();
@@ -1055,25 +1144,8 @@ export class TrafficSystem {
           v.fireMesh.scale.set(s, s, s);
         }
         if (v.fireTimer <= 0) {
-          // EXPLODE!
-          v.onFire = false;
-          v.crashed = true;
-          v.crashTimer = 20.0;
-          v.speed = 0;
-          v.targetSpeed = 0;
-          v.info['Status'] = '💥 DESTROYED';
+          this.explodeVehicle(v);
           v.mesh.rotation.z = (Math.random() - 0.5) * 0.8;
-
-          if (v.fireMesh) {
-            v.mesh.remove(v.fireMesh);
-            v.fireMesh = null;
-          }
-          if (this.app.explosionManager) {
-            this.app.explosionManager.createExplosion(pos.clone());
-          }
-          if (this.app.audioSystem) {
-            this.app.audioSystem.playExplosion();
-          }
           if (this.app.uiManager) {
             this.app.uiManager.onBuildingDestroyed();
           }

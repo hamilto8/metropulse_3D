@@ -97,6 +97,44 @@ test('vehicle speed uses m/s internally and preserves high-priority status', () 
   assert.equal(vehicle.info.Status, '🔥 ON FIRE!');
 });
 
+test('vehicle explosions ignite nearby cars and cull wrecks after their lifetime', () => {
+  installBrowserStubs();
+  const source = new Vehicle('SEDAN', 0x3366cc, 'Source Sedan');
+  const nearby = new Vehicle('TAXI', 0xffcc00, 'Nearby Taxi');
+  const distant = new Vehicle('BUS', 0xffffff, 'Distant Bus');
+  source.mesh.position.set(0, 0, 0);
+  nearby.mesh.position.set(7, 0, 0);
+  distant.mesh.position.set(30, 0, 0);
+  let explosions = 0;
+  let replacements = 0;
+  const traffic = Object.create(TrafficSystem.prototype);
+  traffic.app = {
+    explosionManager: { createExplosion() { explosions += 1; } },
+    audioSystem: { playExplosion() {} },
+    sceneManager: { scene: { remove() {} } },
+    physicsWorld: null
+  };
+  traffic.vehicles = [source, nearby, distant];
+  traffic.chainReactionRadius = 10;
+  traffic.chainReactionDelay = 4;
+  traffic.destroyedVehicleLifetime = 30;
+  traffic.spawnVehicles = count => { replacements += count; };
+
+  assert.equal(traffic.igniteVehicle(source, { delay: 0.1 }), true);
+  assert.equal(source.onFire, true);
+  assert.equal(traffic.explodeVehicle(source), true);
+  assert.equal(explosions, 1);
+  assert.equal(source.isDestroyed, true);
+  assert.equal(nearby.onFire, true);
+  assert.equal(nearby.fireTimer, 4);
+  assert.equal(distant.onFire, false);
+
+  source.destroyedTimer = 0;
+  traffic.update(0);
+  assert.equal(traffic.vehicles.includes(source), false);
+  assert.equal(replacements, 1);
+});
+
 test('police emergency state drives visible strobe lights independently of countdown', () => {
   const police = new Vehicle('POLICE', 0xffffff, 'Unit Test Cruiser');
   police.update(0);

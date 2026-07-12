@@ -19,6 +19,12 @@ export class Vehicle {
     this.sirenLights = [];
     this.sirenActive = false;
     this.wheelRadius = 0.4;
+    this.onFire = false;
+    this.fireTimer = 0;
+    this.fireMesh = null;
+    this.isDestroyed = false;
+    this.destroyedTimer = 0;
+    this.chainReactionTriggered = false;
 
     this.info = {
       'Model': name,
