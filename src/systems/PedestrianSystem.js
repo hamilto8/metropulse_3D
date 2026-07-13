@@ -1561,7 +1561,10 @@ export class PedestrianSystem {
   updateWantedHud() {
     let hud = document.getElementById('wanted-hud');
     if (!this.isWanted) {
-      if (hud) hud.classList.add('hidden');
+      if (hud) {
+        hud.classList.add('hidden');
+        hud.setAttribute('aria-hidden', 'true');
+      }
       return;
     }
 
@@ -1571,6 +1574,7 @@ export class PedestrianSystem {
       hud.className = 'wanted-hud';
       hud.setAttribute('role', 'status');
       hud.setAttribute('aria-live', 'polite');
+      hud.setAttribute('aria-hidden', 'false');
       const title = document.createElement('div');
       title.className = 'wanted-title';
       title.textContent = '🚨 WANTED 🚨';
@@ -1584,7 +1588,8 @@ export class PedestrianSystem {
       this.wantedHudBar = bar;
       barBackground.appendChild(bar);
       hud.append(title, subtitle, barBackground);
-      document.body.appendChild(hud);
+      const statusStack = document.getElementById('status-hud-stack');
+      (statusStack || document.body).prepend(hud);
     }
 
     // Calculate how many seconds left to escape
@@ -1598,5 +1603,6 @@ export class PedestrianSystem {
     if (subtitle) subtitle.textContent = this.escapeTimer > 0 ? `ESCAPING... (${escapeProgress.toFixed(1)}s)` : 'POLICE PURSUIT!';
     if (bar) bar.style.width = `${progressPercent}%`;
     hud.classList.remove('hidden');
+    hud.setAttribute('aria-hidden', 'false');
   }
 }

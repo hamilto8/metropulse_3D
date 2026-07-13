@@ -12,6 +12,7 @@ import {
   SUBURBAN_HOME_RULES
 } from '../src/world/CountrysidePlan.js';
 import { CityBuilder } from '../src/world/CityBuilder.js';
+import { CityEditorSystem } from '../src/world/CityEditorSystem.js';
 
 test('suburban parcels follow the authored grid and never overlap reserved land', () => {
   const parcels = createSuburbanParcels();
@@ -85,4 +86,48 @@ test('occupied parcel envelopes prevent duplicate construction', () => {
   assert.equal(builder.createSuburbanHouse(500, 25), null);
   assert.equal(builder.createSuburbanHouse(700, -125), null);
   assert.equal(builder.sceneryColliders.length, 1);
+});
+
+test('city-editor placement treats authored countryside scenery as occupied land', () => {
+  const builder = new CityBuilder(new THREE.Scene(), null, null);
+  builder.createSuburbanHouse(500, 25);
+  const editor = Object.create(CityEditorSystem.prototype);
+  editor.app = {
+    cityBuilder: builder,
+    buildingFactory: { buildings: [] }
+  };
+  editor.selectedSpec = { id: 'TEST_STRUCTURE', footprint: { width: 12, depth: 12 } };
+  editor.rotationY = 0;
+
+  const terrainY = builder.getHillHeight(500, 25);
+  assert.equal(editor.checkPlacementValidity(500, 25, terrainY), false);
+  assert.equal(editor.isPlacementValid({
+    spec: editor.selectedSpec,
+    x: 500,
+    z: 25,
+    y: terrainY,
+    allowCountrysideReplacement: true,
+    ignorePlayer: true
+  }), true);
+});
+
+test('legacy structure restore can clear only overlapping procedural scenery', () => {
+  const scene = new THREE.Scene();
+  const builder = new CityBuilder(scene, null, null);
+  const house = builder.createSuburbanHouse(500, 25);
+  const untouchedHouse = builder.createSuburbanHouse(600, 25);
+  const conflicts = builder.getCountrysideOccupancyConflicts({
+    minX: 480,
+    maxX: 520,
+    minZ: 5,
+    maxZ: 45
+  });
+
+  assert.equal(conflicts.length, 1);
+  const removed = builder.removeCountrysideSceneryOverlapping(conflicts[0]);
+  assert.equal(removed.length, 1);
+  assert.equal(scene.children.includes(house), false);
+  assert.equal(scene.children.includes(untouchedHouse), true);
+  assert.equal(builder.countrysideOccupancy.some(envelope => envelope.id === 'suburban-500-25'), false);
+  assert.equal(builder.countrysideOccupancy.some(envelope => envelope.id === 'suburban-600-25'), true);
 });

@@ -254,17 +254,17 @@ export class CityEditorSystem {
     return this.rotationY;
   }
 
-  getOrientedFootprint(spec = this.selectedSpec) {
+  getOrientedFootprint(spec = this.selectedSpec, rotationY = this.rotationY) {
     const width = spec?.footprint?.width || 1;
     const depth = spec?.footprint?.depth || 1;
-    const quarterTurns = Math.round(this.rotationY / (Math.PI / 2)) % 2;
+    const quarterTurns = Math.abs(Math.round(rotationY / (Math.PI / 2))) % 2;
     return quarterTurns === 0
       ? { width, depth }
       : { width: depth, depth: width };
   }
 
-  getPlacementRect(x, z, clearance = 2) {
-    const footprint = this.getOrientedFootprint();
+  getPlacementRect(x, z, clearance = 2, spec = this.selectedSpec, rotationY = this.rotationY) {
+    const footprint = this.getOrientedFootprint(spec, rotationY);
     return {
       minX: x - footprint.width / 2 - clearance,
       maxX: x + footprint.width / 2 + clearance,
@@ -410,10 +410,29 @@ export class CityEditorSystem {
   }
 
   checkPlacementValidity(x, z, y = 0, ignoreBuilding = null) {
-    if (!this.selectedSpec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-    if (y < -1.5) return false;
+    return this.isPlacementValid({
+      spec: this.selectedSpec,
+      rotationY: this.rotationY,
+      x,
+      z,
+      y,
+      ignoreBuilding
+    });
+  }
 
-    const placementRect = this.getPlacementRect(x, z);
+  isPlacementValid({
+    spec,
+    rotationY = 0,
+    x,
+    z,
+    y = 0,
+    ignoreBuilding = null,
+    allowCountrysideReplacement = false,
+    ignorePlayer = false
+  } = {}) {
+    if (!spec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
+
+    const placementRect = this.getPlacementRect(x, z, 2, spec, rotationY);
     if (
       placementRect.minX < WORLD_BOUNDS.minX ||
       placementRect.maxX > WORLD_BOUNDS.maxX ||
@@ -426,8 +445,15 @@ export class CityEditorSystem {
     if (CORE_LANDMARKS.some(landmark => rectsOverlap(placementRect, landmark))) return false;
     if (this.overlapsExistingRoad(placementRect)) return false;
     const overlapsWater = this.overlapsWater(placementRect, y);
-    const isBridgeSegment = this.selectedSpec.roadType === 'BRIDGE';
+    const isBridgeSegment = spec.roadType === 'BRIDGE';
     if (overlapsWater && !isBridgeSegment) return false;
+    if (!allowCountrysideReplacement) {
+      const cityBuilder = this.app.cityBuilder;
+      const overlapsCountryside = typeof cityBuilder?.hasCountrysideOccupancyOverlap === 'function'
+        ? cityBuilder.hasCountrysideOccupancyOverlap(placementRect)
+        : (cityBuilder?.countrysideOccupancy || []).some(envelope => rectsOverlap(placementRect, envelope));
+      if (overlapsCountryside) return false;
+    }
 
     const buildings = this.app.buildingFactory?.buildings || [];
     for (const building of buildings) {
@@ -444,7 +470,7 @@ export class CityEditorSystem {
       if (rectsOverlap(placementRect, buildingRect)) return false;
     }
 
-    const playerPosition = this.getControlledPlayerPosition();
+    const playerPosition = ignorePlayer ? null : this.getControlledPlayerPosition();
     if (
       playerPosition &&
       playerPosition.x > placementRect.minX - 4 &&
@@ -455,12 +481,12 @@ export class CityEditorSystem {
       return false;
     }
 
-    return this.isDistrictUnlocked(x, z, this.selectedSpec);
+    return this.isDistrictUnlocked(x, z, spec);
   }
 
   checkZoningValidity(x, z, y = 0) {
     if (!this.zoningMode || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-    if (y < -1.5 || x < WORLD_BOUNDS.minX || x > WORLD_BOUNDS.maxX || z < WORLD_BOUNDS.minZ || z > WORLD_BOUNDS.maxZ) {
+    if (x < WORLD_BOUNDS.minX || x > WORLD_BOUNDS.maxX || z < WORLD_BOUNDS.minZ || z > WORLD_BOUNDS.maxZ) {
       return false;
     }
     const parcel = { minX: x - 5, maxX: x + 5, minZ: z - 5, maxZ: z + 5 };

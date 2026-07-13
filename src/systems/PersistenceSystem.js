@@ -19,6 +19,7 @@ export class PersistenceSystem {
     this.timer = null;
     this.restoring = false;
     this.lastError = null;
+    this.lastRestoreReport = null;
 
     this.unsubscribeEconomy = app.economySystem?.subscribe?.(() => this.scheduleSave()) || null;
     this.unsubscribeGame = app.gameManager?.subscribe?.(() => this.scheduleSave()) || null;
@@ -110,6 +111,7 @@ export class PersistenceSystem {
 
   restoreWorld(world = {}) {
     if (world?.version !== 1 || !Array.isArray(world.buildings)) return false;
+    const report = { restoredBuildings: 0, skippedBuildings: 0, clearedScenery: 0 };
     for (const saved of world.buildings) {
       const spec = getBuildingSpec(saved.specId);
       const plot = saved.plot;
@@ -124,7 +126,34 @@ export class PersistenceSystem {
         width: quarterTurns === 0 ? spec.footprint.width : spec.footprint.depth,
         depth: quarterTurns === 0 ? spec.footprint.depth : spec.footprint.width
       };
+      const editor = this.app.cityEditorSystem;
+      const placementRect = editor?.getPlacementRect?.(
+        safePlot.x,
+        safePlot.z,
+        2,
+        spec,
+        rotationY
+      );
+      const isValid = editor?.isPlacementValid?.({
+        spec,
+        rotationY,
+        x: safePlot.x,
+        z: safePlot.z,
+        y: safePlot.y,
+        allowCountrysideReplacement: true,
+        ignorePlayer: true
+      }) ?? true;
+      if (!isValid) {
+        report.skippedBuildings += 1;
+        if (saved.economyId) this.app.economySystem?.removeBuilding?.(saved.economyId);
+        continue;
+      }
+
       const building = this.app.buildingFactory.placeUserBuilding(safePlot, spec, rotationY);
+      if (placementRect) {
+        const removed = this.app.cityBuilder?.removeCountrysideSceneryOverlapping?.(placementRect) || [];
+        report.clearedScenery += removed.length;
+      }
       building.plot.width = safePlot.width;
       building.plot.depth = safePlot.depth;
       building.economyId = saved.economyId || building.economyId;
@@ -139,8 +168,10 @@ export class PersistenceSystem {
       if (spec.generatorType === 'ROAD_SEGMENT') {
         this.app.trafficSystem?.registerRoadSegment?.(building, spec);
       }
+      report.restoredBuildings += 1;
     }
     this.app.cityEditorSystem.restoreZoneParcels(world.zones || []);
+    this.lastRestoreReport = Object.freeze(report);
     return true;
   }
 

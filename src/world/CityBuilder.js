@@ -9,9 +9,11 @@ import {
   canPlaceCountrysideStructure,
   COUNTRYSIDE_GRID,
   createSuburbanParcels,
+  footprintsOverlap,
   getFootprintEnvelope,
   SUBURBAN_HOME_RULES
 } from './CountrysidePlan.js';
+import { createStreetLampLayout } from './StreetFurnitureLayout.js';
 
 export class CityBuilder {
   constructor(scene, inspectorHud, billboardCanvas) {
@@ -29,6 +31,7 @@ export class CityBuilder {
     this.surfaceColliders = [];
     this.sceneryColliders = [];
     this.countrysideOccupancy = [];
+    this.countrysideScenery = [];
   }
 
   build() {
@@ -58,12 +61,20 @@ export class CityBuilder {
       )) continue;
 
       const y = this.getHillHeight(x, z);
-      this.createTree(x, y - 0.2, z);
-      this.countrysideOccupancy.push(getFootprintEnvelope(
+      const tree = this.createTree(x, y - 0.2, z);
+      const envelope = getFootprintEnvelope(
         { x, z },
         treeFootprint,
         { setback: 1, kind: 'TREE' }
-      ));
+      );
+      if (!tree || !envelope) continue;
+      this.countrysideOccupancy.push(envelope);
+      this.countrysideScenery.push({
+        kind: 'TREE',
+        group: tree.group,
+        collider: tree.collider,
+        envelope
+      });
     }
   }
 
@@ -229,24 +240,73 @@ export class CityBuilder {
 
     // Every parcel fronts a road on the shared grid; visual variety comes from
     // color and vacant lots rather than geometry drifting out of its zone.
+    const houseId = parcelId || `suburban-${x}-${z}`;
     houseGroup.rotation.y = Number.isFinite(rotationY) ? rotationY : 0;
-    houseGroup.name = parcelId || `suburban-house-${x}-${z}`;
+    houseGroup.name = houseId;
     houseGroup.userData.landUse = 'SUBURBAN_RESIDENTIAL';
-    houseGroup.userData.parcelId = parcelId;
+    houseGroup.userData.parcelId = houseId;
 
     this.scene.add(houseGroup);
-    this.sceneryColliders.push({
+    const collider = {
       position: { x, y: terrainY + wallHeight / 2, z },
       size: { x: wallWidth, y: wallHeight, z: wallDepth },
       rotationY: houseGroup.rotation.y,
       kind: 'suburban-house'
-    });
-    this.countrysideOccupancy.push(getFootprintEnvelope(
+    };
+    const envelope = getFootprintEnvelope(
       { x, z },
       SUBURBAN_HOME_RULES.footprint,
-      { rotationY: houseGroup.rotation.y, kind: 'HOUSE', id: parcelId }
-    ));
+      { rotationY: houseGroup.rotation.y, kind: 'HOUSE', id: houseId }
+    );
+    this.sceneryColliders.push(collider);
+    this.countrysideOccupancy.push(envelope);
+    this.countrysideScenery.push({
+      kind: 'HOUSE',
+      group: houseGroup,
+      collider,
+      envelope
+    });
     return houseGroup;
+  }
+
+  getCountrysideOccupancyConflicts(rect, { kinds = ['HOUSE', 'TREE'] } = {}) {
+    if (!rect) return [];
+    const allowedKinds = new Set(kinds);
+    return this.countrysideOccupancy.filter(envelope => (
+      allowedKinds.has(envelope?.kind) && footprintsOverlap(rect, envelope)
+    ));
+  }
+
+  hasCountrysideOccupancyOverlap(rect, options) {
+    return this.getCountrysideOccupancyConflicts(rect, options).length > 0;
+  }
+
+  removeCountrysideSceneryOverlapping(rect, { kinds = ['HOUSE', 'TREE'] } = {}) {
+    if (!rect) return [];
+    const allowedKinds = new Set(kinds);
+    const removed = [];
+
+    for (let index = this.countrysideScenery.length - 1; index >= 0; index -= 1) {
+      const scenery = this.countrysideScenery[index];
+      if (!allowedKinds.has(scenery?.kind) || !footprintsOverlap(rect, scenery.envelope)) continue;
+
+      scenery.group?.removeFromParent?.();
+      scenery.group?.traverse?.(child => {
+        if (!child.isMesh) return;
+        child.geometry?.dispose?.();
+        if (Array.isArray(child.material)) child.material.forEach(material => material?.dispose?.());
+        else child.material?.dispose?.();
+      });
+
+      const colliderIndex = this.sceneryColliders.indexOf(scenery.collider);
+      if (colliderIndex >= 0) this.sceneryColliders.splice(colliderIndex, 1);
+      const occupancyIndex = this.countrysideOccupancy.indexOf(scenery.envelope);
+      if (occupancyIndex >= 0) this.countrysideOccupancy.splice(occupancyIndex, 1);
+      this.countrysideScenery.splice(index, 1);
+      removed.push(scenery);
+    }
+
+    return removed;
   }
 
   isInWater(pos) {
@@ -1204,18 +1264,18 @@ export class CityBuilder {
 
     treeGroup.position.set(x, y, z);
     this.scene.add(treeGroup);
-    this.sceneryColliders.push({
+    const collider = {
       position: { x, y: y + 2.5, z },
       size: { x: 1.2, y: 5, z: 1.2 },
       kind: 'tree-trunk'
-    });
+    };
+    this.sceneryColliders.push(collider);
+    return { group: treeGroup, collider };
   }
 
   createStreetFurniture() {
     // Add streetlamps along sidewalk edges
     // High performance optimization: replace 120 THREE.SpotLight objects with volumetric light cones!
-    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310];
-    const roadCoordsZ = [-100, -50, 0, 50, 100];
     const lampMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
     const bulbMat = new THREE.MeshStandardMaterial({
       color: 0xffd58a,
@@ -1227,24 +1287,7 @@ export class CityBuilder {
     coneGeo.translate(0, -3.5, 0);
     const poolGeo = new THREE.CircleGeometry(3.25, 16);
 
-    const lampPositions = [];
-    for (const r of roadCoordsX) {
-      for (let pos = -85; pos <= 85; pos += 30) {
-        if (Math.abs(pos % 50) > 10) {
-          lampPositions.push({ x: r + 8, z: pos, rot: -Math.PI / 2 });
-          lampPositions.push({ x: r - 8, z: pos, rot: Math.PI / 2 });
-        }
-      }
-    }
-    for (const r of roadCoordsZ) {
-      for (let pos = -135; pos <= 335; pos += 30) {
-        if (pos > 115 && pos < 205) continue; // Skip river water gap (bridge has its own lighting)
-        if (Math.abs(pos % 50) > 10) {
-          lampPositions.push({ x: pos, z: r + 8, rot: 0 });
-          lampPositions.push({ x: pos, z: r - 8, rot: Math.PI });
-        }
-      }
-    }
+    const lampPositions = createStreetLampLayout();
 
     for (const lPos of lampPositions) {
       const lampGroup = new THREE.Group();
