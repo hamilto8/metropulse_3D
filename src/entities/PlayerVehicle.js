@@ -11,6 +11,20 @@ import {
   updateVehicleMobilityTimer
 } from './PlayerVehicleControls.js';
 
+export function getWheelIndicesForAxle(wheelInfos, axle = 'all') {
+  if (!Array.isArray(wheelInfos) || wheelInfos.length === 0) return [];
+  const indices = wheelInfos.map((_, index) => index);
+  if (axle !== 'front' && axle !== 'rear') return indices;
+
+  const zPositions = wheelInfos.map(wheel => (
+    Number(wheel?.chassisConnectionPointLocal?.z) || 0
+  ));
+  const targetZ = axle === 'front'
+    ? Math.max(...zPositions)
+    : Math.min(...zPositions);
+  return indices.filter(index => Math.abs(zPositions[index] - targetZ) < 1e-5);
+}
+
 export class PlayerVehicle {
   constructor(mesh, physicsWorld, initialPosition = null, initialRotation = null, vType = 'SEDAN') {
     this.mesh = mesh;
@@ -36,7 +50,7 @@ export class PlayerVehicle {
 
     const startPos = initialPosition || mesh.position;
     const startRot = initialRotation || mesh.rotation;
-    
+
     this.meshOffset = 0;
 
     this.initPhysics(startPos, startRot);
@@ -94,6 +108,7 @@ export class PlayerVehicle {
     );
     this.meshOffset = this.physicsLayout.settledRideHeight;
     this.driveProfile = profile.drive;
+    this.playerDynamics = profile.playerDynamics;
     this.footprint = Object.freeze({ width, length });
 
     // 1. Chassis rigid body
@@ -111,7 +126,7 @@ export class PlayerVehicle {
       chassisShape,
       new CANNON.Vec3(0, this.physicsLayout.chassisShapeOffsetY, 0)
     );
-    
+
     const initialY = pos.y + this.meshOffset;
     this.chassisBody.position.set(pos.x, initialY, pos.z);
 
@@ -120,7 +135,12 @@ export class PlayerVehicle {
       this.chassisBody.quaternion.set(q.x, q.y, q.z, q.w);
     }
     this.chassisBody.linearDamping = 0.15;
-    this.chassisBody.angularDamping = 0.25;
+    this.chassisBody.angularDamping = this.playerDynamics.angularDamping;
+    this.chassisBody.angularFactor.set(
+      this.playerDynamics.angularFactor.x,
+      this.playerDynamics.angularFactor.y,
+      this.playerDynamics.angularFactor.z
+    );
     this.chassisBody.allowSleep = false;
 
     // 2. Create RaycastVehicle
@@ -141,7 +161,7 @@ export class PlayerVehicle {
       dampingRelaxation: 2.8,
       dampingCompression: 4.5,
       maxSuspensionForce: maxSuspensionForce,
-      rollInfluence: 0.05,
+      rollInfluence: this.playerDynamics.rollInfluence,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: connectionPoint,
       maxSuspensionTravel: 0.28,
@@ -149,25 +169,25 @@ export class PlayerVehicle {
       useCustomSlidingRotationalSpeed: true
     });
 
-    const wOffsetX = width * 0.45;
+    const wOffsetX = width * this.playerDynamics.wheelTrackFactor;
 
     if (this.physicsLayout.wheelCount === 6) {
       // 6 wheels connection points
       // Front axle
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, length * 0.38), wheelRadius));
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, length * 0.38), wheelRadius));
-      
+
       // Middle axle
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.1), wheelRadius));
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.1), wheelRadius));
-      
+
       // Rear axle
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.38), wheelRadius));
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.38), wheelRadius));
     } else {
       // 4 wheels connection points
       const wOffsetZ = length * 0.35;
-      
+
       // Front Left
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, wOffsetZ), wheelRadius));
       // Front Right
@@ -177,6 +197,15 @@ export class PlayerVehicle {
       // Rear Right
       this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -wOffsetZ), wheelRadius));
     }
+
+    this.steeredWheelIndices = getWheelIndicesForAxle(
+      this.raycastVehicle.wheelInfos,
+      'front'
+    );
+    this.drivenWheelIndices = new Set(getWheelIndicesForAxle(
+      this.raycastVehicle.wheelInfos,
+      this.playerDynamics.drivenAxle
+    ));
 
     this.raycastVehicle.addToWorld(this.physicsWorld.world);
     if (typeof this.physicsWorld.registerPlayerVehicle === 'function') {
@@ -198,11 +227,19 @@ export class PlayerVehicle {
 
   applyCrashBrake(force = 500) {
     if (!this.raycastVehicle || !this.chassisBody) return;
-    for (let i = 0; i < this.raycastVehicle.wheelInfos.length; i++) {
-      this.raycastVehicle.applyEngineForce(0, i);
-      this.raycastVehicle.setBrake(force, i);
-    }
+    this.applyWheelForces(0, force);
     this.chassisBody.angularVelocity.y *= 0.94;
+  }
+
+  applyWheelForces(engineForce, brakeForce) {
+    if (!this.raycastVehicle) return;
+    for (let i = 0; i < this.raycastVehicle.wheelInfos.length; i += 1) {
+      this.raycastVehicle.applyEngineForce(
+        this.drivenWheelIndices.has(i) ? engineForce : 0,
+        i
+      );
+      this.raycastVehicle.setBrake(brakeForce, i);
+    }
   }
 
   setForwardSpeed(speed = 0) {
@@ -226,11 +263,7 @@ export class PlayerVehicle {
     const dialogueOpen = typeof window !== 'undefined'
       && window.app?.dialogueOverlay?.currentMission != null;
     if (dialogueOpen) {
-      const numWheels = this.raycastVehicle.wheelInfos.length;
-      for (let i = 0; i < numWheels; i++) {
-        this.raycastVehicle.applyEngineForce(0, i);
-        this.raycastVehicle.setBrake(80, i);
-      }
+      this.applyWheelForces(0, 80);
       this.chassisBody.angularVelocity.y *= 0.7;
       return false;
     }
@@ -253,8 +286,9 @@ export class PlayerVehicle {
     const targetSteering = analogSteer * this.driveProfile.maxSteering;
     this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 16.0);
 
-    this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
-    this.raycastVehicle.setSteeringValue(this.currentSteering, 1);
+    for (const wheelIndex of this.steeredWheelIndices) {
+      this.raycastVehicle.setSteeringValue(this.currentSteering, wheelIndex);
+    }
 
     // Apply direct yaw response when moving so steering is accurate and responsive
     if (Math.abs(currentForwardSpeed) > 0.5 && Math.abs(analogSteer) > 0.05) {
@@ -278,26 +312,26 @@ export class PlayerVehicle {
       this.chassisBody.quaternion.vmult(rightVec, rightVec);
       const lateralVel = this.chassisBody.velocity.dot(rightVec);
       const antiDrift = rightVec.clone();
-      const sportsType = this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR';
-      antiDrift.scale(-lateralVel * this.chassisBody.mass * (sportsType ? 12.0 : 10.0) * this.gripMultiplier, antiDrift);
+      antiDrift.scale(
+        -lateralVel
+          * this.chassisBody.mass
+          * this.playerDynamics.lateralGripFactor
+          * this.gripMultiplier,
+        antiDrift
+      );
       this.chassisBody.applyForce(antiDrift, new CANNON.Vec3(0, 0, 0));
     }
 
     // 4. Aerodynamic downforce (oriented along vehicle local -Y normal)
     const speed = this.chassisBody.velocity.length();
     if (speed > 2) {
-      const downForceFactor = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 600 : (this.vType === 'BUS' ? 100 : (this.vType === 'TRUCK' ? 200 : 400));
       const downVec = new CANNON.Vec3(0, -1, 0);
       this.chassisBody.quaternion.vmult(downVec, downVec);
-      downVec.scale(downForceFactor * speed, downVec);
+      downVec.scale(this.playerDynamics.downforceFactor * speed, downVec);
       this.chassisBody.applyForce(downVec, new CANNON.Vec3(0, 0, 0));
     }
 
-    const numWheels = this.raycastVehicle.wheelInfos.length;
-    for (let i = 0; i < numWheels; i++) {
-      this.raycastVehicle.applyEngineForce(engineForce, i);
-      this.raycastVehicle.setBrake(brakeForce, i);
-    }
+    this.applyWheelForces(engineForce, brakeForce);
 
     this.recoveryCooldown = Math.max(0, this.recoveryCooldown - delta);
     const horizontalSpeed = Math.hypot(this.chassisBody.velocity.x, this.chassisBody.velocity.z);
@@ -359,9 +393,15 @@ export class PlayerVehicle {
     this.mesh.position.copy(this.chassisBody.position);
     this.mesh.position.y -= this.meshOffset;
     this.mesh.quaternion.copy(this.chassisBody.quaternion);
-    if (this.vType === 'MOTORBIKE' && this.chassisBody.angularVelocity) {
+    if (this.playerDynamics.visualLeanFactor > 0 && this.chassisBody.angularVelocity) {
       // Lean motorcycle into turns based on angular yaw velocity
-      const leanAngle = Math.max(-0.45, Math.min(0.45, -this.chassisBody.angularVelocity.y * 0.28));
+      const leanAngle = Math.max(
+        -0.45,
+        Math.min(
+          0.45,
+          -this.chassisBody.angularVelocity.y * this.playerDynamics.visualLeanFactor
+        )
+      );
       this.mesh.rotateZ(leanAngle);
     }
 

@@ -1,5 +1,19 @@
 import * as THREE from 'three';
 
+export function getPlanarTargetHeading(target) {
+  const quaternion = target?.physicsVehicle?.chassisBody?.quaternion;
+  if (quaternion) {
+    const { x, y, z, w } = quaternion;
+    const forwardX = 2 * (x * z + w * y);
+    const forwardZ = 1 - 2 * (x * x + y * y);
+    if (Number.isFinite(forwardX) && Number.isFinite(forwardZ)) {
+      return Math.atan2(forwardX, forwardZ);
+    }
+  }
+  const meshHeading = Number(target?.mesh?.rotation?.y);
+  return Number.isFinite(meshHeading) ? meshHeading : 0;
+}
+
 export class CameraRig {
   constructor(camera, controls) {
     this.camera = camera;
@@ -137,7 +151,10 @@ export class CameraRig {
 
     const mesh = this.followTarget.mesh;
     const targetPos = mesh.position.clone();
-    const rotation = mesh.rotation.y;
+    // Physics vehicles can pitch and roll, and motorbikes add a render-only
+    // lean. Read the chassis' planar forward vector so those visual motions do
+    // not make the chase camera twitch sideways.
+    const rotation = getPlanarTargetHeading(this.followTarget);
     const viewRotation = rotation + this.chaseYaw;
 
     const isPhysicsCar = this.followTarget.physicsVehicle || this.followTarget.userControlled;

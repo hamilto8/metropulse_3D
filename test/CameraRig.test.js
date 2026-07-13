@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
-import { CameraRig } from '../src/camera/CameraRig.js';
+import { CameraRig, getPlanarTargetHeading } from '../src/camera/CameraRig.js';
 
 test('camera shake is a render-only offset and never accumulates into the orbit pose', () => {
   const camera = new THREE.PerspectiveCamera();
@@ -58,6 +58,27 @@ test('chase pose supports an independent mouse-look yaw around the target', () =
   const sidePose = rig.getDesiredChasePose();
   assert.ok(sidePose.camPos.x < -14);
   assert.ok(Math.abs(sidePose.camPos.z) < 1e-9);
+});
+
+test('physics chase heading ignores the motorbike visual lean', () => {
+  const heading = 0.72;
+  const chassisQuaternion = new THREE.Quaternion().setFromAxisAngle(
+    new THREE.Vector3(0, 1, 0),
+    heading
+  );
+  const mesh = new THREE.Group();
+  mesh.quaternion.setFromEuler(new THREE.Euler(0.18, heading, -0.4, 'YXZ'));
+  const target = {
+    mesh,
+    physicsVehicle: {
+      chassisBody: {
+        quaternion: chassisQuaternion
+      }
+    }
+  };
+
+  assert.ok(Math.abs(mesh.rotation.y - heading) > 0.01);
+  assert.ok(Math.abs(getPlanarTargetHeading(target) - heading) < 1e-9);
 });
 
 test('releasing chase control keeps the current local camera pose and orbit pivot', () => {
