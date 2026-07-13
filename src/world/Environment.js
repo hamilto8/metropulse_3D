@@ -5,6 +5,12 @@ import {
   getSkyPalette
 } from '../systems/TimeOfDayVisuals.js';
 import {
+  DEFAULT_WEATHER_MODE,
+  getWeatherDefinition,
+  normalizeWeatherMode,
+  stepWeatherCycle
+} from '../systems/Weather.js';
+import {
   CELESTIAL_ORBIT,
   getCelestialOrbitPosition,
   isCelestialBodyVisible
@@ -15,7 +21,7 @@ export class Environment {
     this.scene = scene;
     this.inspectorHud = inspectorHud;
     this.app = app;
-    this.weatherMode = 'clear';
+    this.weatherMode = DEFAULT_WEATHER_MODE;
     this.rainParticles = null;
     this.starfield = null;
     this.moon = null;
@@ -34,21 +40,7 @@ export class Environment {
 
     // Dynamic weather cycle state
     this.isDynamicWeather = true;
-    this.weatherCycleTimer = 45;
-    this.weatherSequence = ['clear', 'mist', 'rain', 'thunderstorm'];
-    this.weatherDurations = {
-      clear: 45,
-      mist: 30,
-      rain: 40,
-      thunderstorm: 28
-    };
-    this.weatherFogDensities = {
-      clear: 0.0035,
-      mist: 0.015,
-      rain: 0.008,
-      thunderstorm: 0.012
-    };
-    this.wasDynamicWeatherEnabled = true;
+    this.weatherCycleTimer = getWeatherDefinition(this.weatherMode).durationSeconds;
 
     // Wet-surface state. Materials are captured lazily so editor-placed roads
     // can join the effect without requiring a hard dependency on CityBuilder.
@@ -223,30 +215,20 @@ export class Environment {
     this.scene.add(this.rainParticles);
   }
 
-  setWeather(mode, { sync = true, resetCycleTimer = false } = {}) {
-    const normalizedMode = this.weatherSequence.includes(mode) ? mode : 'clear';
+  setWeather(mode, { sync = true, resetCycleTimer = true } = {}) {
+    const normalizedMode = normalizeWeatherMode(mode);
+    const definition = getWeatherDefinition(normalizedMode);
     this.weatherMode = normalizedMode;
     this.flashIntensity = 0;
     this.flashSequence = [];
     this.thunderTimer = -1;
 
-    if (normalizedMode === 'clear') {
-      this.scene.fog.density = this.weatherFogDensities.clear;
-      if (this.rainMat) this.rainMat.opacity = 0;
-      this.targetWetness = 0;
-    } else if (normalizedMode === 'mist') {
-      this.scene.fog.density = this.weatherFogDensities.mist;
-      if (this.rainMat) this.rainMat.opacity = 0;
-      this.targetWetness = 0.12;
-    } else if (normalizedMode === 'rain') {
-      this.scene.fog.density = this.weatherFogDensities.rain;
-      if (this.rainMat) this.rainMat.opacity = 0.6;
-      this.targetWetness = 0.72;
-    } else if (normalizedMode === 'thunderstorm') {
-      this.scene.fog.density = this.weatherFogDensities.thunderstorm;
-      if (this.rainMat) this.rainMat.opacity = 0.85;
+    if (this.scene.fog) this.scene.fog.density = definition.fogDensity;
+    if (this.rainMat) this.rainMat.opacity = definition.rainOpacity;
+    this.targetWetness = definition.wetness;
+
+    if (normalizedMode === 'thunderstorm') {
       this.lightningTimer = 3.0 + Math.random() * 5.0; // Trigger lightning soon!
-      this.targetWetness = 1;
     }
 
     this.collectWetSurfaceMaterials();
@@ -258,33 +240,35 @@ export class Environment {
   }
 
   setDynamicWeather(enabled) {
-    this.isDynamicWeather = Boolean(enabled);
-    this.wasDynamicWeatherEnabled = this.isDynamicWeather;
+    const nextEnabled = Boolean(enabled);
+    this.isDynamicWeather = nextEnabled;
     this.weatherCycleTimer = this.isDynamicWeather ? this.getWeatherDuration(this.weatherMode) : 0;
+    this.app?.uiManager?.syncDynamicWeatherControl?.(this.isDynamicWeather);
     return this.isDynamicWeather;
   }
 
   getWeatherDuration(mode = this.weatherMode) {
-    return this.weatherDurations[mode] || 35;
+    return getWeatherDefinition(mode).durationSeconds;
   }
 
-  advanceWeatherCycle() {
-    const currentIndex = this.weatherSequence.indexOf(this.weatherMode);
-    const nextIndex = (Math.max(0, currentIndex) + 1) % this.weatherSequence.length;
-    const nextMode = this.weatherSequence[nextIndex];
-    this.setWeather(nextMode, { sync: true, resetCycleTimer: false });
-    this.weatherCycleTimer = this.getWeatherDuration(nextMode);
-    return nextMode;
+  updateDynamicWeather(delta) {
+    const nextState = stepWeatherCycle(
+      this.weatherMode,
+      this.weatherCycleTimer,
+      delta,
+      this.isDynamicWeather
+    );
+    this.weatherCycleTimer = nextState.remainingSeconds;
+    if (nextState.mode !== this.weatherMode) {
+      this.setWeather(nextState.mode, { sync: true, resetCycleTimer: false });
+    }
+    return nextState.transitions;
   }
 
   syncWeatherIntegration(mode) {
     this.app?.physicsWorld?.setWeatherFriction?.(mode);
     this.app?.uiManager?.syncWeatherButtons?.(mode);
-
-    const gameManager = this.app?.gameManager;
-    if (typeof gameManager?.onWeatherChanged === 'function') {
-      gameManager.onWeatherChanged(mode, { source: 'Environment' });
-    }
+    this.app?.persistenceSystem?.scheduleSave?.();
   }
 
   collectWetSurfaceMaterials() {
@@ -338,19 +322,7 @@ export class Environment {
 
   update(timeVal, delta) {
     // Dynamic weather cycling
-    if (this.isDynamicWeather && !this.wasDynamicWeatherEnabled) {
-      this.wasDynamicWeatherEnabled = true;
-      this.weatherCycleTimer = this.getWeatherDuration(this.weatherMode);
-    } else if (!this.isDynamicWeather) {
-      this.wasDynamicWeatherEnabled = false;
-    }
-
-    if (this.isDynamicWeather) {
-      this.weatherCycleTimer -= delta;
-      if (this.weatherCycleTimer <= 0) {
-        this.advanceWeatherCycle();
-      }
-    }
+    this.updateDynamicWeather(delta);
 
     this.updateWetSurfaces(delta);
 
@@ -361,7 +333,7 @@ export class Environment {
     const altitudeBlend = THREE.MathUtils.smoothstep(cameraHeight, 60, 300);
     const altitudeScale = THREE.MathUtils.lerp(1, 0.32, altitudeBlend);
     if (this.scene.fog) {
-      this.scene.fog.density = this.weatherFogDensities[this.weatherMode] * altitudeScale;
+      this.scene.fog.density = getWeatherDefinition(this.weatherMode).fogDensity * altitudeScale;
     }
 
     // 1. Sky & fog color transitions use separate zenith/horizon colors so

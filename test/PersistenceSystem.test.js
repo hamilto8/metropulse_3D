@@ -68,3 +68,35 @@ test('restore rejects invalid legacy overlaps and removes their orphan economy r
     clearedScenery: 0
   });
 });
+
+test('restore always starts dynamic weather even when a legacy save disabled it', () => {
+  const calls = [];
+  const persistence = Object.create(PersistenceSystem.prototype);
+  persistence.app = {
+    timeManager: {
+      setTime(value) { calls.push(['time', value]); },
+      setPlaying(value) { calls.push(['playing', value]); },
+      setSpeed(value) { calls.push(['speed', value]); }
+    },
+    environment: {
+      setWeather(value) { calls.push(['weather', value]); },
+      setDynamicWeather(value) { calls.push(['dynamic-weather', value]); }
+    }
+  };
+
+  persistence.restoreSettings({
+    time: 9,
+    timePlaying: true,
+    timeSpeed: 15,
+    weather: 'rain',
+    dynamicWeather: false
+  });
+
+  assert.deepEqual(calls, [
+    ['time', 9],
+    ['playing', true],
+    ['speed', 15],
+    ['weather', 'rain'],
+    ['dynamic-weather', true]
+  ]);
+});

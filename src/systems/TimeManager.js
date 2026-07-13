@@ -2,12 +2,32 @@ import * as THREE from 'three';
 import { getNightFactor } from './TimeOfDayVisuals.js';
 import { getCelestialAngles } from '../world/CelestialOrbit.js';
 
+export const DEFAULT_TIME_SPEED = 1;
+export const TIME_SPEED_OPTIONS = Object.freeze([0.5, 1, 5, 15]);
+export const BASE_GAME_MINUTES_PER_REAL_SECOND = 1;
+
+export function normalizeTimeSpeed(speed) {
+  const numericSpeed = Number(speed);
+  return TIME_SPEED_OPTIONS.includes(numericSpeed) ? numericSpeed : DEFAULT_TIME_SPEED;
+}
+
+export function advanceSimulationTime(timeVal, deltaSeconds, speed = DEFAULT_TIME_SPEED) {
+  const currentTime = Number.isFinite(timeVal) ? timeVal : 0;
+  const elapsedSeconds = Number.isFinite(deltaSeconds) ? Math.max(0, deltaSeconds) : 0;
+  const hoursElapsed = (
+    elapsedSeconds
+    * BASE_GAME_MINUTES_PER_REAL_SECOND
+    * normalizeTimeSpeed(speed)
+  ) / 60;
+  return ((currentTime + hoursElapsed) % 24 + 24) % 24;
+}
+
 export class TimeManager {
   constructor(app) {
     this.app = app;
     this.timeVal = 14.5; // Start at 2:30 PM
     this.isPlaying = true;
-    this.speed = 1.0; // Normal 1x speed
+    this.speed = DEFAULT_TIME_SPEED;
     this.celestialAngles = { sun: 0, moon: Math.PI };
 
     this.initLights();
@@ -57,15 +77,28 @@ export class TimeManager {
   }
 
   setTime(timeVal) {
+    if (!Number.isFinite(timeVal)) return this.timeVal;
     this.timeVal = Math.max(0, Math.min(24, timeVal));
+    this.app?.persistenceSystem?.scheduleSave?.();
+    return this.timeVal;
   }
 
   setPlaying(isPlaying) {
-    this.isPlaying = isPlaying;
+    const nextPlaying = Boolean(isPlaying);
+    const changed = nextPlaying !== this.isPlaying;
+    this.isPlaying = nextPlaying;
+    this.app?.uiManager?.syncTimePlayingControl?.(this.isPlaying);
+    if (changed) this.app?.persistenceSystem?.scheduleSave?.();
+    return this.isPlaying;
   }
 
   setSpeed(speed) {
-    this.speed = speed;
+    const nextSpeed = normalizeTimeSpeed(speed);
+    const changed = nextSpeed !== this.speed;
+    this.speed = nextSpeed;
+    this.app?.uiManager?.syncTimeSpeedControl?.(this.speed);
+    if (changed) this.app?.persistenceSystem?.scheduleSave?.();
+    return this.speed;
   }
 
   getFormattedTime() {
@@ -77,11 +110,7 @@ export class TimeManager {
 
   update(delta) {
     if (this.isPlaying) {
-      const hoursPerSecond = (1.0 / 60.0) * this.speed;
-      this.timeVal += hoursPerSecond * delta;
-      if (this.timeVal >= 24.0) {
-        this.timeVal -= 24.0;
-      }
+      this.timeVal = advanceSimulationTime(this.timeVal, delta, this.speed);
     }
 
     if (this.app.uiManager) {

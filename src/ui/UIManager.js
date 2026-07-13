@@ -1,4 +1,5 @@
 import { createTextElement } from './dom.js';
+import { getWeatherDefinition } from '../systems/Weather.js';
 
 export class UIManager {
   constructor(app) {
@@ -119,7 +120,10 @@ export class UIManager {
     if (this.app.economySystem?.subscribe) {
       this._unsubscribeEconomy = this.app.economySystem.subscribe(event => this.updateEconomy(event?.current || event), { emitCurrent: true });
     }
+    this.syncTimePlayingControl(this.app.timeManager?.isPlaying);
+    this.syncTimeSpeedControl(this.app.timeManager?.speed);
     this.updateDynamicWeatherBtnState();
+    this.syncWeatherButtons(this.app.environment?.weatherMode);
     document.body.dataset.inputMethod = this.app.inputManager?.activeInterface?.toLowerCase?.() || 'keyboard';
     this.updateControlDeviceBadge(this.app.inputManager?.activeInterface || 'KEYBOARD');
     this.updateAdaptiveControls(true);
@@ -148,20 +152,14 @@ export class UIManager {
     // Play/Pause Time
     if (this.btnTimePlay) {
       this.btnTimePlay.addEventListener('click', () => {
-        this.isTimePlaying = !this.isTimePlaying;
-        this.app.timeManager.setPlaying(this.isTimePlaying);
-        this.btnTimePlay.innerHTML = this.isTimePlaying ? '⏸️' : '▶️';
-        this.btnTimePlay.title = this.isTimePlaying ? 'Pause Time' : 'Play Time';
+        this.app.timeManager.setPlaying(!this.app.timeManager.isPlaying);
       });
     }
 
     // Speed buttons
     this.speedButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        this.speedButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.timeSpeed = parseFloat(btn.dataset.speed);
-        this.app.timeManager.setSpeed(this.timeSpeed);
+        this.app.timeManager.setSpeed(parseFloat(btn.dataset.speed));
       });
     });
 
@@ -182,10 +180,9 @@ export class UIManager {
     // Weather toggle
     this.weatherButtons.forEach(btn => {
       btn.addEventListener('click', () => {
-        // Turning on manual weather disables dynamic weather cycle
+        // Selecting a manual weather mode disables the automatic cycle.
         if (this.app.environment) {
           this.app.environment.setDynamicWeather(false);
-          this.updateDynamicWeatherBtnState();
         }
 
         this.weatherButtons.forEach(b => b.classList.remove('active'));
@@ -201,7 +198,6 @@ export class UIManager {
         if (this.app.environment) {
           const env = this.app.environment;
           env.setDynamicWeather(!env.isDynamicWeather);
-          this.updateDynamicWeatherBtnState();
         }
       });
     }
@@ -768,8 +764,7 @@ export class UIManager {
     }
 
     if (this.statWeather && this.app.environment) {
-      const labels = { clear: '☀️ CLEAR', mist: '🌫️ MIST', rain: '🌧️ RAIN', thunderstorm: '⛈️ STORM' };
-      this.statWeather.textContent = labels[this.app.environment.weatherMode] || this.app.environment.weatherMode.toUpperCase();
+      this.statWeather.textContent = getWeatherDefinition(this.app.environment.weatherMode).statusText;
     }
     this.updateAdaptiveControls();
   }
@@ -1151,20 +1146,40 @@ export class UIManager {
   }
 
   updateDynamicWeatherBtnState() {
-    if (!this.btnDynamicWeather || !this.app.environment) return;
-    const active = this.app.environment.isDynamicWeather;
+    this.syncDynamicWeatherControl(this.app.environment?.isDynamicWeather);
+  }
+
+  syncTimePlayingControl(isPlaying) {
+    if (!this.btnTimePlay || typeof isPlaying !== 'boolean') return;
+    this.isTimePlaying = isPlaying;
+    this.btnTimePlay.textContent = isPlaying ? '⏸️' : '▶️';
+    this.btnTimePlay.title = isPlaying ? 'Pause Time' : 'Play Time';
+    this.btnTimePlay.setAttribute('aria-pressed', String(isPlaying));
+  }
+
+  syncTimeSpeedControl(speed) {
+    if (!Number.isFinite(speed)) return;
+    this.timeSpeed = speed;
+    this.speedButtons.forEach(btn => {
+      const active = Number(btn.dataset.speed) === speed;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  syncDynamicWeatherControl(active) {
+    if (!this.btnDynamicWeather || typeof active !== 'boolean') return;
     this.btnDynamicWeather.classList.toggle('active', active);
-    this.btnDynamicWeather.innerHTML = active ? '🔄 Dynamic Cycle: ON' : '🔄 Dynamic Cycle: OFF';
+    this.btnDynamicWeather.setAttribute('aria-pressed', String(active));
+    this.btnDynamicWeather.textContent = active ? '🔄 Dynamic Cycle: ON' : '🔄 Dynamic Cycle: OFF';
   }
 
   syncWeatherButtons(mode) {
     if (!this.weatherButtons) return;
     this.weatherButtons.forEach(btn => {
-      if (btn.dataset.weather === mode) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
+      const active = btn.dataset.weather === mode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
     });
   }
 

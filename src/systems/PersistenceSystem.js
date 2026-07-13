@@ -48,7 +48,6 @@ export class PersistenceSystem {
         timePlaying: this.app.timeManager?.isPlaying,
         timeSpeed: this.app.timeManager?.speed,
         weather: this.app.environment?.weatherMode,
-        dynamicWeather: this.app.environment?.isDynamicWeather,
         mayhem: Boolean(this.app.funMode),
         heatmap: Boolean(this.app.trafficHeatmapEnabled)
       }
@@ -197,7 +196,9 @@ export class PersistenceSystem {
     if (typeof settings.timePlaying === 'boolean') this.app.timeManager?.setPlaying?.(settings.timePlaying);
     if (Number.isFinite(settings.timeSpeed) && settings.timeSpeed > 0) this.app.timeManager?.setSpeed?.(settings.timeSpeed);
     if (typeof settings.weather === 'string') this.app.environment?.setWeather?.(settings.weather);
-    if (typeof settings.dynamicWeather === 'boolean') this.app.environment?.setDynamicWeather?.(settings.dynamicWeather);
+    // Dynamic weather is a session default, not a persisted preference. Older
+    // saves may contain `dynamicWeather: false`; startup intentionally ignores it.
+    this.app.environment?.setDynamicWeather?.(true);
     if (typeof settings.mayhem === 'boolean') {
       this.app.funMode = settings.mayhem;
       this.app.gameManager?.setMayhem?.(settings.mayhem, 'persistence');

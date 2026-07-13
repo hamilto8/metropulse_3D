@@ -1,4 +1,5 @@
 import * as CANNON from 'cannon-es';
+import { getWeatherDefinition, normalizeWeatherMode } from '../systems/Weather.js';
 
 export const PHYSICS_GROUPS = Object.freeze({
   SURFACE: 1,
@@ -130,22 +131,10 @@ export class PhysicsWorld {
   }
 
   setWeatherFriction(weatherMode) {
-    this.weatherMode = weatherMode;
-    if (weatherMode === 'rain') {
-      // Slick asphalt drifting in heavy rain!
-      this.wheelGroundContact.friction = 0.28;
-      this.weatherGripMultiplier = 0.48;
-    } else if (weatherMode === 'thunderstorm') {
-      // Drenched asphalt, super slick drifting storm!
-      this.wheelGroundContact.friction = 0.22;
-      this.weatherGripMultiplier = 0.38;
-    } else if (weatherMode === 'mist') {
-      this.wheelGroundContact.friction = 0.55;
-      this.weatherGripMultiplier = 0.72;
-    } else {
-      this.wheelGroundContact.friction = 0.85;
-      this.weatherGripMultiplier = 1.0;
-    }
+    this.weatherMode = normalizeWeatherMode(weatherMode);
+    const definition = getWeatherDefinition(this.weatherMode);
+    this.wheelGroundContact.friction = definition.groundFriction;
+    this.weatherGripMultiplier = definition.gripMultiplier;
 
     // RaycastVehicle wheels are rays rather than rigid wheel bodies, so their
     // traction does not come from ContactMaterial. Propagate weather grip to
