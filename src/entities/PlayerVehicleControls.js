@@ -52,6 +52,50 @@ export function resolvePlayerVehicleControls(keys = {}, inputState = null) {
   });
 }
 
+/**
+ * Converts drive intent into cannon-es wheel commands. RaycastVehicle's
+ * engine-force sign is opposite its configured +Z forward axis: negative
+ * wheel force drives forward and positive wheel force drives in reverse.
+ */
+export function resolvePlayerVehicleDriveForces(
+  { throttle = 0, reverse = 0, handbrake = false } = {},
+  forwardSpeed = 0,
+  profile = {}
+) {
+  const safeSpeed = Number.isFinite(forwardSpeed) ? forwardSpeed : 0;
+  const forwardInput = clampUnit(throttle);
+  const reverseInput = clampUnit(reverse);
+  const forwardEngineForce = Math.max(0, Number(profile.forwardEngineForce) || 0);
+  const reverseEngineForce = Math.max(0, Number(profile.reverseEngineForce) || 0);
+  const maxBrakeForce = Math.max(0, Number(profile.maxBrakeForce) || 0);
+  const maxForwardSpeed = Math.max(0, Number(profile.maxForwardSpeed) || 0);
+  const maxReverseSpeed = Math.max(0, Number(profile.maxReverseSpeed) || 0);
+  const directionChangeSpeed = 1.5;
+
+  if (handbrake) {
+    return { engineForce: 0, brakeForce: maxBrakeForce * 2.5 };
+  }
+  if (forwardInput > 0.05) {
+    if (safeSpeed < -directionChangeSpeed) {
+      return { engineForce: 0, brakeForce: maxBrakeForce * forwardInput };
+    }
+    return {
+      engineForce: safeSpeed < maxForwardSpeed ? -forwardEngineForce * forwardInput : 0,
+      brakeForce: 0
+    };
+  }
+  if (reverseInput > 0.05) {
+    if (safeSpeed > directionChangeSpeed) {
+      return { engineForce: 0, brakeForce: maxBrakeForce * reverseInput };
+    }
+    return {
+      engineForce: safeSpeed > -maxReverseSpeed ? reverseEngineForce * reverseInput : 0,
+      brakeForce: 0
+    };
+  }
+  return { engineForce: 0, brakeForce: 15 };
+}
+
 /** Returns the next stuck duration and whether a safe-pose recovery is due. */
 export function updateVehicleMobilityTimer(
   elapsed,

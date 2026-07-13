@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
 import { createPedestrianDescriptor } from '../entities/PedestrianArchetypes.js';
 import { setTextSegments } from '../ui/dom.js';
@@ -258,6 +259,10 @@ export class PedestrianSystem {
     const safeDelta = Number.isFinite(delta) ? Math.max(0, Math.min(delta, 0.1)) : 0;
 
     if (pedestrian.archetype === 'CAFE_READER') {
+      // A reader released somewhere else in the city must resume as a walking
+      // NPC from that handoff point. Only readers still explicitly assigned to
+      // the seated mode may be anchored to their authored café seat.
+      if (state.mode !== 'SITTING_READING') return false;
       pedestrian.speed = 0;
       pedestrian.targetSpeed = 0;
       state.mode = 'SITTING_READING';
@@ -1196,7 +1201,9 @@ export class PedestrianSystem {
   }
 
   releaseControl(pedestrian) {
-    if (!pedestrian) return;
+    if (!pedestrian?.mesh) return false;
+    const handoffPose = captureAiHandoffPose(pedestrian);
+    if (!handoffPose) return false;
     pedestrian.userControlled = false;
     if (this.controlledPedestrian === pedestrian) {
       this.controlledPedestrian = null;
@@ -1208,39 +1215,27 @@ export class PedestrianSystem {
     pedestrian.info['Mood'] = pedestrian.defaultMood || 'Energized';
     pedestrian.info['Activity'] = pedestrian.defaultActivity || 'Strolling Downtown';
     if (pedestrian.behaviorState) {
-      if (pedestrian.archetype === 'CAFE_READER') pedestrian.behaviorState.mode = 'SITTING_READING';
-      else if (pedestrian.archetype === 'JOGGER') pedestrian.behaviorState.mode = 'JOGGING';
+      if (pedestrian.archetype === 'CAFE_READER') {
+        pedestrian.behaviorState.mode = 'WALKING';
+        pedestrian.info['Activity'] = 'Walking streets';
+      } else if (pedestrian.archetype === 'JOGGER') pedestrian.behaviorState.mode = 'JOGGING';
       else if (pedestrian.archetype === 'CRIMINAL') {
         finishAggression(pedestrian, pedestrian.behaviorState, this.random);
       } else pedestrian.behaviorState.mode = 'WALKING';
     }
     
-    const prompt = document.getElementById('vehicle-enter-prompt');
+    const prompt = typeof document !== 'undefined'
+      ? document.getElementById('vehicle-enter-prompt')
+      : null;
     if (prompt) prompt.classList.add('hidden');
 
-    // Return to sidewalk network at closest node to avoid floating
-    const allNodes = Array.from(this.nodes.values()).filter(n => n.nextNodes.length > 0);
-    let closestNode = null;
-    let minDist = Infinity;
-    for (const n of allNodes) {
-      const dist = pedestrian.mesh.position.distanceTo(n.pos);
-      if (dist < minDist) {
-        minDist = dist;
-        closestNode = n;
-      }
-    }
-    
-    if (closestNode) {
-      pedestrian.currentNode = closestNode;
-      if (closestNode.nextNodes.length > 0) {
-        pedestrian.targetNode = closestNode.nextNodes[0];
-        pedestrian.mesh.lookAt(pedestrian.targetNode.pos);
-      }
-      if (this.app && this.app.cityBuilder && this.app.cityBuilder.isInWater(pedestrian.mesh.position)) {
-        pedestrian.mesh.position.copy(closestNode.pos);
-        pedestrian.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
-      }
-    }
+    completeAiHandoff(pedestrian, {
+      pose: handoffPose,
+      nodes: this.nodes?.values?.(),
+      entities: this.pedestrians,
+      scene: this.app?.sceneManager?.scene
+    });
+    return true;
   }
 
   getTerrainHeight(x, z) {

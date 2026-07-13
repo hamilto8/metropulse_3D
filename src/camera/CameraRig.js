@@ -5,7 +5,7 @@ export class CameraRig {
     this.camera = camera;
     this.controls = controls;
 
-    this.state = 'ORBIT_MACRO'; // ORBIT_MACRO | SWOOP_TO_STREET | CHASE_MICRO | ASCEND_TO_MACRO
+    this.state = 'ORBIT_MACRO'; // ORBIT_MACRO | SWOOP_TO_STREET | CHASE_MICRO
     this.followTarget = null;
 
     // Transition interpolation variables
@@ -14,9 +14,6 @@ export class CameraRig {
 
     this.startCamPos = new THREE.Vector3();
     this.startLookAt = new THREE.Vector3();
-
-    this.macroCamPos = new THREE.Vector3(0, 180, 220);
-    this.macroLookAt = new THREE.Vector3(0, 0, 0);
 
     // Shake offset
     this.shakeIntensity = 0;
@@ -78,12 +75,6 @@ export class CameraRig {
     if (!targetEntity || !targetEntity.mesh) return;
     this.removeAppliedShake();
 
-    // Save current macro view so we can ascend back to it later
-    if (this.state === 'ORBIT_MACRO') {
-      this.macroCamPos.copy(this.camera.position);
-      this.macroLookAt.copy(this.controls.target);
-    }
-
     this.followTarget = targetEntity;
     this.chaseYaw = 0;
     this.chasePitch = 0;
@@ -97,17 +88,26 @@ export class CameraRig {
     this.controls.enabled = false;
   }
 
-  // Transition back up to overhead city planner view
-  ascendToMacro(duration = 1.0) {
+  /**
+   * Detaches from a chase target without changing the current camera or orbit
+   * pivot. This is the normal direct-control release path: the player should
+   * remain at the part of the city they just reached instead of returning to
+   * the macro pose captured before takeover.
+   */
+  releaseToLocalOrbit() {
     this.removeAppliedShake();
-    this.state = 'ASCEND_TO_MACRO';
+    this.followTarget = null;
+    this.isPointerLooking = false;
+    this.state = 'ORBIT_MACRO';
     this.transitionTimer = 0;
-    this.transitionDuration = duration;
+    this.controls.enabled = true;
 
-    this.startCamPos.copy(this.camera.position);
-    this.startLookAt.copy(this.controls.target);
-
-    this.controls.enabled = false;
+    // Chase mode may widen the FOV. Restore the ordinary free-camera lens
+    // immediately so the detached pose is stable and predictable.
+    this.currentFov = 60;
+    this.camera.fov = 60;
+    this.camera.updateProjectionMatrix?.();
+    this.controls.update?.();
   }
 
   triggerShake(intensity = 0.35) {
@@ -130,8 +130,8 @@ export class CameraRig {
   getDesiredChasePose() {
     if (!this.followTarget || !this.followTarget.mesh) {
       return {
-        camPos: this.macroCamPos.clone(),
-        lookAt: this.macroLookAt.clone()
+        camPos: this.camera.position.clone(),
+        lookAt: this.controls.target.clone()
       };
     }
 
@@ -226,25 +226,6 @@ export class CameraRig {
         this.currentFov += (targetFov - this.currentFov) * Math.min(1.0, delta * 6.0);
         this.camera.fov = this.currentFov;
         this.camera.updateProjectionMatrix();
-      }
-    } else if (this.state === 'ASCEND_TO_MACRO') {
-      this.transitionTimer += delta;
-      const progress = Math.min(1.0, this.transitionTimer / this.transitionDuration);
-      const ease = this.easeQuintic(progress);
-
-      this.camera.position.lerpVectors(this.startCamPos, this.macroCamPos, ease);
-      this.controls.target.lerpVectors(this.startLookAt, this.macroLookAt, ease);
-      this.camera.lookAt(this.controls.target);
-
-      // Restore FOV to 60 during ascent
-      this.currentFov += (60 - this.currentFov) * Math.min(1.0, delta * 8.0);
-      this.camera.fov = this.currentFov;
-      this.camera.updateProjectionMatrix();
-
-      if (progress >= 1.0) {
-        this.state = 'ORBIT_MACRO';
-        this.followTarget = null;
-        this.controls.enabled = true;
       }
     }
 

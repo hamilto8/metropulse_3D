@@ -32,6 +32,7 @@ import {
 } from './TrafficNavigation.js';
 import { TrafficControlSystem } from './TrafficControlSystem.js';
 import { createDriverRuleProfile } from './TrafficRules.js';
+import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -135,7 +136,7 @@ export class TrafficSystem {
   }
 
   toggleUserControl(vehicle, { source = 'camera', pedestrian = null } = {}) {
-    if (!vehicle) return false;
+    if (!vehicle || vehicle.isDestroyed) return false;
     if (vehicle.userControlled && this.controlledVehicle === vehicle) {
       this.releaseControl(vehicle);
       return false;
@@ -152,6 +153,19 @@ export class TrafficSystem {
       if (vehicle.isParked) {
         vehicle.isParked = false;
       }
+      // Player authority supersedes recoverable AI-only stop/recovery state.
+      // Without this reset, a vehicle selected during an NPC recovery or crash
+      // can keep taking the earlier branch that applies crash brakes.
+      vehicle.crashed = false;
+      vehicle.crashTimer = 0;
+      vehicle.isReversing = false;
+      vehicle.reverseTimer = 0;
+      vehicle.stuckTimer = 0;
+      vehicle.stuckRecoveryElapsed = 0;
+      vehicle.trafficControlBlocked = false;
+      vehicle.pedestrianYieldState = null;
+      vehicle.isRejoiningTraffic = false;
+      vehicle.mesh.rotation.z = 0;
 
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
@@ -191,6 +205,10 @@ export class TrafficSystem {
         if (vehicle.physicsBody) this.app.physicsWorld.removeKinematicCollider(vehicle.physicsBody);
         vehicle.mesh.position.y = this.getTerrainHeight(vehicle.mesh.position.x, vehicle.mesh.position.z);
         vehicle.physicsVehicle = new PlayerVehicle(vehicle.mesh, this.app.physicsWorld, null, null, vehicle.vType);
+        // Preserve the moving AI vehicle's momentum when authority changes.
+        // Starting every physics chassis at rest caused the engine/audio drop
+        // that made takeover feel like sudden braking.
+        vehicle.physicsVehicle.setForwardSpeed(vehicle.speed);
       }
 
       if (this.app && this.app.audioSystem) {
@@ -202,7 +220,9 @@ export class TrafficSystem {
   }
 
   releaseControl(vehicle) {
-    if (!vehicle) return;
+    if (!vehicle?.mesh) return false;
+    const handoffPose = captureAiHandoffPose(vehicle);
+    if (!handoffPose) return false;
     vehicle.userControlled = false;
 
     // Clean up cannon-es physics vehicle
@@ -243,32 +263,14 @@ export class TrafficSystem {
       this.app.missionSystem.failMission('released');
     }
 
-    const allNodesList = Array.from(this.nodes.values());
-    if (allNodesList.length > 0) {
-      let closestNode = allNodesList[0];
-      let minDist = vehicle.mesh.position.distanceTo(closestNode.pos);
-      for (const node of allNodesList) {
-        const dist = vehicle.mesh.position.distanceTo(node.pos);
-        if (dist < minDist) {
-          minDist = dist;
-          closestNode = node;
-        }
-      }
-      vehicle.currentNode = closestNode;
-      if (closestNode.nextNodes && closestNode.nextNodes.length > 0) {
-        vehicle.targetNode = closestNode.nextNodes[0];
-      } else {
-        vehicle.targetNode = closestNode;
-      }
-         if (vehicle.targetNode) {
-        vehicle.mesh.lookAt(vehicle.targetNode.pos);
-      }
-      if (this.app && this.app.cityBuilder && this.app.cityBuilder.isInWater(vehicle.mesh.position)) {
-        vehicle.mesh.position.copy(closestNode.pos);
-        vehicle.mesh.position.y = this.getTerrainHeight(closestNode.pos.x, closestNode.pos.z);
-      }
-      vehicle.speed = Math.max(8, vehicle.speed);
-    }
+    completeAiHandoff(vehicle, {
+      pose: handoffPose,
+      nodes: this.nodes?.values?.(),
+      entities: this.vehicles,
+      scene: this.app?.sceneManager?.scene
+    });
+    vehicle.isRejoiningTraffic = Boolean(vehicle.currentNode && vehicle.targetNode);
+    vehicle.speed = Math.max(8, Number.isFinite(vehicle.speed) ? vehicle.speed : 0);
 
     if (vehicle.physicsBody && this.app && this.app.physicsWorld) {
       vehicle.physicsBody.position.set(vehicle.mesh.position.x, vehicle.mesh.position.y + 1.05, vehicle.mesh.position.z);
@@ -276,6 +278,7 @@ export class TrafficSystem {
       vehicle.physicsBody.aabbNeedsUpdate = true;
     }
     this.ensureAmbientMotorbikeRider(vehicle, vehicle.riderSerial);
+    return true;
   }
 
   exitControlledVehicle() {
@@ -1581,7 +1584,7 @@ export class TrafficSystem {
       }
 
       // Handle emergency police rushing to crash site
-      if (v.isPolice && v.emergencyTarget) {
+      if (!v.userControlled && v.isPolice && v.emergencyTarget) {
         this.updatePoliceEmergencyResponse(v, delta);
         continue;
       }
@@ -2115,6 +2118,7 @@ export class TrafficSystem {
     vehicle.mesh.position.y = this.getTerrainHeight(bestNode.pos.x, bestNode.pos.z);
     vehicle.currentNode = bestNode;
     vehicle.targetNode = bestNode.nextNodes[Math.floor(Math.random() * bestNode.nextNodes.length)] || bestNode.nextNodes[0];
+    vehicle.isRejoiningTraffic = false;
     if (vehicle.targetNode) {
       vehicle.mesh.lookAt(vehicle.targetNode.pos.x, vehicle.mesh.position.y, vehicle.targetNode.pos.z);
     }

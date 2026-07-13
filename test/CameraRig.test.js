@@ -59,3 +59,53 @@ test('chase pose supports an independent mouse-look yaw around the target', () =
   assert.ok(sidePose.camPos.x < -14);
   assert.ok(Math.abs(sidePose.camPos.z) < 1e-9);
 });
+
+test('releasing chase control keeps the current local camera pose and orbit pivot', () => {
+  const camera = new THREE.PerspectiveCamera(72);
+  camera.position.set(640, 8, -175);
+  const controls = {
+    enabled: false,
+    target: new THREE.Vector3(650, 1.4, -160),
+    updateCount: 0,
+    update() { this.updateCount += 1; }
+  };
+  const rig = new CameraRig(camera, controls);
+  rig.state = 'CHASE_MICRO';
+  rig.followTarget = { mesh: new THREE.Group() };
+  rig.isPointerLooking = true;
+  rig.currentFov = 72;
+  const releasedPosition = camera.position.clone();
+  const releasedTarget = controls.target.clone();
+
+  rig.releaseToLocalOrbit();
+  for (let frame = 0; frame < 120; frame += 1) rig.update(1 / 60);
+
+  assert.deepEqual(camera.position.toArray(), releasedPosition.toArray());
+  assert.deepEqual(controls.target.toArray(), releasedTarget.toArray());
+  assert.equal(rig.state, 'ORBIT_MACRO');
+  assert.equal(rig.followTarget, null);
+  assert.equal(rig.isPointerLooking, false);
+  assert.equal(controls.enabled, true);
+  assert.equal(camera.fov, 60);
+  assert.ok(controls.updateCount > 0);
+});
+
+test('a missing chase target cannot send the camera to a stale city pose', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(705, 7, -240);
+  const controls = {
+    enabled: false,
+    target: new THREE.Vector3(700, 1.4, -225),
+    update() {}
+  };
+  const rig = new CameraRig(camera, controls);
+  rig.state = 'CHASE_MICRO';
+  rig.followTarget = null;
+  const localPosition = camera.position.clone();
+  const localTarget = controls.target.clone();
+
+  rig.update(1);
+
+  assert.deepEqual(camera.position.toArray(), localPosition.toArray());
+  assert.deepEqual(controls.target.toArray(), localTarget.toArray());
+});

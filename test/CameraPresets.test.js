@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
+import { CameraRig } from '../src/camera/CameraRig.js';
 import { createCameraPresets } from '../src/camera/CameraPresets.js';
 import {
   CAMERA_GROUND_CLEARANCE,
@@ -208,3 +209,43 @@ test('an invalid camera preset is rejected without relinquishing active control'
   assert.equal(fixture.cameraRig.state, 'CHASE_MICRO');
   assert.equal(fixture.manager.controls.enabled, false);
 });
+
+for (const kind of ['vehicle', 'pedestrian']) {
+  test(`releasing ${kind} follow enters free orbit at its last chase location`, () => {
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(515, 6, 88);
+    const controls = {
+      enabled: false,
+      target: new THREE.Vector3(525, 1.4, 100),
+      update() {}
+    };
+    const rig = new CameraRig(camera, controls);
+    rig.state = 'CHASE_MICRO';
+    rig.followTarget = { type: kind.toUpperCase(), mesh: new THREE.Group() };
+
+    const manager = Object.create(SceneManager.prototype);
+    Object.assign(manager, {
+      camera,
+      controls,
+      cameraRig: rig,
+      followTarget: rig.followTarget,
+      activePreset: 'birdseye',
+      targetCameraPos: new THREE.Vector3(80, 320, 15),
+      targetLookAt: new THREE.Vector3(80, 0, 0)
+    });
+    const releasedPosition = camera.position.clone();
+    const releasedTarget = controls.target.clone();
+
+    manager.stopFollowTarget();
+
+    assert.deepEqual(camera.position.toArray(), releasedPosition.toArray());
+    assert.deepEqual(controls.target.toArray(), releasedTarget.toArray());
+    assert.equal(manager.followTarget, null);
+    assert.equal(manager.activePreset, null);
+    assert.equal(manager.targetCameraPos, null);
+    assert.equal(manager.targetLookAt, null);
+    assert.equal(rig.state, 'ORBIT_MACRO');
+    assert.equal(rig.followTarget, null);
+    assert.equal(controls.enabled, true);
+  });
+}

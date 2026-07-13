@@ -138,6 +138,62 @@ test('physics drive transitions from forward motion through braking into reverse
   }
 });
 
+test('physics throttle accelerates cleanly through the former low-speed stall threshold', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const physics = new PhysicsWorld();
+    const vehicle = new PlayerVehicle(new THREE.Group(), physics, new THREE.Vector3(0, 0, 0));
+    let crossedThreshold = false;
+    let minimumSpeedAfterThreshold = Infinity;
+
+    for (let frame = 0; frame < 360; frame += 1) {
+      vehicle.applyInput({ w: true }, 1 / 120);
+      physics.step(1 / 120);
+      const speed = Math.hypot(vehicle.chassisBody.velocity.x, vehicle.chassisBody.velocity.z);
+      if (speed >= 4) crossedThreshold = true;
+      if (crossedThreshold) minimumSpeedAfterThreshold = Math.min(minimumSpeedAfterThreshold, speed);
+    }
+
+    assert.equal(crossedThreshold, true);
+    assert.ok(minimumSpeedAfterThreshold > 3.5, `drive fell back into the stall band: ${minimumSpeedAfterThreshold}`);
+    assert.ok(vehicle.chassisBody.position.z > 30, `sustained throttle made insufficient progress: ${vehicle.chassisBody.position.z}`);
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
+test('vehicle takeover preserves forward momentum and clears AI stop state', () => {
+  installBrowserStubs();
+  const physics = new PhysicsWorld();
+  const traffic = Object.create(TrafficSystem.prototype);
+  traffic.app = {
+    physicsWorld: physics,
+    cityBuilder: { getTerrainHeight() { return 0; } },
+    gameManager: { setMode() {} },
+    audioSystem: { startEngineSound() {} }
+  };
+  const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Momentum Test Sedan');
+  vehicle.mesh.rotation.y = Math.PI / 2;
+  vehicle.speed = 12;
+  vehicle.crashed = true;
+  vehicle.crashTimer = 8;
+  vehicle.isReversing = true;
+  vehicle.physicsBody = physics.addKinematicBoxCollider(
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(2, 1.4, 4.2)
+  );
+
+  assert.equal(traffic.toggleUserControl(vehicle), true);
+  assert.equal(vehicle.crashed, false);
+  assert.equal(vehicle.isReversing, false);
+  assert.equal(physics.world.bodies.includes(vehicle.physicsBody), false);
+  assert.ok(Math.abs(vehicle.physicsVehicle.chassisBody.velocity.x - 12) < 1e-6);
+  assert.ok(Math.abs(vehicle.physicsVehicle.chassisBody.velocity.z) < 1e-6);
+  vehicle.physicsVehicle.destroy();
+});
+
 test('vehicle speed uses m/s internally and preserves high-priority status', () => {
   const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Unit Test Sedan');
   vehicle.speed = 10;

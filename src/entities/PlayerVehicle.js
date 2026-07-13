@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { PHYSICS_GROUPS } from '../physics/PhysicsWorld.js';
 import { getVehicleProfile } from './VehicleProfiles.js';
 import {
+  resolvePlayerVehicleDriveForces,
   resolvePlayerVehicleControls,
   updateVehicleMobilityTimer
 } from './PlayerVehicleControls.js';
@@ -81,6 +82,7 @@ export class PlayerVehicle {
   }
 
   initPhysics(pos, rot) {
+    const profile = getVehicleProfile(this.vType);
     const {
       mass,
       width,
@@ -90,7 +92,8 @@ export class PlayerVehicle {
       suspensionRestLength,
       suspensionStiffness,
       maxSuspensionForce
-    } = getVehicleProfile(this.vType);
+    } = profile;
+    this.driveProfile = profile.drive;
     this.footprint = Object.freeze({ width, length });
 
     // 1. Chassis rigid body
@@ -199,6 +202,20 @@ export class PlayerVehicle {
     this.chassisBody.angularVelocity.y *= 0.94;
   }
 
+  setForwardSpeed(speed = 0) {
+    if (!this.chassisBody) return false;
+    const safeSpeed = Number.isFinite(speed) ? speed : 0;
+    const forward = new CANNON.Vec3(0, 0, 1);
+    this.chassisBody.quaternion.vmult(forward, forward);
+    forward.y = 0;
+    const length = forward.length();
+    if (length <= 1e-6) forward.set(0, 0, 1);
+    else forward.scale(1 / length, forward);
+    this.chassisBody.velocity.set(forward.x * safeSpeed, 0, forward.z * safeSpeed);
+    this.chassisBody.wakeUp?.();
+    return true;
+  }
+
   applyInput(keys, delta) {
     if (!keys || !this.chassisBody) return false;
 
@@ -224,20 +241,13 @@ export class PlayerVehicle {
     const analogSteer = controls.steer;
     const isHandbrake = controls.handbrake;
 
-    const isForward = analogThrottle > 0.05;
-    const isReverse = analogBrake > 0.05;
-
     // Calculate forward speed along vehicle forward vector (+Z local)
     const forwardVec = new CANNON.Vec3(0, 0, 1);
     this.chassisBody.quaternion.vmult(forwardVec, forwardVec);
     const currentForwardSpeed = this.chassisBody.velocity.dot(forwardVec);
 
-    const maxEngineForce = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 7200 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 18000 : (this.vType === 'TRUCK' ? 12000 : (this.vType === 'AMBULANCE' ? 8500 : 4500)));
-    const maxBrakeForce = (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') ? 600 : (this.vType === 'TRUCK' ? 400 : 160);
-    const maxSteerVal = (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK') ? 0.35 : (this.vType === 'TRUCK' ? 0.45 : 0.55);
-
     // 1. Steering (Analog smooth steering)
-    const targetSteering = analogSteer * maxSteerVal;
+    const targetSteering = analogSteer * this.driveProfile.maxSteering;
     this.currentSteering += (targetSteering - this.currentSteering) * Math.min(1.0, delta * 16.0);
 
     this.raycastVehicle.setSteeringValue(this.currentSteering, 0);
@@ -253,58 +263,11 @@ export class PlayerVehicle {
     }
 
     // 2. Engine & Braking (Analog smooth throttle & brake)
-    let engineForce = 0;
-    let brakeForce = 0;
-
-    if (isForward) {
-      if (currentForwardSpeed < -1.5) {
-        brakeForce = maxBrakeForce * analogThrottle;
-      } else {
-        engineForce = maxEngineForce * 1.3 * analogThrottle;
-        brakeForce = 0;
-        
-        // Scale thrust dynamically with mass/type
-        const thrustForceVal = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 54000 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 140000 : (this.vType === 'TRUCK' ? 95000 : (this.vType === 'AMBULANCE' ? 68000 : 38000)));
-        const maxSpeedLimit = (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') ? 56 : (this.vType === 'BUS' || this.vType === 'DUMP_TRUCK' ? 22 : (this.vType === 'TRUCK' ? 28 : (this.vType === 'AMBULANCE' ? 46 : 42)));
-        
-        if (currentForwardSpeed < maxSpeedLimit) {
-          const thrust = forwardVec.clone();
-          thrust.scale(thrustForceVal * analogThrottle, thrust);
-          this.chassisBody.applyForce(thrust, new CANNON.Vec3(0, 0, 0));
-        }
-
-        // Low speed takeoff assist to guarantee breaking out of any standstill or slight obstruction
-        if (Math.abs(currentForwardSpeed) < 3.0) {
-          const boost = forwardVec.clone();
-          boost.scale(this.chassisBody.mass * 18.0 * analogThrottle, boost);
-          this.chassisBody.applyForce(boost, new CANNON.Vec3(0, 0, 0));
-        }
-      }
-    } else if (isReverse) {
-      if (currentForwardSpeed > 1.5) {
-        brakeForce = maxBrakeForce * analogBrake;
-      } else {
-        engineForce = -maxEngineForce * 1.15 * analogBrake;
-        brakeForce = 0;
-        if (currentForwardSpeed > -18) {
-          const revThrust = forwardVec.clone();
-          revThrust.scale(-24000, revThrust);
-          this.chassisBody.applyForce(revThrust, new CANNON.Vec3(0, 0, 0));
-        }
-        // Low speed reverse assist
-        if (Math.abs(currentForwardSpeed) < 3.0) {
-          const revBoost = forwardVec.clone();
-          revBoost.scale(-this.chassisBody.mass * 14.0, revBoost);
-          this.chassisBody.applyForce(revBoost, new CANNON.Vec3(0, 0, 0));
-        }
-      }
-    } else {
-      brakeForce = 15;
-    }
-
-    if (isHandbrake) {
-      brakeForce = maxBrakeForce * 2.5;
-    }
+    const { engineForce, brakeForce } = resolvePlayerVehicleDriveForces(
+      controls,
+      currentForwardSpeed,
+      this.driveProfile
+    );
 
     // 3. Lateral grip stabilization
     if (!isHandbrake && Math.abs(currentForwardSpeed) > 1.0) {

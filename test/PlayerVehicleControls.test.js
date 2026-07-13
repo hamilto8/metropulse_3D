@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   PLAYER_VEHICLE_RECOVERY,
+  resolvePlayerVehicleDriveForces,
   resolvePlayerVehicleControls,
   updateVehicleMobilityTimer
 } from '../src/entities/PlayerVehicleControls.js';
@@ -27,6 +28,33 @@ test('vehicle controls sanitize malformed analog values and resolve opposing ped
     handbrake: false
   });
   assert.equal(resolvePlayerVehicleControls({}, { throttle: 0.2, brake: 0.9 }).reverse, 0.9);
+});
+
+test('wheel commands use cannon-es drive direction without competing brake force', () => {
+  const profile = {
+    forwardEngineForce: 6000,
+    reverseEngineForce: 5000,
+    maxBrakeForce: 200,
+    maxForwardSpeed: 40,
+    maxReverseSpeed: 15
+  };
+
+  assert.deepEqual(resolvePlayerVehicleDriveForces({ throttle: 1 }, 0, profile), {
+    engineForce: -6000,
+    brakeForce: 0
+  });
+  assert.deepEqual(resolvePlayerVehicleDriveForces({ reverse: 1 }, 0, profile), {
+    engineForce: 5000,
+    brakeForce: 0
+  });
+  assert.deepEqual(resolvePlayerVehicleDriveForces({ reverse: 0.5 }, 8, profile), {
+    engineForce: 0,
+    brakeForce: 100
+  });
+  assert.deepEqual(resolvePlayerVehicleDriveForces({ throttle: 1, handbrake: true }, 0, profile), {
+    engineForce: 0,
+    brakeForce: 500
+  });
 });
 
 test('sustained drive intent recovers a motionless vehicle even without wheel contact', () => {

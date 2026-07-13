@@ -132,12 +132,12 @@ export class SceneManager {
     this.targetLookAt = null;
     this.followTarget = null;
     this.activePreset = null;
-    if (this.cameraRig) {
-      this.cameraRig.state = 'ORBIT_MACRO';
-    }
-    this.controls.enabled = true;
+    if (this.cameraRig) this.cameraRig.releaseToLocalOrbit();
+    else this.controls.enabled = true;
 
-    const freeBtn = document.querySelector('[data-camera="free"]');
+    const freeBtn = typeof document !== 'undefined'
+      ? document.querySelector('[data-camera="free"]')
+      : null;
     if (freeBtn && !freeBtn.classList.contains('active')) {
       const cameraButtons = document.querySelectorAll('[data-camera]');
       cameraButtons.forEach(button => {
@@ -148,7 +148,9 @@ export class SceneManager {
       freeBtn.setAttribute('aria-pressed', 'true');
     }
 
-    const btnFollow = document.getElementById('btn-follow-target');
+    const btnFollow = typeof document !== 'undefined'
+      ? document.getElementById('btn-follow-target')
+      : null;
     if (btnFollow) {
       btnFollow.innerHTML = '👁️ Follow Camera';
       btnFollow.classList.remove('active');
@@ -307,18 +309,7 @@ export class SceneManager {
   }
 
   stopFollowTarget() {
-    const needsAscent = Boolean(
-      this.followTarget
-      || (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO')
-    );
-    this.followTarget = null;
-    if (this.cameraRig && needsAscent) {
-      this.cameraRig.ascendToMacro(1.0);
-    } else if (this.cameraRig) {
-      this.cameraRig.state = 'ORBIT_MACRO';
-      this.cameraRig.followTarget = null;
-      this.controls.enabled = true;
-    }
+    this.breakToFreeOrbit();
   }
 
   triggerShake(intensity = 0.35) {

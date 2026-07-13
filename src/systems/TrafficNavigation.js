@@ -74,6 +74,13 @@ export function enforceLaneCorridor(vehicle, config = TRAFFIC_NAVIGATION) {
       - (Number.isFinite(config.roadEdgeClearance) ? config.roadEdgeClearance : TRAFFIC_NAVIGATION.roadEdgeClearance)
   );
   const maximum = Math.min(configuredMaximum, geometricMaximum);
+  // A freshly released player vehicle may be away from the authored lane
+  // graph. Let its AI steer back onto the selected route instead of snapping
+  // it across the city on the first ambient-traffic frame.
+  if (vehicle.isRejoiningTraffic) {
+    if (projection.deviation > maximum) return false;
+    vehicle.isRejoiningTraffic = false;
+  }
   if (projection.deviation <= maximum) return false;
   const offsetX = vehicle.mesh.position.x - projection.x;
   const offsetZ = vehicle.mesh.position.z - projection.z;
