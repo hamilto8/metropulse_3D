@@ -269,6 +269,61 @@ test('a user-driven vehicle crosses the city-to-countryside bridge without snagg
   }
 });
 
+test('a freight truck clears a shallow road-height transition without high-centering', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const physics = new PhysicsWorld();
+    // A small overlapping surface models ordinary road/deck height seams. The
+    // former truck chassis sat only ~3 cm above grade and caught this edge.
+    physics.addSurfaceBox(
+      { x: 0, y: 0.04, z: 40 },
+      { x: 30, y: 0.08, z: 40 }
+    );
+    const vehicle = new PlayerVehicle(
+      new THREE.Group(),
+      physics,
+      new THREE.Vector3(0, 0, 0),
+      null,
+      'TRUCK'
+    );
+    let maximumTilt = 0;
+    let minimumDrivenSpeed = Infinity;
+    let minimumChassisClearance = Infinity;
+    const chassisShape = vehicle.chassisBody.shapes[0];
+    const chassisOffset = vehicle.chassisBody.shapeOffsets[0];
+
+    for (let frame = 0; frame < 600; frame += 1) {
+      vehicle.applyInput({ w: true }, 1 / 120);
+      physics.step(1 / 120);
+      vehicle.syncMesh();
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(vehicle.mesh.quaternion);
+      maximumTilt = Math.max(
+        maximumTilt,
+        Math.acos(THREE.MathUtils.clamp(up.y, -1, 1))
+      );
+      if (frame > 120) {
+        minimumDrivenSpeed = Math.min(
+          minimumDrivenSpeed,
+          Math.hypot(vehicle.chassisBody.velocity.x, vehicle.chassisBody.velocity.z)
+        );
+      }
+      minimumChassisClearance = Math.min(
+        minimumChassisClearance,
+        vehicle.chassisBody.position.y + chassisOffset.y - chassisShape.halfExtents.y
+      );
+    }
+
+    assert.ok(vehicle.mesh.position.z > 90, `truck snagged at z=${vehicle.mesh.position.z}`);
+    assert.ok(minimumDrivenSpeed > 5, `truck entered the stall band at ${minimumDrivenSpeed} m/s`);
+    assert.ok(maximumTilt < 0.1, `road seam pitched truck by ${maximumTilt} radians`);
+    assert.ok(minimumChassisClearance > 0.35, `truck chassis fell to ${minimumChassisClearance} m`);
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
 test('city traffic lanes override overlapping sidewalk terrain', () => {
   const builder = createTerrainModel();
   assert.equal(builder.getTerrainHeight(-96.5, -75), 0);

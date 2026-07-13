@@ -265,6 +265,7 @@ class MetroPulseApp {
     this.fpsTimer += delta;
     if (this.fpsTimer >= 1.0) {
       this.currentFps = this.frameCount / this.fpsTimer;
+      this.performanceSystem.recordFrameRate(this.currentFps);
       this.frameCount = 0;
       this.fpsTimer = 0;
       this.uiManager.updateStats(

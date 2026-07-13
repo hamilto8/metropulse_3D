@@ -1,4 +1,32 @@
 import * as THREE from 'three';
+import { getVehicleProfile } from './VehicleProfiles.js';
+
+export const MOTORBIKE_RIDER_POSE = Object.freeze({
+  position: Object.freeze([0, -0.02, -0.12]),
+  legs: Object.freeze({
+    left: Object.freeze([-0.85, 0, 0.28]),
+    right: Object.freeze([-0.85, 0, -0.28])
+  }),
+  arms: Object.freeze({
+    // Pedestrian limbs pivot at the shoulder and extend down local -Y.
+    // Negative X rotation therefore points each hand toward bike-forward +Z.
+    left: Object.freeze([-0.95, 0, -0.18]),
+    right: Object.freeze([-0.95, 0, 0.18])
+  })
+});
+
+const NEUTRAL_LIMB_ROTATION = Object.freeze([0, 0, 0]);
+const NEUTRAL_LIMB_POSE = Object.freeze({
+  left: NEUTRAL_LIMB_ROTATION,
+  right: NEUTRAL_LIMB_ROTATION
+});
+
+function applyPairedLimbPose(left, right, pose) {
+  if (!left || !right || !pose) return false;
+  left.rotation.set(...pose.left);
+  right.rotation.set(...pose.right);
+  return true;
+}
 
 export class Vehicle {
   constructor(type, colorHex, name) {
@@ -79,19 +107,14 @@ export class Vehicle {
   mountRider(pedestrian) {
     if (!pedestrian || !pedestrian.mesh) return;
     this.mountedRider = pedestrian;
-    // Position rider seated atop motorbike saddle
-    pedestrian.mesh.position.set(0, 0.68, -0.12);
+    // Align the pedestrian hip pivot with the saddle instead of raising the
+    // whole model into a standing pose.
+    pedestrian.mesh.position.set(...MOTORBIKE_RIDER_POSE.position);
     pedestrian.mesh.rotation.set(0, 0, 0);
 
     // Pose pedestrian limbs astride the bike holding handlebars
-    if (pedestrian.legL && pedestrian.legR) {
-      pedestrian.legL.rotation.set(-0.85, 0, 0.28);
-      pedestrian.legR.rotation.set(-0.85, 0, -0.28);
-    }
-    if (pedestrian.armL && pedestrian.armR) {
-      pedestrian.armL.rotation.set(0.95, 0, -0.18);
-      pedestrian.armR.rotation.set(0.95, 0, 0.18);
-    }
+    applyPairedLimbPose(pedestrian.legL, pedestrian.legR, MOTORBIKE_RIDER_POSE.legs);
+    applyPairedLimbPose(pedestrian.armL, pedestrian.armR, MOTORBIKE_RIDER_POSE.arms);
     pedestrian.info['Activity'] = '🏍️ Riding Motorbike';
     this.mesh.add(pedestrian.mesh);
     pedestrian.mesh.visible = this.detailLevel !== 'LOW';
@@ -107,14 +130,8 @@ export class Vehicle {
     this.mountedRider = null;
     if (this.riderLowDetailProxy) this.riderLowDetailProxy.visible = false;
     // Reset limb rotations
-    if (ped.legL && ped.legR) {
-      ped.legL.rotation.set(0, 0, 0);
-      ped.legR.rotation.set(0, 0, 0);
-    }
-    if (ped.armL && ped.armR) {
-      ped.armL.rotation.set(0, 0, 0);
-      ped.armR.rotation.set(0, 0, 0);
-    }
+    applyPairedLimbPose(ped.legL, ped.legR, NEUTRAL_LIMB_POSE);
+    applyPairedLimbPose(ped.armL, ped.armR, NEUTRAL_LIMB_POSE);
     return ped;
   }
 
@@ -161,6 +178,7 @@ export class Vehicle {
 
     const handlebars = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.06, 0.06), chromeMat);
     handlebars.position.set(0, wheelRadius + 0.8, 0.52);
+    handlebars.name = 'motorbike-handlebars';
     group.add(handlebars);
 
     // Exhaust pipe
@@ -233,28 +251,8 @@ export class Vehicle {
     const glassMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.9 });
     const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 });
 
-    let length = 4.2, width = 2.0, height = 1.4;
-    let wheelRadius = 0.4, wheelWidth = 0.3;
-
-    if (type === 'SPORTS' || type === 'SPORTS_CAR') {
-      length = 4.4; width = 2.1; height = 1.05;
-      wheelRadius = 0.45;
-    } else if (type === 'BUS') {
-      length = 10.5; width = 2.6; height = 3.2;
-      wheelRadius = 0.6;
-    } else if (type === 'TRUCK') {
-      length = 7.5; width = 2.4; height = 3.0;
-      wheelRadius = 0.55;
-    } else if (type === 'AMBULANCE') {
-      length = 6.2; width = 2.3; height = 2.4;
-      wheelRadius = 0.5;
-    } else if (type === 'ICECREAM') {
-      length = 5.8; width = 2.2; height = 2.3;
-      wheelRadius = 0.48;
-    } else if (type === 'DUMP_TRUCK') {
-      length = 7.8; width = 2.5; height = 2.9;
-      wheelRadius = 0.6;
-    }
+    const { length, width, height, wheelRadius } = getVehicleProfile(type);
+    const wheelWidth = 0.3;
     this.wheelRadius = wheelRadius;
 
     // 1. Main Chassis Body

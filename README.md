@@ -169,6 +169,18 @@ npm test
 npm run build
 ```
 
+### Rendering performance diagnostics
+
+MetroPulse starts at high visual quality and samples the measured frame rate once per second. Sustained performance below 45 FPS first selects the medium renderer (native CSS-pixel resolution, shadows retained, bloom bypassed). If performance remains below 38 FPS, the low renderer also reduces the drawing-buffer scale, disables dynamic shadows, and removes live backdrop blur over the WebGL canvas. Recovery uses a longer, higher threshold so quality does not oscillate.
+
+For a repeatable comparison, `?quality=high`, `?quality=medium`, or `?quality=low` locks a tier and disables automatic switching for that session. For example:
+
+```text
+http://localhost:5173/?quality=low
+```
+
+On Windows, check `chrome://gpu` (or `edge://gpu`) when a high-end discrete GPU performs unexpectedly poorly. WebGL should be hardware accelerated and the renderer should name the installed GPU rather than SwiftShader, llvmpipe, or Microsoft Basic Render. MetroPulse also prints the detected WebGL renderer at startup and warns when it recognizes a software renderer.
+
 The Node test suite covers game-mode transitions, economy and service invariants, mission validation and lifecycle, physics cleanup and wet-weather grip, timed hijacking, chase mouse-look, Mayhem collider recovery, crime/wanted behavior, population floors, congestion metrics, bridge priority, custom-bridge traversal, editor-road graph integration, vehicle separation and recovery, vehicle fire-chain cleanup, pedestrian yielding and honking, pedestrian knockback, adaptive control bindings, input-context priority, controller edge handling, and stick-drift rejection.
 
 The interface includes keyboard-visible focus treatment, spatial D-Pad focus navigation, semantic editor controls, modal focus containment, reduced-motion support, a compact no-overflow mobile editor layout, and a recoverable collapsed City Tools rail. Management, building, driving, walking, missions, and dialogue support live keyboard/mouse ↔ Xbox switching.

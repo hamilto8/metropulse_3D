@@ -14,6 +14,29 @@ import {
   StreetLevelCameraController
 } from '../camera/StreetLevelCameraController.js';
 import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
+import { RENDER_QUALITY_TIERS } from '../systems/PerformanceSystem.js';
+import { CELESTIAL_ORBIT } from './CelestialOrbit.js';
+
+export const RENDER_QUALITY_PROFILES = Object.freeze({
+  [RENDER_QUALITY_TIERS.HIGH]: Object.freeze({
+    pixelRatioCap: 1.25,
+    bloom: true,
+    shadows: true,
+    glassEffects: true
+  }),
+  [RENDER_QUALITY_TIERS.MEDIUM]: Object.freeze({
+    pixelRatioCap: 1,
+    bloom: false,
+    shadows: true,
+    glassEffects: true
+  }),
+  [RENDER_QUALITY_TIERS.LOW]: Object.freeze({
+    pixelRatioCap: 0.8,
+    bloom: false,
+    shadows: false,
+    glassEffects: false
+  })
+});
 
 export class SceneManager {
   constructor(app, container) {
@@ -22,13 +45,20 @@ export class SceneManager {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x070913);
     this.scene.fog = new THREE.FogExp2(0x070913, 0.0035);
+    const requestedQuality = new URLSearchParams(window.location.search)
+      .get('quality')
+      ?.toUpperCase();
+    this.renderQualityOverride = RENDER_QUALITY_PROFILES[requestedQuality]
+      ? requestedQuality
+      : null;
+    this.renderQuality = this.renderQualityOverride || RENDER_QUALITY_TIERS.HIGH;
 
     // Camera setup
     this.camera = new THREE.PerspectiveCamera(
       55,
       window.innerWidth / window.innerHeight,
       0.5,
-      1000
+      CELESTIAL_ORBIT.cameraFarPlane
     );
     this.camera.position.set(120, 90, 120);
 
@@ -54,6 +84,9 @@ export class SceneManager {
       0.88
     );
     this.composer.addPass(this.bloomPass);
+    this.bloomEnabled = true;
+    this.setRenderQuality(this.renderQuality, { announce: false });
+    this.reportRendererDiagnostics();
 
     // Controls setup
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -334,6 +367,57 @@ export class SceneManager {
     });
   }
 
+  setRenderQuality(tier, { announce = true } = {}) {
+    const profile = RENDER_QUALITY_PROFILES[tier];
+    if (!profile) return false;
+
+    const previous = this.renderQuality;
+    this.renderQuality = tier;
+    this.bloomEnabled = profile.bloom;
+    this.renderer.shadowMap.enabled = profile.shadows;
+    if (profile.shadows && previous !== tier) this.renderer.shadowMap.needsUpdate = true;
+
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, profile.pixelRatioCap);
+    this.renderer.setPixelRatio(pixelRatio);
+    this.composer?.setPixelRatio(pixelRatio);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.composer?.setSize(window.innerWidth, window.innerHeight);
+
+    document.documentElement.dataset.renderQuality = tier.toLowerCase();
+    document.documentElement.dataset.glassEffects = profile.glassEffects ? 'full' : 'reduced';
+    if (announce && previous !== tier) {
+      console.info(`Render quality adjusted: ${previous} -> ${tier}`);
+    }
+    return true;
+  }
+
+  getRendererDiagnostics() {
+    const gl = this.renderer.getContext();
+    const extension = gl.getExtension('WEBGL_debug_renderer_info');
+    const vendor = extension ? gl.getParameter(extension.UNMASKED_VENDOR_WEBGL) : null;
+    const renderer = extension ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL) : null;
+    const label = `${vendor || ''} ${renderer || ''}`.trim();
+    return {
+      vendor,
+      renderer,
+      softwareRenderer: /swiftshader|llvmpipe|software|microsoft basic render/i.test(label)
+    };
+  }
+
+  reportRendererDiagnostics() {
+    const diagnostics = this.getRendererDiagnostics();
+    if (diagnostics.renderer) {
+      console.info(`WebGL renderer: ${diagnostics.renderer}`);
+    }
+    if (diagnostics.softwareRenderer) {
+      console.warn(
+        `MetroPulse is using a software WebGL renderer (${diagnostics.renderer || 'unknown'}). ` +
+        'Enable browser hardware acceleration and assign the browser to the high-performance GPU.'
+      );
+    }
+    return diagnostics;
+  }
+
   update(delta) {
     this.cameraRig?.removeAppliedShake?.();
 
@@ -480,6 +564,7 @@ export class SceneManager {
   }
 
   render() {
-    this.composer.render();
+    if (this.bloomEnabled) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
   }
 }

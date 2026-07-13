@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PHYSICS_GROUPS } from '../physics/PhysicsWorld.js';
-import { getVehicleProfile } from './VehicleProfiles.js';
+import {
+  getPlayerVehiclePhysicsLayout,
+  getVehicleProfile
+} from './VehicleProfiles.js';
 import {
   resolvePlayerVehicleDriveForces,
   resolvePlayerVehicleControls,
@@ -34,15 +37,7 @@ export class PlayerVehicle {
     const startPos = initialPosition || mesh.position;
     const startRot = initialRotation || mesh.rotation;
     
-    // Set dynamic offsets
-    this.meshOffset = 0.55;
-    if (this.vType === 'SPORTS' || this.vType === 'SPORTS_CAR') this.meshOffset = 0.48;
-    else if (this.vType === 'TRUCK') this.meshOffset = 1.35;
-    else if (this.vType === 'BUS') this.meshOffset = 2.05;
-    else if (this.vType === 'AMBULANCE') this.meshOffset = 1.15;
-    else if (this.vType === 'ICECREAM') this.meshOffset = 1.10;
-    else if (this.vType === 'DUMP_TRUCK') this.meshOffset = 1.45;
-    else if (this.vType === 'MOTORBIKE') this.meshOffset = 0.40;
+    this.meshOffset = 0;
 
     this.initPhysics(startPos, startRot);
     this.lastSafePose = {
@@ -93,6 +88,11 @@ export class PlayerVehicle {
       suspensionStiffness,
       maxSuspensionForce
     } = profile;
+    this.physicsLayout = getPlayerVehiclePhysicsLayout(
+      this.vType,
+      this.physicsWorld?.world?.gravity?.y
+    );
+    this.meshOffset = this.physicsLayout.settledRideHeight;
     this.driveProfile = profile.drive;
     this.footprint = Object.freeze({ width, length });
 
@@ -107,7 +107,10 @@ export class PlayerVehicle {
     // mistaking another vehicle for a road surface and launching the chassis.
     this.chassisBody.collisionFilterGroup = PHYSICS_GROUPS.PLAYER;
     this.chassisBody.collisionFilterMask = PHYSICS_GROUPS.SURFACE | PHYSICS_GROUPS.STATIC_OBSTACLE;
-    this.chassisBody.addShape(chassisShape, new CANNON.Vec3(0, height * 0.15, 0));
+    this.chassisBody.addShape(
+      chassisShape,
+      new CANNON.Vec3(0, this.physicsLayout.chassisShapeOffsetY, 0)
+    );
     
     const initialY = pos.y + this.meshOffset;
     this.chassisBody.position.set(pos.x, initialY, pos.z);
@@ -148,31 +151,31 @@ export class PlayerVehicle {
 
     const wOffsetX = width * 0.45;
 
-    if (this.vType === 'BUS') {
+    if (this.physicsLayout.wheelCount === 6) {
       // 6 wheels connection points
       // Front axle
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, length * 0.38), wheelRadius));
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, length * 0.38), wheelRadius));
       
       // Middle axle
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -length * 0.1), wheelRadius));
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -length * 0.1), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.1), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.1), wheelRadius));
       
       // Rear axle
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -length * 0.38), wheelRadius));
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.38), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -length * 0.38), wheelRadius));
     } else {
       // 4 wheels connection points
       const wOffsetZ = length * 0.35;
       
       // Front Left
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, wOffsetZ), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, wOffsetZ), wheelRadius));
       // Front Right
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, wOffsetZ), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, wOffsetZ), wheelRadius));
       // Rear Left
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, -0.05, -wOffsetZ), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(wOffsetX, this.physicsLayout.wheelConnectionY, -wOffsetZ), wheelRadius));
       // Rear Right
-      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, -0.05, -wOffsetZ), wheelRadius));
+      this.raycastVehicle.addWheel(createWheelOptions(new CANNON.Vec3(-wOffsetX, this.physicsLayout.wheelConnectionY, -wOffsetZ), wheelRadius));
     }
 
     this.raycastVehicle.addToWorld(this.physicsWorld.world);

@@ -196,3 +196,56 @@ test('the browser blur listener releases motion keys when keyup cannot fire', ()
     globalThis.document = previousDocument;
   }
 });
+
+test('direct-control authority changes restore gameplay focus for driving and camera WASD', () => {
+  const previousDocument = globalThis.document;
+  const fakeDocument = { activeElement: null };
+  const releaseButton = {
+    matches(selector) { return selector.includes('button'); },
+    blur() { fakeDocument.activeElement = null; }
+  };
+  const canvas = {
+    tabIndex: 0,
+    hasAttribute() { return false; },
+    focus() { fakeDocument.activeElement = this; }
+  };
+  fakeDocument.activeElement = releaseButton;
+  globalThis.document = fakeDocument;
+
+  try {
+    const manager = managerWith({
+      sceneManager: { renderer: { domElement: canvas } },
+      uiManager: { updateAdaptiveControls() {} }
+    });
+    manager.lastContext = CONTROL_CONTEXTS.VEHICLE;
+    manager.keys = { w: true, d: true };
+    manager.state = {
+      throttle: 1,
+      brake: 0,
+      steer: -1,
+      moveX: 1,
+      moveY: 1,
+      cameraPanX: 0,
+      cameraPanY: 0,
+      handbrake: false
+    };
+
+    assert.equal(manager.syncControlContext(CONTROL_CONTEXTS.MANAGEMENT), true);
+    assert.equal(manager.lastContext, CONTROL_CONTEXTS.MANAGEMENT);
+    assert.equal(fakeDocument.activeElement, canvas);
+    assert.equal(canvas.tabIndex, -1);
+    assert.equal(manager.keys.w, false);
+    assert.equal(manager.keys.d, false);
+    assert.equal(manager.state.throttle, 0);
+    assert.equal(manager.state.moveY, 0);
+
+    fakeDocument.activeElement = releaseButton;
+    manager.keys.w = true;
+    assert.equal(manager.syncControlContext(CONTROL_CONTEXTS.VEHICLE), true);
+    assert.equal(manager.lastContext, CONTROL_CONTEXTS.VEHICLE);
+    assert.equal(fakeDocument.activeElement, canvas);
+    assert.equal(manager.keys.w, false);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});

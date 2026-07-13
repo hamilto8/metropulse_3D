@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getNightFactor } from './TimeOfDayVisuals.js';
+import { getCelestialAngles } from '../world/CelestialOrbit.js';
 
 export class TimeManager {
   constructor(app) {
@@ -7,6 +8,7 @@ export class TimeManager {
     this.timeVal = 14.5; // Start at 2:30 PM
     this.isPlaying = true;
     this.speed = 1.0; // Normal 1x speed
+    this.celestialAngles = { sun: 0, moon: Math.PI };
 
     this.initLights();
   }
@@ -98,14 +100,16 @@ export class TimeManager {
   }
 
   updateLighting() {
-    const sunAngle = ((this.timeVal - 6.0) / 24.0) * Math.PI * 2.0;
+    const { sun: sunAngle, moon: moonAngle } = getCelestialAngles(
+      this.timeVal,
+      this.celestialAngles
+    );
     const distance = 1800;
 
     this.sunLight.position.x = Math.cos(sunAngle) * distance;
     this.sunLight.position.y = Math.sin(sunAngle) * distance;
     this.sunLight.position.z = Math.sin(sunAngle * 0.5) * 250;
 
-    const moonAngle = sunAngle + Math.PI;
     this.moonLight.position.x = Math.cos(moonAngle) * distance;
     this.moonLight.position.y = Math.sin(moonAngle) * distance;
     this.moonLight.position.z = -Math.sin(sunAngle * 0.5) * 250;

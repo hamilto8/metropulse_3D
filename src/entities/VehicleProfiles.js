@@ -41,6 +41,7 @@ const DEFAULT_PROFILE = Object.freeze({
   width: 2,
   height: 1.4,
   length: 4.2,
+  wheelCount: 4,
   wheelRadius: 0.4,
   suspensionRestLength: 0.45,
   suspensionStiffness: 48,
@@ -60,7 +61,7 @@ const PROFILE_OVERRIDES = Object.freeze({
     drive: SPORTS_DRIVE_PROFILE
   },
   BUS: {
-    mass: 4800, width: 2.6, height: 3.2, length: 10.5, wheelRadius: 0.6,
+    mass: 4800, width: 2.6, height: 3.2, length: 10.5, wheelCount: 6, wheelRadius: 0.6,
     suspensionRestLength: 0.6, suspensionStiffness: 120, maxSuspensionForce: 350000,
     drive: BUS_DRIVE_PROFILE
   },
@@ -96,4 +97,43 @@ const PROFILES = Object.freeze(Object.fromEntries(
 
 export function getVehicleProfile(type) {
   return PROFILES[type] || DEFAULT_PROFILE;
+}
+
+export const PLAYER_VEHICLE_LAYOUT = Object.freeze({
+  wheelConnectionY: -0.05,
+  fallbackGravity: 25
+});
+
+/**
+ * Derives the rigid chassis/visual alignment from the same suspension data
+ * used by cannon-es. Keeping this calculation profile-driven prevents tall,
+ * heavy vehicles from receiving a nearly ground-level invisible collider.
+ */
+export function getPlayerVehiclePhysicsLayout(type, gravityY = -PLAYER_VEHICLE_LAYOUT.fallbackGravity) {
+  const profile = getVehicleProfile(type);
+  const wheelCount = Math.max(1, Number(profile.wheelCount) || 4);
+  const gravity = Number.isFinite(gravityY)
+    ? Math.abs(gravityY)
+    : PLAYER_VEHICLE_LAYOUT.fallbackGravity;
+  const staticCompression = Math.min(
+    profile.suspensionRestLength * 0.8,
+    gravity / (profile.suspensionStiffness * wheelCount)
+  );
+  const settledRideHeight = Math.max(
+    profile.wheelRadius,
+    profile.wheelRadius
+      + profile.suspensionRestLength
+      - PLAYER_VEHICLE_LAYOUT.wheelConnectionY
+      - staticCompression
+  );
+
+  return Object.freeze({
+    wheelCount,
+    wheelConnectionY: PLAYER_VEHICLE_LAYOUT.wheelConnectionY,
+    settledRideHeight,
+    // The visible lower body begins one wheel radius above the mesh origin.
+    // Align the physical box to that same plane so contacts are never hidden.
+    chassisShapeOffsetY: profile.height * 0.5 + profile.wheelRadius - settledRideHeight,
+    chassisGroundClearance: profile.wheelRadius
+  });
 }

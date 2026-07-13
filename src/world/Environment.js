@@ -4,6 +4,11 @@ import {
   getNightFactor,
   getSkyPalette
 } from '../systems/TimeOfDayVisuals.js';
+import {
+  CELESTIAL_ORBIT,
+  getCelestialOrbitPosition,
+  isCelestialBodyVisible
+} from './CelestialOrbit.js';
 
 export class Environment {
   constructor(scene, inspectorHud = null, app = null) {
@@ -16,6 +21,8 @@ export class Environment {
     this.moon = null;
     this.sun = null;
     this.sunGlow = null;
+    this.sunOrbitPosition = { x: 0, y: 0, z: 0 };
+    this.moonOrbitPosition = { x: 0, y: 0, z: 0 };
 
     // Lightning and delayed thunder state
     this.lightningTimer = 5.0 + Math.random() * 10.0;
@@ -126,7 +133,8 @@ export class Environment {
       color: 0xffffdd,
       emissive: 0xffeedd,
       emissiveIntensity: 0.9,
-      roughness: 0.9
+      roughness: 0.9,
+      fog: false
     });
     this.moon = new THREE.Mesh(moonGeo, moonMat);
     this.scene.add(this.moon);
@@ -150,7 +158,8 @@ export class Environment {
       emissive: 0xffbb22,
       emissiveIntensity: 3.5,
       roughness: 0.0,
-      metalness: 0.0
+      metalness: 0.0,
+      fog: false
     });
     this.sun = new THREE.Mesh(sunGeo, sunMat);
 
@@ -159,7 +168,8 @@ export class Environment {
     const glowMat = new THREE.MeshBasicMaterial({
       color: 0xff9922,
       transparent: true,
-      opacity: 0.42
+      opacity: 0.42,
+      fog: false
     });
     this.sunGlow = new THREE.Mesh(glowGeo, glowMat);
     this.sun.add(this.sunGlow);
@@ -169,7 +179,8 @@ export class Environment {
     const coronaMat = new THREE.MeshBasicMaterial({
       color: 0xffaa33,
       transparent: true,
-      opacity: 0.22
+      opacity: 0.22,
+      fog: false
     });
     this.sunCorona = new THREE.Mesh(coronaGeo, coronaMat);
     this.sun.add(this.sunCorona);
@@ -439,15 +450,13 @@ export class Environment {
     this.starMat.opacity = starOpacity;
 
     // 2. Position Sun and Moon in opposition across the celestial dome
-    const sunAngle = ((timeVal - 6.0) / 24.0) * Math.PI * 2.0;
-    const moonAngle = sunAngle + Math.PI;
-    // Keep the visual celestial bodies inside SceneManager's camera far plane.
-    // They follow the active view horizontally like a sky dome while retaining
-    // a world-space orbital altitude for sunrise and sunset.
-    const orbitRadius = 650;
+    // Keep the bodies outside the playable terrain so the landscape can
+    // naturally occlude sunrise and moonrise instead of intersecting meshes.
+    // The orbit follows the active view horizontally like the sky dome.
     const activeCamera = this.app?.sceneManager?.camera;
     const skyCenterX = activeCamera?.position.x || 0;
     const skyCenterZ = activeCamera?.position.z || 0;
+    const skyCenter = { x: skyCenterX, z: skyCenterZ };
 
     if (this.starfield && activeCamera) {
       this.starfield.position.x = skyCenterX;
@@ -459,17 +468,33 @@ export class Environment {
     }
     
     if (this.moon) {
-      this.moon.position.x = skyCenterX + Math.cos(moonAngle) * orbitRadius;
-      this.moon.position.y = Math.sin(moonAngle) * orbitRadius;
-      this.moon.position.z = skyCenterZ - Math.sin(sunAngle * 0.5) * 180;
-      this.moon.visible = this.moon.position.y > -80;
+      const position = getCelestialOrbitPosition(
+        timeVal,
+        'moon',
+        skyCenter,
+        CELESTIAL_ORBIT,
+        this.moonOrbitPosition
+      );
+      this.moon.position.set(position.x, position.y, position.z);
+      this.moon.visible = isCelestialBodyVisible(
+        this.moon.position.y,
+        CELESTIAL_ORBIT.moonBodyRadius
+      );
     }
 
     if (this.sun) {
-      this.sun.position.x = skyCenterX + Math.cos(sunAngle) * orbitRadius;
-      this.sun.position.y = Math.sin(sunAngle) * orbitRadius;
-      this.sun.position.z = skyCenterZ + Math.sin(sunAngle * 0.5) * 180;
-      this.sun.visible = this.sun.position.y > -80;
+      const position = getCelestialOrbitPosition(
+        timeVal,
+        'sun',
+        skyCenter,
+        CELESTIAL_ORBIT,
+        this.sunOrbitPosition
+      );
+      this.sun.position.set(position.x, position.y, position.z);
+      this.sun.visible = isCelestialBodyVisible(
+        this.sun.position.y,
+        CELESTIAL_ORBIT.sunBodyRadius
+      );
 
       // Dynamic color transition based on altitude (sunrise/sunset horizon vs zenith midday)
       if (this.sun.visible && this.sun.material) {

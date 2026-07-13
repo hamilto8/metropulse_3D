@@ -6,6 +6,88 @@ export const DETAIL_TIERS = Object.freeze({
   LOW: 'LOW'
 });
 
+export const RENDER_QUALITY_TIERS = Object.freeze({
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW'
+});
+
+const NEXT_LOWER_RENDER_TIER = Object.freeze({
+  [RENDER_QUALITY_TIERS.HIGH]: RENDER_QUALITY_TIERS.MEDIUM,
+  [RENDER_QUALITY_TIERS.MEDIUM]: RENDER_QUALITY_TIERS.LOW
+});
+
+const NEXT_HIGHER_RENDER_TIER = Object.freeze({
+  [RENDER_QUALITY_TIERS.LOW]: RENDER_QUALITY_TIERS.MEDIUM,
+  [RENDER_QUALITY_TIERS.MEDIUM]: RENDER_QUALITY_TIERS.HIGH
+});
+
+/**
+ * Uses one-second FPS samples to adapt expensive renderer features. The long
+ * upgrade window and separate thresholds prevent quality oscillation while a
+ * short startup grace period avoids reacting to shader compilation.
+ */
+export class AdaptiveQualityController {
+  constructor({
+    initialTier = RENDER_QUALITY_TIERS.HIGH,
+    locked = false,
+    warmupSamples = 4,
+    downgradeSamples = 3,
+    upgradeSamples = 15,
+    onChange = null
+  } = {}) {
+    this.tier = initialTier;
+    this.locked = locked;
+    this.warmupSamples = warmupSamples;
+    this.downgradeSamples = downgradeSamples;
+    this.upgradeSamples = upgradeSamples;
+    this.onChange = onChange;
+    this.samples = 0;
+    this.slowSamples = 0;
+    this.fastSamples = 0;
+  }
+
+  observe(fps) {
+    if (this.locked || !Number.isFinite(fps) || fps <= 0) return this.tier;
+    this.samples += 1;
+    if (this.samples <= this.warmupSamples) return this.tier;
+
+    const downgradeThreshold = this.tier === RENDER_QUALITY_TIERS.HIGH ? 45 : 38;
+    const upgradeThreshold = this.tier === RENDER_QUALITY_TIERS.LOW ? 52 : 72;
+
+    if (fps < downgradeThreshold && NEXT_LOWER_RENDER_TIER[this.tier]) {
+      this.slowSamples += 1;
+      this.fastSamples = 0;
+      if (this.slowSamples >= this.downgradeSamples) {
+        this.setTier(NEXT_LOWER_RENDER_TIER[this.tier]);
+      }
+    } else if (fps >= upgradeThreshold && NEXT_HIGHER_RENDER_TIER[this.tier]) {
+      this.fastSamples += 1;
+      this.slowSamples = 0;
+      if (this.fastSamples >= this.upgradeSamples) {
+        this.setTier(NEXT_HIGHER_RENDER_TIER[this.tier]);
+      }
+    } else {
+      this.slowSamples = 0;
+      this.fastSamples = 0;
+    }
+
+    return this.tier;
+  }
+
+  setTier(tier) {
+    if (!Object.values(RENDER_QUALITY_TIERS).includes(tier) || tier === this.tier) {
+      return this.tier;
+    }
+    const previous = this.tier;
+    this.tier = tier;
+    this.slowSamples = 0;
+    this.fastSamples = 0;
+    this.onChange?.(tier, previous);
+    return this.tier;
+  }
+}
+
 /** A small, allocation-conscious XZ spatial index for local agent queries. */
 export class SpatialHashGrid {
   constructor(cellSize = 24) {
@@ -67,6 +149,16 @@ export class PerformanceSystem {
     this.pedestrianGrid = new SpatialHashGrid(18);
     this.frame = 0;
     this.focus = new THREE.Vector3();
+    const sceneManager = this.app?.sceneManager;
+    this.renderQuality = new AdaptiveQualityController({
+      initialTier: sceneManager?.renderQuality || RENDER_QUALITY_TIERS.HIGH,
+      locked: Boolean(sceneManager?.renderQualityOverride),
+      onChange: tier => sceneManager?.setRenderQuality?.(tier)
+    });
+  }
+
+  recordFrameRate(fps) {
+    return this.renderQuality.observe(fps);
   }
 
   beginFrame() {

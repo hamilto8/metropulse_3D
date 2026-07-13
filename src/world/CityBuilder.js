@@ -5,6 +5,13 @@ import {
 } from './SuspensionBridge.js';
 import { createCompactSuspensionBridge } from './CompactSuspensionBridge.js';
 import { createBridgeBarrierColliders } from './BridgeSafety.js';
+import {
+  canPlaceCountrysideStructure,
+  COUNTRYSIDE_GRID,
+  createSuburbanParcels,
+  getFootprintEnvelope,
+  SUBURBAN_HOME_RULES
+} from './CountrysidePlan.js';
 
 export class CityBuilder {
   constructor(scene, inspectorHud, billboardCanvas) {
@@ -21,6 +28,7 @@ export class CityBuilder {
     this.drivableDecks = [];
     this.surfaceColliders = [];
     this.sceneryColliders = [];
+    this.countrysideOccupancy = [];
   }
 
   build() {
@@ -29,69 +37,45 @@ export class CityBuilder {
     this.createRiverAndBridge();
     this.createCentralPark();
     this.createStreetFurniture();
-    this.createCountrysideNature();
     this.createCountrysideSuburb();
+    this.createCountrysideNature();
     this.createRocketCenter(700, -280);
     this.createMissionControlFacility(735, -245);
   }
 
   createCountrysideNature() {
-    // Scatter trees randomly across countryside hills (X: 440 to 800)
-    // Avoid Z values directly near the roads to prevent trees growing on the streets!
-    // The road Z coords are: -100, -50, 0, 50, 100
+    // Scatter trees only on unreserved countryside land. Houses are generated
+    // first so nature respects both the road plan and occupied residential lots.
+    const bounds = COUNTRYSIDE_GRID.buildableBounds;
+    const treeFootprint = { width: 5, depth: 5 };
     for (let i = 0; i < 90; i++) {
-      const x = 440 + Math.random() * 340;
-      const z = -350 + Math.random() * 700;
+      const x = bounds.minX + Math.random() * (bounds.maxX - bounds.minX);
+      const z = bounds.minZ + Math.random() * (bounds.maxZ - bounds.minZ);
+      if (!canPlaceCountrysideStructure(
+        { x, z },
+        treeFootprint,
+        { setback: 1, occupied: this.countrysideOccupancy }
+      )) continue;
 
-      // Check distance to roads to avoid blocking streets
-      let nearRoad = false;
-      for (const rz of [-100, -50, 0, 50, 100]) {
-        if (Math.abs(z - rz) < 12.0) {
-          nearRoad = true;
-          break;
-        }
-      }
-      // Also avoid the road X coords (450, 550, 650, 750)
-      for (const rx of [450, 550, 650, 750]) {
-        if (Math.abs(x - rx) < 12.0) {
-          nearRoad = true;
-          break;
-        }
-      }
-
-      // Avoid rocket launchpad, access road, mission control, and billboard areas
-      const nearRocket = (x > 670 && x < 765 && z > -315 && z < -90);
-      const nearBillboardSpace = (x > 600 && x < 644 && z > -180 && z < -140);
-      if (nearRocket || nearBillboardSpace) {
-        continue;
-      }
-      
-      if (!nearRoad) {
-        const y = this.getHillHeight(x, z);
-        this.createTree(x, y - 0.2, z);
-      }
+      const y = this.getHillHeight(x, z);
+      this.createTree(x, y - 0.2, z);
+      this.countrysideOccupancy.push(getFootprintEnvelope(
+        { x, z },
+        treeFootprint,
+        { setback: 1, kind: 'TREE' }
+      ));
     }
   }
 
   createCountrysideSuburb() {
-    // Grid locations for houses
-    // Roads X are: 450, 550, 650, 750
-    // Midpoints X: 500, 600, 700
-    // Roads Z are: -100, -50, 0, 50, 100
-    // Midpoints Z: -75, -25, 25, 75
-    const midX = [500, 600, 700];
-    const midZ = [-125, -75, -25, 25, 75, 125];
-
-    for (const hx of midX) {
-      for (const hz of midZ) {
-        // 80% chance to spawn a house at each grid position to look organic and have some empty fields
-        if (Math.random() < 0.8) {
-          // Offset slightly from a strict grid to look natural and cozy
-          const xOffset = (Math.random() - 0.5) * 6.0;
-          const zOffset = (Math.random() - 0.5) * 6.0;
-          this.createSuburbanHouse(hx + xOffset, hz + zOffset);
-        }
-      }
+    for (const parcel of createSuburbanParcels()) {
+      // Empty parcels keep the district visually rural without weakening the
+      // deterministic zoning and setback rules.
+      if (Math.random() >= SUBURBAN_HOME_RULES.occupancyProbability) continue;
+      this.createSuburbanHouse(parcel.x, parcel.z, {
+        parcelId: parcel.id,
+        rotationY: parcel.rotationY
+      });
     }
   }
 
@@ -136,7 +120,17 @@ export class CityBuilder {
     return geo;
   }
 
-  createSuburbanHouse(x, z) {
+  createSuburbanHouse(x, z, { parcelId = null, rotationY = 0 } = {}) {
+    if (!canPlaceCountrysideStructure(
+      { x, z },
+      SUBURBAN_HOME_RULES.footprint,
+      {
+        rotationY,
+        setback: SUBURBAN_HOME_RULES.roadSetback,
+        occupied: this.countrysideOccupancy
+      }
+    )) return null;
+
     const houseGroup = new THREE.Group();
     const terrainY = this.getHillHeight(x, z);
     houseGroup.position.set(x, terrainY, z);
@@ -233,8 +227,12 @@ export class CityBuilder {
     chimney.castShadow = true;
     houseGroup.add(chimney);
 
-    // Rotate house slightly for organic suburban feel
-    houseGroup.rotation.y = (Math.random() - 0.5) * 0.15;
+    // Every parcel fronts a road on the shared grid; visual variety comes from
+    // color and vacant lots rather than geometry drifting out of its zone.
+    houseGroup.rotation.y = Number.isFinite(rotationY) ? rotationY : 0;
+    houseGroup.name = parcelId || `suburban-house-${x}-${z}`;
+    houseGroup.userData.landUse = 'SUBURBAN_RESIDENTIAL';
+    houseGroup.userData.parcelId = parcelId;
 
     this.scene.add(houseGroup);
     this.sceneryColliders.push({
@@ -243,6 +241,12 @@ export class CityBuilder {
       rotationY: houseGroup.rotation.y,
       kind: 'suburban-house'
     });
+    this.countrysideOccupancy.push(getFootprintEnvelope(
+      { x, z },
+      SUBURBAN_HOME_RULES.footprint,
+      { rotationY: houseGroup.rotation.y, kind: 'HOUSE', id: parcelId }
+    ));
+    return houseGroup;
   }
 
   isInWater(pos) {
@@ -569,8 +573,9 @@ export class CityBuilder {
       }
     }
 
-    const coordsX = [450, 550, 650, 700, 750];
-    const coordsZ = [-100, -50, 0, 50, 100];
+    const coordsX = [...COUNTRYSIDE_GRID.verticalRoadCenters, COUNTRYSIDE_GRID.rocketAccessRoad.centerX]
+      .sort((a, b) => a - b);
+    const coordsZ = COUNTRYSIDE_GRID.horizontalRoadCenters;
 
     // Find nearest coordinates
     let rx = coordsX[0];
@@ -593,7 +598,7 @@ export class CityBuilder {
       }
     }
 
-    const roadHalfWidth = 8.0;
+    const roadHalfWidth = COUNTRYSIDE_GRID.roadWidth * 0.5 + 1;
     const blendDistance = 20.0;
     const verticalRoadCore = z >= -100 && z <= 100;
 
@@ -692,9 +697,12 @@ export class CityBuilder {
   }
 
   createRoadGrid() {
-    const roadCoordsZ = [-100, -50, 0, 50, 100];
-    const roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750];
-    const roadWidth = 14;
+    const roadCoordsZ = COUNTRYSIDE_GRID.horizontalRoadCenters;
+    const roadCoordsX = [
+      -100, -50, 0, 50, 100, 210, 260, 310,
+      ...COUNTRYSIDE_GRID.verticalRoadCenters
+    ];
+    const roadWidth = COUNTRYSIDE_GRID.roadWidth;
     const sidewalkWidth = 4;
     const blockSize = 50 - roadWidth;
 

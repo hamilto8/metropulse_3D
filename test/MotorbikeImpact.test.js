@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Pedestrian } from '../src/entities/Pedestrian.js';
-import { Vehicle } from '../src/entities/Vehicle.js';
+import { MOTORBIKE_RIDER_POSE, Vehicle } from '../src/entities/Vehicle.js';
 import {
   getRiderEjectionImpact,
   MOTORBIKE_RIDER_EJECTION
@@ -40,6 +40,24 @@ function createTrafficHarness() {
   };
   return { traffic, pedestrians, getKnockdown: () => knockdown };
 }
+
+test('mounted motorbike rider sits on the saddle and reaches toward the handlebars', () => {
+  const { motorbike, rider } = createRiddenMotorbike();
+  const handlebars = motorbike.mesh.getObjectByName('motorbike-handlebars');
+  assert.ok(handlebars);
+  assert.deepEqual(rider.mesh.position.toArray(), MOTORBIKE_RIDER_POSE.position);
+  assert.ok(rider.armL.rotation.x < 0);
+  assert.ok(rider.armR.rotation.x < 0);
+
+  motorbike.mesh.updateMatrixWorld(true);
+  const handlebarCenter = handlebars.getWorldPosition(new THREE.Vector3());
+  const leftHand = rider.armL.localToWorld(new THREE.Vector3(0, -0.8, 0));
+  const rightHand = rider.armR.localToWorld(new THREE.Vector3(0, -0.8, 0));
+  assert.ok(leftHand.z > rider.armL.getWorldPosition(new THREE.Vector3()).z);
+  assert.ok(rightHand.z > rider.armR.getWorldPosition(new THREE.Vector3()).z);
+  assert.ok(leftHand.distanceTo(handlebarCenter) < 0.5);
+  assert.ok(rightHand.distanceTo(handlebarCenter) < 0.5);
+});
 
 test('rider ejection requires a high closing speed rather than raw proximity', () => {
   const impactor = new Vehicle('SEDAN', 0x3366cc, 'Approaching Sedan');

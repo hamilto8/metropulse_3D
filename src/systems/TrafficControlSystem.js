@@ -8,12 +8,20 @@ import {
   TRAFFIC_RULES
 } from './TrafficRules.js';
 
-const APPROACHES = Object.freeze([
+export const TRAFFIC_CONTROL_APPROACHES = Object.freeze([
   { direction: 'EB', axis: 'EW', dx: -8.6, dz: 8.6, rotationY: -Math.PI / 2 },
   { direction: 'WB', axis: 'EW', dx: 8.6, dz: -8.6, rotationY: Math.PI / 2 },
   { direction: 'SB', axis: 'NS', dx: -8.6, dz: -8.6, rotationY: Math.PI },
   { direction: 'NB', axis: 'NS', dx: 8.6, dz: 8.6, rotationY: 0 }
 ]);
+
+export const TRAFFIC_CONTROL_VISUALS = Object.freeze({
+  postFootprint: 0.7,
+  signalMastHeight: 5.4,
+  signalArmHeight: 5.25,
+  signalArmLength: 5.4,
+  signalHeadOffset: 5.1
+});
 
 function createStopTexture() {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
@@ -62,9 +70,17 @@ export class TrafficControlSystem {
     return Number.isFinite(value) ? value : 0;
   }
 
-  registerPost(control, x, z, height = 5.2, footprint = 0.7) {
+  registerPost(
+    control,
+    x,
+    z,
+    height = 5.2,
+    footprint = TRAFFIC_CONTROL_VISUALS.postFootprint
+  ) {
     const y = this.getTerrainHeight(x, z);
-    const safeFootprint = Number.isFinite(footprint) ? Math.max(0.7, footprint) : 0.7;
+    const safeFootprint = Number.isFinite(footprint)
+      ? Math.max(TRAFFIC_CONTROL_VISUALS.postFootprint, footprint)
+      : TRAFFIC_CONTROL_VISUALS.postFootprint;
     const post = { controlId: control.id, x, z, radius: safeFootprint * 0.5 };
     this.posts.push(post);
     this.app?.physicsWorld?.addStaticBoxCollider?.(
@@ -78,21 +94,39 @@ export class TrafficControlSystem {
     const group = new THREE.Group();
     const x = control.x + approach.dx;
     const z = control.z + approach.dz;
-    // The solid footprint covers the mast arm and signal housing as well as
-    // the pole, preventing glancing vehicles or pedestrians clipping through.
-    const groundY = this.registerPost(control, x, z, 5.4, 3.4);
+    // Only the ground-level pole is solid. The mast arm and head are above
+    // vehicle clearance and must not create a broad invisible road obstacle.
+    const groundY = this.registerPost(
+      control,
+      x,
+      z,
+      TRAFFIC_CONTROL_VISUALS.signalMastHeight
+    );
     group.position.set(x, groundY, z);
     group.rotation.y = approach.rotationY;
 
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 5.4, 8), materials.pole);
-    pole.position.y = 2.7;
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.24, TRAFFIC_CONTROL_VISUALS.signalMastHeight, 8),
+      materials.pole
+    );
+    pole.position.y = TRAFFIC_CONTROL_VISUALS.signalMastHeight * 0.5;
+    pole.name = 'signal-pole';
     pole.castShadow = true;
     group.add(pole);
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.18, 0.18), materials.pole);
-    arm.position.set(0.58, 4.85, 0);
+    const arm = new THREE.Mesh(
+      new THREE.BoxGeometry(TRAFFIC_CONTROL_VISUALS.signalArmLength, 0.18, 0.18),
+      materials.pole
+    );
+    arm.position.set(
+      -TRAFFIC_CONTROL_VISUALS.signalArmLength * 0.5,
+      TRAFFIC_CONTROL_VISUALS.signalArmHeight,
+      0
+    );
+    arm.name = 'signal-mast-arm';
     group.add(arm);
     const housing = new THREE.Mesh(new THREE.BoxGeometry(0.9, 2.25, 0.62), materials.housing);
-    housing.position.set(1.18, 4.15, 0);
+    housing.position.set(-TRAFFIC_CONTROL_VISUALS.signalHeadOffset, 4.15, 0);
+    housing.name = 'signal-housing';
     housing.castShadow = true;
     group.add(housing);
 
@@ -113,7 +147,8 @@ export class TrafficControlSystem {
       });
       material.toneMapped = false;
       const lens = new THREE.Mesh(new THREE.CircleGeometry(0.27, 12), material);
-      lens.position.set(1.18, y, 0.32);
+      lens.position.set(-TRAFFIC_CONTROL_VISUALS.signalHeadOffset, y, 0.32);
+      lens.name = `signal-lens-${state.toLowerCase()}`;
       lens.userData.signalColor = color;
       group.add(lens);
       lenses[state] = lens;
@@ -128,7 +163,7 @@ export class TrafficControlSystem {
     const group = new THREE.Group();
     const x = control.x + approach.dx;
     const z = control.z + approach.dz;
-    const groundY = this.registerPost(control, x, z, 4.8, 2.2);
+    const groundY = this.registerPost(control, x, z, 4.8);
     group.position.set(x, groundY, z);
     group.rotation.y = approach.rotationY;
 
@@ -166,7 +201,7 @@ export class TrafficControlSystem {
     };
     const stopTexture = createStopTexture();
     for (const control of this.controls) {
-      for (const approach of APPROACHES) {
+      for (const approach of TRAFFIC_CONTROL_APPROACHES) {
         const visual = control.type === 'SIGNAL'
           ? this.createSignal(control, approach, materials)
           : this.createStopSign(control, approach, materials, stopTexture);

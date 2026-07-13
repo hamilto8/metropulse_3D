@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
-import { TrafficControlSystem } from '../src/systems/TrafficControlSystem.js';
+import {
+  TrafficControlSystem,
+  TRAFFIC_CONTROL_VISUALS
+} from '../src/systems/TrafficControlSystem.js';
 import { PhysicsWorld } from '../src/physics/PhysicsWorld.js';
 import { movePedestrianWithCollisions } from '../src/systems/PedestrianCollision.js';
 import {
@@ -135,11 +138,47 @@ test('visual controls register solid posts outside the road corridor', () => {
   assert.equal(system.controls[0].type, 'STOP');
   assert.equal(system.posts.length, 4);
   assert.equal(colliders.length, 4);
-  assert.ok(colliders.every(collider => collider.size.x >= 2.2));
+  assert.ok(colliders.every(collider => (
+    collider.size.x === TRAFFIC_CONTROL_VISUALS.postFootprint
+    && collider.size.z === TRAFFIC_CONTROL_VISUALS.postFootprint
+  )));
   assert.ok(system.posts.every(post => Math.abs(post.x - 450) > 7 && Math.abs(post.z - 50) > 7));
   assert.equal(system.intersectsPost(new THREE.Vector3(441.4, 0, 58.6), 0.2), true);
+  assert.equal(system.intersectsPost(new THREE.Vector3(441.4, 0, 53.5), 1.25), false);
   assert.equal(system.intersectsPost(new THREE.Vector3(450, 0, 50), 0.2), false);
   assert.equal(TRAFFIC_RULES.stopSignWaitDuration, 1.1);
+});
+
+test('signal heads extend inward over each incoming lane without widening pole colliders', () => {
+  const colliders = [];
+  const app = {
+    sceneManager: { scene: new THREE.Scene() },
+    cityBuilder: { getHillHeight: () => 0 },
+    physicsWorld: {
+      addStaticBoxCollider(position, size) { colliders.push({ position, size }); }
+    }
+  };
+  const system = new TrafficControlSystem(app, [0], [0]);
+  system.group.updateMatrixWorld(true);
+  const expectedLaneCoordinates = {
+    EB: { axis: 'z', value: 3.5 },
+    WB: { axis: 'z', value: -3.5 },
+    SB: { axis: 'x', value: -3.5 },
+    NB: { axis: 'x', value: 3.5 }
+  };
+
+  for (const [direction, expected] of Object.entries(expectedLaneCoordinates)) {
+    const signal = system.group.getObjectByName(`signal-${direction}-0,0`);
+    const housing = signal?.getObjectByName('signal-housing');
+    assert.ok(housing, `${direction} signal housing should exist`);
+    const worldPosition = housing.getWorldPosition(new THREE.Vector3());
+    assert.ok(Math.abs(worldPosition[expected.axis] - expected.value) < 1e-9);
+  }
+
+  assert.ok(colliders.every(collider => (
+    collider.size.x === TRAFFIC_CONTROL_VISUALS.postFootprint
+    && collider.size.z === TRAFFIC_CONTROL_VISUALS.postFootprint
+  )));
 });
 
 test('pedestrian sweep cannot clip through a traffic-control post', () => {

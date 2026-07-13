@@ -121,6 +121,45 @@ export class InputManager {
     }
   }
 
+  /**
+   * Returns keyboard authority to the game surface when a mouse/gamepad UI
+   * action changes direct control. Otherwise the inspector button keeps focus
+   * (even after it is hidden) and subsequent WASD events are correctly—but
+   * unexpectedly—classified as UI input.
+   */
+  restoreGameplayFocus() {
+    this.clearTransientInputState();
+    if (typeof document === 'undefined') return false;
+
+    const active = document.activeElement;
+    if (active?.matches?.(FOCUSABLE_SELECTOR)) active.blur?.();
+
+    const canvas = this.app?.sceneManager?.renderer?.domElement;
+    if (!canvas?.focus) return Boolean(active && document.activeElement !== active);
+    if (!canvas.hasAttribute?.('tabindex')) canvas.tabIndex = -1;
+    canvas.focus({ preventScroll: true });
+    return document.activeElement === canvas;
+  }
+
+  syncControlContext(context = this.getControlContext()) {
+    const previousContext = this.lastContext;
+    if (context === previousContext) return false;
+
+    const wasDirectControl = previousContext === CONTROL_CONTEXTS.VEHICLE
+      || previousContext === CONTROL_CONTEXTS.PEDESTRIAN;
+    const isDirectControl = context === CONTROL_CONTEXTS.VEHICLE
+      || context === CONTROL_CONTEXTS.PEDESTRIAN;
+    const changedGameplayAuthority = previousContext != null
+      && (wasDirectControl || isDirectControl)
+      && context !== previousContext
+      && context !== CONTROL_CONTEXTS.DIALOGUE
+      && context !== CONTROL_CONTEXTS.BUILDER;
+    this.lastContext = context;
+    if (changedGameplayAuthority) this.restoreGameplayFocus();
+    this.app?.uiManager?.updateAdaptiveControls?.(true);
+    return true;
+  }
+
   handlePrimaryAction() {
     const missionSystem = this.app?.missionSystem;
     if (missionSystem?.handleActionKey?.()) return true;
@@ -273,6 +312,8 @@ export class InputManager {
   }
 
   update(delta) {
+    const context = this.getControlContext();
+    this.syncControlContext(context);
     const gamepad = this.getGamepad();
     this.state.isGamepadConnected = Boolean(gamepad);
     if (gamepad && this.isGamepadActive(gamepad)) this.setInterface(INPUT_INTERFACES.GAMEPAD);
@@ -305,10 +346,10 @@ export class InputManager {
         moveY = -leftY;
         cameraPanX = rightX;
         cameraPanY = rightY;
-        handbrake = this.getControlContext() === CONTROL_CONTEXTS.VEHICLE && this.isButtonPressed(gamepad, 0);
+        handbrake = context === CONTROL_CONTEXTS.VEHICLE && this.isButtonPressed(gamepad, 0);
       }
 
-      if (this.getControlContext() === CONTROL_CONTEXTS.BUILDER && this.activeInterface === INPUT_INTERFACES.GAMEPAD) {
+      if (context === CONTROL_CONTEXTS.BUILDER && this.activeInterface === INPUT_INTERFACES.GAMEPAD) {
         this.updateBuilderCursor(leftX, leftY, delta);
       }
       this.handleGamepadActions(gamepad);
@@ -323,11 +364,6 @@ export class InputManager {
     this.state.cameraPanY = cameraPanY;
     this.state.handbrake = handbrake;
 
-    const context = this.getControlContext();
-    if (context !== this.lastContext) {
-      this.lastContext = context;
-      this.app?.uiManager?.updateAdaptiveControls?.(true);
-    }
   }
 
   updateBuilderCursor(leftX, leftY, delta) {

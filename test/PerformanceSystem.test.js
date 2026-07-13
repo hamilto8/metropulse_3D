@@ -2,7 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
-import { PerformanceSystem, SpatialHashGrid, DETAIL_TIERS } from '../src/systems/PerformanceSystem.js';
+import {
+  AdaptiveQualityController,
+  DETAIL_TIERS,
+  PerformanceSystem,
+  RENDER_QUALITY_TIERS,
+  SpatialHashGrid
+} from '../src/systems/PerformanceSystem.js';
 import { Vehicle } from '../src/entities/Vehicle.js';
 import { Pedestrian } from '../src/entities/Pedestrian.js';
 
@@ -60,4 +66,50 @@ test('vehicle and pedestrian low-detail proxies preserve one interactive root', 
   pedestrian.setDetailLevel(DETAIL_TIERS.HIGH);
   assert.equal(vehicle.lowDetailProxy.visible, false);
   assert.equal(pedestrian.lowDetailProxy.visible, false);
+});
+
+test('adaptive render quality ignores startup work then degrades sustained low FPS', () => {
+  const changes = [];
+  const quality = new AdaptiveQualityController({
+    warmupSamples: 2,
+    downgradeSamples: 2,
+    onChange: (tier, previous) => changes.push([previous, tier])
+  });
+
+  quality.observe(20);
+  quality.observe(20);
+  assert.equal(quality.tier, RENDER_QUALITY_TIERS.HIGH);
+  quality.observe(20);
+  quality.observe(20);
+  assert.equal(quality.tier, RENDER_QUALITY_TIERS.MEDIUM);
+  quality.observe(20);
+  quality.observe(20);
+  assert.equal(quality.tier, RENDER_QUALITY_TIERS.LOW);
+  assert.deepEqual(changes, [
+    [RENDER_QUALITY_TIERS.HIGH, RENDER_QUALITY_TIERS.MEDIUM],
+    [RENDER_QUALITY_TIERS.MEDIUM, RENDER_QUALITY_TIERS.LOW]
+  ]);
+});
+
+test('adaptive render quality uses a longer healthy window to recover', () => {
+  const quality = new AdaptiveQualityController({
+    initialTier: RENDER_QUALITY_TIERS.LOW,
+    warmupSamples: 0,
+    upgradeSamples: 3
+  });
+  quality.observe(60);
+  quality.observe(60);
+  assert.equal(quality.tier, RENDER_QUALITY_TIERS.LOW);
+  quality.observe(60);
+  assert.equal(quality.tier, RENDER_QUALITY_TIERS.MEDIUM);
+});
+
+test('explicit render quality lock disables automatic changes', () => {
+  const quality = new AdaptiveQualityController({
+    initialTier: RENDER_QUALITY_TIERS.HIGH,
+    locked: true,
+    warmupSamples: 0,
+    downgradeSamples: 1
+  });
+  assert.equal(quality.observe(10), RENDER_QUALITY_TIERS.HIGH);
 });
