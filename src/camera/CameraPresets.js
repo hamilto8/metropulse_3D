@@ -2,6 +2,9 @@ import * as THREE from 'three';
 
 const PRESET_COORDINATES = Object.freeze({
   birdseye: Object.freeze({ pos: [80, 320, 15], target: [80, 0, 0] }),
+  // A low, level view along the central avenue. The camera center remains
+  // above the near-plane-safe ground clearance used by the camera constraint.
+  ground: Object.freeze({ pos: [3.5, 0.75, 92], target: [3.5, 0.75, -28] }),
   // Central avenue framing: one traffic lane off-center, looking south
   // between downtown blocks without intersecting a building footprint.
   street: Object.freeze({ pos: [3.5, 3.6, 92], target: [3.5, 2.1, -28] }),

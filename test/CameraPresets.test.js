@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { createCameraPresets } from '../src/camera/CameraPresets.js';
+import {
+  CAMERA_GROUND_CLEARANCE,
+  constrainCameraToGround
+} from '../src/camera/CameraGroundConstraint.js';
 import { SceneManager } from '../src/world/SceneManager.js';
 
 const CITY_BLOCK_CENTERS_X = [-75, -25, 25, 75, 235, 285];
@@ -35,6 +39,67 @@ test('street preset remains in the central avenue for its complete sightline', (
   assert.ok(street.pos.y >= 3 && street.pos.y <= 5);
   assert.ok(Math.abs(street.pos.x) < 7);
   assertClearHorizontalSightline(street);
+});
+
+test('ground preset rests at the camera clearance and looks level down the avenue', () => {
+  const { ground } = createCameraPresets();
+  assert.equal(ground.pos.y, CAMERA_GROUND_CLEARANCE);
+  assert.equal(ground.target.y, ground.pos.y);
+  assert.ok(ground.pos.distanceTo(ground.target) >= 5);
+  assertClearHorizontalSightline(ground);
+});
+
+test('ground constraint clamps and levels a camera below elevated terrain', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(10, -4, 20);
+  const target = new THREE.Vector3(10, -10, -30);
+
+  const result = constrainCameraToGround(camera, target, 3.25);
+
+  assert.equal(result.constrained, true);
+  assert.equal(camera.position.y, 3.25 + CAMERA_GROUND_CLEARANCE);
+  assert.equal(target.y, camera.position.y);
+  assert.ok(target.distanceTo(camera.position) >= 5);
+});
+
+test('ground constraint derives a stable horizontal view from a vertical target', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(2, 0, 4);
+  camera.lookAt(2, -10, 4);
+  const target = new THREE.Vector3(2, -10, 4);
+
+  constrainCameraToGround(camera, target, 0);
+
+  assert.equal(camera.position.y, CAMERA_GROUND_CLEARANCE);
+  assert.equal(target.y, camera.position.y);
+  assert.ok(Number.isFinite(target.x));
+  assert.ok(Number.isFinite(target.z));
+  assert.ok(target.distanceTo(camera.position) >= 5);
+});
+
+test('ground constraint preserves an elevated camera pose', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(10, 20, 20);
+  const target = new THREE.Vector3(0, 0, 0);
+  const originalTarget = target.clone();
+
+  const result = constrainCameraToGround(camera, target, 3.25);
+
+  assert.equal(result.constrained, false);
+  assert.equal(camera.position.y, 20);
+  assert.deepEqual(target.toArray(), originalTarget.toArray());
+});
+
+test('camera surface sampling follows hills but treats river beds as water level', () => {
+  const manager = Object.create(SceneManager.prototype);
+  manager.app = {
+    cityBuilder: {
+      getTerrainHeight(x) { return x < 0 ? -4 : 6.5; }
+    }
+  };
+
+  assert.equal(manager.getCameraSurfaceHeight(-10, 0), 0);
+  assert.equal(manager.getCameraSurfaceHeight(10, 0), 6.5);
 });
 
 test('downtown preset uses an elevated unobstructed road corridor', () => {

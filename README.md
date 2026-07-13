@@ -87,7 +87,7 @@ Traffic horns are also used contextually: a small subset of impatient AI drivers
 - **Click-to-Inspect**: Click directly onto any moving car, pedestrian, or building to open a sleek HUD data card displaying live statistics (speed, battery level, employee count, business status).
 - **Complete City Editing**: Place, select, move, rotate, and demolish user-built structures while keeping physics colliders, traffic roads, economy records, and saved state synchronized.
 - **Follow Camera Mode**: Attach the camera to any moving vehicle or pedestrian to ride along with them across the suspension bridge and through the city streets!
-- **Camera Preset Sidebar**: Instant camera jump buttons for *"Bird's Eye View"*, *"Street Level"*, *"Central Park"*, *"Downtown Intersection"*, *"Bridge"*, and *"Free Orbit"*.
+- **Camera Preset Sidebar**: Instant camera jump buttons for *"Rocket Launchpad"*, *"Ground Level"*, *"Street Level"*, *"Bird's Eye View"*, *"Central Park"*, *"Downtown Intersection"*, *"Bridge"*, and *"Free Orbit"*. Terrain-aware camera clearance prevents orbit, chase, keyboard movement, transitions, and shake from clipping beneath roads, hills, bridges, or water.
 - **Weather Controls**: Run the automatic **Clear → Mist → Rain → Thunderstorm** cycle or choose weather manually. Wet conditions affect visibility, pedestrians, audio, surfaces, and player-vehicle grip.
 
 ---

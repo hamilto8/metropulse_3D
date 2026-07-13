@@ -5,6 +5,10 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { CameraRig } from '../camera/CameraRig.js';
 import { createCameraPresets } from '../camera/CameraPresets.js';
+import {
+  CAMERA_GROUND_CLEARANCE,
+  constrainCameraToGround
+} from '../camera/CameraGroundConstraint.js';
 import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
 
 export class SceneManager {
@@ -53,7 +57,9 @@ export class SceneManager {
     this.controls.keys = {};
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.05;
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go below ground
+    // A horizontal view is required at the ground limit. Terrain-aware
+    // position clamping below prevents the camera from crossing the surface.
+    this.controls.maxPolarAngle = Math.PI / 2;
     this.controls.minDistance = 5;
     this.controls.maxDistance = 350;
     this.controls.target.set(0, 0, 0);
@@ -186,6 +192,51 @@ export class SceneManager {
       this.cameraRig.state = 'ORBIT_MACRO';
     }
     this.controls.enabled = true;
+  }
+
+  getCameraSurfaceHeight(x, z) {
+    const sampledHeight = this.app?.cityBuilder?.getTerrainHeight?.(x, z);
+    // Rivers expose their bed height for vehicle physics. The camera should
+    // stop at the visible water/ground plane instead of descending underwater.
+    return Math.max(0, Number.isFinite(sampledHeight) ? sampledHeight : 0);
+  }
+
+  enforceCameraGroundConstraint() {
+    const terrainHeight = this.getCameraSurfaceHeight(
+      this.camera.position.x,
+      this.camera.position.z
+    );
+    return constrainCameraToGround(
+      this.camera,
+      this.controls.target,
+      terrainHeight,
+      CAMERA_GROUND_CLEARANCE
+    );
+  }
+
+  finalizeCameraPose() {
+    // CameraRig applies shake as a temporary render offset. Remove it before
+    // constraining the persistent pose, then reapply only the portion that can
+    // fit above the surface so shake can never punch the camera underground.
+    const removedShake = this.cameraRig?.removeAppliedShake?.() || false;
+    const result = this.enforceCameraGroundConstraint();
+
+    if (removedShake) {
+      const baseY = this.camera.position.y;
+      this.cameraRig.applyShake?.();
+      const minimumY = this.getCameraSurfaceHeight(
+        this.camera.position.x,
+        this.camera.position.z
+      ) + CAMERA_GROUND_CLEARANCE;
+      if (this.camera.position.y < minimumY) {
+        this.camera.position.y = minimumY;
+        // Record the actual render-only Y offset so next-frame removal returns
+        // exactly to the constrained base pose.
+        this.cameraRig.appliedShakeOffset.y = minimumY - baseY;
+      }
+    }
+
+    return result;
   }
 
   setCameraPreset(mode) {
@@ -344,6 +395,7 @@ export class SceneManager {
     // Phase 2: Delegate dynamic chase & cinematic swoops to CameraRig
     if (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO') {
       this.cameraRig.update(delta);
+      this.finalizeCameraPose();
       return;
     }
 
@@ -369,6 +421,10 @@ export class SceneManager {
         const isRocketLaunching = this.activePreset === 'rocket' && this.app && this.app.cityBuilder &&
           this.app.cityBuilder.rocketGroup && this.app.cityBuilder.rocketGroup.position.y > 1.6;
         if (!isRocketLaunching) {
+          // Finish at the authored pose instead of leaving the camera up to one
+          // world unit short. This is especially visible on Ground Level.
+          this.camera.position.copy(this.targetCameraPos);
+          this.controls.target.copy(this.targetLookAt);
           this.targetCameraPos = null;
           this.targetLookAt = null;
         }
@@ -380,6 +436,7 @@ export class SceneManager {
     } else {
       this.controls.update();
     }
+    this.finalizeCameraPose();
   }
 
   render() {

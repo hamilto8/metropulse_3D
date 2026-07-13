@@ -387,7 +387,7 @@ export class InputManager {
     if (this.justPressed('btn4', pressed(4))) this.handleHornAction();
 
     if (this.justPressed('btn5', pressed(5))) {
-      const presets = ['street', 'birdseye', 'downtown', 'bridge', 'park'];
+      const presets = ['ground', 'street', 'birdseye', 'downtown', 'bridge', 'park'];
       const current = this.app?.sceneManager?.activePreset || 'street';
       const nextIndex = (presets.indexOf(current) + 1) % presets.length;
       this.app?.sceneManager?.setCameraPreset?.(presets[nextIndex]);
