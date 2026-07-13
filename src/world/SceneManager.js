@@ -9,6 +9,10 @@ import {
   CAMERA_GROUND_CLEARANCE,
   constrainCameraToGround
 } from '../camera/CameraGroundConstraint.js';
+import {
+  isStreetCameraAltitude,
+  StreetLevelCameraController
+} from '../camera/StreetLevelCameraController.js';
 import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
 
 export class SceneManager {
@@ -70,6 +74,15 @@ export class SceneManager {
       }
     });
 
+    this.streetCameraController = new StreetLevelCameraController(
+      this.camera,
+      this.controls,
+      {
+        onInteractionStart: () => this.breakToFreeOrbit(),
+        onModeChange: () => this.app?.uiManager?.updateAdaptiveControls?.(true)
+      }
+    );
+
     // Phase 2: Cinematic Camera Rig
     this.cameraRig = new CameraRig(this.camera, this.controls);
 
@@ -127,8 +140,12 @@ export class SceneManager {
     const freeBtn = document.querySelector('[data-camera="free"]');
     if (freeBtn && !freeBtn.classList.contains('active')) {
       const cameraButtons = document.querySelectorAll('[data-camera]');
-      cameraButtons.forEach(b => b.classList.remove('active'));
+      cameraButtons.forEach(button => {
+        button.classList.remove('active');
+        button.setAttribute('aria-pressed', 'false');
+      });
       freeBtn.classList.add('active');
+      freeBtn.setAttribute('aria-pressed', 'true');
     }
 
     const btnFollow = document.getElementById('btn-follow-target');
@@ -220,9 +237,28 @@ export class SceneManager {
     // fit above the surface so shake can never punch the camera underground.
     const removedShake = this.cameraRig?.removeAppliedShake?.() || false;
     const result = this.enforceCameraGroundConstraint();
+    const baseSurfaceHeight = result.minimumY - CAMERA_GROUND_CLEARANCE;
+    const baseCameraY = this.camera.position.y;
+    const isOrbitMode = !this.cameraRig || this.cameraRig.state === 'ORBIT_MACRO';
+    const presetSupportsStreetPivot = !this.targetCameraPos
+      || this.activePreset === 'ground'
+      || this.activePreset === 'street';
+    this.streetCameraController?.setMode(
+      isOrbitMode
+        && presetSupportsStreetPivot
+        && isStreetCameraAltitude(
+          baseCameraY,
+          baseSurfaceHeight,
+          this.streetCameraController?.enabled
+        ),
+      {
+        lockLevel: result.constrained,
+        restoreMacroPivot: isOrbitMode
+      }
+    );
 
     if (removedShake) {
-      const baseY = this.camera.position.y;
+      const baseY = baseCameraY;
       this.cameraRig.applyShake?.();
       const minimumY = this.getCameraSurfaceHeight(
         this.camera.position.x,
@@ -309,15 +345,23 @@ export class SceneManager {
       const rsX = this.app.inputManager.state.cameraPanX;
       const rsY = this.app.inputManager.state.cameraPanY;
       if (Math.abs(rsX) > 0.05 || Math.abs(rsY) > 0.05) {
-        const target = this.controls ? this.controls.target : new THREE.Vector3(0, 0, 0);
-        const offset = this.camera.position.clone().sub(target);
-        const angleX = -rsX * delta * 2.5;
-        offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleX);
-        const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize();
-        const angleY = rsY * delta * 1.5;
-        offset.applyAxisAngle(right, angleY);
-        this.camera.position.copy(target).add(offset);
-        this.camera.lookAt(target);
+        if (this.streetCameraController?.enabled && this.cameraRig?.state === 'ORBIT_MACRO') {
+          this.breakToFreeOrbit();
+          this.streetCameraController.rotateLook(
+            rsX * delta * 2.5,
+            -rsY * delta * 1.5
+          );
+        } else {
+          const target = this.controls ? this.controls.target : new THREE.Vector3(0, 0, 0);
+          const offset = this.camera.position.clone().sub(target);
+          const angleX = -rsX * delta * 2.5;
+          offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), angleX);
+          const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize();
+          const angleY = rsY * delta * 1.5;
+          offset.applyAxisAngle(right, angleY);
+          this.camera.position.copy(target).add(offset);
+          this.camera.lookAt(target);
+        }
       }
     }
 

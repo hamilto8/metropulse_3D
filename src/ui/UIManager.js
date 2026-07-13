@@ -800,7 +800,10 @@ export class UIManager {
     const context = inputManager.getControlContext?.() || 'MANAGEMENT';
     const inputInterface = inputManager.activeInterface || 'KEYBOARD';
     document.body.dataset.controlContext = context.toLowerCase();
-    const signature = `${context}:${inputInterface}`;
+    const cameraInteraction = this.app?.sceneManager?.streetCameraController?.enabled
+      ? 'LOOK'
+      : 'ORBIT';
+    const signature = `${context}:${inputInterface}:${cameraInteraction}`;
     if (!force && signature === this._adaptiveControlsSignature) return;
     this._adaptiveControlsSignature = signature;
 
@@ -834,7 +837,9 @@ export class UIManager {
 
       const actionLabel = document.createElement('span');
       actionLabel.className = 'control-action-label';
-      actionLabel.textContent = binding.label;
+      actionLabel.textContent = binding.action === 'ORBIT' && cameraInteraction === 'LOOK'
+        ? 'Look around'
+        : binding.label;
       item.append(tokenGroup, actionLabel);
       this.adaptiveControlActions.appendChild(item);
     }
