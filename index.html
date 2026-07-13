@@ -11,11 +11,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/metropulse_3D/assets/index-D_KXWsnG.js"></script>
+    <script type="module" crossorigin src="/metropulse_3D/assets/index-BDGotBit.js"></script>
     <link rel="modulepreload" crossorigin href="/metropulse_3D/assets/three-vendor-CkR9sTvo.js">
     <link rel="modulepreload" crossorigin href="/metropulse_3D/assets/three-addons-DYMKFo41.js">
     <link rel="modulepreload" crossorigin href="/metropulse_3D/assets/physics-vendor-_3alTKai.js">
-    <link rel="stylesheet" crossorigin href="/metropulse_3D/assets/index-CUKlTQl8.css">
+    <link rel="stylesheet" crossorigin href="/metropulse_3D/assets/index-BDLkxj4a.css">
   </head>
   <body>
     <div id="app">
@@ -221,7 +221,7 @@
                 <button class="weather-pill" data-weather="rain" title="Rain">Rain</button>
                 <button class="weather-pill" data-weather="thunderstorm" title="Storm">Storm</button>
               </div>
-              <button id="btn-dynamic-weather" class="sidebar-action-btn dynamic-weather-btn" type="button">🔄 Dynamic Cycle: OFF</button>
+              <button id="btn-dynamic-weather" class="sidebar-action-btn dynamic-weather-btn" type="button" aria-pressed="true">🔄 Dynamic Cycle: ON</button>
 
               <div class="sub-label mt-2">MAP OVERLAYS</div>
               <div class="overlay-toggle-row">
@@ -333,10 +333,10 @@
           </div>
 
           <div class="speed-selector">
-            <button class="speed-pill" data-speed="0.5">0.5x</button>
-            <button class="speed-pill active" data-speed="1">1x</button>
-            <button class="speed-pill" data-speed="5">5x</button>
-            <button class="speed-pill" data-speed="15">15x</button>
+            <button class="speed-pill" data-speed="0.5" title="0.5 game minutes per real second">0.5x</button>
+            <button class="speed-pill active" data-speed="1" title="1 game minute per real second">1x</button>
+            <button class="speed-pill" data-speed="5" title="5 game minutes per real second">5x</button>
+            <button class="speed-pill" data-speed="15" title="15 game minutes per real second">15x</button>
           </div>
         </footer>
       </div>
@@ -367,12 +367,14 @@
         <span class="speedometer-unit">KM/H</span>
         <span id="speedometer-gear" class="speedometer-gear">GEAR —</span>
       </div>
-      <!-- Fun Mode market feedback and satirical news -->
-      <div id="real-estate-tracker" class="real-estate-tracker hidden">
-        <div class="re-header"><span class="re-title">CITY LAND VALUE</span><span class="re-badge">LIVE</span></div>
-        <div id="re-value-display" class="re-value">$4,850,000,000</div>
-        <div id="re-status-display" class="re-status">Market Status: <span class="accent-val">Speculative Bubble 🎈</span></div>
-      </div>
+      <!-- Priority status cards share one rail so live alerts never collide. -->
+      <aside id="status-hud-stack" class="status-hud-stack" aria-label="Live city status">
+        <div id="real-estate-tracker" class="real-estate-tracker hidden">
+          <div class="re-header"><span class="re-title">CITY LAND VALUE</span><span class="re-badge">LIVE</span></div>
+          <div id="re-value-display" class="re-value">$4,850,000,000</div>
+          <div id="re-status-display" class="re-status">Market Status: <span class="accent-val">Speculative Bubble 🎈</span></div>
+        </div>
+      </aside>
       <!-- Hidden overlays for missions / dialogue / news / arrest -->
       <div id="mission-hud" class="mission-hud hidden" aria-live="polite">
         <div class="mission-hud-badge">🎯 ACTIVE MISSION</div>
