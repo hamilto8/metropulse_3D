@@ -29,6 +29,8 @@ import {
   hasReachedNavigationTarget,
   TRAFFIC_NAVIGATION
 } from './TrafficNavigation.js';
+import { TrafficControlSystem } from './TrafficControlSystem.js';
+import { createDriverRuleProfile } from './TrafficRules.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -65,12 +67,27 @@ export class TrafficSystem {
     this.placedRoadSegments = new Map();
 
     this.initWaypoints();
+    this.trafficControlSystem = new TrafficControlSystem(
+      app,
+      this.roadCoordsX,
+      this.roadCoordsZ
+    );
     this.spawnVehicles(this.targetMovingVehicleCount);
     this.spawnParkedVehicles();
   }
 
   get keys() {
     return this.app?.inputManager?.keys || {};
+  }
+
+  assignDriverRuleProfile(vehicle, serial) {
+    if (!vehicle) return null;
+    vehicle.driverRuleProfile = createDriverRuleProfile(serial);
+    vehicle.trafficRuleCompliant = vehicle.driverRuleProfile.compliant;
+    vehicle.info['Driving Style'] = vehicle.trafficRuleCompliant
+      ? 'Rule-following'
+      : 'Reckless';
+    return vehicle.driverRuleProfile;
   }
 
   toggleUserControl(vehicle, { source = 'camera', pedestrian = null } = {}) {
@@ -875,6 +892,12 @@ export class TrafficSystem {
       }
     }
 
+    // Traffic lights and stop signs use the same solid post footprint in both
+    // physics and fallback movement modes.
+    if (!hitObstacle && this.trafficControlSystem?.intersectsPost?.(v.mesh.position, 1.25)) {
+      hitObstacle = true;
+    }
+
     if (hitObstacle) {
       // Solid Obstacle Collision! Revert position and rotation so vehicle cannot penetrate wall or lamp post!
       v.mesh.position.copy(oldPos);
@@ -1088,6 +1111,7 @@ export class TrafficSystem {
       vehicle.crashTimer = 0;
       vehicle.emergencyTarget = null;
       vehicle.normalMaxSpeed = vehicle.maxSpeed;
+      this.assignDriverRuleProfile(vehicle, serial);
 
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
       const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][serial % 3];
@@ -1397,6 +1421,7 @@ export class TrafficSystem {
   update(delta) {
     const funMode = this.app.funMode;
     const trafficObstacleSnapshot = getTrafficObstacleSnapshot(this.app.physicsWorld);
+    this.trafficControlSystem?.update?.(delta);
 
     this.populationCheckTimer -= delta;
     if (this.populationCheckTimer <= 0) {
@@ -1513,6 +1538,7 @@ export class TrafficSystem {
 
       // 1. Normal Collision avoidance check with vehicle ahead
       let isBlocked = false;
+      let queuedForTrafficControl = false;
       const nearbyTraffic = this.app.performanceSystem?.nearbyVehicles(pos, 11.5) || this.vehicles;
       for (const other of nearbyTraffic) {
         if (other === v) continue;
@@ -1536,6 +1562,7 @@ export class TrafficSystem {
             // In Fun Mode, ignore collision avoidance so cars smash into each other!
             if (!funMode) {
               isBlocked = true;
+              queuedForTrafficControl ||= Boolean(other.trafficControlBlocked);
               break;
             } else {
               // Accelerate slightly before crash for maximum mayhem!
@@ -1561,6 +1588,19 @@ export class TrafficSystem {
       if (pedestrianBlocked) {
         isBlocked = true;
       }
+      const trafficControlDecision = this.trafficControlSystem?.evaluateVehicle?.(v, delta)
+        || { shouldStop: false, reason: null };
+      const trafficControlBlocked = trafficControlDecision.shouldStop;
+      if (trafficControlBlocked) {
+        isBlocked = true;
+        v.info.Status = trafficControlDecision.reason === 'STOP_SIGN'
+          ? 'Stopping at stop sign'
+          : `Waiting at ${String(trafficControlDecision.reason).toLowerCase()} light`;
+        v.info.Mood = 'Following traffic rules';
+      } else if (trafficControlDecision.reason === 'VIOLATION') {
+        v.info.Status = '⚠️ Ignoring traffic control';
+        v.info.Mood = 'Reckless Driver';
+      }
 
       if (!v.userControlled && !v.isParked && !v.crashed && !v.emergencyTarget) {
         if (v.stuckTimer === undefined) v.stuckTimer = 0;
@@ -1568,7 +1608,8 @@ export class TrafficSystem {
         if (v.reverseTimer === undefined) v.reverseTimer = 0;
         if (v.stuckRecoveryElapsed === undefined) v.stuckRecoveryElapsed = 0;
 
-        const tryingToMove = pedestrianBlocked ? false : (v.targetSpeed > 0 || isBlocked);
+        const intentionalStop = pedestrianBlocked || trafficControlBlocked || queuedForTrafficControl;
+        const tryingToMove = intentionalStop ? false : (v.targetSpeed > 0 || isBlocked);
         const stationaryOrRecovering = v.isReversing || (tryingToMove && Math.abs(v.speed) < 0.3);
         if (stationaryOrRecovering) {
           v.stuckRecoveryElapsed += delta;
@@ -1596,7 +1637,7 @@ export class TrafficSystem {
             }
           }
         } else {
-          const isTryingToMove = pedestrianBlocked ? false : (v.targetSpeed > 0 || isBlocked);
+          const isTryingToMove = intentionalStop ? false : (v.targetSpeed > 0 || isBlocked);
           const isNearlyStopped = (v.speed < 0.3);
           if (isTryingToMove && isNearlyStopped) {
             v.stuckTimer += delta;
@@ -1633,7 +1674,11 @@ export class TrafficSystem {
         }
       }
 
-      v.speed = approachTrafficTargetSpeed(v, delta, pedestrianBlocked);
+      v.speed = approachTrafficTargetSpeed(
+        v,
+        delta,
+        pedestrianBlocked || trafficControlBlocked || queuedForTrafficControl
+      );
 
       // 2. Steer along road graph towards target node
       if (v.targetNode) {
@@ -1723,10 +1768,13 @@ export class TrafficSystem {
     for (let pass = 0; pass < iterations; pass += 1) {
       for (let i = 0; i < this.vehicles.length; i += 1) {
         const vehicle = this.vehicles[i];
-        if (!vehicle?.mesh || vehicle.crashed) continue;
+        // Player contacts are already resolved once by
+        // updateUserControlledVehicle. A second correction in this ambient AI
+        // pass can repeatedly cancel the player's escape velocity.
+        if (!vehicle?.mesh || vehicle.crashed || vehicle.userControlled) continue;
         const candidates = this.app.performanceSystem?.nearbyVehicles(vehicle.mesh.position, 13) || this.vehicles;
         for (const other of candidates) {
-          if (!other?.mesh || other.crashed || (index.get(other) ?? -1) <= i) continue;
+          if (!other?.mesh || other.crashed || other.userControlled || (index.get(other) ?? -1) <= i) continue;
           this.resolveVehicleOverlap(vehicle, other);
         }
       }
@@ -1900,6 +1948,7 @@ export class TrafficSystem {
       vehicle.isParked = true;
       vehicle.speed = 0;
       vehicle.info['Status'] = '🅿️ Parked';
+      this.assignDriverRuleProfile(vehicle, 1000 + idx);
 
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
       const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];
@@ -1945,6 +1994,7 @@ export class TrafficSystem {
       vehicle.isParked = true;
       vehicle.speed = 0;
       vehicle.info['Status'] = '🅿️ Parked Motorbike';
+      this.assignDriverRuleProfile(vehicle, 1100 + idx);
 
       const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
       const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];

@@ -140,3 +140,59 @@ test('gamepad edge state resets on release so repeated Y presses remain reliable
 
   assert.equal(actions, 2);
 });
+
+test('focus loss clears a potentially latched handbrake and all motion inputs', () => {
+  const manager = managerWith({});
+  manager.keys = { w: true, a: true, ' ': true, space: true };
+  manager.state = {
+    throttle: 1,
+    brake: 0.4,
+    steer: -1,
+    moveX: 1,
+    moveY: 1,
+    cameraPanX: 0.5,
+    cameraPanY: -0.5,
+    handbrake: true
+  };
+
+  manager.clearTransientInputState();
+
+  assert.deepEqual(manager.keys, { w: false, a: false, ' ': false, space: false });
+  assert.deepEqual(manager.state, {
+    throttle: 0,
+    brake: 0,
+    steer: 0,
+    moveX: 0,
+    moveY: 0,
+    cameraPanX: 0,
+    cameraPanY: 0,
+    handbrake: false
+  });
+});
+
+test('the browser blur listener releases motion keys when keyup cannot fire', () => {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const fakeWindow = new EventTarget();
+  const fakeDocument = new EventTarget();
+  fakeDocument.hidden = false;
+  globalThis.window = fakeWindow;
+  globalThis.document = fakeDocument;
+  try {
+    const manager = new InputManager({});
+    manager.keys.w = true;
+    manager.keys[' '] = true;
+    manager.state.throttle = 1;
+    manager.state.handbrake = true;
+
+    fakeWindow.dispatchEvent(new Event('blur'));
+
+    assert.equal(manager.keys.w, false);
+    assert.equal(manager.keys[' '], false);
+    assert.equal(manager.state.throttle, 0);
+    assert.equal(manager.state.handbrake, false);
+  } finally {
+    globalThis.window = previousWindow;
+    globalThis.document = previousDocument;
+  }
+});

@@ -88,6 +88,16 @@ export class InputManager {
       }
     });
 
+    // Browsers do not dispatch keyup when focus leaves the window. Clearing
+    // transient input prevents a lost Space release from permanently applying
+    // the handbrake (and likewise prevents stuck throttle/steering keys).
+    window.addEventListener('blur', () => this.clearTransientInputState());
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) this.clearTransientInputState();
+      });
+    }
+
     window.addEventListener('pointerdown', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
     window.addEventListener('wheel', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
     window.addEventListener('pointermove', (event) => {
@@ -95,6 +105,20 @@ export class InputManager {
       if (Math.abs(event.movementX || 0) + Math.abs(event.movementY || 0) < 3) return;
       this.setInterface(INPUT_INTERFACES.KEYBOARD);
     }, { passive: true });
+  }
+
+  clearTransientInputState() {
+    for (const key of Object.keys(this.keys || {})) this.keys[key] = false;
+    if (this.state) {
+      this.state.throttle = 0;
+      this.state.brake = 0;
+      this.state.steer = 0;
+      this.state.moveX = 0;
+      this.state.moveY = 0;
+      this.state.cameraPanX = 0;
+      this.state.cameraPanY = 0;
+      this.state.handbrake = false;
+    }
   }
 
   handlePrimaryAction() {

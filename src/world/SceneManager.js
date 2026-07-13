@@ -4,6 +4,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { CameraRig } from '../camera/CameraRig.js';
+import { createCameraPresets } from '../camera/CameraPresets.js';
 import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
 
 export class SceneManager {
@@ -140,23 +141,63 @@ export class SceneManager {
   }
 
   initPresets() {
-    this.presets = {
-      birdseye: { pos: new THREE.Vector3(80, 320, 15), target: new THREE.Vector3(80, 0, 0) },
-      street: { pos: new THREE.Vector3(15, 3.5, 45), target: new THREE.Vector3(0, 2, -20) },
-      park: { pos: new THREE.Vector3(-45, 12, -45), target: new THREE.Vector3(-60, 4, -60) },
-      downtown: { pos: new THREE.Vector3(35, 18, 35), target: new THREE.Vector3(-10, 8, -10) },
-      bridge: { pos: new THREE.Vector3(160, 28, 65), target: new THREE.Vector3(160, 8, -15) },
-      rocket: { pos: new THREE.Vector3(670, 52, -245), target: new THREE.Vector3(700, 28, -280) },
-      free: { pos: new THREE.Vector3(160, 95, 130), target: new THREE.Vector3(80, 0, 0) }
-    };
+    this.presets = createCameraPresets();
+  }
+
+  releaseDirectControlForCamera() {
+    const trafficSystem = this.app?.trafficSystem;
+    const pedestrianSystem = this.app?.pedestrianSystem;
+    const controlledEntities = new Set();
+
+    if (trafficSystem?.controlledVehicle) {
+      controlledEntities.add(trafficSystem.controlledVehicle);
+    }
+    for (const vehicle of trafficSystem?.vehicles || []) {
+      if (vehicle?.userControlled) controlledEntities.add(vehicle);
+    }
+    for (const vehicle of controlledEntities) {
+      trafficSystem?.releaseControl?.(vehicle);
+    }
+
+    controlledEntities.clear();
+    if (pedestrianSystem?.controlledPedestrian) {
+      controlledEntities.add(pedestrianSystem.controlledPedestrian);
+    }
+    for (const pedestrian of pedestrianSystem?.pedestrians || []) {
+      if (pedestrian?.userControlled) controlledEntities.add(pedestrian);
+    }
+    for (const pedestrian of controlledEntities) {
+      pedestrianSystem?.releaseControl?.(pedestrian);
+    }
+
+    // The individual systems normally perform this transition themselves,
+    // but the explicit final assignment also repairs stale control flags and
+    // keeps this camera-owned transition deterministic.
+    this.app?.gameManager?.setMode?.('MANAGEMENT', { reason: 'camera-preset' });
+    this.app?.uiManager?.hideInspector?.();
+  }
+
+  preparePresetOrbit() {
+    this.followTarget = null;
+    if (this.cameraRig) {
+      this.cameraRig.removeAppliedShake?.();
+      this.cameraRig.followTarget = null;
+      this.cameraRig.isPointerLooking = false;
+      this.cameraRig.state = 'ORBIT_MACRO';
+    }
+    this.controls.enabled = true;
   }
 
   setCameraPreset(mode) {
-    this.stopFollowTarget();
+    const preset = this.presets[mode];
+    if (!preset) return false;
+
+    this.releaseDirectControlForCamera();
+    this.preparePresetOrbit();
     this.activePreset = mode;
-    if (!this.presets[mode]) return;
-    this.targetCameraPos = this.presets[mode].pos.clone();
-    this.targetLookAt = this.presets[mode].target.clone();
+    this.targetCameraPos = preset.pos.clone();
+    this.targetLookAt = preset.target.clone();
+    return true;
   }
 
   toggleFollowTarget(entity) {

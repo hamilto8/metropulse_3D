@@ -79,6 +79,65 @@ test('physics vehicles recover to their last supported pose after falling below 
   vehicle.destroy();
 });
 
+test('a high-centered physics vehicle auto-recovers under sustained drive input', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const physics = new PhysicsWorld();
+    const mesh = new THREE.Group();
+    const vehicle = new PlayerVehicle(mesh, physics, new THREE.Vector3(0, 1, 0));
+    let recoveries = 0;
+    vehicle.recoverToSafePose = () => {
+      recoveries += 1;
+      return true;
+    };
+
+    for (let frame = 0; frame < 300 && recoveries === 0; frame += 1) {
+      // Deliberately do not step physics: this models a chassis pinned on an
+      // obstacle with throttle applied and no wheel-generated motion.
+      vehicle.applyInput({ w: true }, 1 / 120);
+    }
+
+    assert.equal(recoveries, 1);
+    assert.equal(vehicle.stuckElapsed, 0);
+    assert.ok(vehicle.recoveryCooldown > 0);
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
+test('physics drive transitions from forward motion through braking into reverse', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const physics = new PhysicsWorld();
+    const mesh = new THREE.Group();
+    const vehicle = new PlayerVehicle(mesh, physics, new THREE.Vector3(0, 0, 0));
+
+    for (let frame = 0; frame < 240; frame += 1) {
+      vehicle.applyInput({ w: true }, 1 / 120);
+      physics.step(1 / 120);
+      vehicle.syncMesh();
+    }
+    const forwardPosition = vehicle.chassisBody.position.z;
+    assert.ok(forwardPosition > 8, `forward drive stalled at ${forwardPosition}`);
+
+    for (let frame = 0; frame < 480; frame += 1) {
+      vehicle.applyInput({ s: true }, 1 / 120);
+      physics.step(1 / 120);
+      vehicle.syncMesh();
+    }
+    assert.ok(
+      vehicle.chassisBody.position.z < forwardPosition - 8,
+      `reverse drive failed to escape: ${vehicle.chassisBody.position.z} from ${forwardPosition}`
+    );
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
 test('vehicle speed uses m/s internally and preserves high-priority status', () => {
   const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Unit Test Sedan');
   vehicle.speed = 10;

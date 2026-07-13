@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { PHYSICS_GROUPS } from '../physics/PhysicsWorld.js';
 import { getVehicleProfile } from './VehicleProfiles.js';
+import {
+  resolvePlayerVehicleControls,
+  updateVehicleMobilityTimer
+} from './PlayerVehicleControls.js';
 
 export class PlayerVehicle {
   constructor(mesh, physicsWorld, initialPosition = null, initialRotation = null, vType = 'SEDAN') {
@@ -199,7 +203,8 @@ export class PlayerVehicle {
     if (!keys || !this.chassisBody) return false;
 
     // Freeze controls while a dialogue modal is open
-    const dialogueOpen = window.app?.dialogueOverlay?.currentMission != null;
+    const dialogueOpen = typeof window !== 'undefined'
+      && window.app?.dialogueOverlay?.currentMission != null;
     if (dialogueOpen) {
       const numWheels = this.raycastVehicle.wheelInfos.length;
       for (let i = 0; i < numWheels; i++) {
@@ -210,21 +215,14 @@ export class PlayerVehicle {
       return false;
     }
 
-    // Get analog inputs from InputManager or fall back to keys
-    let analogThrottle = keys['w'] || keys['arrowup'] ? 1.0 : 0.0;
-    let analogBrake = keys['s'] || keys['arrowdown'] ? 1.0 : 0.0;
-    let analogSteer = (keys['a'] || keys['arrowleft'] ? 1.0 : 0.0) - (keys['d'] || keys['arrowright'] ? 1.0 : 0.0);
-    let isHandbrake = keys[' '];
-
-    if (window.app && window.app.inputManager) {
-      const imState = window.app.inputManager.state;
-      analogThrottle = Math.max(analogThrottle, imState.throttle);
-      analogBrake = Math.max(analogBrake, imState.brake);
-      if (Math.abs(imState.steer) > 0.05) {
-        analogSteer = imState.steer;
-      }
-      isHandbrake = isHandbrake || imState.handbrake;
-    }
+    const controls = resolvePlayerVehicleControls(
+      keys,
+      typeof window !== 'undefined' ? window.app?.inputManager?.state : null
+    );
+    const analogThrottle = controls.throttle;
+    const analogBrake = controls.reverse;
+    const analogSteer = controls.steer;
+    const isHandbrake = controls.handbrake;
 
     const isForward = analogThrottle > 0.05;
     const isReverse = analogBrake > 0.05;
@@ -336,15 +334,15 @@ export class PlayerVehicle {
     }
 
     this.recoveryCooldown = Math.max(0, this.recoveryCooldown - delta);
-    const driveIntent = Math.max(analogThrottle, analogBrake) > 0.55 && !isHandbrake;
     const horizontalSpeed = Math.hypot(this.chassisBody.velocity.x, this.chassisBody.velocity.z);
-    const groundedWheels = this.raycastVehicle.wheelInfos.filter((wheel) => wheel.isInContact).length;
-    if (driveIntent && horizontalSpeed < 0.45 && groundedWheels >= 2) {
-      this.stuckElapsed += Math.max(0, delta);
-    } else {
-      this.stuckElapsed = Math.max(0, this.stuckElapsed - delta * 2);
-    }
-    if (this.stuckElapsed >= 2.75 && this.recoveryCooldown <= 0) {
+    const mobility = updateVehicleMobilityTimer(this.stuckElapsed, {
+      throttle: analogThrottle,
+      reverse: analogBrake,
+      handbrake: isHandbrake,
+      horizontalSpeed
+    }, delta);
+    this.stuckElapsed = mobility.elapsed;
+    if (mobility.shouldRecover && this.recoveryCooldown <= 0) {
       this.recoverToSafePose();
       this.stuckElapsed = 0;
       this.recoveryCooldown = 4;
@@ -459,6 +457,7 @@ export class PlayerVehicle {
     }
     this.chassisBody.velocity.set(0, 0, 0);
     this.chassisBody.angularVelocity.set(0, 0, 0);
+    this.chassisBody.wakeUp?.();
     this.chassisBody.aabbNeedsUpdate = true;
     return true;
   }
