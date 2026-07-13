@@ -3,7 +3,10 @@ import { getVehicleProfile } from '../entities/VehicleProfiles.js';
 import { getActiveBoxColliders, getBoxProjectedRadius } from './SpatialObstacles.js';
 
 export const TRAFFIC_NAVIGATION = Object.freeze({
-  maxLaneCenterDeviation: 2.65,
+  maxLaneCenterDeviation: 1.5,
+  roadHalfWidth: 7,
+  laneCenterOffset: 3.5,
+  roadEdgeClearance: 0.35,
   turnLookAheadDistance: 18,
   minimumTurnSpeed: 5.5,
   obstacleLookAheadMin: 7,
@@ -59,9 +62,18 @@ export function enforceLaneCorridor(vehicle, config = TRAFFIC_NAVIGATION) {
   if (!vehicle?.mesh || vehicle.userControlled || vehicle.isParked || vehicle.crashed) return false;
   const projection = projectToNavigationSegment(vehicle.mesh.position, vehicle.currentNode, vehicle.targetNode);
   if (!projection) return false;
-  const maximum = Number.isFinite(config.maxLaneCenterDeviation)
+  const configuredMaximum = Number.isFinite(config.maxLaneCenterDeviation)
     ? Math.max(1, config.maxLaneCenterDeviation)
     : TRAFFIC_NAVIGATION.maxLaneCenterDeviation;
+  const profile = getVehicleProfile(vehicle.vType);
+  const geometricMaximum = Math.max(
+    0.5,
+    (Number.isFinite(config.roadHalfWidth) ? config.roadHalfWidth : TRAFFIC_NAVIGATION.roadHalfWidth)
+      - (Number.isFinite(config.laneCenterOffset) ? config.laneCenterOffset : TRAFFIC_NAVIGATION.laneCenterOffset)
+      - profile.width * 0.5
+      - (Number.isFinite(config.roadEdgeClearance) ? config.roadEdgeClearance : TRAFFIC_NAVIGATION.roadEdgeClearance)
+  );
+  const maximum = Math.min(configuredMaximum, geometricMaximum);
   if (projection.deviation <= maximum) return false;
   const offsetX = vehicle.mesh.position.x - projection.x;
   const offsetZ = vehicle.mesh.position.z - projection.z;

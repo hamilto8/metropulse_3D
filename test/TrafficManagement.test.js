@@ -185,6 +185,30 @@ test('moving traffic detects a user-controlled pedestrian beyond the former fixe
   assert.equal(blocker?.forwardDistance, 10);
 });
 
+test('seated cafe patrons do not permanently block an adjacent traffic lane', () => {
+  const traffic = Object.create(TrafficSystem.prototype);
+  const car = {
+    mesh: new THREE.Group(),
+    vType: 'SEDAN',
+    speed: 8,
+    acceleration: 12,
+    info: {}
+  };
+  const reader = {
+    mesh: new THREE.Group(),
+    archetype: 'CAFE_READER',
+    cafeSeat: { x: 0, z: 3 },
+    behaviorState: { mode: 'SITTING_READING' },
+    knockedDown: false,
+    isHijacking: false
+  };
+  reader.mesh.position.set(0, 0, 3);
+  traffic.app = { pedestrianSystem: { pedestrians: [reader] } };
+
+  assert.equal(traffic.findBlockingPedestrian(car), null);
+  assert.equal(traffic.updatePedestrianYield(car, 1), false);
+});
+
 test('patient drivers apply a close-range fail-safe before pedestrian contact', () => {
   const traffic = Object.create(TrafficSystem.prototype);
   const car = {

@@ -12,6 +12,7 @@ import {
   createPedestrianTrafficState,
   getPedestrianEmergencyStopDistance,
   getPedestrianYieldKinematics,
+  isPedestrianTrafficParticipant,
   updatePedestrianTrafficState
 } from './TrafficPedestrianBehavior.js';
 import {
@@ -88,6 +89,49 @@ export class TrafficSystem {
       ? 'Rule-following'
       : 'Reckless';
     return vehicle.driverRuleProfile;
+  }
+
+  createVehicleDriver(vehicle, serial = 0, role = 'Driver') {
+    const safeSerial = Number.isInteger(serial) && serial >= 0 ? serial : 0;
+    const colors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
+    const types = ['BUSINESS', 'CASUAL', 'JOGGER'];
+    return new Pedestrian(
+      types[safeSerial % types.length],
+      colors[safeSerial % colors.length],
+      `${role} of ${vehicle?.name || 'vehicle'}`
+    );
+  }
+
+  ensureAmbientMotorbikeRider(vehicle, serial = 0) {
+    if (
+      vehicle?.vType !== 'MOTORBIKE'
+      || vehicle.isParked
+      || vehicle.isDestroyed
+      || vehicle.userControlled
+    ) return false;
+
+    const activePedestrians = this.app?.pedestrianSystem?.pedestrians || [];
+    if (vehicle.mountedRider?.mesh && !activePedestrians.includes(vehicle.mountedRider)) {
+      if (vehicle.mountedRider.mesh.parent !== vehicle.mesh) {
+        vehicle.mountRider(vehicle.mountedRider);
+      } else {
+        vehicle.setDetailLevel?.(vehicle.detailLevel || 'HIGH');
+      }
+      return true;
+    }
+
+    const candidate = vehicle.driverPedestrian;
+    const candidateAvailable = candidate?.mesh
+      && !candidate.userControlled
+      && !candidate.knockedDown
+      && !activePedestrians.includes(candidate)
+      && (!candidate.mesh.parent || candidate.mesh.parent === vehicle.mesh);
+    const rider = candidateAvailable
+      ? candidate
+      : this.createVehicleDriver(vehicle, serial, 'Rider');
+    vehicle.driverPedestrian = rider;
+    vehicle.mountRider(rider);
+    return true;
   }
 
   toggleUserControl(vehicle, { source = 'camera', pedestrian = null } = {}) {
@@ -231,6 +275,7 @@ export class TrafficSystem {
       vehicle.physicsBody.quaternion.set(vehicle.mesh.quaternion.x, vehicle.mesh.quaternion.y, vehicle.mesh.quaternion.z, vehicle.mesh.quaternion.w);
       vehicle.physicsBody.aabbNeedsUpdate = true;
     }
+    this.ensureAmbientMotorbikeRider(vehicle, vehicle.riderSerial);
   }
 
   exitControlledVehicle() {
@@ -372,6 +417,9 @@ export class TrafficSystem {
     );
     riderPosition.y = this.getTerrainHeight(riderPosition.x, riderPosition.z);
     if (!this.registerPedestrianInWorld(rider, riderPosition, motorbike.mesh.rotation.y)) {
+      // Keep the lifecycle internally consistent if world registration is
+      // unavailable; a failed ejection must not leave a moving empty bike.
+      motorbike.mountRider(rider);
       return false;
     }
 
@@ -1113,12 +1161,9 @@ export class TrafficSystem {
       vehicle.normalMaxSpeed = vehicle.maxSpeed;
       this.assignDriverRuleProfile(vehicle, serial);
 
-      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
-      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][serial % 3];
-      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[serial % pedColors.length], `Driver of ${name}`);
-      if (vehicle.vType === 'MOTORBIKE' && vehicle.driverPedestrian) {
-        vehicle.mountRider(vehicle.driverPedestrian);
-      }
+      vehicle.riderSerial = serial;
+      vehicle.driverPedestrian = this.createVehicleDriver(vehicle, serial);
+      this.ensureAmbientMotorbikeRider(vehicle, serial);
 
       let startNode = outNodes[serial % outNodes.length];
       for (let offset = 0; offset < outNodes.length; offset++) {
@@ -1340,7 +1385,7 @@ export class TrafficSystem {
     let closest = null;
     let closestDistance = detectionDistance;
     for (const pedestrian of pedestrians) {
-      if (!pedestrian?.mesh || pedestrian.knockedDown || pedestrian.isHijacking) continue;
+      if (!isPedestrianTrafficParticipant(pedestrian)) continue;
       const offset = pedestrian.mesh.position.clone().sub(vehicle.mesh.position);
       offset.y = 0;
       const distance = offset.length();
@@ -1471,6 +1516,14 @@ export class TrafficSystem {
           v.speed = v.physicsVehicle.speedKmH / 3.6;
         }
         if (v.crashTimer <= 0) {
+          if (v.vType === 'MOTORBIKE' && !v.userControlled && !v.isParked && !v.mountedRider) {
+            // An ejected rider remains in the pedestrian simulation. Recover
+            // the empty bike elsewhere and give the resumed AI vehicle a new
+            // rider instead of letting it drive away by itself.
+            this.respawnVehicle(v);
+            v.update(delta);
+            continue;
+          }
           // Clear accident and resume driving/parking
           v.crashed = false;
           v.mesh.rotation.z = 0;
@@ -1521,6 +1574,10 @@ export class TrafficSystem {
       if (v.isParked) {
         v.update(delta);
         continue;
+      }
+
+      if (v.vType === 'MOTORBIKE' && !v.userControlled && !v.mountedRider) {
+        this.ensureAmbientMotorbikeRider(v, v.riderSerial);
       }
 
       // Handle emergency police rushing to crash site
@@ -1950,9 +2007,7 @@ export class TrafficSystem {
       vehicle.info['Status'] = '🅿️ Parked';
       this.assignDriverRuleProfile(vehicle, 1000 + idx);
 
-      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
-      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];
-      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[idx % pedColors.length], `Driver of ${name}`);
+      vehicle.driverPedestrian = this.createVehicleDriver(vehicle, 1000 + idx);
 
       vehicle.mesh.position.set(spot.x, 0, spot.z);
       vehicle.mesh.rotation.y = spot.ry;
@@ -1996,9 +2051,8 @@ export class TrafficSystem {
       vehicle.info['Status'] = '🅿️ Parked Motorbike';
       this.assignDriverRuleProfile(vehicle, 1100 + idx);
 
-      const pedColors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
-      const pedType = ['BUSINESS', 'CASUAL', 'JOGGER'][idx % 3];
-      vehicle.driverPedestrian = new Pedestrian(pedType, pedColors[idx % pedColors.length], `Rider of ${name}`);
+      vehicle.riderSerial = 1100 + idx;
+      vehicle.driverPedestrian = this.createVehicleDriver(vehicle, vehicle.riderSerial, 'Rider');
 
       vehicle.mesh.position.set(spot.x, 0, spot.z);
       vehicle.mesh.rotation.y = spot.ry;
@@ -2088,5 +2142,6 @@ export class TrafficSystem {
       vehicle.info['Status'] = 'Cruising';
       vehicle.info['Mood'] = 'Relaxed ☀️';
     }
+    this.ensureAmbientMotorbikeRider(vehicle, vehicle.riderSerial);
   }
 }

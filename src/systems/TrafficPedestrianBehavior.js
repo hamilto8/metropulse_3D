@@ -89,6 +89,14 @@ export function getPedestrianEmergencyStopDistance(vehicle, config = {}) {
   return finiteNonNegative(config[key], DEFAULT_PEDESTRIAN_TRAFFIC_BEHAVIOR[key]);
 }
 
+/** Stationary café patrons are sidewalk scenery, not road-crossing hazards. */
+export function isPedestrianTrafficParticipant(pedestrian) {
+  if (!pedestrian?.mesh || pedestrian.knockedDown || pedestrian.isHijacking) return false;
+  const isSeatedCafePatron = pedestrian.archetype === 'CAFE_READER'
+    && (pedestrian.cafeSeat || pedestrian.behaviorState?.mode === 'SITTING_READING');
+  return !isSeatedCafePatron;
+}
+
 export function createPedestrianTrafficState(pedestrian, random = Math.random, config = {}) {
   let randomValue = 0.5;
   try {

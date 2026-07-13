@@ -63,6 +63,70 @@ test('rider ejection requires a high closing speed rather than raw proximity', (
   );
 });
 
+test('motorbike LOD always renders either the full rider or a rider silhouette', () => {
+  const { motorbike, rider } = createRiddenMotorbike();
+
+  motorbike.setDetailLevel('LOW');
+  assert.equal(rider.mesh.visible, false);
+  assert.equal(motorbike.riderLowDetailProxy.visible, true);
+
+  motorbike.setDetailLevel('HIGH');
+  assert.equal(rider.mesh.visible, true);
+  assert.equal(motorbike.riderLowDetailProxy.visible, false);
+
+  motorbike.unmountRider();
+  motorbike.setDetailLevel('LOW');
+  assert.equal(motorbike.riderLowDetailProxy.visible, false);
+});
+
+test('ambient rider repair never remounts an ejected pedestrian', () => {
+  const { traffic, pedestrians } = createTrafficHarness();
+  const motorbike = new Vehicle('MOTORBIKE', 0xea580c, 'Recovered Motorbike');
+  const ejectedRider = new Pedestrian('CASUAL', 0x2563eb, 'Ejected Rider');
+  motorbike.driverPedestrian = ejectedRider;
+  pedestrians.push(ejectedRider);
+
+  assert.equal(traffic.ensureAmbientMotorbikeRider(motorbike, 7), true);
+  assert.ok(motorbike.mountedRider);
+  assert.notEqual(motorbike.mountedRider, ejectedRider);
+  assert.equal(motorbike.mountedRider.mesh.parent, motorbike.mesh);
+  assert.equal(pedestrians.includes(ejectedRider), true);
+});
+
+test('failed rider world registration rolls back the ejection atomically', () => {
+  const { traffic } = createTrafficHarness();
+  const impactor = new Vehicle('SEDAN', 0x3366cc, 'Impactor');
+  const { motorbike, rider } = createRiddenMotorbike();
+  traffic.registerPedestrianInWorld = () => false;
+
+  assert.equal(traffic.ejectMotorbikeRider({
+    motorbike,
+    impactor,
+    direction: new THREE.Vector3(0, 0, 1),
+    closingSpeed: 18
+  }), false);
+  assert.equal(motorbike.mountedRider, rider);
+  assert.equal(rider.mesh.parent, motorbike.mesh);
+});
+
+test('all spawned moving motorbikes have attached riders', () => {
+  const traffic = new TrafficSystem({
+    funMode: false,
+    sceneManager: { scene: new THREE.Group() },
+    inspectorHud: null,
+    physicsWorld: null
+  });
+  const motorbikes = traffic.vehicles.filter(vehicle => (
+    vehicle.vType === 'MOTORBIKE' && !vehicle.isParked
+  ));
+
+  assert.ok(motorbikes.length > 0);
+  for (const motorbike of motorbikes) {
+    assert.ok(motorbike.mountedRider, `${motorbike.name} has no rider`);
+    assert.equal(motorbike.mountedRider.mesh.parent, motorbike.mesh);
+  }
+});
+
 test('high-speed NPC vehicle contact ejects and knocks down a motorbike rider', () => {
   const { traffic, pedestrians, getKnockdown } = createTrafficHarness();
   const impactor = new Vehicle('SEDAN', 0x3366cc, 'NPC Sedan');

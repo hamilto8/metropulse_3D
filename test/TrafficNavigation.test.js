@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import { Vehicle } from '../src/entities/Vehicle.js';
+import { getVehicleProfile } from '../src/entities/VehicleProfiles.js';
 import { PhysicsWorld } from '../src/physics/PhysicsWorld.js';
 import { TrafficSystem } from '../src/systems/TrafficSystem.js';
 import {
@@ -14,7 +15,12 @@ import {
   TRAFFIC_NAVIGATION
 } from '../src/systems/TrafficNavigation.js';
 import { movePedestrianWithCollisions } from '../src/systems/PedestrianCollision.js';
-import { createCafeSeating } from '../src/world/CafeSeating.js';
+import {
+  CAFE_ROAD_GEOMETRY,
+  CAFE_SEAT_LAYOUT,
+  createCafeSeating,
+  getCafeRoadClearance
+} from '../src/world/CafeSeating.js';
 
 function node(x, z) {
   return { pos: new THREE.Vector3(x, 0, z), nextNodes: [] };
@@ -31,6 +37,22 @@ test('lane projection and enforcement keep moving AI inside the road corridor', 
   assert.equal(enforceLaneCorridor(vehicle), true);
   assert.ok(Math.abs(vehicle.mesh.position.x) <= TRAFFIC_NAVIGATION.maxLaneCenterDeviation + 1e-9);
   assert.equal(vehicle.mesh.position.z, 10);
+});
+
+test('lane enforcement keeps every vehicle footprint fully on the asphalt', () => {
+  for (const type of ['MOTORBIKE', 'SEDAN', 'BUS', 'DUMP_TRUCK']) {
+    const vehicle = new Vehicle(type, 0x3366cc, `${type} Road Edge Test`);
+    vehicle.currentNode = node(0, 0);
+    vehicle.targetNode = node(0, 20);
+    vehicle.mesh.position.set(6.5, 0, 10);
+
+    assert.equal(enforceLaneCorridor(vehicle), true);
+    const outerEdge = Math.abs(vehicle.mesh.position.x) + getVehicleProfile(type).width * 0.5;
+    assert.ok(
+      outerEdge <= TRAFFIC_NAVIGATION.roadHalfWidth - TRAFFIC_NAVIGATION.roadEdgeClearance + 1e-9,
+      `${type} bodywork crossed the road edge at ${outerEdge}m`
+    );
+  }
 });
 
 test('turn-aware speed limit slows a vehicle before a ninety-degree graph turn', () => {
@@ -83,6 +105,16 @@ test('cafe furniture registers solid chair and table colliders', () => {
     physics
   );
   assert.equal(movement.collided, true);
+});
+
+test('every authored cafe chair and table maintains clearance from the asphalt', () => {
+  for (const seat of CAFE_SEAT_LAYOUT) {
+    const clearance = getCafeRoadClearance(seat);
+    assert.ok(
+      clearance >= CAFE_ROAD_GEOMETRY.minimumClearance,
+      `cafe furniture at (${seat.x}, ${seat.z}) is only ${clearance}m from the road`
+    );
+  }
 });
 
 test('live AI traffic remains inside lane corridors through turns and overlap resolution', () => {

@@ -62,12 +62,17 @@ export class Vehicle {
   }
 
   setDetailLevel(level = 'HIGH') {
-    if (!this.lowDetailProxy || this.detailLevel === level) return;
+    if (!this.lowDetailProxy) return;
     const low = level === 'LOW';
-    for (const part of this.highDetailParts) part.visible = !low;
-    this.lowDetailProxy.visible = low;
-    for (const mesh of this.shadowCasters) mesh.castShadow = level === 'HIGH';
+    if (this.detailLevel !== level) {
+      for (const part of this.highDetailParts) part.visible = !low;
+      this.lowDetailProxy.visible = low;
+      for (const mesh of this.shadowCasters) mesh.castShadow = level === 'HIGH';
+    }
     if (this.mountedRider?.mesh) this.mountedRider.mesh.visible = !low;
+    if (this.riderLowDetailProxy) {
+      this.riderLowDetailProxy.visible = low && Boolean(this.mountedRider);
+    }
     this.detailLevel = level;
   }
 
@@ -89,6 +94,10 @@ export class Vehicle {
     }
     pedestrian.info['Activity'] = '🏍️ Riding Motorbike';
     this.mesh.add(pedestrian.mesh);
+    pedestrian.mesh.visible = this.detailLevel !== 'LOW';
+    if (this.riderLowDetailProxy) {
+      this.riderLowDetailProxy.visible = this.detailLevel === 'LOW';
+    }
   }
 
   unmountRider() {
@@ -96,6 +105,7 @@ export class Vehicle {
     if (!ped || !ped.mesh) return null;
     this.mesh.remove(ped.mesh);
     this.mountedRider = null;
+    if (this.riderLowDetailProxy) this.riderLowDetailProxy.visible = false;
     // Reset limb rotations
     if (ped.legL && ped.legR) {
       ped.legL.rotation.set(0, 0, 0);
@@ -189,13 +199,28 @@ export class Vehicle {
     group.add(taillight);
     this.taillights.push(taillight);
 
-    return this.addLowDetailProxy(group, {
+    const model = this.addLowDetailProxy(group, {
       width,
       height: 0.8,
       length,
       colorHex: bodyColor,
       centerY: wheelRadius + 0.35
     });
+    // Preserve the rider silhouette when distant motorbikes use their cheap
+    // vehicle proxy. Without this companion proxy, LOD made occupied bikes
+    // appear driverless even though the rider lifecycle was intact.
+    const riderProxy = new THREE.Mesh(
+      new THREE.CapsuleGeometry(0.25, 0.72, 2, 5),
+      new THREE.MeshLambertMaterial({ color: 0x29436f })
+    );
+    riderProxy.position.set(0, 1.28, -0.12);
+    riderProxy.rotation.x = -0.18;
+    riderProxy.visible = false;
+    riderProxy.castShadow = false;
+    riderProxy.userData.lowDetailRiderProxy = true;
+    group.add(riderProxy);
+    this.riderLowDetailProxy = riderProxy;
+    return model;
   }
 
   buildModel(type, colorHex) {
