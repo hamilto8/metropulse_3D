@@ -220,7 +220,7 @@ export class SceneManager {
     return Math.max(0, Number.isFinite(sampledHeight) ? sampledHeight : 0);
   }
 
-  enforceCameraGroundConstraint() {
+  enforceCameraGroundConstraint({ levelTarget = !this.streetCameraController } = {}) {
     const terrainHeight = this.getCameraSurfaceHeight(
       this.camera.position.x,
       this.camera.position.z
@@ -229,19 +229,22 @@ export class SceneManager {
       this.camera,
       this.controls.target,
       terrainHeight,
-      CAMERA_GROUND_CLEARANCE
+      CAMERA_GROUND_CLEARANCE,
+      { levelTarget }
     );
   }
 
-  finalizeCameraPose() {
+  finalizeCameraPose(delta = 0) {
     // CameraRig applies shake as a temporary render offset. Remove it before
     // constraining the persistent pose, then reapply only the portion that can
     // fit above the surface so shake can never punch the camera underground.
     const removedShake = this.cameraRig?.removeAppliedShake?.() || false;
-    const result = this.enforceCameraGroundConstraint();
+    const isOrbitMode = !this.cameraRig || this.cameraRig.state === 'ORBIT_MACRO';
+    const result = this.enforceCameraGroundConstraint({
+      levelTarget: !isOrbitMode || !this.streetCameraController
+    });
     const baseSurfaceHeight = result.minimumY - CAMERA_GROUND_CLEARANCE;
     const baseCameraY = this.camera.position.y;
-    const isOrbitMode = !this.cameraRig || this.cameraRig.state === 'ORBIT_MACRO';
     const presetSupportsStreetPivot = !this.targetCameraPos
       || this.activePreset === 'ground'
       || this.activePreset === 'street';
@@ -255,7 +258,9 @@ export class SceneManager {
         ),
       {
         lockLevel: result.constrained,
-        restoreMacroPivot: isOrbitMode
+        restoreMacroPivot: isOrbitMode,
+        smoothLeveling: result.constrained,
+        delta
       }
     );
 
@@ -430,7 +435,7 @@ export class SceneManager {
     // Phase 2: Delegate dynamic chase & cinematic swoops to CameraRig
     if (this.cameraRig && this.cameraRig.state !== 'ORBIT_MACRO') {
       this.cameraRig.update(delta);
-      this.finalizeCameraPose();
+      this.finalizeCameraPose(delta);
       return;
     }
 
@@ -471,7 +476,7 @@ export class SceneManager {
     } else {
       this.controls.update();
     }
-    this.finalizeCameraPose();
+    this.finalizeCameraPose(delta);
   }
 
   render() {

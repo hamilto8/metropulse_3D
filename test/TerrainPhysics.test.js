@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { PhysicsWorld, PHYSICS_GROUPS } from '../src/physics/PhysicsWorld.js';
 import { CityBuilder } from '../src/world/CityBuilder.js';
 import { PlayerVehicle } from '../src/entities/PlayerVehicle.js';
+import { movePedestrianWithCollisions } from '../src/systems/PedestrianCollision.js';
 
 function createTerrainModel() {
   const builder = Object.create(CityBuilder.prototype);
@@ -117,6 +118,80 @@ test('suburban houses publish colliders aligned to their visible walls', () => {
   assert.deepEqual(collider.size, { x: 10, y: 6, z: 8 });
   assert.equal(collider.position.y, builder.getHillHeight(500, 25) + 3);
   assert.ok(Math.abs(collider.rotationY) <= 0.075);
+});
+
+test('every built-in bridge publishes two continuous physical safety barriers', () => {
+  const scene = new THREE.Scene();
+  const builder = new CityBuilder(scene, null, null);
+  builder.createRiverAndBridge();
+
+  const compactBridges = scene.children.filter(child => (
+    child.name.startsWith('compact-suspension-bridge-')
+  ));
+  const barriers = builder.sceneryColliders.filter(collider => collider.kind === 'bridge-barrier');
+  const barriersByBridge = new Map();
+  for (const barrier of barriers) {
+    const bridgeBarriers = barriersByBridge.get(barrier.bridgeId) || [];
+    bridgeBarriers.push(barrier);
+    barriersByBridge.set(barrier.bridgeId, bridgeBarriers);
+  }
+
+  assert.equal(compactBridges.length, 9);
+  assert.equal(barriers.length, 20);
+  assert.equal(barriersByBridge.size, 10);
+  for (const bridgeBarriers of barriersByBridge.values()) {
+    assert.equal(bridgeBarriers.length, 2);
+    assert.ok(bridgeBarriers.every(collider => collider.size.y >= 2.2));
+  }
+});
+
+test('pedestrian sweep cannot cross a compact bridge guardrail into water', () => {
+  const builder = new CityBuilder(new THREE.Scene(), null, null);
+  builder.createSecondBridge(50);
+  const physics = new PhysicsWorld();
+  physics.initCountrysideTerrain(builder);
+
+  const movement = movePedestrianWithCollisions(
+    new THREE.Vector3(400, 0, 55),
+    new THREE.Vector3(0, 0, 8),
+    physics
+  );
+
+  assert.equal(movement.collided, true);
+  assert.ok(movement.position.z < 57, `pedestrian crossed guardrail at z=${movement.position.z}`);
+  assert.equal(builder.isInWater(movement.position), false);
+});
+
+test('player vehicle cannot drive through a compact bridge guardrail into water', () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = { app: null };
+  try {
+    const builder = new CityBuilder(new THREE.Scene(), null, null);
+    builder.createSecondBridge(0);
+    const physics = new PhysicsWorld();
+    physics.terrainSystem = builder;
+    physics.initCountrysideTerrain(builder);
+
+    const mesh = new THREE.Group();
+    mesh.position.set(400, 0, 0);
+    const vehicle = new PlayerVehicle(mesh, physics);
+    let maximumZ = -Infinity;
+    let waterFrames = 0;
+
+    for (let frame = 0; frame < 480; frame += 1) {
+      vehicle.applyInput({ w: true }, 1 / 120);
+      physics.step(1 / 120);
+      vehicle.syncMesh();
+      maximumZ = Math.max(maximumZ, mesh.position.z);
+      if (builder.isInWater(mesh.position)) waterFrames += 1;
+    }
+
+    assert.ok(maximumZ < 7, `vehicle crossed guardrail at z=${maximumZ}`);
+    assert.equal(waterFrames, 0);
+    vehicle.destroy();
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
 
 test('a physics vehicle maintains wheel contact while driving a countryside route', () => {

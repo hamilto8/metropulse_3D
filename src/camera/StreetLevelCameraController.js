@@ -5,10 +5,12 @@ export const STREET_CAMERA_EXIT_SURFACE_DISTANCE = 10;
 export const STREET_CAMERA_PIVOT_DISTANCE = 0.75;
 export const STREET_CAMERA_MIN_PITCH = THREE.MathUtils.degToRad(-55);
 export const STREET_CAMERA_MAX_PITCH = THREE.MathUtils.degToRad(65);
+export const STREET_CAMERA_LEVELING_RESPONSE = 4.5;
 
 const POINTER_YAW_SENSITIVITY = 0.004;
 const POINTER_PITCH_SENSITIVITY = 0.003;
 const DIRECTION_EPSILON = 1e-8;
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 export function isStreetCameraAltitude(cameraY, surfaceY, alreadyActive = false) {
   return Number.isFinite(cameraY)
@@ -40,6 +42,34 @@ export function rotateStreetLookDirection(
       STREET_CAMERA_MIN_PITCH,
       STREET_CAMERA_MAX_PITCH
     );
+  const horizontalScale = Math.cos(pitch);
+
+  return direction.set(
+    Math.sin(yaw) * horizontalScale,
+    Math.sin(pitch),
+    -Math.cos(yaw) * horizontalScale
+  ).normalize();
+}
+
+/** Smoothly eases an existing look pitch toward the horizon without changing yaw. */
+export function levelStreetLookDirection(
+  sourceDirection,
+  delta,
+  response = STREET_CAMERA_LEVELING_RESPONSE
+) {
+  const direction = sourceDirection?.clone?.() || new THREE.Vector3(0, 0, -1);
+  if (direction.lengthSq() <= DIRECTION_EPSILON) direction.set(0, 0, -1);
+  direction.normalize();
+
+  const safeDelta = Number.isFinite(delta) ? THREE.MathUtils.clamp(delta, 0, 0.1) : 0;
+  const safeResponse = Number.isFinite(response) && response > 0
+    ? response
+    : STREET_CAMERA_LEVELING_RESPONSE;
+  const currentPitch = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
+  const pitch = Math.abs(currentPitch) < 1e-4
+    ? 0
+    : currentPitch * Math.exp(-safeResponse * safeDelta);
+  const yaw = Math.atan2(direction.x, -direction.z);
   const horizontalScale = Math.cos(pitch);
 
   return direction.set(
@@ -138,14 +168,12 @@ export class StreetLevelCameraController {
     return direction.normalize();
   }
 
-  syncLocalPivot() {
+  syncLocalPivot({ smoothLeveling = false, delta = 0 } = {}) {
     if (!this.enabled || !this.controls?.target || !this.camera?.position) return false;
-    const direction = rotateStreetLookDirection(
-      this.getLookDirection(),
-      0,
-      0,
-      this.lockLevel
-    );
+    const currentDirection = this.getLookDirection();
+    const direction = smoothLeveling && this.lockLevel
+      ? levelStreetLookDirection(currentDirection, delta)
+      : rotateStreetLookDirection(currentDirection, 0, 0, this.lockLevel);
     this.controls.target.copy(this.camera.position).addScaledVector(
       direction,
       STREET_CAMERA_PIVOT_DISTANCE
@@ -156,12 +184,14 @@ export class StreetLevelCameraController {
 
   rotateLook(yawDelta, pitchDelta) {
     if (!this.enabled) return false;
-    const direction = rotateStreetLookDirection(
-      this.getLookDirection(),
-      yawDelta,
-      pitchDelta,
-      this.lockLevel
-    );
+    // During automatic ground leveling, retain the current transitional pitch
+    // and ignore manual pitch input. Yaw remains responsive throughout.
+    const direction = this.lockLevel
+      ? this.getLookDirection().applyAxisAngle(
+        WORLD_UP,
+        Number.isFinite(yawDelta) ? -yawDelta : 0
+      ).normalize()
+      : rotateStreetLookDirection(this.getLookDirection(), yawDelta, pitchDelta, false);
     this.controls.target.copy(this.camera.position).addScaledVector(
       direction,
       STREET_CAMERA_PIVOT_DISTANCE
@@ -182,7 +212,12 @@ export class StreetLevelCameraController {
     }
   }
 
-  setMode(enabled, { lockLevel = false, restoreMacroPivot = true } = {}) {
+  setMode(enabled, {
+    lockLevel = false,
+    restoreMacroPivot = true,
+    smoothLeveling = false,
+    delta = 0
+  } = {}) {
     const nextEnabled = Boolean(enabled);
     const modeChanged = nextEnabled !== this.enabled;
     this.enabled = nextEnabled;
@@ -196,7 +231,7 @@ export class StreetLevelCameraController {
     }
 
     if (nextEnabled) {
-      this.syncLocalPivot();
+      this.syncLocalPivot({ smoothLeveling, delta });
     } else {
       this.activePointerId = null;
       if (restoreMacroPivot) this.restoreMacroPivotDistance();

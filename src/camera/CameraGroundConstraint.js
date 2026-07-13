@@ -35,13 +35,16 @@ function getHorizontalLookDirection(camera, target) {
  * @param {THREE.Vector3} target Orbit/chase look target, mutated in place.
  * @param {number} terrainHeight Height of the solid surface beneath the camera.
  * @param {number} clearance Minimum camera-center clearance above that surface.
+ * @param {{ levelTarget?: boolean }} options Presentation options. Position
+ * safety is always immediate; callers may delegate visual leveling elsewhere.
  * @returns {{ constrained: boolean, minimumY: number }}
  */
 export function constrainCameraToGround(
   camera,
   target,
   terrainHeight = 0,
-  clearance = CAMERA_GROUND_CLEARANCE
+  clearance = CAMERA_GROUND_CLEARANCE,
+  { levelTarget = true } = {}
 ) {
   if (!camera?.position || !target) {
     return { constrained: false, minimumY: 0 };
@@ -68,6 +71,8 @@ export function constrainCameraToGround(
   const direction = getHorizontalLookDirection(camera, target);
 
   camera.position.y = minimumY;
+  if (!levelTarget) return { constrained: true, minimumY };
+
   target.set(
     camera.position.x + direction.x * lookDistance,
     minimumY,

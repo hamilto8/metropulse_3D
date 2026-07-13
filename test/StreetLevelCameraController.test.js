@@ -4,6 +4,7 @@ import * as THREE from 'three';
 
 import {
   isStreetCameraAltitude,
+  levelStreetLookDirection,
   rotateStreetLookDirection,
   STREET_CAMERA_PIVOT_DISTANCE,
   StreetLevelCameraController
@@ -25,6 +26,61 @@ test('street look rotation supports yaw while ground contact locks pitch level',
   assert.ok(turned.x > 0.999);
   assert.ok(Math.abs(turned.y) < 1e-12);
   assert.ok(Math.abs(turned.z) < 1e-12);
+});
+
+test('ground leveling eases toward the horizon consistently across frame rates', () => {
+  const source = new THREE.Vector3(0.2, -0.75, -0.63).normalize();
+  const firstFrame = levelStreetLookDirection(source, 1 / 60);
+  assert.ok(firstFrame.y > source.y);
+  assert.ok(firstFrame.y < 0);
+
+  let sixtyFps = source.clone();
+  for (let frame = 0; frame < 60; frame += 1) {
+    sixtyFps = levelStreetLookDirection(sixtyFps, 1 / 60);
+  }
+  let thirtyFps = source.clone();
+  for (let frame = 0; frame < 30; frame += 1) {
+    thirtyFps = levelStreetLookDirection(thirtyFps, 1 / 30);
+  }
+
+  assert.ok(sixtyFps.distanceTo(thirtyFps) < 1e-12);
+  assert.ok(Math.abs(sixtyFps.y) < 0.02);
+});
+
+test('street controller preserves transitional pitch while yaw remains responsive', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(0, 0.75, 0);
+  const controls = {
+    target: new THREE.Vector3(0, -9, -10),
+    minDistance: 5,
+    enableRotate: true,
+    enabled: true
+  };
+  const controller = new StreetLevelCameraController(camera, controls);
+
+  const initialDirection = controller.getLookDirection();
+  controller.setMode(true, {
+    lockLevel: true,
+    smoothLeveling: true,
+    delta: 1 / 60
+  });
+  const firstFrameDirection = controller.getLookDirection();
+  assert.ok(firstFrameDirection.y > initialDirection.y);
+  assert.ok(firstFrameDirection.y < 0);
+
+  controller.rotateLook(Math.PI / 4, 1);
+  const turnedDirection = controller.getLookDirection();
+  assert.ok(Math.abs(turnedDirection.y - firstFrameDirection.y) < 1e-12);
+  assert.ok(turnedDirection.x > firstFrameDirection.x);
+
+  for (let frame = 0; frame < 120; frame += 1) {
+    controller.setMode(true, {
+      lockLevel: true,
+      smoothLeveling: true,
+      delta: 1 / 60
+    });
+  }
+  assert.ok(Math.abs(controller.getLookDirection().y) < 1e-4);
 });
 
 test('street controller turns in place and restores a safe macro orbit radius', () => {

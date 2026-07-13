@@ -3,6 +3,8 @@ import {
   createSuspensionBridge,
   SUSPENSION_BRIDGE_LAYOUT
 } from './SuspensionBridge.js';
+import { createCompactSuspensionBridge } from './CompactSuspensionBridge.js';
+import { createBridgeBarrierColliders } from './BridgeSafety.js';
 
 export class CityBuilder {
   constructor(scene, inspectorHud, billboardCanvas) {
@@ -271,6 +273,39 @@ export class CityBuilder {
   registerDrivableDeck(minX, maxX, minZ, maxZ, height = 0) {
     if (!this.drivableDecks) this.drivableDecks = [];
     this.drivableDecks.push({ minX, maxX, minZ, maxZ, height });
+  }
+
+  registerBridgeBarriers(configuration) {
+    if (!this.sceneryColliders) this.sceneryColliders = [];
+    const colliders = Array.isArray(configuration)
+      ? configuration
+      : createBridgeBarrierColliders(configuration);
+    const validColliders = colliders.filter(collider => (
+      collider?.kind === 'bridge-barrier'
+      && Number.isFinite(collider.position?.x)
+      && Number.isFinite(collider.position?.y)
+      && Number.isFinite(collider.position?.z)
+      && collider.size?.x > 0
+      && collider.size?.y > 0
+      && collider.size?.z > 0
+    ));
+    this.sceneryColliders.push(...validColliders);
+    return validColliders;
+  }
+
+  addCompactSuspensionBridge(options) {
+    const bridge = createCompactSuspensionBridge(options);
+    const layout = bridge.userData.layout;
+    this.scene.add(bridge);
+    this.registerDrivableDeck(
+      layout.centerX - layout.length * 0.5,
+      layout.centerX + layout.length * 0.5,
+      layout.centerZ - layout.drivableWidth * 0.5,
+      layout.centerZ + layout.drivableWidth * 0.5,
+      layout.deckHeight
+    );
+    this.registerBridgeBarriers(bridge.userData.barrierColliders);
+    return bridge;
   }
 
   getBuiltInBridgeDeckHeight(x, z) {
@@ -987,34 +1022,32 @@ export class CityBuilder {
       bridgeLayout.deckWidth / 2,
       0
     );
+    this.registerBridgeBarriers({
+      centerX: (bridgeLayout.deckStartX + bridgeLayout.deckEndX) * 0.5,
+      centerZ: 0,
+      length: bridgeLayout.deckEndX - bridgeLayout.deckStartX,
+      width: bridgeLayout.deckWidth,
+      deckHeight: 0,
+      bridgeId: 'grand-suspension'
+    });
     this.scene.add(bridgeGroup);
 
-    // Shared materials for the secondary river bridges below.
-    const deckMat = new THREE.MeshStandardMaterial({ color: 0x222633, roughness: 0.8 });
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
-
-    // 4. Secondary Highway Truss Bridges at Z = -100, -50, 50, 100
-    const trussMat = new THREE.MeshStandardMaterial({ color: 0x445566, metalness: 0.5, roughness: 0.5 });
-    for (const bz of [-100, -50, 50, 100]) {
-      const bDeck = new THREE.Mesh(new THREE.BoxGeometry(100, 1.0, 16), deckMat);
-      bDeck.position.set(160, -0.45, bz);
-      bDeck.receiveShadow = true;
-      this.scene.add(bDeck);
-
-      const bLine = new THREE.Mesh(new THREE.PlaneGeometry(100, 0.4), lineMat);
-      bLine.rotation.x = -Math.PI / 2;
-      bLine.position.set(160, 0.06, bz);
-      this.scene.add(bLine);
-      this.registerDrivableDeck(110, 210, bz - 8, bz + 8, 0);
-
-      // Side rail trusses
-      const railN = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
-      railN.position.set(160, 1.3, bz - 7.5);
-      this.scene.add(railN);
-
-      const railS = new THREE.Mesh(new THREE.BoxGeometry(100, 2.5, 0.6), trussMat);
-      railS.position.set(160, 1.3, bz + 7.5);
-      this.scene.add(railS);
+    // 4. Medium-span urban suspension bridges at Z = -100, -50, 50, 100.
+    // Open rails and low towers preserve sight lines while giving each river
+    // crossing a stronger visual identity than the former solid box rails.
+    const urbanThemes = ['VIOLET', 'CYAN', 'AMBER', 'VIOLET'];
+    for (const [index, bz] of [-100, -50, 50, 100].entries()) {
+      this.addCompactSuspensionBridge({
+        id: `urban-${index}`,
+        centerX: 160,
+        centerZ: bz,
+        length: 100,
+        width: 16,
+        drivableWidth: 14.6,
+        towerHeight: 9,
+        profile: 'CLASSIC',
+        theme: urbanThemes[index]
+      });
     }
 
     // --- COUNTRYSIDE RIVER AND BRIDGES ---
@@ -1035,48 +1068,26 @@ export class CityBuilder {
     wallEast2.position.set(421.5, -2.0, 0);
     this.scene.add(wallEast2);
 
-    // 7. Stone Arch Bridges across Countryside River (Z: -100, -50, 0, 50, 100)
-    for (const bz of [-100, -50, 0, 50, 100]) {
-      this.createSecondBridge(bz);
+    // 7. Low-profile self-anchored suspension bridges across the countryside
+    // river (Z: -100, -50, 0, 50, 100).
+    for (const [index, bz] of [-100, -50, 0, 50, 100].entries()) {
+      this.createSecondBridge(bz, index);
     }
   }
 
-  createSecondBridge(bz) {
-    const deckMat = new THREE.MeshStandardMaterial({ color: 0x3d312a, roughness: 0.9 }); // Dark rustic stone
-    const bridgeWidth = 14;
-
-    // Bridge Deck (X: 380 to 420, top at Y: 0.05, Z: bz)
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, bridgeWidth + 2), deckMat);
-    deck.position.set(400, -0.45, bz);
-    deck.receiveShadow = true;
-    this.scene.add(deck);
-    this.registerDrivableDeck(380, 420, bz - bridgeWidth / 2, bz + bridgeWidth / 2, 0);
-
-    // Visible stone piers remain below the deck. The former rotated 15 m
-    // half-cylinder protruded above the road and behaved like a giant ramp.
-    const archMat = new THREE.MeshStandardMaterial({ color: 0x4a433f, roughness: 0.8 });
-    for (const pierX of [387, 413]) {
-      const pier = new THREE.Mesh(new THREE.BoxGeometry(4, 4, bridgeWidth + 1.8), archMat);
-      pier.position.set(pierX, -2, bz);
-      this.scene.add(pier);
-    }
-
-    // Stone side rails
-    const railMat = new THREE.MeshStandardMaterial({ color: 0x5a534f, roughness: 0.8 });
-    const railN = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, 1.0), railMat);
-    railN.position.set(400, 0.55, bz - (bridgeWidth / 2 + 0.5));
-    this.scene.add(railN);
-
-    const railS = new THREE.Mesh(new THREE.BoxGeometry(40, 1.0, 1.0), railMat);
-    railS.position.set(400, 0.55, bz + (bridgeWidth / 2 + 0.5));
-    this.scene.add(railS);
-
-    // Add yellow divider lines on deck
-    const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(40, 0.4), lineMat);
-    line.rotation.x = -Math.PI / 2;
-    line.position.set(400, 0.06, bz);
-    this.scene.add(line);
+  createSecondBridge(bz, index = 0) {
+    const themes = ['AMBER', 'CYAN', 'VIOLET', 'CYAN', 'AMBER'];
+    return this.addCompactSuspensionBridge({
+      id: `countryside-${index}`,
+      centerX: 400,
+      centerZ: bz,
+      length: 40,
+      width: 16,
+      drivableWidth: 14,
+      towerHeight: 6.5,
+      profile: 'SELF_ANCHORED',
+      theme: themes[index % themes.length]
+    });
   }
 
   createCentralPark() {

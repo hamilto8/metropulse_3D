@@ -63,6 +63,25 @@ test('ground constraint clamps and levels a camera below elevated terrain', () =
   assert.ok(target.distanceTo(camera.position) >= 5);
 });
 
+test('ground constraint can clamp height while delegating visual leveling', () => {
+  const camera = new THREE.PerspectiveCamera();
+  camera.position.set(8, -3, 12);
+  const target = new THREE.Vector3(20, -10, -30);
+  const originalTarget = target.clone();
+
+  const result = constrainCameraToGround(
+    camera,
+    target,
+    2.5,
+    CAMERA_GROUND_CLEARANCE,
+    { levelTarget: false }
+  );
+
+  assert.equal(result.constrained, true);
+  assert.equal(camera.position.y, 2.5 + CAMERA_GROUND_CLEARANCE);
+  assert.deepEqual(target.toArray(), originalTarget.toArray());
+});
+
 test('ground constraint derives a stable horizontal view from a vertical target', () => {
   const camera = new THREE.PerspectiveCamera();
   camera.position.set(2, 0, 4);
