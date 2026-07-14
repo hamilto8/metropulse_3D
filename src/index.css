@@ -4322,3 +4322,167 @@ body[data-inspector="open"] .status-hud-stack {
     width: min(240px, calc(100vw - 82px));
   }
 }
+
+/* ── Stable HUD anchoring contract ────────────────────────────────────────
+   Dynamic counters must never participate in positioning the centered brand
+   or neighboring controls. This final contract intentionally follows the
+   legacy HUD layers above and is the single source of truth for anchoring. */
+.top-header-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 16px;
+}
+
+.top-pill-left {
+  justify-self: start;
+}
+
+.top-center-group {
+  justify-self: center;
+}
+
+.top-pill-right {
+  justify-self: end;
+}
+
+.top-pill-left,
+.top-pill-right,
+.brand-pill,
+.stat-pill-item,
+.stat-val,
+.clock-display,
+.time-phase,
+.scrub-label,
+.speed-pill {
+  white-space: nowrap;
+}
+
+.stat-val,
+.clock-display,
+.time-phase,
+.scrub-label,
+.speed-pill {
+  font-variant-numeric: tabular-nums;
+}
+
+#stat-pop { min-inline-size: 5ch; }
+#stat-money { min-inline-size: 11ch; }
+#stat-energy,
+#stat-happiness { min-inline-size: 4ch; }
+#stat-fps { min-inline-size: 7ch; }
+#stat-sim-time { min-inline-size: 5ch; }
+#stat-weather { min-inline-size: 9ch; }
+#input-device-label { min-inline-size: 16ch; }
+
+.top-pill-right .stat-val {
+  text-align: left;
+}
+
+.hud-bottom-stack > .bottom-time-bar {
+  grid-template-columns: 160px 40px minmax(210px, 1fr) 228px;
+}
+
+.bottom-time-bar .time-display {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  inline-size: 160px;
+}
+
+.bottom-time-bar .time-text-group {
+  min-inline-size: 0;
+}
+
+.bottom-time-bar .clock-display,
+.bottom-time-bar .time-phase {
+  display: block;
+  inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottom-time-bar .speed-selector {
+  inline-size: 228px;
+}
+
+@media (max-width: 1180px) and (min-width: 781px) {
+  .top-pill-left .stat-pill-item[title="Energy Grid Output"],
+  .top-pill-right .stat-pill-item[title="Current Weather"] {
+    display: none;
+  }
+
+  .hud-bottom-stack {
+    right: 166px;
+    left: 310px;
+  }
+
+  .hud-bottom-stack > .bottom-time-bar {
+    grid-template-columns: 144px 38px minmax(150px, 1fr);
+  }
+
+  .bottom-time-bar .time-display {
+    grid-template-columns: 38px minmax(0, 1fr);
+    inline-size: 144px;
+  }
+
+  .bottom-time-bar .speed-selector {
+    display: none;
+  }
+
+  .adaptive-control-item:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (min-width: 781px) {
+  .hud-bottom-stack {
+    right: 166px;
+    left: 190px;
+  }
+}
+
+@media (max-width: 780px) {
+  .top-header-container {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "brand"
+      "primary";
+    justify-items: center;
+    row-gap: 8px;
+  }
+
+  .top-center-group {
+    grid-area: brand;
+  }
+
+  .top-pill-left {
+    position: static;
+    grid-area: primary;
+    justify-self: center;
+    max-width: calc(100vw - 20px);
+  }
+
+  .top-pill-right {
+    display: none;
+  }
+
+  .mode-selector-wrapper {
+    position: static;
+    transform: none;
+  }
+
+  .left-sidebar {
+    top: 150px;
+  }
+
+  .hud-bottom-stack > .bottom-time-bar {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+
+  .bottom-time-bar .time-display {
+    grid-template-columns: 40px minmax(0, 1fr);
+    inline-size: 100%;
+  }
+}

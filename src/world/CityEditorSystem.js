@@ -68,6 +68,10 @@ export class CityEditorSystem {
     app.zoneParcels = this.zoneParcels;
     this.zoneOverlayGroup = new THREE.Group();
     this.zoneOverlayGroup.name = 'CityZoneOverlays';
+    // Zoning is an editor aid, not part of the authored world. Keeping this
+    // hidden by default also prevents restored parcels from leaking into the
+    // management view before CityEditorUI has synchronized the game mode.
+    this.zoneOverlayGroup.visible = false;
     this.scene.add(this.zoneOverlayGroup);
 
     this.selectedSpec = getBuildingSpec('NEOTECH_HQ');
@@ -86,6 +90,51 @@ export class CityEditorSystem {
     this.onKeyDown = this.onKeyDown.bind(this);
   }
 
+  syncZoneOverlayVisibility() {
+    const visible = Boolean(this.isActive && this.zoningMode);
+    this.zoneOverlayGroup.visible = visible;
+    return visible;
+  }
+
+  createZoneOverlayMesh(x, z, definition) {
+    const size = this.snapSize * 3.6;
+    const segments = Math.max(2, Math.ceil(size / 6));
+    const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
+    geometry.rotateX(-Math.PI / 2);
+
+    // A single flat plane intersects MetroPulse's rolling countryside and is
+    // perceived as an irregular colored blob. Drape the editor overlay over
+    // the sampled terrain instead, with a small consistent visual offset.
+    const baseY = this.app.cityBuilder?.getHillHeight?.(x, z) || 0;
+    const positions = geometry.attributes.position;
+    for (let index = 0; index < positions.count; index++) {
+      const worldX = x + positions.getX(index);
+      const worldZ = z + positions.getZ(index);
+      const terrainY = this.app.cityBuilder?.getHillHeight?.(worldX, worldZ) ?? baseY;
+      positions.setY(index, terrainY - baseY + 0.14);
+    }
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
+
+    const mesh = new THREE.Mesh(
+      geometry,
+      new THREE.MeshBasicMaterial({
+        color: definition.color,
+        transparent: true,
+        opacity: 0.14,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1
+      })
+    );
+    mesh.position.set(x, baseY, z);
+    mesh.renderOrder = 4;
+    mesh.userData.zoneType = definition.canonical;
+    return mesh;
+  }
+
   activate() {
     if (this.isActive) return false;
     if (!this.camera || !this.rendererElement) {
@@ -96,6 +145,7 @@ export class CityEditorSystem {
     this.isActive = true;
     this.isDeleteMode = false;
     this.currentHit.valid = false;
+    this.syncZoneOverlayVisibility();
 
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerdown', this.onPointerDown);
@@ -117,6 +167,7 @@ export class CityEditorSystem {
     this.disposeGhostGroup();
     this.clearStructureSelection();
     this.currentHit.valid = false;
+    this.syncZoneOverlayVisibility();
     return true;
   }
 
@@ -128,6 +179,7 @@ export class CityEditorSystem {
     this.clearStructureSelection();
     this.zoningMode = null;
     this.isDeleteMode = false;
+    this.syncZoneOverlayVisibility();
     this.updateGhostMesh();
     return true;
   }
@@ -141,6 +193,7 @@ export class CityEditorSystem {
     this.clearStructureSelection();
     this.isDeleteMode = false;
     this.disposeGhostGroup();
+    this.syncZoneOverlayVisibility();
     this.app.uiManager?.showToast(`🗺️ Zoning tool active: ${normalized}`);
     return true;
   }
@@ -148,6 +201,7 @@ export class CityEditorSystem {
   clearZoningMode() {
     if (!this.zoningMode) return false;
     this.zoningMode = null;
+    this.syncZoneOverlayVisibility();
     this.updateGhostMesh();
     return true;
   }
@@ -161,6 +215,7 @@ export class CityEditorSystem {
     this.isDeleteMode = !this.isDeleteMode;
     this.toolMode = this.isDeleteMode ? 'DELETE' : 'PLACE';
     this.zoningMode = null;
+    this.syncZoneOverlayVisibility();
     if (this.isDeleteMode) {
       this.clearStructureSelection();
       this.disposeGhostGroup();
@@ -175,6 +230,7 @@ export class CityEditorSystem {
     if (!['PLACE', 'MOVE', 'ROTATE', 'DELETE'].includes(normalized)) return false;
     this.toolMode = normalized;
     this.zoningMode = null;
+    this.syncZoneOverlayVisibility();
     this.isDeleteMode = normalized === 'DELETE';
     if (normalized === 'PLACE') {
       this.clearStructureSelection();
@@ -861,20 +917,7 @@ export class CityEditorSystem {
       economy?.adjustLandValue?.(-previous.landValueModifier);
     }
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(this.snapSize * 3.6, this.snapSize * 3.6),
-      new THREE.MeshBasicMaterial({
-        color: definition.color,
-        transparent: true,
-        opacity: 0.16,
-        depthWrite: false,
-        side: THREE.DoubleSide
-      })
-    );
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(x, y + 0.12, z);
-    mesh.renderOrder = 4;
-    mesh.userData.zoneType = definition.canonical;
+    const mesh = this.createZoneOverlayMesh(x, z, definition);
     this.zoneOverlayGroup.add(mesh);
 
     const parcel = {
@@ -943,21 +986,7 @@ export class CityEditorSystem {
         ? record.key
         : `${Math.round(record.x / this.snapSize)},${Math.round(record.z / this.snapSize)}`;
       if (this.zoneParcels.has(key)) continue;
-      const y = this.app.cityBuilder?.getHillHeight?.(record.x, record.z) || 0;
-      const mesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(this.snapSize * 3.6, this.snapSize * 3.6),
-        new THREE.MeshBasicMaterial({
-          color: definition.color,
-          transparent: true,
-          opacity: 0.16,
-          depthWrite: false,
-          side: THREE.DoubleSide
-        })
-      );
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(record.x, y + 0.12, record.z);
-      mesh.renderOrder = 4;
-      mesh.userData.zoneType = definition.canonical;
+      const mesh = this.createZoneOverlayMesh(record.x, record.z, definition);
       this.zoneOverlayGroup.add(mesh);
       this.zoneParcels.set(key, {
         key,
@@ -969,6 +998,7 @@ export class CityEditorSystem {
         mesh
       });
     }
+    this.syncZoneOverlayVisibility();
     return this.zoneParcels.size;
   }
 

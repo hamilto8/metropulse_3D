@@ -131,3 +131,37 @@ test('legacy structure restore can clear only overlapping procedural scenery', (
   assert.equal(builder.countrysideOccupancy.some(envelope => envelope.id === 'suburban-500-25'), false);
   assert.equal(builder.countrysideOccupancy.some(envelope => envelope.id === 'suburban-600-25'), true);
 });
+
+test('zoning overlays stay editor-only and conform to rolling terrain', () => {
+  const scene = new THREE.Scene();
+  const editor = new CityEditorSystem({
+    sceneManager: {
+      scene,
+      camera: new THREE.PerspectiveCamera(),
+      renderer: { domElement: {} }
+    },
+    cityBuilder: {
+      getHillHeight(x, z) {
+        return x * 0.01 + Math.sin(z * 0.1);
+      }
+    }
+  });
+
+  assert.equal(editor.zoneOverlayGroup.visible, false);
+  editor.isActive = true;
+  editor.zoningMode = 'COMMERCIAL';
+  assert.equal(editor.syncZoneOverlayVisibility(), true);
+
+  const mesh = editor.createZoneOverlayMesh(500, 25, {
+    canonical: 'COMMERCIAL',
+    color: 0xd946ef
+  });
+  const heights = [];
+  const positions = mesh.geometry.attributes.position;
+  for (let index = 0; index < positions.count; index++) heights.push(positions.getY(index));
+
+  assert.equal(mesh.userData.zoneType, 'COMMERCIAL');
+  assert.ok(Math.max(...heights) - Math.min(...heights) > 0.5);
+  editor.isActive = false;
+  assert.equal(editor.syncZoneOverlayVisibility(), false);
+});
