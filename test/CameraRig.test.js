@@ -130,3 +130,23 @@ test('a missing chase target cannot send the camera to a stale city pose', () =>
   assert.deepEqual(camera.position.toArray(), localPosition.toArray());
   assert.deepEqual(controls.target.toArray(), localTarget.toArray());
 });
+
+test('aircraft chase framing uses a wider elevated pose and forward look-ahead', () => {
+  const camera = new THREE.PerspectiveCamera();
+  const controls = { enabled: true, target: new THREE.Vector3(), update() {} };
+  const rig = new CameraRig(camera, controls);
+  rig.followTarget = {
+    type: 'AIRCRAFT',
+    userControlled: true,
+    speed: 40,
+    mesh: {
+      position: new THREE.Vector3(10, 50, -20),
+      rotation: { y: 0 }
+    }
+  };
+
+  const pose = rig.getDesiredChasePose();
+  assert.ok(pose.camPos.z < -47);
+  assert.ok(pose.camPos.y >= 59);
+  assert.ok(pose.lookAt.z > -20);
+});

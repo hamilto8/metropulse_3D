@@ -81,11 +81,14 @@ test('gamepad Y uses the canonical mission-first primary action route', () => {
 test('adaptive bindings expose context-specific keyboard and Xbox prompts', () => {
   const driving = getControlBindings(CONTROL_CONTEXTS.VEHICLE);
   const walking = getControlBindings(CONTROL_CONTEXTS.PEDESTRIAN);
+  const flying = getControlBindings(CONTROL_CONTEXTS.AIRCRAFT);
   const builder = getControlBindings(CONTROL_CONTEXTS.BUILDER);
 
   assert.equal(driving.find(binding => binding.action === 'THROTTLE').gamepad[0].label, 'RT');
   assert.equal(driving.find(binding => binding.action === 'BRAKE').gamepad[0].label, 'LT');
   assert.equal(walking.find(binding => binding.action === 'ATTACK').gamepad[0].label, 'X');
+  assert.equal(flying.find(binding => binding.action === 'AIR_THROTTLE').keyboard[0].label, 'W / S');
+  assert.equal(flying.find(binding => binding.action === 'AIR_RESET').gamepad[0].label, 'X');
   assert.equal(builder.find(binding => binding.action === 'AIM').gamepad[0].label, 'LS');
   assert.equal(getActionLabel('INTERACT', INPUT_INTERFACES.KEYBOARD), 'E');
   assert.equal(getActionLabel('INTERACT', INPUT_INTERFACES.GAMEPAD), 'Y');
@@ -97,12 +100,15 @@ test('control context follows modal, builder, vehicle, pedestrian, then manageme
     uiManager: { cityEditorUI: { isVisible: false } },
     cityEditorSystem: { isActive: false },
     trafficSystem: { controlledVehicle: null },
+    aircraftSystem: { controlledAircraft: null },
     pedestrianSystem: { controlledPedestrian: null }
   };
   const manager = managerWith(app);
   assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.MANAGEMENT);
   app.pedestrianSystem.controlledPedestrian = {};
   assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.PEDESTRIAN);
+  app.aircraftSystem.controlledAircraft = {};
+  assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.AIRCRAFT);
   app.trafficSystem.controlledVehicle = {};
   assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.VEHICLE);
   app.uiManager.cityEditorUI.isVisible = true;
@@ -152,6 +158,11 @@ test('focus loss clears a potentially latched handbrake and all motion inputs', 
     moveY: 1,
     cameraPanX: 0.5,
     cameraPanY: -0.5,
+    flightRoll: 1,
+    flightPitch: -1,
+    flightThrottleUp: 1,
+    flightThrottleDown: 0.5,
+    flightBrake: 1,
     handbrake: true
   };
 
@@ -166,6 +177,11 @@ test('focus loss clears a potentially latched handbrake and all motion inputs', 
     moveY: 0,
     cameraPanX: 0,
     cameraPanY: 0,
+    flightRoll: 0,
+    flightPitch: 0,
+    flightThrottleUp: 0,
+    flightThrottleDown: 0,
+    flightBrake: 0,
     handbrake: false
   });
 });

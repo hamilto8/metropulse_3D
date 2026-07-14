@@ -24,6 +24,106 @@
   --radius-lg: 20px;
 }
 
+/* Aircraft instruments are a dedicated, fixed-size action HUD. Numeric cells
+   use tabular figures so changing telemetry never causes layout movement. */
+.flight-hud {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(150px, calc(env(safe-area-inset-bottom) + 150px));
+  z-index: 92;
+  width: min(290px, calc(100vw - 36px));
+  padding: 12px;
+  border: 1px solid rgba(52, 217, 255, 0.48);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(7, 14, 30, 0.94), rgba(11, 28, 45, 0.9));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48), inset 0 1px rgba(255, 255, 255, 0.06);
+  color: #effbff;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.flight-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #87efff;
+  font: 800 0.68rem var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.flight-mode {
+  min-width: 66px;
+  padding: 4px 7px;
+  border: 1px solid rgba(52, 217, 255, 0.44);
+  border-radius: 999px;
+  background: rgba(52, 217, 255, 0.11);
+  color: #fff;
+  text-align: center;
+}
+
+.flight-instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.flight-instrument {
+  display: grid;
+  min-width: 0;
+  padding: 7px 4px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 9px;
+  background: rgba(3, 9, 20, 0.58);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.flight-instrument strong {
+  overflow: hidden;
+  color: #fff;
+  font: 800 1.02rem var(--font-mono);
+  text-overflow: clip;
+}
+
+.flight-label,
+.flight-instrument small {
+  color: #8ba5ba;
+  font: 700 0.5rem var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.flight-warning {
+  min-height: 13px;
+  margin-top: 8px;
+  color: #72e6b1;
+  font: 800 0.56rem var(--font-mono);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.flight-warning.danger {
+  color: #ffb05c;
+}
+
+@media (max-width: 780px) {
+  .flight-hud {
+    top: 172px;
+    right: 10px;
+    bottom: auto;
+    width: min(260px, calc(100vw - 82px));
+    padding: 9px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .flight-hud-title { display: none; }
+  .flight-instrument-grid { gap: 4px; }
+  .flight-instrument { padding-inline: 2px; }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;

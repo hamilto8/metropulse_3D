@@ -19,6 +19,9 @@ export class MinimapHUD {
   }
 
   getFocusTarget() {
+    const controlledAircraft = this.app?.aircraftSystem?.controlledAircraft;
+    if (controlledAircraft?.mesh?.position) return { entity: controlledAircraft, position: controlledAircraft.mesh.position };
+
     const controlledVehicle = this.app?.trafficSystem?.controlledVehicle;
     if (controlledVehicle?.mesh?.position) return { entity: controlledVehicle, position: controlledVehicle.mesh.position };
 
@@ -136,6 +139,31 @@ export class MinimapHUD {
       }
     }
     ctx.stroke();
+
+    // Airfield landmark: a compact runway glyph stays legible at every zoom.
+    const airfield = this.app?.aircraftSystem?.layout;
+    if (airfield) {
+      const start = this.worldToCanvas(
+        { x: airfield.centerX, z: airfield.centerZ - airfield.runwayLength * 0.5 },
+        centerPosition, cx, cy
+      );
+      const end = this.worldToCanvas(
+        { x: airfield.centerX, z: airfield.centerZ + airfield.runwayLength * 0.5 },
+        centerPosition, cx, cy
+      );
+      ctx.strokeStyle = 'rgba(230, 242, 255, 0.72)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(52, 217, 255, 0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
+    }
 
     // Radar range rings and axes.
     ctx.strokeStyle = 'rgba(0, 240, 255, 0.15)';
@@ -256,6 +284,21 @@ export class MinimapHUD {
       ctx.beginPath();
       ctx.arc(point.x, point.y, 2.7, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    const aircraft = this.app?.aircraftSystem?.aircraft;
+    if (aircraft && aircraft !== focusEntity && aircraft.mesh?.position) {
+      const point = this.worldToCanvas(aircraft.mesh.position, centerPosition, cx, cy);
+      if (this.isInsideRadar(point, cx, cy)) {
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y - 4.5);
+        ctx.lineTo(point.x + 4, point.y + 3.5);
+        ctx.lineTo(point.x, point.y + 1.7);
+        ctx.lineTo(point.x - 4, point.y + 3.5);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
   }
 

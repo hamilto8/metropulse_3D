@@ -10,6 +10,7 @@ import { Environment } from './world/Environment.js';
 import { TimeManager } from './systems/TimeManager.js';
 import { TrafficSystem } from './systems/TrafficSystem.js';
 import { PedestrianSystem } from './systems/PedestrianSystem.js';
+import { AircraftSystem } from './systems/AircraftSystem.js';
 import { AudioSystem } from './systems/AudioSystem.js';
 import { ExplosionManager } from './effects/ExplosionManager.js';
 import { CometManager } from './effects/CometManager.js';
@@ -147,6 +148,7 @@ class MetroPulseApp {
 
     // 10. Pedestrian Simulation
     this.pedestrianSystem = new PedestrianSystem(this);
+    this.aircraftSystem = new AircraftSystem(this);
     this.performanceSystem = new PerformanceSystem(this);
     this.physicsWorld.terrainSystem = this.cityBuilder;
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
@@ -282,6 +284,7 @@ class MetroPulseApp {
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);
     this.pedestrianSystem.update(delta);
+    this.aircraftSystem.update(delta);
     this.explosionManager.update(delta);
     this.cometManager.update(delta);
     this.trafficHeatmapSystem.update(delta);

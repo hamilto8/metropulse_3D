@@ -93,6 +93,13 @@ export class UIManager {
     this.speedometerHud = document.getElementById('street-speedometer');
     this.speedometerValue = document.getElementById('speedometer-value');
     this.speedometerGear = document.getElementById('speedometer-gear');
+    this.flightHud = document.getElementById('flight-hud');
+    this.flightMode = document.getElementById('flight-mode');
+    this.flightAirspeed = document.getElementById('flight-airspeed');
+    this.flightAltitude = document.getElementById('flight-altitude');
+    this.flightThrottle = document.getElementById('flight-throttle');
+    this.flightVerticalSpeed = document.getElementById('flight-vertical-speed');
+    this.flightWarning = document.getElementById('flight-warning');
     this.streetControlHint = document.getElementById('street-control-hint');
     this.adaptiveContextIcon = document.getElementById('adaptive-context-icon');
     this.adaptiveContextLabel = document.getElementById('adaptive-context-label');
@@ -166,14 +173,14 @@ export class UIManager {
     // Camera presets
     this.cameraButtons.forEach(btn => {
       btn.addEventListener('click', () => {
+        const cameraMode = btn.dataset.camera;
+        if (!this.app.sceneManager.setCameraPreset(cameraMode)) return;
         this.cameraButtons.forEach(b => {
           b.classList.remove('active');
           b.setAttribute('aria-pressed', 'false');
         });
         btn.classList.add('active');
         btn.setAttribute('aria-pressed', 'true');
-        const cameraMode = btn.dataset.camera;
-        this.app.sceneManager.setCameraPreset(cameraMode);
       });
     });
 
@@ -308,6 +315,18 @@ export class UIManager {
               this.btnTakeControl.innerHTML = '🚶 Take Control (Walk)';
               this.btnTakeControl.classList.remove('active');
             }
+          } else if (this.selectedEntity.type === 'AIRCRAFT') {
+            const released = this.app.aircraftSystem?.releaseControl?.();
+            if (!released) {
+              this.app.sceneManager.startFollowTarget(this.selectedEntity);
+              this.btnFollowTarget.innerHTML = '❌ Stop Following';
+              this.btnFollowTarget.classList.add('active');
+              return;
+            }
+            if (this.btnTakeControl) {
+              this.btnTakeControl.innerHTML = '🛩️ Take Flight Control';
+              this.btnTakeControl.classList.remove('active');
+            }
           }
           this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'released-control' });
         }
@@ -368,6 +387,11 @@ export class UIManager {
             this.btnFollowTarget.innerHTML = '🎯 Follow Target';
             this.btnFollowTarget.classList.remove('active');
           }
+        } else if (this.selectedEntity.type === 'AIRCRAFT') {
+          const isNowControlled = this.app.aircraftSystem?.toggleControl?.(this.selectedEntity) || false;
+          this.btnTakeControl.innerHTML = isNowControlled ? '🛑 Leave Cockpit' : '🛩️ Take Flight Control';
+          this.btnTakeControl.classList.toggle('active', isNowControlled);
+          if (isNowControlled) this.hideInspector();
         }
       });
     }
@@ -571,6 +595,11 @@ export class UIManager {
     if (mode === 'ACTION') {
       const vehicle = this.app.trafficSystem?.controlledVehicle;
       const pedestrian = this.app.pedestrianSystem?.controlledPedestrian;
+      const aircraft = this.app.aircraftSystem?.controlledAircraft;
+      if (aircraft) {
+        this.app.aircraftSystem.releaseControl();
+        return;
+      }
       if (vehicle) this.app.trafficSystem.releaseControl(vehicle);
       if (pedestrian) this.app.pedestrianSystem.releaseControl(pedestrian);
       this.app.sceneManager?.stopFollowTarget?.();
@@ -750,9 +779,11 @@ export class UIManager {
   updateActionHUD() {
     const vehicle = this.app.trafficSystem?.controlledVehicle || null;
     const pedestrian = this.app.pedestrianSystem?.controlledPedestrian || null;
-    const active = vehicle || pedestrian;
+    const aircraft = this.app.aircraftSystem?.controlledAircraft || null;
+    const active = vehicle || pedestrian || aircraft;
 
     this.speedometerHud?.classList.toggle('hidden', !vehicle);
+    this.flightHud?.classList.toggle('hidden', !aircraft);
     this.streetControlHint?.classList.remove('hidden');
 
     if (vehicle && this.speedometerValue) {
@@ -763,10 +794,41 @@ export class UIManager {
       if (this.speedometerGear) this.speedometerGear.textContent = `GEAR ${vehicle.physicsVehicle?.gear || '—'}`;
     }
 
+    this.updateFlightHUD(aircraft);
+
     if (this.statWeather && this.app.environment) {
       this.statWeather.textContent = getWeatherDefinition(this.app.environment.weatherMode).statusText;
     }
     this.updateAdaptiveControls();
+  }
+
+  updateFlightHUD(aircraft = this.app.aircraftSystem?.controlledAircraft || null) {
+    this.flightHud?.classList.toggle('hidden', !aircraft);
+    if (!aircraft?.state) return;
+
+    const state = aircraft.state;
+    const airspeed = Math.max(0, Math.round((state.speed || 0) * 3.6));
+    const ground = this.app.aircraftSystem?.getGroundHeight?.(state.position) || 0;
+    const altitude = Math.max(0, Math.round((state.position?.y || 0) - ground - aircraft.config.gearHeight));
+    const throttle = Math.round(Math.max(0, Math.min(1, state.throttle || 0)) * 100);
+    const verticalSpeed = Number(state.verticalSpeed || 0);
+    if (this.flightMode) this.flightMode.textContent = state.stallWarning ? 'STALL' : state.mode;
+    if (this.flightAirspeed) this.flightAirspeed.textContent = String(airspeed);
+    if (this.flightAltitude) this.flightAltitude.textContent = String(altitude);
+    if (this.flightThrottle) this.flightThrottle.textContent = String(throttle);
+    if (this.flightVerticalSpeed) this.flightVerticalSpeed.textContent = `${verticalSpeed >= 0 ? '+' : ''}${verticalSpeed.toFixed(1)}`;
+    if (this.flightWarning) {
+      const landing = this.app.aircraftSystem?.getLandingAssessment?.(state.position, state.heading);
+      const warning = state.stallWarning
+        ? '⚠ STALL · LOWER NOSE · ADD THROTTLE'
+        : (state.grounded
+          ? `${landing?.label || state.landingSurface || 'GROUND'} · W/S THROTTLE · ↓ ROTATE`
+          : (landing?.allowed
+            ? `LANDING AREA · ${landing.label} · MAX 126 KM/H`
+            : '⚠ NO SAFE LANDING SURFACE BELOW'));
+      this.flightWarning.textContent = warning;
+      this.flightWarning.classList.toggle('danger', state.stallWarning || state.crashed || (!state.grounded && !landing?.allowed));
+    }
   }
 
   activateSelectedEntity() {
@@ -778,7 +840,7 @@ export class UIManager {
       this.btnInteractSfx.click();
       return true;
     }
-    if ((this.selectedEntity.type === 'VEHICLE' || this.selectedEntity.type === 'PEDESTRIAN') && !this.btnTakeControl?.classList.contains('hidden')) {
+    if (['VEHICLE', 'PEDESTRIAN', 'AIRCRAFT'].includes(this.selectedEntity.type) && !this.btnTakeControl?.classList.contains('hidden')) {
       this.btnTakeControl.click();
       return true;
     }
@@ -806,6 +868,7 @@ export class UIManager {
       MANAGEMENT: ['◇', 'MANAGEMENT'],
       BUILDER: ['▦', 'CITY BUILDER'],
       VEHICLE: ['◉', 'DRIVING'],
+      AIRCRAFT: ['✈', 'FLIGHT'],
       PEDESTRIAN: ['◆', 'ON FOOT'],
       DIALOGUE: ['●', 'DIALOGUE']
     };
@@ -908,7 +971,7 @@ export class UIManager {
 
     // Configure action buttons
     if (this.btnFollowTarget) {
-      if (entity.type === 'VEHICLE' || entity.type === 'PEDESTRIAN') {
+      if (entity.type === 'VEHICLE' || entity.type === 'PEDESTRIAN' || entity.type === 'AIRCRAFT') {
         this.btnFollowTarget.classList.remove('hidden');
         const isFollowing = (this.app.sceneManager.followTarget === entity);
         this.btnFollowTarget.innerHTML = isFollowing ? '❌ Stop Following' : '👁️ Follow Camera';
@@ -950,6 +1013,15 @@ export class UIManager {
         this.btnCombatAction.classList.toggle('hidden', !canCombat);
         this.btnCombatAction.textContent = '🏏 Melee Attack';
       }
+    } else if (entity.type === 'AIRCRAFT') {
+      if (this.btnTakeControl) {
+        this.btnTakeControl.classList.remove('hidden');
+        const isControlled = this.app.aircraftSystem?.controlledAircraft === entity && entity.userControlled;
+        this.btnTakeControl.innerHTML = isControlled ? '🛑 Leave Cockpit' : '🛩️ Take Flight Control';
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
+      if (this.btnInteractSfx) this.btnInteractSfx.classList.add('hidden');
+      if (this.btnCombatAction) this.btnCombatAction.classList.add('hidden');
     } else if (entity.type === 'MISSION_PICKUP') {
       if (this.btnTakeControl) this.btnTakeControl.classList.add('hidden');
       if (this.btnCombatAction) this.btnCombatAction.classList.add('hidden');
@@ -991,6 +1063,10 @@ export class UIManager {
         return;
       }
     }
+    if (this.selectedEntity.type === 'AIRCRAFT' && this.app.aircraftSystem?.aircraft !== this.selectedEntity) {
+      this.hideInspector();
+      return;
+    }
 
     if (!this.selectedEntity.info) return;
     this.syncLocalLandValue(this.selectedEntity);
@@ -1006,6 +1082,13 @@ export class UIManager {
     } else if (this.selectedEntity.type === 'PEDESTRIAN' && this.btnTakeControl) {
       const isControlled = (this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian === this.selectedEntity && this.selectedEntity.userControlled);
       const targetText = isControlled ? '🛑 Release Walk Control' : '🚶 Take Control (Walk)';
+      if (this.btnTakeControl.innerHTML !== targetText) {
+        this.btnTakeControl.innerHTML = targetText;
+        this.btnTakeControl.classList.toggle('active', isControlled);
+      }
+    } else if (this.selectedEntity.type === 'AIRCRAFT' && this.btnTakeControl) {
+      const isControlled = this.app.aircraftSystem?.controlledAircraft === this.selectedEntity && this.selectedEntity.userControlled;
+      const targetText = isControlled ? '🛑 Leave Cockpit' : '🛩️ Take Flight Control';
       if (this.btnTakeControl.innerHTML !== targetText) {
         this.btnTakeControl.innerHTML = targetText;
         this.btnTakeControl.classList.toggle('active', isControlled);
@@ -1188,6 +1271,7 @@ export class UIManager {
     const enteringBuilder = !this.cityEditorUI.isVisible;
     const hasDirectControl = Boolean(
       this.app.trafficSystem?.controlledVehicle
+      || this.app.aircraftSystem?.controlledAircraft
       || this.app.pedestrianSystem?.controlledPedestrian
     );
     if (enteringBuilder && (hasDirectControl || this.app.missionSystem?.activeMission)) {

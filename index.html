@@ -204,6 +204,7 @@
                 <button class="cam-pill" data-camera="park" title="Central Park" aria-label="Camera: Central Park">🌳</button>
                 <button class="cam-pill" data-camera="downtown" title="Downtown" aria-label="Camera: Downtown">🚦</button>
                 <button class="cam-pill" data-camera="bridge" title="Suspension Bridge" aria-label="Camera: Suspension Bridge">🌉</button>
+                <button class="cam-pill" data-camera="airfield" title="Northwind Municipal Airfield" aria-label="Camera: Northwind Municipal Airfield">🛩️</button>
                 <button class="cam-pill" data-camera="free" title="Orbit" aria-label="Camera: Free Orbit">🌐</button>
               </div>
 
@@ -362,6 +363,19 @@
         <span class="speedometer-unit">KM/H</span>
         <span id="speedometer-gear" class="speedometer-gear">GEAR —</span>
       </div>
+      <section id="flight-hud" class="flight-hud hidden" aria-label="Aircraft flight instruments" aria-live="polite">
+        <header class="flight-hud-header">
+          <span class="flight-hud-title">🛩 NORTHWIND SPARROW</span>
+          <span id="flight-mode" class="flight-mode">PARKED</span>
+        </header>
+        <div class="flight-instrument-grid">
+          <div class="flight-instrument"><span class="flight-label">AIRSPEED</span><strong id="flight-airspeed">0</strong><small>KM/H</small></div>
+          <div class="flight-instrument"><span class="flight-label">ALT AGL</span><strong id="flight-altitude">0</strong><small>METRES</small></div>
+          <div class="flight-instrument"><span class="flight-label">THROTTLE</span><strong id="flight-throttle">0</strong><small>PERCENT</small></div>
+          <div class="flight-instrument"><span class="flight-label">VERTICAL</span><strong id="flight-vertical-speed">0</strong><small>M/S</small></div>
+        </div>
+        <div id="flight-warning" class="flight-warning" role="status">RUNWAY 36 · CLEARED FOR TAKEOFF</div>
+      </section>
       <!-- Priority status cards share one rail so live alerts never collide. -->
       <aside id="status-hud-stack" class="status-hud-stack" aria-label="Live city status">
         <div id="real-estate-tracker" class="real-estate-tracker hidden">

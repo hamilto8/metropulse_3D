@@ -129,6 +129,14 @@ test('downtown preset uses an elevated unobstructed road corridor', () => {
   assertClearHorizontalSightline(downtown);
 });
 
+test('airfield preset frames the runway from the city-facing approach', () => {
+  const { airfield } = createCameraPresets();
+  assert.ok(airfield.pos.x > airfield.target.x);
+  assert.ok(airfield.pos.z > airfield.target.z);
+  assert.ok(airfield.pos.y >= 70);
+  assert.ok(airfield.target.z < -200);
+});
+
 test('camera preset vectors are independent mutable instances', () => {
   const first = createCameraPresets();
   const second = createCameraPresets();
@@ -136,13 +144,18 @@ test('camera preset vectors are independent mutable instances', () => {
   assert.notEqual(first.street.pos.x, second.street.pos.x);
 });
 
-function createPresetTransitionFixture({ vehicle = null, pedestrian = null } = {}) {
+function createPresetTransitionFixture({
+  vehicle = null,
+  pedestrian = null,
+  aircraft = null,
+  aircraftReleaseResult = true
+} = {}) {
   const released = [];
   const modeChanges = [];
   let inspectorHidden = 0;
   const cameraRig = {
     state: 'CHASE_MICRO',
-    followTarget: vehicle || pedestrian,
+    followTarget: vehicle || pedestrian || aircraft,
     isPointerLooking: true,
     removeAppliedShake() {}
   };
@@ -150,7 +163,7 @@ function createPresetTransitionFixture({ vehicle = null, pedestrian = null } = {
   Object.assign(manager, {
     presets: createCameraPresets(),
     activePreset: null,
-    followTarget: vehicle || pedestrian,
+    followTarget: vehicle || pedestrian || aircraft,
     targetCameraPos: null,
     targetLookAt: null,
     controls: { enabled: false },
@@ -174,6 +187,18 @@ function createPresetTransitionFixture({ vehicle = null, pedestrian = null } = {
           this.controlledPedestrian = null;
         }
       },
+      aircraftSystem: {
+        controlledAircraft: aircraft,
+        releaseControl() {
+          if (!aircraftReleaseResult) return false;
+          if (aircraft) {
+            released.push(aircraft);
+            aircraft.userControlled = false;
+            this.controlledAircraft = null;
+          }
+          return Boolean(aircraft);
+        }
+      },
       gameManager: {
         setMode(mode, metadata) { modeChanges.push({ mode, metadata }); }
       },
@@ -184,6 +209,19 @@ function createPresetTransitionFixture({ vehicle = null, pedestrian = null } = {
   });
   return { manager, cameraRig, released, modeChanges, get inspectorHidden() { return inspectorHidden; } };
 }
+
+test('camera presets cannot pull the pilot out of an airborne aircraft', () => {
+  const aircraft = { userControlled: true };
+  const fixture = createPresetTransitionFixture({ aircraft, aircraftReleaseResult: false });
+
+  assert.equal(fixture.manager.setCameraPreset('airfield'), false);
+  assert.equal(aircraft.userControlled, true);
+  assert.deepEqual(fixture.released, []);
+  assert.deepEqual(fixture.modeChanges, []);
+  assert.equal(fixture.manager.activePreset, null);
+  assert.equal(fixture.cameraRig.state, 'CHASE_MICRO');
+  assert.equal(fixture.manager.controls.enabled, false);
+});
 
 for (const kind of ['vehicle', 'pedestrian']) {
   test(`selecting a camera preset releases ${kind} control and restores orbit controls`, () => {

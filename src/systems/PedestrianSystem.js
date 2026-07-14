@@ -440,8 +440,12 @@ export class PedestrianSystem {
   }
 
   ensurePopulationFloor() {
-    if (this.pedestrians.length < this.targetPedestrianCount) {
-      this.spawnPedestrians(this.targetPedestrianCount - this.pedestrians.length);
+    const suspendedAircraftPilot = this.app.aircraftSystem?.controlSession?.source === 'pedestrian'
+      ? 1
+      : 0;
+    const representedPopulation = this.pedestrians.length + suspendedAircraftPilot;
+    if (representedPopulation < this.targetPedestrianCount) {
+      this.spawnPedestrians(this.targetPedestrianCount - representedPopulation);
     }
   }
 
@@ -778,6 +782,18 @@ export class PedestrianSystem {
 
     const p = this.controlledPedestrian;
     const pos = p.mesh.position;
+    const boarding = this.app.aircraftSystem?.getBoardingEligibility?.(p);
+    const prompt = this.getOrCreateInteractionPrompt();
+
+    if (boarding?.allowed) {
+      setTextSegments(prompt, [
+        '🛩️ Press ',
+        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
+        ' to Board Northwind Sparrow'
+      ]);
+      prompt.classList.remove('hidden');
+      return;
+    }
     
     // 1. Scan for closest vehicle
     let closestVehicle = null;
@@ -809,31 +825,8 @@ export class PedestrianSystem {
     }
 
     // 3. Resolve priority: whichever is closer triggers prompt
-    let prompt = document.getElementById('vehicle-enter-prompt');
     if (closestVehicle && (closestPed === null || minVehDist < minPedDist)) {
       // Vehicle prompt
-      if (!prompt) {
-        prompt = document.createElement('div');
-        prompt.id = 'vehicle-enter-prompt';
-        prompt.style.position = 'fixed';
-        prompt.style.bottom = '15%';
-        prompt.style.left = '50%';
-        prompt.style.transform = 'translateX(-50%)';
-        prompt.style.padding = '12px 24px';
-        prompt.style.borderRadius = '24px';
-        prompt.style.background = 'rgba(7, 12, 30, 0.75)';
-        prompt.style.backdropFilter = 'blur(12px)';
-        prompt.style.border = '1px solid #ff007f';
-        prompt.style.color = '#fff';
-        prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
-        prompt.style.fontSize = '0.95rem';
-        prompt.style.fontWeight = 'bold';
-        prompt.style.boxShadow = '0 0 15px rgba(255, 0, 127, 0.4)';
-        prompt.style.zIndex = '1000';
-        prompt.style.pointerEvents = 'none';
-        document.body.appendChild(prompt);
-      }
-      
       setTextSegments(prompt, [
         '🏎️ Press ',
         { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
@@ -842,28 +835,6 @@ export class PedestrianSystem {
       prompt.classList.remove('hidden');
     } else if (closestPed) {
       // Pedestrian Talk prompt
-      if (!prompt) {
-        prompt = document.createElement('div');
-        prompt.id = 'vehicle-enter-prompt';
-        prompt.style.position = 'fixed';
-        prompt.style.bottom = '15%';
-        prompt.style.left = '50%';
-        prompt.style.transform = 'translateX(-50%)';
-        prompt.style.padding = '12px 24px';
-        prompt.style.borderRadius = '24px';
-        prompt.style.background = 'rgba(7, 12, 30, 0.75)';
-        prompt.style.backdropFilter = 'blur(12px)';
-        prompt.style.border = '1px solid #ff007f';
-        prompt.style.color = '#fff';
-        prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
-        prompt.style.fontSize = '0.95rem';
-        prompt.style.fontWeight = 'bold';
-        prompt.style.boxShadow = '0 0 15px rgba(255, 0, 127, 0.4)';
-        prompt.style.zIndex = '1000';
-        prompt.style.pointerEvents = 'none';
-        document.body.appendChild(prompt);
-      }
-
       setTextSegments(prompt, [
         '💬 Press ',
         { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
@@ -896,11 +867,44 @@ export class PedestrianSystem {
     }
   }
 
+  getOrCreateInteractionPrompt() {
+    let prompt = document.getElementById('vehicle-enter-prompt');
+    if (prompt) return prompt;
+    prompt = document.createElement('div');
+    prompt.id = 'vehicle-enter-prompt';
+    prompt.setAttribute('role', 'status');
+    prompt.setAttribute('aria-live', 'polite');
+    Object.assign(prompt.style, {
+      position: 'fixed',
+      bottom: '15%',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      padding: '12px 24px',
+      borderRadius: '24px',
+      background: 'rgba(7, 12, 30, 0.82)',
+      backdropFilter: 'blur(12px)',
+      border: '1px solid #ff007f',
+      color: '#fff',
+      fontFamily: 'Outfit, Inter, sans-serif',
+      fontSize: '0.95rem',
+      fontWeight: 'bold',
+      boxShadow: '0 0 15px rgba(255, 0, 127, 0.4)',
+      zIndex: '1000',
+      pointerEvents: 'none'
+    });
+    document.body.appendChild(prompt);
+    return prompt;
+  }
+
   handlePedestrianActionKey() {
     if (!this.controlledPedestrian || this.hijackTransition) return false;
 
     const p = this.controlledPedestrian;
     const pos = p.mesh.position;
+
+    if (this.app.aircraftSystem?.getBoardingEligibility?.(p)?.allowed) {
+      return this.app.aircraftSystem.boardFromPedestrian(p);
+    }
 
     // 1. Scan for closest vehicle
     let closestVehicle = null;
@@ -1151,6 +1155,45 @@ export class PedestrianSystem {
       }
       return true;
     }
+  }
+
+  suspendControlledPedestrian(pedestrian) {
+    if (!pedestrian?.mesh || this.controlledPedestrian !== pedestrian || !pedestrian.userControlled) {
+      return false;
+    }
+    pedestrian.userControlled = false;
+    pedestrian.controlSuspended = true;
+    pedestrian.speed = 0;
+    pedestrian.targetSpeed = 0;
+    pedestrian.info['Mood'] = '🛩️ PILOTING AIRCRAFT';
+    pedestrian.info['Activity'] = 'Aboard Northwind Sparrow';
+    this.controlledPedestrian = null;
+    this.app.inspectorHud?.unregisterObject?.(pedestrian.mesh);
+    this.app.sceneManager?.scene?.remove?.(pedestrian.mesh);
+    const index = this.pedestrians.indexOf(pedestrian);
+    if (index >= 0) this.pedestrians.splice(index, 1);
+    const prompt = typeof document !== 'undefined' ? document.getElementById('vehicle-enter-prompt') : null;
+    prompt?.classList.add('hidden');
+    return true;
+  }
+
+  restoreSuspendedPedestrian(pedestrian, position, rotationY = 0) {
+    if (!pedestrian?.mesh || !position?.isVector3 || !pedestrian.controlSuspended) return false;
+    pedestrian.mesh.position.copy(position);
+    pedestrian.mesh.position.y = this.getTerrainHeight(position.x, position.z);
+    pedestrian.mesh.rotation.y = Number.isFinite(rotationY) ? rotationY : 0;
+    pedestrian.mesh.visible = true;
+    pedestrian.controlSuspended = false;
+    pedestrian.userControlled = false;
+    pedestrian.speed = 0;
+    pedestrian.targetSpeed = pedestrian.maxSpeed;
+    pedestrian.isJumping = false;
+    pedestrian.jumpVelocity = 0;
+    resetPedestrianKnockdown(pedestrian);
+    if (!this.pedestrians.includes(pedestrian)) this.pedestrians.push(pedestrian);
+    if (!pedestrian.mesh.parent) this.app.sceneManager?.scene?.add?.(pedestrian.mesh);
+    this.app.inspectorHud?.registerObject?.(pedestrian.mesh, pedestrian);
+    return true;
   }
 
   cullPedestrian(p) {

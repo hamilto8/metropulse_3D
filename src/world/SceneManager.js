@@ -228,11 +228,19 @@ export class SceneManager {
       pedestrianSystem?.releaseControl?.(pedestrian);
     }
 
+    if (this.app?.aircraftSystem?.controlledAircraft) {
+      const released = this.app.aircraftSystem.releaseControl();
+      if (!released) return false;
+      const restoredPilot = pedestrianSystem?.controlledPedestrian;
+      if (restoredPilot) pedestrianSystem.releaseControl(restoredPilot);
+    }
+
     // The individual systems normally perform this transition themselves,
     // but the explicit final assignment also repairs stale control flags and
     // keeps this camera-owned transition deterministic.
     this.app?.gameManager?.setMode?.('MANAGEMENT', { reason: 'camera-preset' });
     this.app?.uiManager?.hideInspector?.();
+    return true;
   }
 
   preparePresetOrbit() {
@@ -319,7 +327,7 @@ export class SceneManager {
     const preset = this.presets[mode];
     if (!preset) return false;
 
-    this.releaseDirectControlForCamera();
+    if (!this.releaseDirectControlForCamera()) return false;
     this.preparePresetOrbit();
     this.activePreset = mode;
     this.targetCameraPos = preset.pos.clone();
@@ -477,7 +485,8 @@ export class SceneManager {
       }
     }
 
-    const isControlling = isVehControlled || isPedControlled;
+    const isAircraftControlled = Boolean(this.app?.aircraftSystem?.controlledAircraft);
+    const isControlling = isVehControlled || isPedControlled || isAircraftControlled;
 
     if (keys && !isControlling) {
       const isW = keys['w'] || keys['arrowup'];

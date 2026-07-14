@@ -33,6 +33,11 @@ export class InputManager {
       moveY: 0,
       cameraPanX: 0,
       cameraPanY: 0,
+      flightRoll: 0,
+      flightPitch: 0,
+      flightThrottleUp: 0,
+      flightThrottleDown: 0,
+      flightBrake: 0,
       handbrake: false,
       isGamepadConnected: false
     };
@@ -69,6 +74,9 @@ export class InputManager {
       else if (normalizedKey === 'f') this.app?.uiManager?.toggleCityEditor?.();
       else if (normalizedKey === 'm') this.app?.uiManager?.handleModeToggle?.();
       else if (normalizedKey === 'x') this.handleSecondaryAction();
+      else if (normalizedKey === 'r' && this.getControlContext() === CONTROL_CONTEXTS.AIRCRAFT) {
+        this.app?.aircraftSystem?.resetToRunway?.();
+      }
       else if (normalizedKey === 'r' && this.getControlContext() === CONTROL_CONTEXTS.BUILDER) {
         this.app?.cityEditorSystem?.rotateSelection?.();
       } else if (event.key === 'Delete' && this.getControlContext() === CONTROL_CONTEXTS.BUILDER) {
@@ -117,6 +125,11 @@ export class InputManager {
       this.state.moveY = 0;
       this.state.cameraPanX = 0;
       this.state.cameraPanY = 0;
+      this.state.flightRoll = 0;
+      this.state.flightPitch = 0;
+      this.state.flightThrottleUp = 0;
+      this.state.flightThrottleDown = 0;
+      this.state.flightBrake = 0;
       this.state.handbrake = false;
     }
   }
@@ -146,8 +159,10 @@ export class InputManager {
     if (context === previousContext) return false;
 
     const wasDirectControl = previousContext === CONTROL_CONTEXTS.VEHICLE
+      || previousContext === CONTROL_CONTEXTS.AIRCRAFT
       || previousContext === CONTROL_CONTEXTS.PEDESTRIAN;
     const isDirectControl = context === CONTROL_CONTEXTS.VEHICLE
+      || context === CONTROL_CONTEXTS.AIRCRAFT
       || context === CONTROL_CONTEXTS.PEDESTRIAN;
     const changedGameplayAuthority = previousContext != null
       && (wasDirectControl || isDirectControl)
@@ -169,6 +184,11 @@ export class InputManager {
     if (trafficSystem?.controlledVehicle) {
       trafficSystem.exitControlledVehicle();
       return true;
+    }
+
+    const aircraftSystem = this.app?.aircraftSystem;
+    if (aircraftSystem?.controlledAircraft) {
+      return aircraftSystem.requestExit();
     }
 
     const pedestrianSystem = this.app?.pedestrianSystem;
@@ -221,7 +241,7 @@ export class InputManager {
       this.app.uiManager.hideInspector();
       return true;
     }
-    if (this.getControlContext() === CONTROL_CONTEXTS.VEHICLE || this.getControlContext() === CONTROL_CONTEXTS.PEDESTRIAN) {
+    if ([CONTROL_CONTEXTS.VEHICLE, CONTROL_CONTEXTS.AIRCRAFT, CONTROL_CONTEXTS.PEDESTRIAN].includes(this.getControlContext())) {
       this.app?.uiManager?.handleModeToggle?.();
       return true;
     }
@@ -258,6 +278,7 @@ export class InputManager {
     if (this.app?.dialogueOverlay?.currentMission) return CONTROL_CONTEXTS.DIALOGUE;
     if (this.app?.uiManager?.cityEditorUI?.isVisible || this.app?.cityEditorSystem?.isActive) return CONTROL_CONTEXTS.BUILDER;
     if (this.app?.trafficSystem?.controlledVehicle) return CONTROL_CONTEXTS.VEHICLE;
+    if (this.app?.aircraftSystem?.controlledAircraft) return CONTROL_CONTEXTS.AIRCRAFT;
     if (this.app?.pedestrianSystem?.controlledPedestrian) return CONTROL_CONTEXTS.PEDESTRIAN;
     return CONTROL_CONTEXTS.MANAGEMENT;
   }
@@ -322,6 +343,9 @@ export class InputManager {
     const keyboardReverse = Boolean(this.keys.s || this.keys.arrowdown);
     const keyboardLeft = Boolean(this.keys.a || this.keys.arrowleft);
     const keyboardRight = Boolean(this.keys.d || this.keys.arrowright);
+    const keyboardFlightThrottleUp = Boolean(this.keys.w);
+    const keyboardFlightThrottleDown = Boolean(this.keys.s);
+    const keyboardFlightPitch = (this.keys.arrowdown ? 1 : 0) - (this.keys.arrowup ? 1 : 0);
 
     let throttle = keyboardForward ? 1 : 0;
     let brake = keyboardReverse ? 1 : 0;
@@ -331,6 +355,10 @@ export class InputManager {
     let cameraPanX = 0;
     let cameraPanY = 0;
     let handbrake = Boolean(this.keys[' ']);
+    let flightRoll = (this.keys.d ? 1 : 0) - (this.keys.a ? 1 : 0);
+    let flightPitch = keyboardFlightPitch;
+    let flightThrottleUp = keyboardFlightThrottleUp ? 1 : 0;
+    let flightThrottleDown = keyboardFlightThrottleDown ? 1 : 0;
 
     if (gamepad) {
       const leftX = this.applyDeadzone(gamepad.axes?.[0] || 0);
@@ -347,6 +375,13 @@ export class InputManager {
         cameraPanX = rightX;
         cameraPanY = rightY;
         handbrake = context === CONTROL_CONTEXTS.VEHICLE && this.isButtonPressed(gamepad, 0);
+        if (context === CONTROL_CONTEXTS.AIRCRAFT) {
+          flightRoll = leftX;
+          flightPitch = leftY;
+          flightThrottleUp = this.getButtonValue(gamepad, 7);
+          flightThrottleDown = this.getButtonValue(gamepad, 6);
+          handbrake = this.isButtonPressed(gamepad, 0);
+        }
       }
 
       if (context === CONTROL_CONTEXTS.BUILDER && this.activeInterface === INPUT_INTERFACES.GAMEPAD) {
@@ -362,6 +397,11 @@ export class InputManager {
     this.state.moveY = moveY;
     this.state.cameraPanX = cameraPanX;
     this.state.cameraPanY = cameraPanY;
+    this.state.flightRoll = context === CONTROL_CONTEXTS.AIRCRAFT ? flightRoll : 0;
+    this.state.flightPitch = context === CONTROL_CONTEXTS.AIRCRAFT ? flightPitch : 0;
+    this.state.flightThrottleUp = context === CONTROL_CONTEXTS.AIRCRAFT ? flightThrottleUp : 0;
+    this.state.flightThrottleDown = context === CONTROL_CONTEXTS.AIRCRAFT ? flightThrottleDown : 0;
+    this.state.flightBrake = context === CONTROL_CONTEXTS.AIRCRAFT ? Number(handbrake) : 0;
     this.state.handbrake = handbrake;
 
   }
@@ -384,7 +424,11 @@ export class InputManager {
       ['up', 12], ['down', 13], ['left', 14], ['right', 15]
     ];
     for (const [direction, index] of dpadDirections) {
-      if (this.justPressed(`btn${index}`, pressed(index)) && context !== CONTROL_CONTEXTS.VEHICLE && context !== CONTROL_CONTEXTS.PEDESTRIAN) {
+      if (this.justPressed(`btn${index}`, pressed(index)) && ![
+        CONTROL_CONTEXTS.VEHICLE,
+        CONTROL_CONTEXTS.AIRCRAFT,
+        CONTROL_CONTEXTS.PEDESTRIAN
+      ].includes(context)) {
         this.moveUiFocus(direction);
       }
     }
@@ -410,6 +454,8 @@ export class InputManager {
     if (this.justPressed('btn2', pressed(2))) {
       if (context === CONTROL_CONTEXTS.BUILDER) {
         this.app?.uiManager?.cityEditorUI?.container?.querySelector?.('#btn-tool-delete')?.click?.();
+      } else if (context === CONTROL_CONTEXTS.AIRCRAFT) {
+        this.app?.aircraftSystem?.resetToRunway?.();
       } else {
         this.handleSecondaryAction();
       }
@@ -434,6 +480,10 @@ export class InputManager {
       if (context === CONTROL_CONTEXTS.MANAGEMENT || context === CONTROL_CONTEXTS.BUILDER) {
         this.app?.uiManager?.toggleCityEditor?.();
       } else {
+        if (context === CONTROL_CONTEXTS.AIRCRAFT) {
+          this.app?.aircraftSystem?.resetToRunway?.();
+          return;
+        }
         const physicsVehicle = this.app?.trafficSystem?.controlledVehicle?.physicsVehicle;
         if (typeof physicsVehicle?.resetPosition === 'function') {
           physicsVehicle.resetPosition();

@@ -13,6 +13,7 @@ const PRESET_COORDINATES = Object.freeze({
   // clear skyline sightline between the north and south building rows.
   downtown: Object.freeze({ pos: [122, 64, 0], target: [5, 19, 0] }),
   bridge: Object.freeze({ pos: [160, 28, 65], target: [160, 8, -15] }),
+  airfield: Object.freeze({ pos: [-24, 82, -126], target: [-105, 3, -260] }),
   rocket: Object.freeze({ pos: [670, 52, -245], target: [700, 28, -280] }),
   free: Object.freeze({ pos: [160, 95, 130], target: [80, 0, 0] })
 });

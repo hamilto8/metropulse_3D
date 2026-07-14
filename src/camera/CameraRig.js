@@ -157,9 +157,10 @@ export class CameraRig {
     const rotation = getPlanarTargetHeading(this.followTarget);
     const viewRotation = rotation + this.chaseYaw;
 
-    const isPhysicsCar = this.followTarget.physicsVehicle || this.followTarget.userControlled;
-    const distance = isPhysicsCar ? 15.0 : (this.followTarget.type === 'VEHICLE' ? 17.0 : 8.0);
-    const height = isPhysicsCar ? 4.5 : (this.followTarget.type === 'VEHICLE' ? 6.5 : 3.5);
+    const isAircraft = this.followTarget.type === 'AIRCRAFT';
+    const isPhysicsCar = !isAircraft && (this.followTarget.physicsVehicle || this.followTarget.userControlled);
+    const distance = isAircraft ? 28 : (isPhysicsCar ? 15.0 : (this.followTarget.type === 'VEHICLE' ? 17.0 : 8.0));
+    const height = isAircraft ? 9 : (isPhysicsCar ? 4.5 : (this.followTarget.type === 'VEHICLE' ? 6.5 : 3.5));
 
     const horizontalDistance = distance * Math.cos(this.chasePitch);
     const offsetX = -Math.sin(viewRotation) * horizontalDistance;
@@ -172,11 +173,13 @@ export class CameraRig {
     );
 
     // Dynamic look-ahead target along vehicle trajectory
-    const lookAtPos = new THREE.Vector3(targetPos.x, targetPos.y + 1.4, targetPos.z);
+    const lookAtPos = new THREE.Vector3(targetPos.x, targetPos.y + (isAircraft ? 2.2 : 1.4), targetPos.z);
 
-    if (isPhysicsCar) {
+    if (isPhysicsCar || isAircraft) {
       // Look ahead along forward heading so driver sees intersections ahead
-      const forwardDist = Math.min(6.0, Math.abs(this.followTarget.speed || 0) * 0.12);
+      const forwardDist = isAircraft
+        ? Math.min(14, Math.abs(this.followTarget.speed || 0) * 0.25)
+        : Math.min(6.0, Math.abs(this.followTarget.speed || 0) * 0.12);
       lookAtPos.x += Math.sin(rotation) * forwardDist;
       lookAtPos.z += Math.cos(rotation) * forwardDist;
     }
@@ -238,8 +241,9 @@ export class CameraRig {
 
       // Dynamic Speed FOV Warp
       if (this.followTarget && this.followTarget.speed !== undefined) {
-        const speedRatio = Math.min(1.0, Math.abs(this.followTarget.speed) / 130);
-        const targetFov = 60 + speedRatio * 16;
+        const isAircraft = this.followTarget.type === 'AIRCRAFT';
+        const speedRatio = Math.min(1.0, Math.abs(this.followTarget.speed) / (isAircraft ? 64 : 130));
+        const targetFov = 60 + speedRatio * (isAircraft ? 10 : 16);
         this.currentFov += (targetFov - this.currentFov) * Math.min(1.0, delta * 6.0);
         this.camera.fov = this.currentFov;
         this.camera.updateProjectionMatrix();

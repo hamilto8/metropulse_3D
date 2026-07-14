@@ -1,3 +1,5 @@
+import { getPropellerAudioProfile } from './AircraftAudio.js';
+
 export class AudioSystem {
   constructor(app = null) {
     this.app = app;
@@ -14,6 +16,7 @@ export class AudioSystem {
     this.rainGain = null;
     this.tornadoGain = null;
     this.panicGain = null;
+    this.aircraftAudio = null;
 
     // Timers for occasional procedural events
     this.birdTimer = 3.0;
@@ -597,6 +600,26 @@ export class AudioSystem {
     }
   }
 
+  startAircraftSound() {
+    if (!this.isEnabled || !this.ctx || this.aircraftAudio) return this.aircraftAudio || null;
+    this.aircraftAudio = new PropellerAudioNode(this);
+    return this.aircraftAudio;
+  }
+
+  updateAircraftSound(state, maxSpeed) {
+    if (!this.isEnabled || !this.ctx) return false;
+    if (!this.aircraftAudio) this.startAircraftSound();
+    this.aircraftAudio?.updateSound?.(state, maxSpeed);
+    return Boolean(this.aircraftAudio);
+  }
+
+  stopAircraftSound() {
+    if (!this.aircraftAudio) return false;
+    this.aircraftAudio.stop();
+    this.aircraftAudio = null;
+    return true;
+  }
+
   createEngineInstance(vType) {
     if (!this.isEnabled || !this.ctx) return null;
     return new EngineAudioNode(this, vType);
@@ -747,6 +770,103 @@ export class AudioSystem {
     subGain.connect(this.masterGain);
     subOsc.start(now);
     subOsc.stop(now + 1.5);
+  }
+}
+
+class PropellerAudioNode {
+  constructor(audioSystem) {
+    this.audioSystem = audioSystem;
+    this.ctx = audioSystem.ctx;
+    this.nodes = [];
+    this.initSound();
+  }
+
+  initSound() {
+    if (!this.ctx || !this.audioSystem.masterGain) return;
+    const now = this.ctx.currentTime;
+    this.outputGain = this.ctx.createGain();
+    this.outputGain.gain.setValueAtTime(0.001, now);
+
+    this.engineGain = this.ctx.createGain();
+    this.propellerGain = this.ctx.createGain();
+    this.airflowGain = this.ctx.createGain();
+    this.engineGain.gain.setValueAtTime(0.001, now);
+    this.propellerGain.gain.setValueAtTime(0.001, now);
+    this.airflowGain.gain.setValueAtTime(0.001, now);
+
+    this.engineFilter = this.ctx.createBiquadFilter();
+    this.engineFilter.type = 'lowpass';
+    this.engineFilter.frequency.setValueAtTime(760, now);
+    this.airflowFilter = this.ctx.createBiquadFilter();
+    this.airflowFilter.type = 'bandpass';
+    this.airflowFilter.frequency.setValueAtTime(980, now);
+    this.airflowFilter.Q.value = 0.72;
+
+    this.engineOsc = this.ctx.createOscillator();
+    this.engineOsc.type = 'sawtooth';
+    this.harmonicOsc = this.ctx.createOscillator();
+    this.harmonicOsc.type = 'triangle';
+    this.bladeOsc = this.ctx.createOscillator();
+    this.bladeOsc.type = 'square';
+
+    const profile = getPropellerAudioProfile();
+    this.engineOsc.frequency.setValueAtTime(profile.engineFrequency, now);
+    this.harmonicOsc.frequency.setValueAtTime(profile.harmonicFrequency, now);
+    this.bladeOsc.frequency.setValueAtTime(profile.bladeFrequency, now);
+
+    this.engineOsc.connect(this.engineGain);
+    this.harmonicOsc.connect(this.engineGain);
+    this.bladeOsc.connect(this.propellerGain);
+    this.engineGain.connect(this.engineFilter);
+    this.propellerGain.connect(this.engineFilter);
+    this.engineFilter.connect(this.outputGain);
+
+    const bufferLength = Math.max(1, Math.floor(this.ctx.sampleRate * 1.2));
+    const noiseBuffer = this.ctx.createBuffer(1, bufferLength, this.ctx.sampleRate);
+    const samples = noiseBuffer.getChannelData(0);
+    for (let index = 0; index < samples.length; index += 1) {
+      samples[index] = Math.random() * 2 - 1;
+    }
+    this.airflowSource = this.ctx.createBufferSource();
+    this.airflowSource.buffer = noiseBuffer;
+    this.airflowSource.loop = true;
+    this.airflowSource.connect(this.airflowFilter);
+    this.airflowFilter.connect(this.airflowGain);
+    this.airflowGain.connect(this.outputGain);
+
+    this.outputGain.connect(this.audioSystem.masterGain);
+    this.nodes = [this.engineOsc, this.harmonicOsc, this.bladeOsc, this.airflowSource];
+    for (const node of this.nodes) node.start(now);
+    this.outputGain.gain.setTargetAtTime(0.82, now, 0.16);
+  }
+
+  updateSound(state, maxSpeed) {
+    if (!this.ctx || !this.engineOsc) return;
+    const now = this.ctx.currentTime;
+    const profile = getPropellerAudioProfile(state, maxSpeed);
+    this.engineOsc.frequency.setTargetAtTime(profile.engineFrequency, now, 0.07);
+    this.harmonicOsc.frequency.setTargetAtTime(profile.harmonicFrequency, now, 0.06);
+    this.bladeOsc.frequency.setTargetAtTime(profile.bladeFrequency, now, 0.045);
+    this.engineFilter.frequency.setTargetAtTime(profile.filterFrequency, now, 0.08);
+    this.airflowFilter.frequency.setTargetAtTime(760 + profile.rpmRatio * 520, now, 0.12);
+    this.engineGain.gain.setTargetAtTime(profile.engineGain, now, 0.08);
+    this.propellerGain.gain.setTargetAtTime(profile.propellerGain, now, 0.055);
+    this.airflowGain.gain.setTargetAtTime(profile.airflowGain, now, 0.12);
+  }
+
+  stop() {
+    if (!this.ctx || !this.outputGain) return;
+    const now = this.ctx.currentTime;
+    this.outputGain.gain.setValueAtTime(Math.max(0.001, this.outputGain.gain.value), now);
+    this.outputGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    const nodes = [...this.nodes];
+    setTimeout(() => {
+      for (const node of nodes) {
+        try { node.stop(); } catch (_error) { /* already stopped */ }
+      }
+      this.nodes = [];
+      this.engineOsc = null;
+    }, 350);
   }
 }
 

@@ -7,6 +7,7 @@ export const CONTROL_CONTEXTS = Object.freeze({
   MANAGEMENT: 'MANAGEMENT',
   BUILDER: 'BUILDER',
   VEHICLE: 'VEHICLE',
+  AIRCRAFT: 'AIRCRAFT',
   PEDESTRIAN: 'PEDESTRIAN',
   DIALOGUE: 'DIALOGUE'
 });
@@ -107,6 +108,31 @@ const ACTION_BINDINGS = Object.freeze({
     keyboard: Object.freeze([mouse('Right drag')]),
     gamepad: Object.freeze([stick('RS')])
   }),
+  AIR_ROLL: Object.freeze({
+    action: 'AIR_ROLL', label: 'Bank / steer',
+    keyboard: Object.freeze([key('A / D')]),
+    gamepad: Object.freeze([stick('LS ↔')])
+  }),
+  AIR_PITCH: Object.freeze({
+    action: 'AIR_PITCH', label: 'Pitch',
+    keyboard: Object.freeze([key('↑ / ↓')]),
+    gamepad: Object.freeze([stick('LS ↕')])
+  }),
+  AIR_THROTTLE: Object.freeze({
+    action: 'AIR_THROTTLE', label: 'Throttle',
+    keyboard: Object.freeze([key('W / S')]),
+    gamepad: Object.freeze([xbox('RT / LT')])
+  }),
+  AIR_BRAKE: Object.freeze({
+    action: 'AIR_BRAKE', label: 'Wheel brake',
+    keyboard: Object.freeze([key('Space')]),
+    gamepad: Object.freeze([xbox('A', 'green')])
+  }),
+  AIR_RESET: Object.freeze({
+    action: 'AIR_RESET', label: 'Runway recovery',
+    keyboard: Object.freeze([key('R')]),
+    gamepad: Object.freeze([xbox('X', 'blue')])
+  }),
   JUMP: Object.freeze({
     action: 'JUMP', label: 'Jump',
     keyboard: Object.freeze([key('Space')]),
@@ -128,6 +154,7 @@ const CONTEXT_ACTIONS = Object.freeze({
   [CONTROL_CONTEXTS.MANAGEMENT]: Object.freeze(['ORBIT', 'SELECT', 'NAVIGATE', 'BUILD', 'MODE']),
   [CONTROL_CONTEXTS.BUILDER]: Object.freeze(['AIM', 'PLACE', 'ROTATE', 'DELETE', 'NAVIGATE', 'BACK']),
   [CONTROL_CONTEXTS.VEHICLE]: Object.freeze(['DRIVE', 'THROTTLE', 'BRAKE', 'INTERACT', 'HANDBRAKE', 'CAMERA', 'HORN', 'MODE']),
+  [CONTROL_CONTEXTS.AIRCRAFT]: Object.freeze(['AIR_ROLL', 'AIR_PITCH', 'AIR_THROTTLE', 'AIR_BRAKE', 'CAMERA', 'INTERACT', 'AIR_RESET']),
   [CONTROL_CONTEXTS.PEDESTRIAN]: Object.freeze(['MOVE', 'JUMP', 'INTERACT', 'ATTACK', 'CAMERA', 'MODE']),
   [CONTROL_CONTEXTS.DIALOGUE]: Object.freeze(['NAVIGATE', 'CONFIRM', 'BACK'])
 });
