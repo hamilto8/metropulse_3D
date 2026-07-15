@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getBuildingSpec } from './BuildingCatalog.js';
+import { createBuildingEconomyRecord } from '../systems/BuildingEconomyAdapter.js';
 
 const WORLD_BOUNDS = Object.freeze({
   minX: -190,
@@ -19,6 +20,8 @@ const CORE_LANDMARKS = Object.freeze([
 const EXISTING_ROAD_X = Object.freeze([-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750]);
 const EXISTING_ROAD_Z = Object.freeze([-100, -50, 0, 50, 100]);
 const ROAD_HALF_WIDTH_WITH_CLEARANCE = 9;
+const ZONE_PARCEL_SIZE = 30;
+const ZONING_COST = 2_500;
 
 const ZONE_DEFINITIONS = Object.freeze({
   RES: { canonical: 'RESIDENTIAL', color: 0x22c55e, happiness: 1.2, landValue: 1.5 },
@@ -97,7 +100,7 @@ export class CityEditorSystem {
   }
 
   createZoneOverlayMesh(x, z, definition) {
-    const size = this.snapSize * 3.6;
+    const size = ZONE_PARCEL_SIZE - 1;
     const segments = Math.max(2, Math.ceil(size / 6));
     const geometry = new THREE.PlaneGeometry(size, size, segments, segments);
     geometry.rotateX(-Math.PI / 2);
@@ -277,17 +280,41 @@ export class CityEditorSystem {
   rotateSelection() {
     if (this.selectedStructure && (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE')) {
       const building = this.selectedStructure;
+      const nextRotation = (building.group.rotation.y + Math.PI / 2) % (Math.PI * 2);
+      if (!this.isPlacementValid({
+        spec: building.spec,
+        rotationY: nextRotation,
+        x: building.plot.x,
+        y: building.plot.y,
+        z: building.plot.z,
+        ignoreBuilding: building,
+        allowCountrysideReplacement: true,
+        ignorePlayer: true
+      })) {
+        this.app.uiManager?.showToast(`⚠️ ${building.name} cannot rotate here`);
+        return false;
+      }
       const isRoad = building.spec?.generatorType === 'ROAD_SEGMENT';
       if (isRoad) this.app.trafficSystem?.unregisterRoadSegment?.(building, building.spec);
-      building.group.rotation.y = (building.group.rotation.y + Math.PI / 2) % (Math.PI * 2);
+      building.group.rotation.y = nextRotation;
       this.rotationY = building.group.rotation.y;
       const quarterTurns = Math.round(this.rotationY / (Math.PI / 2)) % 2;
       const width = building.spec?.footprint?.width || building.plot.width;
       const depth = building.spec?.footprint?.depth || building.plot.depth;
       building.plot.width = quarterTurns === 0 ? width : depth;
       building.plot.depth = quarterTurns === 0 ? depth : width;
-      if (building.physicsBody?.quaternion) {
-        building.physicsBody.quaternion.setFromAxisAngle({ x: 0, y: 1, z: 0 }, this.rotationY);
+      const colliderShape = building.physicsBody?.shapes?.[0];
+      if (colliderShape?.halfExtents) {
+        const height = building.spec?.height || 30;
+        colliderShape.halfExtents.set(
+          Math.max(1, building.plot.width - 2) * 0.5,
+          height * 0.5,
+          Math.max(1, building.plot.depth - 2) * 0.5
+        );
+        colliderShape.updateConvexPolyhedronRepresentation?.();
+        building.physicsBody.updateBoundingRadius?.();
+        building.physicsBody.quaternion.set(0, 0, 0, 1);
+        building.physicsBody.aabbNeedsUpdate = true;
       }
       if (isRoad) this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
       this.selectionHelper?.update?.();
@@ -488,7 +515,13 @@ export class CityEditorSystem {
   } = {}) {
     if (!spec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
 
-    const placementRect = this.getPlacementRect(x, z, 2, spec, rotationY);
+    const zone = this.getZoneAt(x, z);
+    if (zone && !this.isSpecCompatibleWithZone(spec, zone.zoneType)) return false;
+
+    // Road sockets are authored edge-to-edge. Generic building clearance would
+    // force a visual gap even though the traffic graph connected the nodes.
+    const clearance = spec.generatorType === 'ROAD_SEGMENT' ? 0 : 2;
+    const placementRect = this.getPlacementRect(x, z, clearance, spec, rotationY);
     if (
       placementRect.minX < WORLD_BOUNDS.minX ||
       placementRect.maxX > WORLD_BOUNDS.maxX ||
@@ -540,15 +573,50 @@ export class CityEditorSystem {
     return this.isDistrictUnlocked(x, z, spec);
   }
 
+  getZoneAt(x, z) {
+    for (const parcel of this.zoneParcels?.values?.() || []) {
+      if (
+        Math.abs(parcel.x - x) < ZONE_PARCEL_SIZE / 2
+        && Math.abs(parcel.z - z) < ZONE_PARCEL_SIZE / 2
+      ) return parcel;
+    }
+    return null;
+  }
+
+  isSpecCompatibleWithZone(spec, zoneType) {
+    if (!spec || !zoneType || spec.category === 'INFRASTRUCTURE') return true;
+    const allowed = {
+      RESIDENTIAL: ['RESIDENTIAL'],
+      COMMERCIAL: ['COMMERCIAL', 'OFFICE'],
+      INDUSTRIAL: ['INDUSTRIAL'],
+      CIVIC: ['RESIDENTIAL', 'COMMERCIAL', 'OFFICE', 'FIRE_SERVICE'],
+      UTILITIES: ['POWER_SERVICE', 'WATER_SERVICE', 'FIRE_SERVICE', 'INDUSTRIAL']
+    };
+    return (allowed[spec.category] || []).includes(zoneType);
+  }
+
   checkZoningValidity(x, z, y = 0) {
     if (!this.zoningMode || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-    if (x < WORLD_BOUNDS.minX || x > WORLD_BOUNDS.maxX || z < WORLD_BOUNDS.minZ || z > WORLD_BOUNDS.maxZ) {
+    const parcelX = Math.round(x / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
+    const parcelZ = Math.round(z / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
+    const halfSize = ZONE_PARCEL_SIZE / 2;
+    if (
+      parcelX - halfSize < WORLD_BOUNDS.minX
+      || parcelX + halfSize > WORLD_BOUNDS.maxX
+      || parcelZ - halfSize < WORLD_BOUNDS.minZ
+      || parcelZ + halfSize > WORLD_BOUNDS.maxZ
+    ) {
       return false;
     }
-    const parcel = { minX: x - 5, maxX: x + 5, minZ: z - 5, maxZ: z + 5 };
+    const parcel = {
+      minX: parcelX - halfSize,
+      maxX: parcelX + halfSize,
+      minZ: parcelZ - halfSize,
+      maxZ: parcelZ + halfSize
+    };
     if (CORE_LANDMARKS.some(landmark => rectsOverlap(parcel, landmark))) return false;
     if (this.overlapsWater(parcel, y)) return false;
-    return this.isDistrictUnlocked(x, z, { id: `ZONE_${this.zoningMode}`, category: this.zoningMode });
+    return this.isDistrictUnlocked(parcelX, parcelZ, { id: `ZONE_${this.zoningMode}`, category: this.zoningMode });
   }
 
   overlapsExistingRoad(rect) {
@@ -714,47 +782,17 @@ export class CityEditorSystem {
     const id = building.economyId || building.id || `USER_BUILDING_${this.nextUserBuildingId++}`;
     building.economyId = id;
     building.id = building.id || id;
-    const happinessModifier = Number(spec.happiness ?? spec.happinessModifier ?? 0);
-    const amenityRadius = Math.max(0, Number(spec.amenityRadius ?? 0));
-    const sourcePosition = building.plot || building.group?.position;
-    const position = Number.isFinite(sourcePosition?.x) && Number.isFinite(sourcePosition?.z)
-      ? { x: sourcePosition.x, z: sourcePosition.z }
-      : undefined;
+    return createBuildingEconomyRecord(building, { spec, id });
+  }
 
-    return {
-      id,
-      name: building.name || spec.name || id,
-      kind: spec.category || spec.generatorType || spec.id,
-      value: Math.max(0, Number(spec.value ?? spec.cost ?? 0)),
-      employees: Math.max(0, Math.round(Number(spec.employees || 0))),
-      population: Math.max(0, Math.round(Number(spec.residents || spec.population || 0))),
-      status: spec.status || 'ACTIVE',
-      operational: true,
-      // EconomySystem currently models positive passive income; upkeep remains
-      // available on the source spec for a future expense system.
-      passiveIncomeRate: Math.max(0, Number(spec.incomePerMinute || 0) / 60),
-      happinessModifier,
-      landValueModifier: Number(
-        spec.landValueModifier
-        ?? (happinessModifier * 0.6 + (amenityRadius > 0 ? 3 : 0))
-      ),
-      position,
-      amenityRadius,
-      services: {
-        power: {
-          capacity: Math.max(0, Number(spec.powerSupply || 0)),
-          demand: Math.max(0, Number(spec.powerDemand || 0))
-        },
-        water: {
-          capacity: Math.max(0, Number(spec.waterSupply || 0)),
-          demand: Math.max(0, Number(spec.waterDemand || 0))
-        },
-        fire: {
-          capacity: Math.max(0, Number(spec.fireCoverage || 0)),
-          demand: Math.max(0, Number(spec.fireDemand || 0))
-        }
-      }
-    };
+  reserveUserBuildingId(id) {
+    const match = /^USER_BUILDING_(\d+)$/.exec(String(id || ''));
+    if (!match) return this.nextUserBuildingId;
+    this.nextUserBuildingId = Math.max(
+      this.nextUserBuildingId,
+      Number(match[1]) + 1
+    );
+    return this.nextUserBuildingId;
   }
 
   notifyStructureRegistered(building, spec) {
@@ -900,8 +938,9 @@ export class CityEditorSystem {
     const definition = Object.values(ZONE_DEFINITIONS).find(entry => entry.canonical === this.zoningMode);
     if (!definition) return false;
 
-    const { x, y, z } = this.currentHit;
-    const key = `${Math.round(x / this.snapSize)},${Math.round(z / this.snapSize)}`;
+    const x = Math.round(this.currentHit.x / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
+    const z = Math.round(this.currentHit.z / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
+    const key = `${Math.round(x / ZONE_PARCEL_SIZE)},${Math.round(z / ZONE_PARCEL_SIZE)}`;
     const previous = this.zoneParcels.get(key);
     if (previous?.zoneType === definition.canonical) {
       this.app.uiManager?.showToast(`ℹ️ Parcel is already zoned ${definition.canonical}`);
@@ -909,12 +948,26 @@ export class CityEditorSystem {
     }
 
     const economy = this.getEconomyController();
+    const building = (this.app.buildingFactory?.buildings || []).find(candidate => {
+      if (!candidate?.plot || candidate.isDestroyed) return false;
+      return Math.abs(candidate.plot.x - x) <= (candidate.plot.width || 30) / 2
+        && Math.abs(candidate.plot.z - z) <= (candidate.plot.depth || 30) / 2;
+    });
+    if (building?.spec && !this.isSpecCompatibleWithZone(building.spec, definition.canonical)) {
+      this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.canonical} zoning`);
+      return false;
+    }
+    if (typeof economy?.spend === 'function' && !economy.spend(ZONING_COST, {
+      source: 'zoning',
+      referenceId: key
+    })) {
+      this.app.uiManager?.showToast(`💳 Rezoning requires $${ZONING_COST.toLocaleString()}`);
+      return false;
+    }
     if (previous) {
       previous.mesh?.removeFromParent();
       previous.mesh?.geometry?.dispose();
       previous.mesh?.material?.dispose();
-      economy?.adjustHappiness?.(-previous.happinessModifier);
-      economy?.adjustLandValue?.(-previous.landValueModifier);
     }
 
     const mesh = this.createZoneOverlayMesh(x, z, definition);
@@ -930,14 +983,24 @@ export class CityEditorSystem {
       mesh
     };
     this.zoneParcels.set(key, parcel);
-    economy?.adjustHappiness?.(definition.happiness);
-    economy?.adjustLandValue?.(definition.landValue);
-
-    const building = (this.app.buildingFactory?.buildings || []).find(candidate => {
-      if (!candidate?.plot || candidate.isDestroyed) return false;
-      return Math.abs(candidate.plot.x - x) <= (candidate.plot.width || 30) / 2
-        && Math.abs(candidate.plot.z - z) <= (candidate.plot.depth || 30) / 2;
-    });
+    if (typeof economy?.setZoneEffect === 'function') {
+      economy.setZoneEffect({
+        id: key,
+        type: definition.canonical,
+        x,
+        z,
+        happinessModifier: definition.happiness,
+        landValueModifier: definition.landValue
+      });
+    } else {
+      // Compatibility for alternate economy providers without explicit zones.
+      if (previous) {
+        economy?.adjustHappiness?.(-previous.happinessModifier);
+        economy?.adjustLandValue?.(-previous.landValueModifier);
+      }
+      economy?.adjustHappiness?.(definition.happiness);
+      economy?.adjustLandValue?.(definition.landValue);
+    }
     if (building) {
       building.zone = definition.canonical;
       building.status = `Rezoned: ${definition.canonical}`;
@@ -948,7 +1011,7 @@ export class CityEditorSystem {
     }
 
     this.app.uiManager?.addAlert(
-      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.canonical}.`,
+      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.canonical} (-$${ZONING_COST.toLocaleString()}).`,
       'success'
     );
     this.app.persistenceSystem?.scheduleSave?.();
@@ -984,7 +1047,7 @@ export class CityEditorSystem {
       if (!definition || !Number.isFinite(record.x) || !Number.isFinite(record.z)) continue;
       const key = typeof record.key === 'string'
         ? record.key
-        : `${Math.round(record.x / this.snapSize)},${Math.round(record.z / this.snapSize)}`;
+        : `${Math.round(record.x / ZONE_PARCEL_SIZE)},${Math.round(record.z / ZONE_PARCEL_SIZE)}`;
       if (this.zoneParcels.has(key)) continue;
       const mesh = this.createZoneOverlayMesh(record.x, record.z, definition);
       this.zoneOverlayGroup.add(mesh);
@@ -997,6 +1060,17 @@ export class CityEditorSystem {
         landValueModifier: Number(record.landValueModifier ?? definition.landValue),
         mesh
       });
+      const economy = this.getEconomyController();
+      if (typeof economy?.setZoneEffect === 'function' && !economy.getZoneEffect?.(key)) {
+        economy.setZoneEffect({
+          id: key,
+          type: definition.canonical,
+          x: record.x,
+          z: record.z,
+          happinessModifier: Number(record.happinessModifier ?? definition.happiness),
+          landValueModifier: Number(record.landValueModifier ?? definition.landValue)
+        });
+      }
     }
     this.syncZoneOverlayVisibility();
     return this.zoneParcels.size;

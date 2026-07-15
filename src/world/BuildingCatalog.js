@@ -425,5 +425,5 @@ export function getCatalogByCategory(category) {
 }
 
 export function getBuildingSpec(id) {
-  return BUILDING_CATALOG.find(item => item.id === id) || BUILDING_CATALOG[0];
+  return BUILDING_CATALOG.find(item => item.id === id) || null;
 }

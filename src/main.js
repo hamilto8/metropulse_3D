@@ -29,6 +29,7 @@ import { EconomySystem } from './systems/EconomySystem.js';
 import { GameManager } from './core/GameManager.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
+import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
 
 class MetroPulseApp {
   constructor() {
@@ -38,8 +39,8 @@ class MetroPulseApp {
     this.gameManager = new GameManager();
     this.nextEconomyBuildingId = 1;
     this.economySystem = new EconomySystem({
-      initialTreasury: 1_250_300,
-      passiveIncomeRate: 350,
+      initialTreasury: 650_000,
+      passiveIncomeRate: 8,
       population: 2450,
       happiness: 72,
       landValue: 100,
@@ -49,7 +50,7 @@ class MetroPulseApp {
         water: { capacity: 100, demand: 82 },
         fire: { capacity: 70, demand: 60 }
       },
-      eastDistrictUnlockCost: 500_000
+      eastDistrictUnlockCost: 1_000_000
     });
 
     // 0. Physics World (cannon-es Phase 1 prototype)
@@ -194,41 +195,13 @@ class MetroPulseApp {
     const spec = building?.spec || {};
     const id = building?.economyId || fallbackId || `building-${this.nextEconomyBuildingId++}`;
     building.economyId = id;
-    const estimatedEmployees = Number(building.employees ?? spec.employees ?? Math.max(0, Math.round((building.height || 20) * 8)));
-    const estimatedValue = Number(building.value ?? spec.value ?? spec.cost ?? Math.max(50_000, (building.height || 20) * 8_500));
-    const population = Number(spec.residents ?? building.residents ?? 0);
-    const serviceCapacity = {
-      power: Number(spec.powerSupply ?? 0),
-      water: Number(spec.waterSupply ?? 0),
-      fire: Number(spec.fireCoverage ?? 0)
-    };
-    const serviceDemand = {
-      power: Number(spec.powerDemand ?? (building.isUserPlaced ? 4 : 0)),
-      water: Number(spec.waterDemand ?? (building.isUserPlaced ? 3 : 0)),
-      fire: Number(spec.fireDemand ?? (building.isUserPlaced ? 2 : 0))
-    };
-    const sourcePosition = building.plot || building.group?.position;
-    const position = Number.isFinite(sourcePosition?.x) && Number.isFinite(sourcePosition?.z)
-      ? { x: sourcePosition.x, z: sourcePosition.z }
-      : undefined;
-
-    return {
+    return createBuildingEconomyRecord(building, {
+      spec,
       id,
-      name: building.name || spec.name || id,
-      kind: spec.category || building.businessType || building.type || 'COMMERCIAL',
-      value: estimatedValue,
-      employees: estimatedEmployees,
-      population,
-      status: building.status || spec.status || 'Operational',
-      operational: !building.isDestroyed,
-      passiveIncomeRate: Math.max(0, Number(spec.incomePerMinute ?? (building.isUserPlaced ? 1200 : 900)) / 60),
-      happinessModifier: Number(spec.happiness ?? 0),
-      landValueModifier: Number(spec.happiness ?? 0) * 0.6 + (spec.amenityRadius ? 3 : 0),
-      position,
-      amenityRadius: Number(spec.amenityRadius ?? 0),
-      serviceCapacity,
-      serviceDemand
-    };
+      fallbackIncomePerMinute: building.isUserPlaced ? 1_200 : 0,
+      fallbackEmployees: Math.max(0, Math.round((building.height || 20) * 8)),
+      fallbackValue: Math.max(50_000, (building.height || 20) * 8_500)
+    });
   }
 
   registerEconomyBuilding(building, fallbackId = null) {
@@ -297,7 +270,10 @@ class MetroPulseApp {
     if (this.cityBuilder && this.cityBuilder.update) {
       this.cityBuilder.update(delta);
     }
-    this.economyAccumulator += delta;
+    const economyDelta = this.timeManager.isPlaying
+      ? delta * this.timeManager.speed
+      : 0;
+    this.economyAccumulator += economyDelta;
     if (this.economyAccumulator >= 1) {
       this.economySystem.update(this.economyAccumulator);
       this.economyAccumulator = 0;

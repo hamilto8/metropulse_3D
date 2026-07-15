@@ -51,6 +51,61 @@ test('deterministic update applies base and operational-building passive income'
   assert.throws(() => economy.update(-1), /deltaSeconds/);
 });
 
+test('operating upkeep produces deterministic deficits without allowing invalid negative cash', () => {
+  const economy = new EconomySystem({ initialTreasury: 100 });
+  economy.registerBuilding({
+    id: 'public-clinic',
+    grossIncomeRate: 2,
+    operatingCostRate: 5
+  });
+
+  assert.equal(economy.getBudgetBreakdown().netRate, -3);
+  assert.equal(economy.update(10), -30);
+  assert.equal(economy.treasury, 70);
+  assert.equal(economy.update(100), -70);
+  assert.equal(economy.treasury, 0);
+  assert.equal(economy.snapshot().fiscalStatus, 'INSOLVENT');
+});
+
+test('jobs, housing, demand, and happiness expose an explainable labor-market feedback loop', () => {
+  const economy = new EconomySystem({ population: 100, happiness: 70 });
+  economy.registerBuilding({ id: 'workshop', jobCapacity: 31 });
+
+  const state = economy.snapshot();
+  assert.equal(state.demographics.workforce, 62);
+  assert.equal(state.demographics.employed, 31);
+  assert.equal(state.demographics.unemploymentRate, 0.5);
+  assert.equal(state.happinessBreakdown.employment, -7.5);
+  assert.equal(state.cityPulse.happiness, 62.5);
+  assert.ok(state.demand.industrial > 0);
+});
+
+test('zoning effects replace and remove cleanly without clamping the base happiness value', () => {
+  const economy = new EconomySystem({ happiness: 99, landValue: 100 });
+  economy.setZoneEffect({
+    id: '0,0',
+    type: 'RESIDENTIAL',
+    x: 0,
+    z: 0,
+    happinessModifier: 4,
+    landValueModifier: 2
+  });
+  assert.equal(economy.snapshot().cityPulse.happiness, 100);
+
+  economy.setZoneEffect({
+    id: '0,0',
+    type: 'INDUSTRIAL',
+    x: 0,
+    z: 0,
+    happinessModifier: -2,
+    landValueModifier: -1
+  });
+  assert.equal(economy.snapshot().cityPulse.happiness, 97);
+  economy.removeZoneEffect('0,0');
+  assert.equal(economy.snapshot().cityPulse.happiness, 99);
+  assert.equal(economy.snapshot().cityPulse.landValue, 100);
+});
+
 test('buildings contribute data, population, happiness, land value, and services', () => {
   const economy = new EconomySystem({
     population: 100,

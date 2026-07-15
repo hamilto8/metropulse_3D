@@ -59,3 +59,12 @@ test('move tool updates world, physics, traffic, and economy coordinates atomica
   assert.deepEqual({ x: building.plot.x, y: building.plot.y, z: building.plot.z }, { x: 40, y: 2, z: 50 });
   assert.deepEqual(calls.map(call => call[0]), ['road-off', 'remove', 'group', 'register', 'road-on', 'save']);
 });
+
+test('restored user-building identifiers reseed the placement allocator', () => {
+  const editor = Object.create(CityEditorSystem.prototype);
+  editor.nextUserBuildingId = 1;
+
+  assert.equal(editor.reserveUserBuildingId('USER_BUILDING_7'), 8);
+  assert.equal(editor.reserveUserBuildingId('existing-12'), 8);
+  assert.equal(editor.reserveUserBuildingId('USER_BUILDING_3'), 8);
+});

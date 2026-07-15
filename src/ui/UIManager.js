@@ -29,6 +29,9 @@ export class UIManager {
     this.pulseCash = document.getElementById('pulse-cash');
     this.pulseEnergy = document.getElementById('pulse-energy');
     this.pulseHappiness = document.getElementById('pulse-happiness');
+    this.pulseEmployment = document.getElementById('pulse-employment');
+    this.pulseCashflow = document.getElementById('pulse-cashflow');
+    this.pulseDemand = document.getElementById('pulse-demand');
     this.pulseLandValue = document.getElementById('pulse-land-value');
     this.pulseReputation = document.getElementById('pulse-reputation');
     this.pulseServices = document.getElementById('pulse-services');
@@ -510,11 +513,13 @@ export class UIManager {
 
     if (this.btnUnlockEast) {
       this.btnUnlockEast.addEventListener('click', () => {
-        const result = this.app.economySystem?.unlockDistrict?.('EAST_CYBER_METROPOLIS', 500000);
+        const result = this.app.economySystem?.unlockDistrict?.('EAST_CYBER_METROPOLIS');
         if (result?.success || result === true) {
           this.addAlert('🏙️ East Cyber-Metropolis unlocked for development.', 'success');
         } else {
-          this.showToast(result?.reason || '⚠️ $500,000 capital investment required.');
+          const district = this.app.economySystem?.snapshot?.().districts?.EAST_CYBER_METROPOLIS;
+          const cost = Number(district?.unlockCost ?? 1_000_000);
+          this.showToast(result?.reason || `⚠️ $${cost.toLocaleString()} capital investment required.`);
         }
       });
     }
@@ -755,6 +760,36 @@ export class UIManager {
     if (this.pulseCash) this.pulseCash.textContent = currency;
     if (this.pulseEnergy) this.pulseEnergy.textContent = `${energy}%`;
     if (this.pulseHappiness) this.pulseHappiness.textContent = `${happiness}%`;
+    const demographics = state.demographics || pulse.demographics || {};
+    const employment = Math.round(Number(demographics.employmentRate ?? 1) * 100);
+    if (this.pulseEmployment) {
+      this.pulseEmployment.textContent = `${employment}%`;
+      this.pulseEmployment.title = `${Number(demographics.employed ?? 0).toLocaleString()} employed · ${Number(demographics.availableJobs ?? 0).toLocaleString()} open jobs`;
+    }
+    const budget = state.budgetBreakdown || pulse.budgetBreakdown || {};
+    const netRate = Number(budget.netRate ?? state.passiveIncomeRate ?? 0);
+    if (this.pulseCashflow) {
+      const sign = netRate >= 0 ? '+' : '−';
+      this.pulseCashflow.textContent = `${sign}$${Math.abs(netRate * 60).toLocaleString('en-US', { maximumFractionDigits: 0 })}/min`;
+      this.pulseCashflow.style.color = netRate >= 0 ? '#00ff88' : '#f87171';
+      this.pulseCashflow.title = `Revenue $${Number(budget.adjustedRevenueRate ?? 0) * 60}/min · Upkeep $${Number(budget.operatingCostRate ?? 0) * 60}/min`;
+    }
+    const demand = state.demand || {};
+    if (this.pulseDemand) {
+      this.pulseDemand.textContent = `${Math.round(demand.residential ?? 0)}/${Math.round(demand.commercial ?? 0)}/${Math.round(demand.industrial ?? 0)}`;
+      this.pulseDemand.title = 'Residential / Commercial / Industrial development demand';
+    }
+    const happinessBreakdown = state.happinessBreakdown;
+    if (this.pulseHappiness && happinessBreakdown) {
+      this.pulseHappiness.title = [
+        `Base ${happinessBreakdown.baseline}`,
+        `Buildings ${happinessBreakdown.buildings >= 0 ? '+' : ''}${happinessBreakdown.buildings.toFixed(1)}`,
+        `Zoning ${happinessBreakdown.zoning >= 0 ? '+' : ''}${happinessBreakdown.zoning.toFixed(1)}`,
+        `Services ${happinessBreakdown.services.toFixed(1)}`,
+        `Jobs ${happinessBreakdown.employment.toFixed(1)}`,
+        `Incidents ${happinessBreakdown.incidents.toFixed(1)}`
+      ].join(' · ');
+    }
     if (this.pulseLandValue) this.pulseLandValue.textContent = landValue.toLocaleString('en-US');
     if (this.pulseReputation) this.pulseReputation.textContent = String(reputation);
     if (this.pulseServices) {
@@ -770,9 +805,13 @@ export class UIManager {
     }
 
     if (this.btnUnlockEast) {
-      const unlocked = state.unlockedDistricts?.includes?.('EAST_CYBER_METROPOLIS') || state.districts?.EAST_CYBER_METROPOLIS === true;
+      const district = state.districts?.EAST_CYBER_METROPOLIS;
+      const unlocked = state.unlockedDistricts?.includes?.('EAST_CYBER_METROPOLIS') || district?.unlocked === true;
+      const unlockCost = Number(district?.unlockCost ?? 1_000_000);
       this.btnUnlockEast.disabled = !!unlocked;
-      this.btnUnlockEast.textContent = unlocked ? '✅ East District Unlocked' : '🏙️ Unlock East District ($500k)';
+      this.btnUnlockEast.textContent = unlocked
+        ? '✅ East District Unlocked'
+        : `🏙️ Unlock East District ($${Math.round(unlockCost / 1_000)}k)`;
     }
   }
 

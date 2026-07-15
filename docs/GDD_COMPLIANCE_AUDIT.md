@@ -1,5 +1,13 @@
 # MetroPulse 3D GDD Compliance Audit
 
+> **2026-07-15 follow-up:** The city simulation has since gained a canonical
+> building-economy adapter, explicit operating upkeep, fiscal states,
+> housing/jobs/employment and R/C/I demand, an explainable happiness breakdown,
+> paid reversible zoning with build compatibility, simulation-clock cash flow,
+> and restore hardening for IDs, rotated colliders, unknown specs, and economy
+> ghosts. See `CITY_ECONOMY_ARCHITECTURE.md`. Historical test counts and the
+> builder-depth limitations below describe the earlier 2026-07-11 audit tree.
+
 ## Audit identity
 
 | Field | Value |

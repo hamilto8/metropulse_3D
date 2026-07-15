@@ -114,8 +114,15 @@ export class PersistenceSystem {
     for (const saved of world.buildings) {
       const spec = getBuildingSpec(saved.specId);
       const plot = saved.plot;
-      if (!spec || !plot || !Number.isFinite(plot.x) || !Number.isFinite(plot.z)) continue;
-      if (plot.x < -190 || plot.x > 810 || plot.z < -390 || plot.z > 390) continue;
+      const validCoordinates = plot && Number.isFinite(plot.x) && Number.isFinite(plot.z);
+      const inBounds = validCoordinates
+        && plot.x >= -190 && plot.x <= 810
+        && plot.z >= -390 && plot.z <= 390;
+      if (!spec || !inBounds) {
+        report.skippedBuildings += 1;
+        if (saved.economyId) this.app.economySystem?.removeBuilding?.(saved.economyId);
+        continue;
+      }
       const rotationY = Number.isFinite(saved.rotationY) ? saved.rotationY : 0;
       const quarterTurns = Math.abs(Math.round(rotationY / (Math.PI / 2))) % 2;
       const safePlot = {
@@ -156,13 +163,13 @@ export class PersistenceSystem {
       building.plot.width = safePlot.width;
       building.plot.depth = safePlot.depth;
       building.economyId = saved.economyId || building.economyId;
+      this.app.cityEditorSystem?.reserveUserBuildingId?.(building.economyId);
       if (this.app.physicsWorld && spec.generatorType !== 'ROAD_SEGMENT' && spec.generatorType !== 'PARK_PLAZA') {
         const height = spec.height || 30;
         building.physicsBody = this.app.physicsWorld.addStaticBoxCollider(
           new THREE.Vector3(safePlot.x, safePlot.y + height * 0.5, safePlot.z),
           new THREE.Vector3(Math.max(1, safePlot.width - 2), height, Math.max(1, safePlot.depth - 2))
         );
-        building.physicsBody.quaternion.setFromAxisAngle({ x: 0, y: 1, z: 0 }, rotationY);
       }
       if (spec.generatorType === 'ROAD_SEGMENT') {
         this.app.trafficSystem?.registerRoadSegment?.(building, spec);

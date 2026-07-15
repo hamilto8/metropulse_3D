@@ -23,6 +23,7 @@ export const ECONOMY_EVENTS = Object.freeze({
   TREASURY_CHANGED: 'TREASURY_CHANGED',
   PASSIVE_INCOME_CHANGED: 'PASSIVE_INCOME_CHANGED',
   PASSIVE_INCOME_EARNED: 'PASSIVE_INCOME_EARNED',
+  OPERATING_EXPENSE_PAID: 'OPERATING_EXPENSE_PAID',
   BUILDING_REGISTERED: 'BUILDING_REGISTERED',
   BUILDING_REMOVED: 'BUILDING_REMOVED',
   MISSION_COMPLETED: 'MISSION_COMPLETED',
@@ -32,6 +33,7 @@ export const ECONOMY_EVENTS = Object.freeze({
   REPUTATION_CHANGED: 'REPUTATION_CHANGED',
   SERVICE_CHANGED: 'SERVICE_CHANGED',
   CITY_PULSE_CHANGED: 'CITY_PULSE_CHANGED',
+  ZONE_CHANGED: 'ZONE_CHANGED',
   DISTRICT_UNLOCKED: 'DISTRICT_UNLOCKED',
   STATE_RESTORED: 'STATE_RESTORED',
   SNAPSHOT: 'SNAPSHOT'
@@ -237,6 +239,22 @@ function normalizeBuilding(building) {
       building.passiveIncomeRate ?? 0,
       'building.passiveIncomeRate'
     ),
+    grossIncomeRate: assertNonNegative(
+      building.grossIncomeRate ?? building.passiveIncomeRate ?? 0,
+      'building.grossIncomeRate'
+    ),
+    operatingCostRate: assertNonNegative(
+      building.operatingCostRate ?? 0,
+      'building.operatingCostRate'
+    ),
+    jobCapacity: assertNonNegativeInteger(
+      building.jobCapacity ?? building.jobs ?? 0,
+      'building.jobCapacity'
+    ),
+    housingCapacity: assertNonNegativeInteger(
+      building.housingCapacity ?? building.population ?? building.residents ?? 0,
+      'building.housingCapacity'
+    ),
     happinessModifier: assertFiniteNumber(
       building.happinessModifier ?? 0,
       'building.happinessModifier'
@@ -248,6 +266,23 @@ function normalizeBuilding(building) {
     position,
     amenityRadius,
     services
+  });
+}
+
+function normalizeZoneEffect(zone) {
+  assertRecord(zone, 'zone');
+  return deepFreeze({
+    id: assertId(zone.id ?? zone.key, 'zone.id'),
+    type: assertId(zone.type ?? zone.zoneType, 'zone.type'),
+    happinessModifier: assertFiniteNumber(
+      zone.happinessModifier ?? 0,
+      'zone.happinessModifier'
+    ),
+    landValueModifier: assertFiniteNumber(
+      zone.landValueModifier ?? 0,
+      'zone.landValueModifier'
+    ),
+    position: normalizePosition(zone.position, zone.x, zone.z, 'zone.position')
   });
 }
 
@@ -315,6 +350,7 @@ export class EconomySystem {
   #buildings = new Map();
   #completedMissions = new Map();
   #incidents = new Map();
+  #zones = new Map();
   #districts = new Map();
   #listeners = new Set();
   #revision = 0;
@@ -474,16 +510,36 @@ export class EconomySystem {
   }
 
   get passiveIncomeRate() {
-    let grossRate = this.#basePassiveIncomeRate;
+    return this.getBudgetBreakdown().netRate;
+  }
+
+  getBudgetBreakdown() {
+    let buildingRevenueRate = 0;
+    let operatingCostRate = 0;
     for (const building of this.#buildings.values()) {
-      if (building.operational) grossRate += building.passiveIncomeRate;
+      if (!building.operational) continue;
+      buildingRevenueRate += building.grossIncomeRate;
+      operatingCostRate += building.operatingCostRate;
     }
+
     const services = this.getServiceState();
     const criticalCoverage = Math.min(
       services.power.coverage,
       services.water.coverage
     );
-    return grossRate * (0.4 + criticalCoverage * 0.6);
+    const productivityMultiplier = 0.4 + criticalCoverage * 0.6;
+    const grossRevenueRate = this.#basePassiveIncomeRate + buildingRevenueRate;
+    const adjustedRevenueRate = grossRevenueRate * productivityMultiplier;
+
+    return deepFreeze({
+      baseRevenueRate: this.#basePassiveIncomeRate,
+      buildingRevenueRate,
+      grossRevenueRate,
+      productivityMultiplier,
+      adjustedRevenueRate,
+      operatingCostRate,
+      netRate: adjustedRevenueRate - operatingCostRate
+    });
   }
 
   canAfford(amount) {
@@ -549,16 +605,22 @@ export class EconomySystem {
     assertNonNegative(deltaSeconds, 'deltaSeconds');
     if (deltaSeconds === 0) return 0;
 
-    const amount = this.passiveIncomeRate * deltaSeconds;
-    assertFiniteNumber(amount, 'passive income amount');
-    if (amount === 0) return 0;
+    const budget = this.getBudgetBreakdown();
+    const projectedAmount = budget.netRate * deltaSeconds;
+    assertFiniteNumber(projectedAmount, 'passive income amount');
+    if (projectedAmount === 0) return 0;
 
+    // Operating costs can exhaust the treasury but never create invalid
+    // negative cash. Fiscal stress is surfaced in the snapshot for recovery UX.
+    const amount = Math.max(-this.#treasury, projectedAmount);
     const nextTreasury = this.#treasury + amount;
-    assertFiniteNumber(nextTreasury, 'resulting treasury');
+    const eventType = amount < 0
+      ? ECONOMY_EVENTS.OPERATING_EXPENSE_PAID
+      : ECONOMY_EVENTS.PASSIVE_INCOME_EARNED;
 
     this.#commit(
-      ECONOMY_EVENTS.PASSIVE_INCOME_EARNED,
-      { amount, deltaSeconds, rate: this.passiveIncomeRate },
+      eventType,
+      { amount, projectedAmount, deltaSeconds, rate: budget.netRate, budget },
       () => {
         this.#treasury = nextTreasury;
       }
@@ -600,6 +662,48 @@ export class EconomySystem {
   getBuilding(id) {
     const normalizedId = assertId(id, 'building id');
     return this.#buildings.get(normalizedId) ?? null;
+  }
+
+  setZoneEffect(zone) {
+    const normalized = normalizeZoneEffect(zone);
+    const previousZone = this.#zones.get(normalized.id) ?? null;
+    if (
+      previousZone
+      && previousZone.type === normalized.type
+      && previousZone.happinessModifier === normalized.happinessModifier
+      && previousZone.landValueModifier === normalized.landValueModifier
+      && previousZone.position?.x === normalized.position?.x
+      && previousZone.position?.z === normalized.position?.z
+    ) {
+      return previousZone;
+    }
+
+    return this.#commit(
+      ECONOMY_EVENTS.ZONE_CHANGED,
+      { zoneId: normalized.id, previousType: previousZone?.type ?? null, type: normalized.type },
+      () => {
+        this.#zones.set(normalized.id, normalized);
+        return normalized;
+      }
+    );
+  }
+
+  getZoneEffect(id) {
+    return this.#zones.get(assertId(id, 'zone id')) ?? null;
+  }
+
+  removeZoneEffect(id) {
+    const normalizedId = assertId(id, 'zone id');
+    const zone = this.#zones.get(normalizedId);
+    if (!zone) return null;
+    return this.#commit(
+      ECONOMY_EVENTS.ZONE_CHANGED,
+      { zoneId: normalizedId, previousType: zone.type, type: null },
+      () => {
+        this.#zones.delete(normalizedId);
+        return zone;
+      }
+    );
   }
 
   hasCompletedMission(id) {
@@ -880,6 +984,7 @@ export class EconomySystem {
       buildings: structuredClone([...this.#buildings.values()]),
       completedMissions: structuredClone([...this.#completedMissions.values()]),
       incidents: structuredClone([...this.#incidents.values()]),
+      zones: structuredClone([...this.#zones.values()]),
       districts: structuredClone([...this.#districts.values()])
     };
   }
@@ -920,6 +1025,10 @@ export class EconomySystem {
         completedAtRevision: assertNonNegativeInteger(mission.completedAtRevision ?? 0, 'completed mission revision')
       })];
     }));
+    const zones = new Map((state.zones || []).map(zone => {
+      const normalized = normalizeZoneEffect(zone);
+      return [normalized.id, normalized];
+    }));
 
     const districts = new Map();
     for (const district of state.districts || []) {
@@ -949,6 +1058,7 @@ export class EconomySystem {
       this.#buildings = buildings;
       this.#completedMissions = completedMissions;
       this.#incidents = incidents;
+      this.#zones = zones;
       this.#districts = districts;
     });
     return this.snapshot();
@@ -961,7 +1071,12 @@ export class EconomySystem {
     let happiness = this.#baseHappiness;
     let landValue = this.#baseLandValue;
     let employees = 0;
+    let jobCapacity = 0;
+    let housingCapacity = this.#basePopulation;
     let totalBuildingValue = 0;
+    let buildingHappiness = 0;
+    let incidentHappiness = 0;
+    let zoningHappiness = 0;
 
     for (const building of this.#buildings.values()) {
       totalBuildingValue += building.value;
@@ -969,14 +1084,24 @@ export class EconomySystem {
 
       population += building.population;
       employees += building.employees;
+      jobCapacity += building.jobCapacity;
+      housingCapacity += building.housingCapacity;
+      buildingHappiness += building.happinessModifier;
       happiness += building.happinessModifier;
       landValue += building.landValueModifier;
     }
 
     for (const incident of this.#incidents.values()) {
       if (!incident.active) continue;
+      incidentHappiness += incident.happinessModifier;
       happiness += incident.happinessModifier;
       landValue += incident.landValueModifier;
+    }
+
+    for (const zone of this.#zones.values()) {
+      zoningHappiness += zone.happinessModifier;
+      happiness += zone.happinessModifier;
+      landValue += zone.landValueModifier;
     }
 
     // Utility shortages have direct management consequences: power/water
@@ -985,8 +1110,59 @@ export class EconomySystem {
     const utilityCoverage = (services.power.coverage + services.water.coverage) / 2;
     const safetyCoverage = services.fire.coverage;
     const serviceHealth = (services.power.coverage + services.water.coverage + safetyCoverage) / 3;
-    happiness -= (1 - utilityCoverage) * 18 + (1 - safetyCoverage) * 10;
+    const servicePenalty = -((1 - utilityCoverage) * 18 + (1 - safetyCoverage) * 10);
+    happiness += servicePenalty;
+
+    const workforce = Math.round(population * 0.62);
+    const laborMarketEnabled = jobCapacity > 0;
+    const employed = laborMarketEnabled ? Math.min(workforce, jobCapacity) : workforce;
+    const unemploymentRate = workforce === 0 ? 0 : (workforce - employed) / workforce;
+    const employmentPenalty = laborMarketEnabled ? -(unemploymentRate * 15) : 0;
+    happiness += employmentPenalty;
     landValue *= 0.75 + serviceHealth * 0.25;
+
+    const happinessBreakdown = {
+      baseline: this.#baseHappiness,
+      buildings: buildingHappiness,
+      zoning: zoningHappiness,
+      incidents: incidentHappiness,
+      services: servicePenalty,
+      employment: employmentPenalty,
+      total: clamp(happiness, 0, 100)
+    };
+    const demographics = {
+      population,
+      housingCapacity,
+      housingOccupancy: housingCapacity === 0 ? 0 : Math.min(1, population / housingCapacity),
+      workforce,
+      employed,
+      jobCapacity,
+      availableJobs: Math.max(0, jobCapacity - employed),
+      unemploymentRate,
+      employmentRate: workforce === 0 ? 1 : employed / workforce
+    };
+    const residentialDemand = clamp(Math.round(
+      50
+      + Math.min(25, demographics.availableJobs / Math.max(1, workforce) * 50)
+      + (happinessBreakdown.total - 50) * 0.35
+      - Math.max(0, 0.88 - demographics.housingOccupancy) * 45
+    ), 0, 100);
+    const jobsDemand = clamp(Math.round(
+      unemploymentRate * 100 + Math.max(0, population - housingCapacity) / Math.max(1, population) * 25
+    ), 0, 100);
+    const serviceDemand = clamp(Math.round((1 - serviceHealth) * 100), 0, 100);
+    const demand = {
+      residential: residentialDemand,
+      commercial: clamp(Math.round((residentialDemand + jobsDemand) / 2), 0, 100),
+      industrial: jobsDemand,
+      services: serviceDemand
+    };
+    const budget = this.getBudgetBreakdown();
+    const fiscalStatus = this.#treasury <= 0 && budget.netRate < 0
+      ? 'INSOLVENT'
+      : budget.netRate < 0
+        ? 'DEFICIT'
+        : 'STABLE';
 
     const districts = {};
     const unlockedDistricts = [];
@@ -1010,7 +1186,12 @@ export class EconomySystem {
       happiness: clamp(happiness, 0, 100),
       landValue: Math.max(0, landValue),
       employees,
-      totalBuildingValue
+      totalBuildingValue,
+      employment: demographics.employmentRate * 100,
+      unemployment: demographics.unemploymentRate * 100,
+      housingOccupancy: demographics.housingOccupancy * 100,
+      netIncomeRate: budget.netRate,
+      fiscalStatus
     };
 
     return deepFreeze({
@@ -1023,6 +1204,12 @@ export class EconomySystem {
       happiness: pulse.happiness,
       landValue: pulse.landValue,
       passiveIncomeRate: this.passiveIncomeRate,
+      operatingCostRate: budget.operatingCostRate,
+      budgetBreakdown: budget,
+      demographics,
+      demand,
+      happinessBreakdown,
+      fiscalStatus,
       reputation: this.#reputation,
       narrativeProgress: this.#narrativeProgress,
       cityPulse: pulse,
@@ -1039,6 +1226,7 @@ export class EconomySystem {
         ...mission
       })),
       incidents: [...this.#incidents.values()].map(incident => ({ ...incident })),
+      zones: [...this.#zones.values()].map(zone => ({ ...zone })),
       districts,
       unlockedDistricts
     });
@@ -1089,7 +1277,13 @@ export class EconomySystem {
     const event = deepFreeze({ type, previous, current, detail: { ...detail } });
 
     for (const listener of [...this.#listeners]) {
-      listener(event);
+      try {
+        listener(event);
+      } catch (error) {
+        // A rendering, persistence, or mod listener must never prevent the
+        // authoritative mutation from reaching the rest of the subscribers.
+        console.error('EconomySystem listener failed.', error);
+      }
     }
     return result;
   }

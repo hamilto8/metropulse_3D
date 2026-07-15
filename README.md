@@ -13,7 +13,7 @@
 - **Management / Builder:** Zone parcels, place data-driven buildings and infrastructure, manage power/water/fire coverage, inspect spatial amenity/Mayhem land values, monitor City Pulse, and invest to unlock the East Cyber-Metropolis.
 - **Persistent City Session:** Treasury, buildings, zoning, unlocks, mission progress, weather, time, overlays, and Mayhem state save locally and restore automatically, with explicit Save City and Start New City controls.
 - **Action / Street:** Possess pedestrians, collect a baseball bat, hijack nearby vehicles, drive with `cannon-es` RaycastVehicle physics, trigger police response, and complete timed taxi, courier, race, delivery, sabotage, and survival missions.
-- **Living Economy:** Placement costs, salvage refunds, operational-building income, services, incidents, repeat-safe mission payouts, and narrative progress all flow through one observable economy model.
+- **Living Economy:** Placement and zoning costs, revenue, upkeep, service productivity, housing, jobs, unemployment, citizen happiness drivers, development demand, incidents, mission payouts, and narrative progress all flow through one observable economy model.
 - **Mayhem Overlay:** Toggle comets, destruction, sirens, alerts, rubble, and satirical market feedback independently of the current management, builder, or action mode.
 
 ---

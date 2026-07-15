@@ -2884,6 +2884,13 @@ input:checked + .slider.round:before {
   padding: 0 6px;
 }
 
+.blueprint-impact {
+  max-width: 220px;
+  color: #b6c8dc;
+  font: 600 0.68rem/1.35 'JetBrains Mono', monospace;
+  text-align: center;
+}
+
 .place-building-btn {
   background: linear-gradient(135deg, #00d2ff, #00ffaa);
   color: #040d1a;

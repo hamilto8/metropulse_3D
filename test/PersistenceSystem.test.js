@@ -69,6 +69,24 @@ test('restore rejects invalid legacy overlaps and removes their orphan economy r
   });
 });
 
+test('restore removes economy ghosts for unknown building specifications', () => {
+  const { persistence, calls } = createPersistenceHarness();
+  const corruptWorld = {
+    version: 1,
+    buildings: [{
+      economyId: 'ghost-building',
+      specId: 'REMOVED_SPEC',
+      plot: { x: 500, z: 25 },
+      rotationY: 0
+    }],
+    zones: []
+  };
+
+  assert.equal(persistence.restoreWorld(corruptWorld), true);
+  assert.deepEqual(calls, [['economy-remove', 'ghost-building']]);
+  assert.equal(persistence.lastRestoreReport.skippedBuildings, 1);
+});
+
 test('restore always starts dynamic weather even when a legacy save disabled it', () => {
   const calls = [];
   const persistence = Object.create(PersistenceSystem.prototype);

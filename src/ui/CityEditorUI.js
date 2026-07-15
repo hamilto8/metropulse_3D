@@ -76,6 +76,7 @@ export class CityEditorUI {
               <div class="blueprint-hologram-icon" id="blueprint-icon">🏢</div>
               <div class="blueprint-hologram-label" id="blueprint-name">NeoTech Quantum Tower</div>
               <div class="blueprint-hologram-label" id="blueprint-price" aria-live="polite"></div>
+              <div class="blueprint-impact" id="blueprint-impact"></div>
             </div>
             <button class="place-building-btn" id="btn-place-building">
               <span>📦</span>
@@ -301,10 +302,24 @@ export class CityEditorUI {
       stats.className = 'building-card-stats';
       const price = createTextElement('span', 'building-card-price', formattedPrice);
       price.style.color = affordable ? '#00ff88' : '#f87171';
-      stats.append(price, createTextElement('span', 'building-card-dim', `${spec.footprint.width}m x ${spec.footprint.depth}m`));
+      const netPerMinute = Number(spec.incomePerMinute || 0);
+      const impact = netPerMinute === 0
+        ? `${spec.footprint.width}m x ${spec.footprint.depth}m`
+        : `${netPerMinute > 0 ? '+' : '−'}$${Math.abs(netPerMinute).toLocaleString()}/min`;
+      stats.append(price, createTextElement('span', 'building-card-dim', impact));
+      card.title = [
+        spec.description,
+        spec.residents ? `${spec.residents.toLocaleString()} residents` : null,
+        spec.employees ? `${spec.employees.toLocaleString()} jobs` : null,
+        spec.happiness ? `${spec.happiness > 0 ? '+' : ''}${spec.happiness} happiness` : null
+      ].filter(Boolean).join(' · ');
       card.append(preview, title, stats);
 
       card.addEventListener('click', () => {
+        if (!affordable) {
+          this.app.uiManager?.showToast(`💳 Insufficient credits for ${spec.name}`);
+          return;
+        }
         const allCards = grid.querySelectorAll('.building-card');
         allCards.forEach(c => {
           c.classList.remove('selected');
@@ -329,8 +344,22 @@ export class CityEditorUI {
     if (!spec) return;
     const iconEl = this.container.querySelector('#blueprint-icon');
     const nameEl = this.container.querySelector('#blueprint-name');
+    const impactEl = this.container.querySelector('#blueprint-impact');
     if (iconEl) iconEl.textContent = spec.icon || '🏢';
     if (nameEl) nameEl.textContent = spec.name;
+    if (impactEl) {
+      const impacts = [];
+      if (spec.residents) impacts.push(`👥 ${Number(spec.residents).toLocaleString()} homes`);
+      if (spec.employees) impacts.push(`💼 ${Number(spec.employees).toLocaleString()} jobs`);
+      if (spec.happiness) impacts.push(`😊 ${spec.happiness > 0 ? '+' : ''}${spec.happiness}`);
+      if (spec.powerSupply) impacts.push(`⚡ +${spec.powerSupply}`);
+      if (spec.powerDemand) impacts.push(`⚡ −${spec.powerDemand}`);
+      if (spec.waterSupply) impacts.push(`💧 +${spec.waterSupply}`);
+      if (spec.waterDemand) impacts.push(`💧 −${spec.waterDemand}`);
+      const cashflow = Number(spec.incomePerMinute || 0);
+      impacts.push(`${cashflow >= 0 ? '📈 +' : '📉 −'}$${Math.abs(cashflow).toLocaleString()}/min`);
+      impactEl.textContent = impacts.join(' · ');
+    }
     this.refreshAffordability(spec);
   }
 
@@ -370,6 +399,7 @@ export class CityEditorUI {
     if (
       this.app.trafficSystem?.controlledVehicle
       || this.app.pedestrianSystem?.controlledPedestrian
+      || this.app.aircraftSystem?.controlledAircraft
       || this.app.missionSystem?.activeMission
     ) {
       this.app.uiManager?.showToast('⚠️ Return to Management with [M] before opening the City Editor.');
