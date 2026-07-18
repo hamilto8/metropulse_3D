@@ -268,7 +268,7 @@ export class Environment {
   syncWeatherIntegration(mode) {
     this.app?.physicsWorld?.setWeatherFriction?.(mode);
     this.app?.uiManager?.syncWeatherButtons?.(mode);
-    this.app?.persistenceSystem?.scheduleSave?.();
+    this.app?.saveService?.scheduleSave?.('weather-change');
   }
 
   collectWetSurfaceMaterials() {

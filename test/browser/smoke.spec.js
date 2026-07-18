@@ -248,7 +248,8 @@ test('blocks startup with actionable compatibility guidance before world service
   await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
 });
 
-test('discovers valid continue and recovery slots and preserves the current city on new game', async ({ page }) => {
+test('migrates legacy slots, preserves recovery, saves transactionally, and continues after reload', async ({ page }) => {
+  test.setTimeout(90_000);
   const currentSave = JSON.stringify({
     version: 1,
     savedAt: '2026-07-18T12:00:00.000Z',
@@ -266,8 +267,10 @@ test('discovers valid continue and recovery slots and preserves the current city
     settings: {}
   });
   await page.addInitScript(({ currentSave, recoverySave }) => {
+    if (sessionStorage.getItem('metropulse-save-fixture-seeded')) return;
     localStorage.setItem('metropulse3d:city-session:v1', currentSave);
     localStorage.setItem('metropulse3d:city-session:v1:recovery', recoverySave);
+    sessionStorage.setItem('metropulse-save-fixture-seeded', '1');
   }, { currentSave, recoverySave });
 
   await page.goto('/?testMode=1&traffic=4&pedestrians=4&quality=low', {
@@ -281,10 +284,52 @@ test('discovers valid continue and recovery slots and preserves the current city
   await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', {
     timeout: 60_000
   });
-  const slots = await page.evaluate(() => ({
-    current: localStorage.getItem('metropulse3d:city-session:v1'),
-    recovery: localStorage.getItem('metropulse3d:city-session:v1:recovery')
-  }));
-  expect(slots.current).toBeNull();
-  expect(slots.recovery).toBe(currentSave);
+  const migrated = await page.evaluate(async () => {
+    const request = indexedDB.open('metropulse3d:saves', 1);
+    const database = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction('slots', 'readonly');
+    const recoveryRequest = transaction.objectStore('slots').get('recovery');
+    const recovery = await new Promise((resolve, reject) => {
+      recoveryRequest.onsuccess = () => resolve(recoveryRequest.result);
+      recoveryRequest.onerror = () => reject(recoveryRequest.error);
+    });
+    database.close();
+    return {
+      legacyCurrent: localStorage.getItem('metropulse3d:city-session:v1'),
+      legacyRecovery: localStorage.getItem('metropulse3d:city-session:v1:recovery'),
+      recovery
+    };
+  });
+  expect(migrated.legacyCurrent).toBeNull();
+  expect(migrated.legacyRecovery).toBeNull();
+  expect(migrated.recovery.metadata.savedAt).toBe('2026-07-18T12:00:00.000Z');
+  expect(migrated.recovery.metadata.migratedFrom).toBe('localStorage-v1');
+
+  const beforeSave = await page.evaluate(() => {
+    window.__METROPULSE_TEST__.primeGameplayClocks();
+    window.__METROPULSE_TEST__.openPauseMenu();
+    return window.__METROPULSE_TEST__.pauseProbe();
+  });
+  expect(beforeSave.snapshot.state.mode).toBe('PAUSED');
+  expect(beforeSave.snapshot.state.resumeState).toBe('STREET_VEHICLE');
+  expect(beforeSave.snapshot.controlledEntity.type).toBe('VEHICLE');
+  expect(beforeSave.missionTime).toBe(42);
+  expect(await page.evaluate(() => window.app.saveService.saveNow({ reason: 'manual' }))).toBe(true);
+  await expect(page.locator('#save-status')).toHaveAttribute('data-status', 'SAVED');
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await expect(page.locator('#btn-boot-recover')).toBeVisible();
+  await page.locator('#btn-boot-continue').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
+  const restored = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
+  expect(restored.snapshot.state.mode).toBe('PAUSED');
+  expect(restored.snapshot.state.resumeState).toBe('STREET_VEHICLE');
+  expect(restored.snapshot.controlledEntity.type).toBe('VEHICLE');
+  expect(restored.missionTime).toBeGreaterThan(39);
+  expect(restored.heatEscapeTime).toBeGreaterThanOrEqual(3.5);
+  expect(restored.controlledPosition).not.toBeNull();
 });

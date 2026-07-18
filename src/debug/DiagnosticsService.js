@@ -95,7 +95,7 @@ export class DiagnosticsService {
         id: mission?.activeMission?.id || null,
         timeRemaining: mission?.timeRemaining || 0
       }),
-      save: app.persistenceSystem?.getStatus?.() || null,
+      save: app.saveService?.getStatus?.() || null,
       entities: Object.freeze({
         vehicles: app.trafficSystem?.vehicles?.length || 0,
         pedestrians: app.pedestrianSystem?.pedestrians?.length || 0,

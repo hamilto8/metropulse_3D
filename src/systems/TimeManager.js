@@ -79,7 +79,7 @@ export class TimeManager {
   setTime(timeVal) {
     if (!Number.isFinite(timeVal)) return this.timeVal;
     this.timeVal = Math.max(0, Math.min(24, timeVal));
-    this.app?.persistenceSystem?.scheduleSave?.();
+    this.app?.saveService?.scheduleSave?.('time-change');
     return this.timeVal;
   }
 
@@ -88,7 +88,7 @@ export class TimeManager {
     const changed = nextPlaying !== this.isPlaying;
     this.isPlaying = nextPlaying;
     this.app?.uiManager?.syncTimePlayingControl?.(this.isPlaying);
-    if (changed) this.app?.persistenceSystem?.scheduleSave?.();
+    if (changed) this.app?.saveService?.scheduleSave?.('time-playback-change');
     return this.isPlaying;
   }
 
@@ -97,7 +97,7 @@ export class TimeManager {
     const changed = nextSpeed !== this.speed;
     this.speed = nextSpeed;
     this.app?.uiManager?.syncTimeSpeedControl?.(this.speed);
-    if (changed) this.app?.persistenceSystem?.scheduleSave?.();
+    if (changed) this.app?.saveService?.scheduleSave?.('time-speed-change');
     return this.speed;
   }
 

@@ -569,21 +569,52 @@ P2.1 completion evidence (2026-07-18):
 
 #### P2.2 Versioned SaveService
 
-- [ ] Introduce an IndexedDB-backed `SaveService` with an explicit schema
+- [x] Introduce an IndexedDB-backed `SaveService` with an explicit schema
   version independent of feature versions.
-- [ ] Preserve the existing LocalStorage v1 loader as a one-time migration
+- [x] Preserve the existing LocalStorage v1 loader as a one-time migration
   source.
-- [ ] Save game state, economy, world edits, controlled entity, player pose,
+- [x] Save game state, economy, world edits, controlled entity, player pose,
   current mode, time, weather, missions, active mission/checkpoint, factions,
   progression, Heat, settings, bindings, alerts, and stable content IDs.
-- [ ] Use transactional writes and retain a previous-known-good recovery slot.
-- [ ] Validate data before applying it to live systems.
-- [ ] Add forward migration functions and reject unsupported future saves with
+- [x] Use transactional writes and retain a previous-known-good recovery slot.
+- [x] Validate data before applying it to live systems.
+- [x] Add forward migration functions and reject unsupported future saves with
   a clear message rather than partial restoration.
-- [ ] Define what is intentionally not saved, such as transient particle state.
-- [ ] Add autosave reasons, debounce policy, checkpoints, and a visible saving
+- [x] Define what is intentionally not saved, such as transient particle state.
+- [x] Add autosave reasons, debounce policy, checkpoints, and a visible saving
   indicator.
-- [ ] Ensure a failed save does not destroy the previous valid save.
+- [x] Ensure a failed save does not destroy the previous valid save.
+
+P2.2 completion evidence (2026-07-18):
+
+- `src/save/SaveService.js` owns save policy, full-document validation,
+  restoration staging, status publication, autosave coalescing, and named
+  checkpoints. `src/save/SaveGameState.js` keeps domain capture and restore
+  logic out of storage mechanics.
+- `src/save/IndexedDbSaveRepository.js` writes current and previous-known-good
+  recovery slots atomically. Recovery promotion never rotates a corrupt current
+  value over the selected recovery source, and interrupted writes preserve both
+  committed slots.
+- The envelope schema, independent schema/feature/domain versions, sequential
+  migration registry, LocalStorage v1 conversion, future-version rejection,
+  stable content-reference checks, and explicit transient exclusions live in
+  `src/save/SaveSchema.js`.
+- Boot discovery now reads IndexedDB asynchronously, uses LocalStorage only as
+  an absent-slot migration source, and supplies the validated selected document
+  to runtime composition. Static domains restore before interactivity; player
+  authority, pose, active mission, current mode, and pause restore only after
+  `TransitionCoordinator` and `PauseManager` are ready.
+- The management UI exposes an accessible live saving indicator. Manual saves,
+  debounced reasons, checkpoint IDs, page-hide saves, and failure messaging all
+  use the same service contract.
+- Unit fixtures cover schema migration, unsupported future data, legacy
+  conversion, full-domain envelopes, validation-before-mutation, recovery
+  rotation, corrupt references, coalesced autosave reasons, checkpoints, and
+  interrupted writes. The operational and extension contract is documented in
+  `VERSIONED_SAVE_SERVICE.md`.
+- Verification at completion: 298 Node tests, the production build, and all
+  three Playwright WebGL boot/transition/pause/interaction/save flows pass,
+  including real IndexedDB migration, manual save, reload, and Continue.
 
 #### P2.3 Settings and bindings store
 

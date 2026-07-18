@@ -528,16 +528,18 @@ export class UIManager {
       });
     }
 
-    this.btnSaveCity?.addEventListener('click', () => {
-      const saved = this.app.persistenceSystem?.saveNow?.();
-      this.showToast(saved ? '💾 City saved locally.' : '⚠️ City could not be saved in this browser.');
+    this.btnSaveCity?.addEventListener('click', async () => {
+      const saved = await this.app.saveService?.saveNow?.({ reason: 'manual' });
+      this.showToast(saved ? '💾 City saved locally.' : '⚠️ City could not be saved; your previous save is still safe.');
     });
 
     this.btnNewCity?.addEventListener('click', () => {
-      const confirmed = window.confirm('Start a new city? This permanently removes the saved local session.');
+      const confirmed = window.confirm('Start a new city? The current city will move to the recovery slot before the new session starts.');
       if (!confirmed) return;
-      this.app.persistenceSystem?.clear?.();
-      window.location.reload();
+      void this.app.saveService?.clear?.({ preserveRecovery: true }).then(cleared => {
+        if (cleared) window.location.reload();
+        else this.showToast('⚠️ The current city could not be cleared safely.');
+      });
     });
 
     // Action Toolbar buttons
@@ -1397,6 +1399,28 @@ export class UIManager {
     while (this.alertFeedList.children.length > 7) {
       this.alertFeedList.removeChild(this.alertFeedList.lastChild);
     }
+  }
+
+  bindSaveService(service) {
+    this.unsubscribeSaveStatus?.();
+    const element = document.getElementById('save-status');
+    if (!service?.subscribe || !element) return false;
+    const labels = {
+      IDLE: 'Save ready',
+      SCHEDULED: 'Save pending…',
+      SAVING: 'Saving…',
+      SAVED: 'Saved',
+      LOADING: 'Loading save…',
+      ERROR: 'Save failed',
+      UNAVAILABLE: 'Saving unavailable'
+    };
+    this.unsubscribeSaveStatus = service.subscribe(snapshot => {
+      element.textContent = labels[snapshot.status] || snapshot.status;
+      element.dataset.status = snapshot.status;
+      element.title = snapshot.error || (snapshot.lastSavedAt ? `Last saved ${snapshot.lastSavedAt}` : '');
+      this.btnSaveCity?.toggleAttribute?.('disabled', snapshot.status === 'SAVING' || snapshot.status === 'LOADING');
+    }, { emitCurrent: true });
+    return true;
   }
 
   updateAlertFeed(delta) {

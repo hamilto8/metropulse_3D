@@ -38,7 +38,7 @@ test('time setters keep restored model and controls synchronized', () => {
       syncTimePlayingControl(value) { playingStates.push(value); },
       syncTimeSpeedControl(value) { speedStates.push(value); }
     },
-    persistenceSystem: {
+    saveService: {
       scheduleSave() { saves += 1; }
     }
   };

@@ -1,6 +1,14 @@
-import { SAVE_KEY } from '../systems/PersistenceSystem.js';
+import { IndexedDbSaveRepository } from '../save/IndexedDbSaveRepository.js';
+import {
+  LEGACY_LOCAL_STORAGE_SAVE_KEY,
+  SAVE_SLOTS,
+  convertLegacyV1Save,
+  inspectSaveDocument
+} from '../save/SaveSchema.js';
+import { validateGameState } from '../save/SaveGameState.js';
 
 export const RECOVERY_SAVE_KEY = 'metropulse3d:city-session:v1:recovery';
+export const SAVE_KEY = LEGACY_LOCAL_STORAGE_SAVE_KEY;
 
 export const BOOT_ACTIONS = Object.freeze({
   NEW_GAME: 'NEW_GAME',
@@ -9,54 +17,58 @@ export const BOOT_ACTIONS = Object.freeze({
 });
 
 function getDefaultStorage() {
-  try {
-    return globalThis.localStorage;
-  } catch {
-    return null;
-  }
+  try { return globalThis.localStorage; } catch { return null; }
 }
 
-function invalidSlot(slot, reason = null, present = false) {
-  return Object.freeze({
-    slot,
-    present,
-    valid: false,
-    savedAt: null,
-    reason,
-    raw: null
-  });
+function invalidLegacy(slot, reason = null, present = false) {
+  return Object.freeze({ slot, source: 'localStorage-v1', present, valid: false, savedAt: null, reason, raw: null, document: null });
 }
 
-export function inspectLegacySave(raw, slot = 'current') {
-  if (typeof raw !== 'string' || !raw.trim()) return invalidSlot(slot, null, false);
+export function inspectLegacySave(raw, slot = SAVE_SLOTS.CURRENT) {
+  if (typeof raw !== 'string' || !raw.trim()) return invalidLegacy(slot, null, false);
   try {
-    const value = JSON.parse(raw);
-    if (!value || typeof value !== 'object' || value.version !== 1) {
-      throw new Error(`Unsupported save version: ${value?.version ?? '<missing>'}`);
-    }
-    for (const field of ['economy', 'world', 'mission', 'settings']) {
-      if (!value[field] || typeof value[field] !== 'object' || Array.isArray(value[field])) {
-        throw new Error(`Save is missing a valid ${field} record.`);
-      }
-    }
-    const savedAt = typeof value.savedAt === 'string' && Number.isFinite(Date.parse(value.savedAt))
-      ? value.savedAt
-      : null;
-    return Object.freeze({ slot, present: true, valid: true, savedAt, reason: null, raw });
+    const document = validateSaveDocumentForDiscovery(convertLegacyV1Save(JSON.parse(raw)));
+    return Object.freeze({
+      slot,
+      source: 'localStorage-v1',
+      present: true,
+      valid: true,
+      savedAt: document.metadata.savedAt,
+      reason: null,
+      raw,
+      document
+    });
   } catch (error) {
-    return invalidSlot(slot, error?.message || String(error), true);
+    return invalidLegacy(slot, error?.userMessage || error?.message || String(error), true);
   }
+}
+
+function validateSaveDocumentForDiscovery(document) {
+  // Conversion already validates the envelope; discovery additionally checks
+  // domain shapes without requiring live runtime content to exist yet.
+  validateGameState(document.data);
+  return document;
 }
 
 export class SaveDiscovery {
-  constructor({ storage = getDefaultStorage() } = {}) {
+  constructor({
+    storage = getDefaultStorage(),
+    repository = new IndexedDbSaveRepository()
+  } = {}) {
     this.storage = storage;
+    this.repository = repository;
   }
 
-  discover() {
-    if (!this.storage) throw new Error('Local save storage is unavailable.');
-    const current = inspectLegacySave(this.storage?.getItem?.(SAVE_KEY), 'current');
-    const recovery = inspectLegacySave(this.storage?.getItem?.(RECOVERY_SAVE_KEY), 'recovery');
+  async discover() {
+    const slots = await this.repository.readSlots();
+    let current = inspectSaveDocument(slots.current, SAVE_SLOTS.CURRENT, { validateDomains: validateGameState });
+    let recovery = inspectSaveDocument(slots.recovery, SAVE_SLOTS.RECOVERY, { validateDomains: validateGameState });
+
+    // LocalStorage is never written by P2.2. It is consulted only when the
+    // matching IndexedDB slot is absent, then removed after a successful copy.
+    if (!current.present) current = inspectLegacySave(this.storage?.getItem?.(SAVE_KEY), SAVE_SLOTS.CURRENT);
+    if (!recovery.present) recovery = inspectLegacySave(this.storage?.getItem?.(RECOVERY_SAVE_KEY), SAVE_SLOTS.RECOVERY);
+
     return Object.freeze({
       current,
       recovery,
@@ -68,26 +80,40 @@ export class SaveDiscovery {
     });
   }
 
-  prepare(action, discovery) {
-    if (!this.storage) throw new Error('Local save storage is unavailable.');
-    if (!Object.values(BOOT_ACTIONS).includes(action)) {
-      throw new RangeError(`Unknown boot action: ${action}`);
-    }
-    if (!discovery?.actions?.[action]) {
-      throw new Error(`Boot action ${action} is not available for this profile.`);
-    }
+  async prepare(action, discovery) {
+    if (!Object.values(BOOT_ACTIONS).includes(action)) throw new RangeError(`Unknown boot action: ${action}`);
+    if (!discovery?.actions?.[action]) throw new Error(`Boot action ${action} is not available for this profile.`);
 
     if (action === BOOT_ACTIONS.NEW_GAME) {
-      // Starting over remains recoverable: the last known-valid current save
-      // becomes the recovery source before the active slot is cleared.
-      if (discovery.current.valid) {
-        this.storage.setItem(RECOVERY_SAVE_KEY, discovery.current.raw);
+      if (discovery.current.valid && discovery.current.source === 'localStorage-v1') {
+        await this.repository.putRecovery(discovery.current.document);
       }
-      this.storage.removeItem(SAVE_KEY);
-    } else if (action === BOOT_ACTIONS.RECOVER) {
-      this.storage.setItem(SAVE_KEY, discovery.recovery.raw);
+      await this.repository.clearCurrent({
+        preserveAsRecovery: discovery.current.valid && discovery.current.source === 'indexedDB'
+      });
+      this.storage?.removeItem?.(SAVE_KEY);
+      if (discovery.current.source === 'localStorage-v1') {
+        // The migrated current document is now the authoritative recovery
+        // source, so an older legacy recovery value must not linger as a
+        // shadow persistence path.
+        this.storage?.removeItem?.(RECOVERY_SAVE_KEY);
+      }
+      return Object.freeze({ action, restore: false, saveDocument: null, saveRepository: this.repository });
     }
-    return Object.freeze({ action, restore: action !== BOOT_ACTIONS.NEW_GAME });
+
+    const selected = action === BOOT_ACTIONS.CONTINUE ? discovery.current : discovery.recovery;
+    if (selected.source === 'localStorage-v1') {
+      await this.repository.putCurrent(selected.document);
+      this.storage?.removeItem?.(action === BOOT_ACTIONS.CONTINUE ? SAVE_KEY : RECOVERY_SAVE_KEY);
+    } else if (action === BOOT_ACTIONS.RECOVER) {
+      await this.repository.promoteRecovery();
+    }
+    return Object.freeze({
+      action,
+      restore: true,
+      saveDocument: selected.document,
+      saveRepository: this.repository
+    });
   }
 }
 

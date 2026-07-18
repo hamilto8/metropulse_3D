@@ -13,7 +13,7 @@ objects never update HUD counters directly. The supported flow is:
 3. `EconomySystem` derives services, cash flow, demographics, demand,
    happiness, land value, and fiscal state from registered records, incidents,
    and zone policies.
-4. `UIManager` and `PersistenceSystem` subscribe to immutable economy events.
+4. `UIManager` and `SaveService` subscribe to immutable economy events.
 
 This boundary keeps Three.js meshes, Cannon bodies, DOM state, and simulation
 math independent.

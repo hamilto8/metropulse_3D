@@ -2710,6 +2710,20 @@ input:checked + .slider.round:before {
 .alert-danger .alert-msg { color: #f87171; }
 .alert-success .alert-msg { color: #34d399; }
 
+.save-status {
+  display: block;
+  min-height: 1.25rem;
+  margin-top: 0.4rem;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.save-status[data-status="SAVING"],
+.save-status[data-status="SCHEDULED"] { color: #67e8f9; }
+.save-status[data-status="SAVED"] { color: #34d399; }
+.save-status[data-status="ERROR"] { color: #f87171; }
+
 /* ── 6. BOTTOM-CENTER TIME SCRUBBER BAR ── */
 .bottom-time-bar {
   position: absolute;

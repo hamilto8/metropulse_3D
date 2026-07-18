@@ -15,10 +15,10 @@ import {
 import {
   BOOT_ACTIONS,
   RECOVERY_SAVE_KEY,
+  SAVE_KEY,
   SaveDiscovery,
   inspectLegacySave
 } from '../src/boot/SaveDiscovery.js';
-import { SAVE_KEY } from '../src/systems/PersistenceSystem.js';
 
 class MemoryStorage {
   constructor(entries = {}) {
@@ -35,6 +35,32 @@ class MemoryStorage {
 
   removeItem(key) {
     this.values.delete(key);
+  }
+}
+
+class MemorySaveRepository {
+  constructor({ current = null, recovery = null } = {}) {
+    this.current = current;
+    this.recovery = recovery;
+  }
+
+  async readSlots() { return { current: this.current, recovery: this.recovery }; }
+  async putCurrent(value) { this.current = structuredClone(value); return value; }
+  async putRecovery(value) { this.recovery = structuredClone(value); return value; }
+  async commitCurrent(value) {
+    if (this.current != null) this.recovery = structuredClone(this.current);
+    this.current = structuredClone(value);
+    return value;
+  }
+  async promoteRecovery() {
+    if (this.recovery == null) throw new Error('No recovery save is available.');
+    this.current = structuredClone(this.recovery);
+    return this.current;
+  }
+  async clearCurrent({ preserveAsRecovery = true } = {}) {
+    if (preserveAsRecovery && this.current != null) this.recovery = structuredClone(this.current);
+    this.current = null;
+    return true;
   }
 }
 
@@ -156,12 +182,12 @@ test('settings bootstrap validates supported values and safely falls back from c
   assert.match(recovered.warnings[0], /Saved settings were ignored/);
 });
 
-test('save discovery offers only valid actions and explains a corrupt current slot', () => {
+test('save discovery offers only valid actions and explains a corrupt current slot', async () => {
   const storage = new MemoryStorage({
     [SAVE_KEY]: '{not json',
     [RECOVERY_SAVE_KEY]: saveFixture('2026-07-17T09:30:00.000Z')
   });
-  const discovery = new SaveDiscovery({ storage }).discover();
+  const discovery = await new SaveDiscovery({ storage, repository: new MemorySaveRepository() }).discover();
 
   assert.deepEqual(discovery.actions, {
     [BOOT_ACTIONS.NEW_GAME]: true,
@@ -175,23 +201,27 @@ test('save discovery offers only valid actions and explains a corrupt current sl
   assert.equal(inspectLegacySave(null).present, false);
 });
 
-test('new game preserves the current city for recovery and recover promotes known-good data', () => {
+test('new game migrates LocalStorage once, preserves recovery, and promotes it transactionally', async () => {
   const current = saveFixture('2026-07-18T12:00:00.000Z');
   const older = saveFixture('2026-07-16T12:00:00.000Z');
   const storage = new MemoryStorage({ [SAVE_KEY]: current, [RECOVERY_SAVE_KEY]: older });
-  const service = new SaveDiscovery({ storage });
+  const repository = new MemorySaveRepository();
+  const service = new SaveDiscovery({ storage, repository });
 
-  const newGame = service.prepare(BOOT_ACTIONS.NEW_GAME, service.discover());
-  assert.deepEqual(newGame, { action: BOOT_ACTIONS.NEW_GAME, restore: false });
+  const newGame = await service.prepare(BOOT_ACTIONS.NEW_GAME, await service.discover());
+  assert.equal(newGame.action, BOOT_ACTIONS.NEW_GAME);
+  assert.equal(newGame.restore, false);
   assert.equal(storage.getItem(SAVE_KEY), null);
-  assert.equal(storage.getItem(RECOVERY_SAVE_KEY), current);
+  assert.equal(storage.getItem(RECOVERY_SAVE_KEY), null);
+  assert.equal(repository.current, null);
+  assert.equal(repository.recovery.metadata.migratedFrom, 'localStorage-v1');
 
-  const afterNewGame = service.discover();
-  const recovered = service.prepare(BOOT_ACTIONS.RECOVER, afterNewGame);
-  assert.deepEqual(recovered, { action: BOOT_ACTIONS.RECOVER, restore: true });
-  assert.equal(storage.getItem(SAVE_KEY), current);
-  assert.equal(storage.getItem(RECOVERY_SAVE_KEY), current);
-  assert.throws(
+  const afterNewGame = await service.discover();
+  const recovered = await service.prepare(BOOT_ACTIONS.RECOVER, afterNewGame);
+  assert.equal(recovered.action, BOOT_ACTIONS.RECOVER);
+  assert.equal(recovered.restore, true);
+  assert.deepEqual(repository.current, repository.recovery);
+  await assert.rejects(
     () => service.prepare(BOOT_ACTIONS.CONTINUE, { actions: { [BOOT_ACTIONS.CONTINUE]: false } }),
     /not available/
   );

@@ -319,7 +319,7 @@ export class CityEditorSystem {
       if (isRoad) this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
       this.selectionHelper?.update?.();
       this.app.uiManager?.showToast(`↻ Rotated ${building.name} 90°.`);
-      this.app.persistenceSystem?.scheduleSave?.();
+      this.app.saveService?.scheduleSave?.('world-edit');
       return this.rotationY;
     }
     this.rotationY = (this.rotationY + Math.PI / 2) % (Math.PI * 2);
@@ -905,7 +905,7 @@ export class CityEditorSystem {
     }
     this.selectionHelper?.update?.();
     this.app.uiManager?.addAlert?.(`✥ Moved ${building.name} to ${Math.round(building.plot.x)}, ${Math.round(building.plot.z)}.`, 'success');
-    this.app.persistenceSystem?.scheduleSave?.();
+    this.app.saveService?.scheduleSave?.('world-edit');
     return true;
   }
 
@@ -1014,7 +1014,7 @@ export class CityEditorSystem {
       `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.canonical} (-$${ZONING_COST.toLocaleString()}).`,
       'success'
     );
-    this.app.persistenceSystem?.scheduleSave?.();
+    this.app.saveService?.scheduleSave?.('world-edit');
     return true;
   }
 
@@ -1128,7 +1128,7 @@ export class CityEditorSystem {
         `🗑️ Demolished: ${building.name}${refundApplied ? ` (+$${refundAmount.toLocaleString()} salvage)` : ''}`
       );
       this.clearStructureSelection();
-      this.app.persistenceSystem?.scheduleSave?.();
+      this.app.saveService?.scheduleSave?.('world-edit');
       return true;
     }
     return false;
@@ -1212,7 +1212,7 @@ export class CityEditorSystem {
       `🏗️ Constructed: ${this.selectedSpec.name}${chargedEconomy && cost > 0 ? ` (-$${cost.toLocaleString()})` : ''}`
     );
     this.app.uiManager?.addAlert?.(`🏗️ New structure registered: ${this.selectedSpec.name}`, 'success');
-    this.app.persistenceSystem?.scheduleSave?.();
+    this.app.saveService?.scheduleSave?.('world-edit');
 
     this.currentHit.valid = this.checkPlacementValidity(plot.x, plot.z, plot.y);
     this.updateGhostValidityAppearance(this.currentHit.valid);

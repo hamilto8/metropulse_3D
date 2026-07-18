@@ -35,7 +35,7 @@ import { MetroPulseTransitionRuntime } from './app/MetroPulseTransitionRuntime.j
 import { createMetroPulseSimulationScheduler } from './app/MetroPulseSimulationSchedule.js';
 import { createMetroPulseInteractionService } from './app/MetroPulseInteractions.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
-import { PersistenceSystem } from './systems/PersistenceSystem.js';
+import { SaveService } from './save/SaveService.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
 import { FEATURE_IDS, applyFeatureVisibility } from './config/FeatureFlags.js';
 import {
@@ -225,8 +225,9 @@ export class MetroPulseApp {
       service: this.interactionService,
       getActionLabel: action => this.inputManager.getActionLabel(action)
     });
-    this.persistenceSystem = new PersistenceSystem(this);
-    if (bootSession.restore && !this.persistenceSystem.restore()) {
+    this.saveService = new SaveService(this, { repository: bootSession.saveRepository });
+    this.uiManager.bindSaveService?.(this.saveService);
+    if (bootSession.restore && !this.saveService.restore(bootSession.saveDocument, { deferRuntime: true })) {
       const error = new Error('The selected city save passed discovery but could not be restored safely.');
       error.userMessage = 'MetroPulse stopped before entering the city because the selected save could not be applied safely.';
       error.actions = ['Reload and choose Recover Previous Save, or start a New Game.'];
@@ -262,6 +263,12 @@ export class MetroPulseApp {
       reason: 'boot-complete',
       source: 'MetroPulseApp'
     });
+    if (bootSession.restore && !this.saveService.restoreRuntime()) {
+      const error = new Error('The selected city save could not restore its player/session state safely.');
+      error.userMessage = this.saveService.getStatus().error || 'MetroPulse stopped before applying the selected city save.';
+      error.actions = ['Reload and choose Recover Previous Save, or start a New Game.'];
+      throw error;
+    }
 
     // Initial UI sync
     this.uiManager.updateTimeDisplay(this.timeManager.timeVal);
@@ -284,7 +291,7 @@ export class MetroPulseApp {
     const requiredServices = {
       world: this.sceneManager?.renderer?.domElement && this.cityBuilder,
       input: this.inputManager,
-      save: this.persistenceSystem,
+      save: this.saveService,
       mission: this.missionSystem,
       scheduler: this.scheduler,
       transitions: this.transitionCoordinator && this.transitionRuntime
@@ -292,7 +299,15 @@ export class MetroPulseApp {
     const missing = Object.entries(requiredServices)
       .filter(([, service]) => !service)
       .map(([name]) => name);
-    if (missing.length > 0 || this.gameManager?.state !== GAME_STATES.MANAGEMENT) {
+    const interactiveStates = new Set([
+      GAME_STATES.MANAGEMENT,
+      GAME_STATES.BUILDER,
+      GAME_STATES.STREET_ON_FOOT,
+      GAME_STATES.STREET_VEHICLE,
+      GAME_STATES.RESULT,
+      GAME_STATES.PAUSED
+    ]);
+    if (missing.length > 0 || !interactiveStates.has(this.gameManager?.state)) {
       throw new Error(`Runtime readiness gate failed: ${missing.join(', ') || 'interactive state unavailable'}.`);
     }
     return true;
@@ -486,7 +501,7 @@ export async function startMetroPulseBoot({ runtimeConfig, screen } = {}) {
           reason: `session-action-${action.toLowerCase()}`,
           source: 'MetroPulseBoot'
         });
-        const prepared = saveDiscovery.prepare(action, results.saves);
+        const prepared = await saveDiscovery.prepare(action, results.saves);
         await nextPaint();
         const app = new MetroPulseApp(runtimeConfig, {
           ...prepared,
@@ -542,6 +557,6 @@ window.addEventListener('unhandledrejection', event => {
   runtimeErrorMonitor.rejected.push(event.reason?.message || String(event.reason));
   console.error('MetroPulse encountered an unhandled operation.', event.reason);
   if (window.app) window.app.fatalError = true;
-  window.app?.persistenceSystem?.saveNow?.();
+  window.app?.saveService?.saveNow?.({ reason: 'page-unload' });
   showFatalError('The city simulation was interrupted', event.reason);
 });

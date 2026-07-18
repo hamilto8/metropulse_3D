@@ -52,7 +52,7 @@ test('move tool updates world, physics, traffic, and economy coordinates atomica
       registerRoadSegment() { calls.push(['road-on']); }
     },
     uiManager: { addAlert() {} },
-    persistenceSystem: { scheduleSave() { calls.push(['save']); } }
+    saveService: { scheduleSave() { calls.push(['save']); } }
   };
 
   assert.equal(editor.moveSelectedStructureToCurrentHit(), true);
