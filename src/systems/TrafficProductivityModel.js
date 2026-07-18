@@ -1,4 +1,5 @@
 import { clamp, clone, deepFreeze } from '../missions/ContractUtils.js';
+import { ECONOMY_BALANCE } from './EconomyBalance.js';
 
 export const TRAFFIC_PRODUCTIVITY_VERSION = 1;
 
@@ -27,7 +28,7 @@ const POLICY_PROFILES = Object.freeze({
     bridgeCapacityMultiplier: 1.28,
     freightReliabilityBonus: 0.1,
     commuterSatisfactionPenalty: 2,
-    operatingCostRate: 2,
+    operatingCostRate: ECONOMY_BALANCE.policies.freightPriorityCostPerSecond,
     tradeoff: 'Faster, more reliable deliveries for $120/min and −2 satisfaction while active.'
   })
 });

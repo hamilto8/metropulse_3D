@@ -14,6 +14,7 @@ export const PLACEMENT_BLOCKERS = Object.freeze({
   ZONE_RESTRICTION: 'ZONE_RESTRICTION',
   ROAD_ACCESS: 'ROAD_ACCESS',
   SERVICE_SHORTAGE: 'SERVICE_SHORTAGE',
+  FISCAL_RESTRICTION: 'FISCAL_RESTRICTION',
   INSUFFICIENT_FUNDS: 'INSUFFICIENT_FUNDS'
 });
 
@@ -31,6 +32,7 @@ const BLOCKER_PRIORITY = Object.freeze({
   [PLACEMENT_BLOCKERS.ZONE_RESTRICTION]: 100,
   [PLACEMENT_BLOCKERS.ROAD_ACCESS]: 110,
   [PLACEMENT_BLOCKERS.SERVICE_SHORTAGE]: 120,
+  [PLACEMENT_BLOCKERS.FISCAL_RESTRICTION]: 125,
   [PLACEMENT_BLOCKERS.INSUFFICIENT_FUNDS]: 130
 });
 
@@ -153,7 +155,10 @@ function projectServices(spec, economySnapshot = {}) {
   return result;
 }
 
-export function createPlacementPreview(spec, economySnapshot = {}, { availableCredits = null } = {}) {
+export function createPlacementPreview(spec, economySnapshot = {}, {
+  availableCredits = null,
+  spendingDecision = null
+} = {}) {
   if (!spec || typeof spec !== 'object') throw new TypeError('placement preview requires a building spec');
   const cost = Math.max(0, finite(spec.cost));
   const authoredNet = finite(spec.incomePerMinute);
@@ -176,6 +181,11 @@ export function createPlacementPreview(spec, economySnapshot = {}, { availableCr
   if (finite(spec.happiness) < 0) risks.push({ level: 'MODERATE', label: 'Local satisfaction pressure' });
   if (availableCredits != null && cost > finite(availableCredits) * 0.6) {
     risks.push({ level: 'MODERATE', label: 'Treasury concentration' });
+  }
+  if (spendingDecision?.warning) {
+    risks.push({ level: 'HIGH', label: spendingDecision.warning });
+  } else if (spendingDecision && !spendingDecision.allowed && spendingDecision.code !== 'INSUFFICIENT_FUNDS') {
+    risks.push({ level: 'HIGH', label: spendingDecision.reason });
   }
   if (risks.length === 0) risks.push({ level: 'LOW', label: 'No material forecast risk' });
 
@@ -228,7 +238,8 @@ export function evaluatePlacement({
   requiresRoadAccess = ORDINARY_DEVELOPMENT_CATEGORIES.has(spec?.category),
   hasRoadAccess = true,
   economySnapshot = {},
-  availableCredits = null
+  availableCredits = null,
+  spendingDecision = null
 } = {}) {
   if (!spec || !Number.isFinite(position?.x) || !Number.isFinite(position?.y) || !Number.isFinite(position?.z)) {
     const blocker = makeBlocker(
@@ -239,7 +250,7 @@ export function evaluatePlacement({
     return freezeResult({ valid: false, blockers: [blocker], primaryBlocker: blocker, preview: null });
   }
 
-  const preview = createPlacementPreview(spec, economySnapshot, { availableCredits });
+  const preview = createPlacementPreview(spec, economySnapshot, { availableCredits, spendingDecision });
   const blockers = [];
   if (!access.unlocked) blockers.push(makeBlocker(
     PLACEMENT_BLOCKERS.CONTENT_LOCKED,
@@ -323,6 +334,14 @@ export function evaluatePlacement({
     `Earn or recover ${money(preview.cost - availableCredits)} before construction.`,
     { cost: preview.cost, availableCredits, shortfall: preview.cost - availableCredits }
   ));
+  if (spendingDecision && !spendingDecision.allowed && spendingDecision.code !== 'INSUFFICIENT_FUNDS') {
+    blockers.push(makeBlocker(
+      PLACEMENT_BLOCKERS.FISCAL_RESTRICTION,
+      spendingDecision.reason,
+      spendingDecision.remedy || 'Choose a lower-risk action and rebuild city reserves.',
+      { decisionCode: spendingDecision.code, fiscalState: spendingDecision.state }
+    ));
+  }
 
   blockers.sort((a, b) => a.priority - b.priority || a.code.localeCompare(b.code));
   return freezeResult({

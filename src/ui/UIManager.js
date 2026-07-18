@@ -554,7 +554,10 @@ export class UIManager {
         } else {
           const district = this.app.economySystem?.snapshot?.().districts?.EAST_CYBER_METROPOLIS;
           const cost = Number(district?.unlockCost ?? 1_000_000);
-          this.showToast(result?.reason || `⚠️ $${cost.toLocaleString()} capital investment required.`);
+          const decision = this.app.economySystem?.evaluateSpending?.(cost, {
+            source: 'district-unlock', referenceId: 'EAST_CYBER_METROPOLIS'
+          });
+          this.showToast(result?.reason || `⚠️ ${decision?.reason || `$${cost.toLocaleString()} capital investment required.`} ${decision?.remedy || ''}`.trim());
         }
       });
     }

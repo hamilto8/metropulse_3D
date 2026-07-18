@@ -1086,14 +1086,48 @@ P4.4 completion evidence (2026-07-18):
 
 #### P4.5 Economy recovery and balance
 
-- [ ] Define stable, deficit, insolvent, and recovery rules.
-- [ ] Prevent a player from entering an unrecoverable economy state without
+- [x] Define stable, deficit, insolvent, and recovery rules.
+- [x] Prevent a player from entering an unrecoverable economy state without
   warning and a recovery path.
-- [ ] Define spending restrictions or emergency assistance deliberately.
-- [ ] Balance construction, upkeep, mission rewards, repair costs, fines,
+- [x] Define spending restrictions or emergency assistance deliberately.
+- [x] Balance construction, upkeep, mission rewards, repair costs, fines,
   growth, and progression against target session lengths.
-- [ ] Add deterministic economy simulations for 15-, 30-, 60-, and 120-minute
+- [x] Add deterministic economy simulations for 15-, 30-, 60-, and 120-minute
   scenarios.
+
+Implementation contract: `ECONOMY_RECOVERY_AND_BALANCE.md`.
+
+P4.5 completion evidence (2026-07-18):
+
+- `EconomySystem` now derives `STABLE`, `DEFICIT`, `INSOLVENT`, and `RECOVERY`
+  from one immutable fiscal contract. Deficits expose exact simulation runway;
+  recovery completes only after cashflow is non-negative and a $25,000 reserve
+  has been rebuilt.
+- One pre-spend decision protects every authoritative debit. Essential repair,
+  cleanup, mission consequences, and bounded fines remain payable; recovery
+  preserves missions and salvage; optional construction, zoning, district
+  expansion, and operating policies cannot remove the last viable recovery
+  path. Placement preview and commit share the same blocker and remedy.
+- Zero-Capital negative cities may claim a persisted $100,000 stabilization
+  grant. It activates disclosed restrictions instead of interest-bearing debt,
+  cannot be claimed while Capital remains, and becomes available again only if
+  essential costs exhaust the previous grant. Mission income, salvage, and
+  removing optional upkeep remain non-grant recovery routes.
+- `EconomyBalance` is the DRY authority for starting Capital, base revenue,
+  mission scale, incident response, fine caps, zoning, salvage, and progression
+  cost. Authored starter assets pay back in 45–200 minutes, mission baselines
+  pay $30k–$150k, severity-five response costs $6k, and fines are capped at both
+  $25k and 10% of current liquidity.
+- `EconomyScenarioSimulator` runs production economy rules with explicit time
+  and ordered actions. Repeated 15-, 30-, 60-, and 120-minute sessions are
+  byte-for-byte deterministic, solvent at every required horizon, and meet the
+  documented Capital, asset, and cashflow targets.
+- City Pulse exposes status, runway, reserve, actions, and assistance in an
+  accessible live region. Structured fiscal alerts deduplicate, escalate, and
+  resolve. Recovery and claim history survive save/reload without replaying a
+  grant.
+- Verification at completion: 387 Node tests, the production build, and all
+  nine Chrome WebGL acceptance flows pass.
 
 ### Exit gate
 

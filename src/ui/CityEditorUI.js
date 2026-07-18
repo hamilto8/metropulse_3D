@@ -523,8 +523,16 @@ export class CityEditorUI {
     const placeLabel = this.container.querySelector('#btn-place-building-label');
     const cost = editor?.getPlacementCost(spec) ?? Number(spec.cost || 0);
     const access = this.getSpecAccess(spec);
-    const affordable = access.unlocked && (editor?.canAfford(spec) ?? true);
+    const spendingDecision = this.app.economySystem?.evaluateSpending?.(cost, {
+      source: 'building-placement',
+      spec
+    }) || null;
+    const affordable = access.unlocked
+      && (spendingDecision?.allowed ?? (editor?.canAfford(spec) ?? true));
     const credits = editor?.getAvailableCredits?.() ?? null;
+    const unavailableReason = !access.unlocked
+      ? access.reason
+      : spendingDecision?.reason || `Insufficient credits for ${spec.name}`;
 
     if (priceEl) {
       const costText = `$${Number(cost).toLocaleString()}`;
@@ -537,14 +545,18 @@ export class CityEditorUI {
       placeBtn.setAttribute('aria-disabled', String(!affordable));
       placeBtn.title = affordable
         ? `Place ${spec.name}`
-        : access.unlocked ? `Insufficient credits for ${spec.name}` : access.reason;
+        : unavailableReason;
       placeBtn.style.opacity = affordable ? '1' : '0.55';
       placeBtn.style.cursor = affordable ? 'pointer' : 'not-allowed';
     }
     if (placeLabel) {
       placeLabel.textContent = affordable
         ? 'Place Building'
-        : access.unlocked ? 'Insufficient Credits' : access.reason;
+        : !access.unlocked
+          ? access.reason
+          : spendingDecision?.code === 'INSUFFICIENT_FUNDS'
+            ? 'Insufficient Credits'
+            : 'Fiscal Restriction';
     }
   }
 

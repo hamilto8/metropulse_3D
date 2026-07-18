@@ -112,6 +112,26 @@ test('truthful placement forecast covers finance, capacity, demand, services, co
   assert.equal(preview.risks[0].level, 'LOW');
 });
 
+test('fiscal recovery restrictions become a specific placement blocker and visible forecast risk', () => {
+  const result = evaluatePlacement({
+    spec: ordinarySpec,
+    position: { x: 0, y: 0, z: 0 },
+    economySnapshot: healthyEconomy(),
+    availableCredits: 100_000,
+    spendingDecision: {
+      allowed: false,
+      code: 'RECOVERY_RESTRICTION',
+      reason: 'Optional expansion is paused while the city is under fiscal recovery restrictions.',
+      remedy: 'Restore non-negative cashflow and rebuild the emergency reserve first.',
+      state: 'RECOVERY'
+    }
+  });
+
+  assert.equal(result.valid, false);
+  assert.equal(result.blockers.some(blocker => blocker.code === PLACEMENT_BLOCKERS.FISCAL_RESTRICTION), true);
+  assert.equal(result.preview.risks.some(risk => risk.label.includes('recovery restrictions')), true);
+});
+
 test('world-edit transactions compensate every applied step in reverse order', () => {
   const calls = [];
   assert.throws(() => runWorldEditTransaction('placement', transaction => {

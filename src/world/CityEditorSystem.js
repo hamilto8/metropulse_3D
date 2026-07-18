@@ -15,6 +15,7 @@ import {
   isOrdinaryDevelopment
 } from './PlacementIntelligence.js';
 import { runWorldEditTransaction } from './WorldEditTransaction.js';
+import { ECONOMY_BALANCE } from '../systems/EconomyBalance.js';
 
 const CORE_LANDMARKS = Object.freeze([
   { name: 'Central Park', minX: -96, maxX: -54, minZ: -96, maxZ: -54 },
@@ -28,7 +29,7 @@ const EXISTING_ROAD_X = Object.freeze([-100, -50, 0, 50, 100, 210, 260, 310, 450
 const EXISTING_ROAD_Z = Object.freeze([-100, -50, 0, 50, 100]);
 const ROAD_HALF_WIDTH_WITH_CLEARANCE = 9;
 const ZONE_PARCEL_SIZE = 30;
-const ZONING_COST = 2_500;
+const ZONING_COST = ECONOMY_BALANCE.construction.zoningCost;
 const ROAD_ACCESS_DISTANCE = 12;
 
 function rectsOverlap(a, b) {
@@ -721,6 +722,10 @@ export class CityEditorSystem {
     const maxSlopeDegrees = Number.isFinite(Number(spec?.maxSlopeDegrees))
       ? Number(spec.maxSlopeDegrees)
       : spec?.generatorType === 'ROAD_SEGMENT' ? 12 : 8;
+    const spendingDecision = economy?.evaluateSpending?.(this.getPlacementCost(spec), {
+      source: 'building-placement',
+      spec
+    }) || null;
 
     return evaluatePlacement({
       spec,
@@ -740,7 +745,8 @@ export class CityEditorSystem {
       requiresRoadAccess: isOrdinaryDevelopment(spec),
       hasRoadAccess,
       economySnapshot,
-      availableCredits: this.getAvailableCredits()
+      availableCredits: this.getAvailableCredits(),
+      spendingDecision
     });
   }
 
@@ -980,6 +986,9 @@ export class CityEditorSystem {
     const context = { reason: 'building-placement', spec, editor: this };
     const controllers = [this.getEconomyController(), this.app.gameManager].filter(Boolean);
     for (const controller of controllers) {
+      if (typeof controller.evaluateSpending === 'function') {
+        return controller.evaluateSpending(cost, { ...context, source: 'building-placement' }).allowed;
+      }
       const result = callOptional(controller, ['canAffordBuilding', 'canAfford'], [cost, spec, context]);
       if (result.called) return result.value !== false;
     }
@@ -1358,10 +1367,13 @@ export class CityEditorSystem {
       this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.label} zoning`);
       return false;
     }
-    if (typeof economy?.spend === 'function' && !economy.spend(ZONING_COST, {
-      source: 'zoning',
-      referenceId: key
-    })) {
+    const zoningContext = { source: 'zoning', referenceId: key };
+    const zoningDecision = economy?.evaluateSpending?.(ZONING_COST, zoningContext) || null;
+    if (zoningDecision && !zoningDecision.allowed) {
+      this.app.uiManager?.showToast(`💳 ${zoningDecision.reason} ${zoningDecision.remedy || ''}`.trim());
+      return false;
+    }
+    if (typeof economy?.spend === 'function' && !economy.spend(ZONING_COST, zoningContext)) {
       this.app.uiManager?.showToast(`💳 Rezoning requires $${ZONING_COST.toLocaleString()}`);
       return false;
     }
@@ -1495,7 +1507,7 @@ export class CityEditorSystem {
 
       const refundRate = Number.isFinite(Number(building.spec?.refundRate))
         ? Math.max(0, Math.min(1, Number(building.spec.refundRate)))
-        : 0.5;
+        : ECONOMY_BALANCE.construction.defaultSalvageRate;
       const refundAmount = Math.round(this.getPlacementCost(building.spec) * refundRate);
       const originalIndex = index;
       const previousDestroyed = building.isDestroyed;

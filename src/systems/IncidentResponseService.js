@@ -4,6 +4,7 @@ import {
   ALERT_SEVERITIES,
   ALERT_TYPES
 } from '../alerts/AlertService.js';
+import { ECONOMY_BALANCE } from './EconomyBalance.js';
 import {
   MISSION_OUTCOME_COMMANDS as COMMANDS,
   REPAIR_STATUSES,
@@ -355,8 +356,14 @@ export class IncidentResponseService {
       severity,
       cleanupRequired,
       repairRequired,
-      cleanupCost: Math.max(0, finite(value.cleanupCost ?? severity * 350, 'incident.cleanupCost')),
-      repairCost: Math.max(0, finite(value.repairCost ?? severity * 850, 'incident.repairCost')),
+      cleanupCost: Math.max(0, finite(
+        value.cleanupCost ?? severity * ECONOMY_BALANCE.incidents.cleanupCostPerSeverity,
+        'incident.cleanupCost'
+      )),
+      repairCost: Math.max(0, finite(
+        value.repairCost ?? severity * ECONOMY_BALANCE.incidents.repairCostPerSeverity,
+        'incident.repairCost'
+      )),
       coverageMultiplier: clamp(finite(value.coverageMultiplier ?? Math.max(0.2, 1 - severity / 10), 'incident.coverageMultiplier'), 0, 1),
       happinessModifier: finite(value.happinessModifier ?? -(severity * 0.5), 'incident.happinessModifier'),
       landValueModifier: finite(value.landValueModifier ?? -severity, 'incident.landValueModifier'),

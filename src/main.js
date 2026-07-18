@@ -30,7 +30,9 @@ import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { TrafficProductivityModel } from './systems/TrafficProductivityModel.js';
 import { TrafficAlertAdapter } from './systems/TrafficAlertAdapter.js';
+import { EconomyAlertAdapter } from './systems/EconomyAlertAdapter.js';
 import { EconomySystem } from './systems/EconomySystem.js';
+import { ECONOMY_BALANCE } from './systems/EconomyBalance.js';
 import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
 import { TransitionCoordinator } from './core/TransitionCoordinator.js';
 import { PauseManager } from './core/PauseManager.js';
@@ -66,6 +68,7 @@ import { ServiceWorkInteractionProvider } from './systems/ServiceWorkInteraction
 import { ServiceTaskMarkerSystem } from './world/ServiceTaskMarkerSystem.js';
 import { CityServicesPanel } from './ui/CityServicesPanel.js';
 import { TrafficProductivityPanel } from './ui/TrafficProductivityPanel.js';
+import { EconomyRecoveryPanel } from './ui/EconomyRecoveryPanel.js';
 import { MobilityStreetFeedbackSystem } from './world/MobilityStreetFeedbackSystem.js';
 import {
   ALERT_DURATION_KINDS,
@@ -108,8 +111,8 @@ export class MetroPulseApp {
     });
     this.nextEconomyBuildingId = 1;
     this.economySystem = new EconomySystem({
-      initialTreasury: 650_000,
-      passiveIncomeRate: 8,
+      initialTreasury: ECONOMY_BALANCE.startingTreasury,
+      passiveIncomeRate: ECONOMY_BALANCE.baseRevenuePerSecond,
       population: 2450,
       happiness: 72,
       landValue: 100,
@@ -119,7 +122,7 @@ export class MetroPulseApp {
         water: { capacity: 100, demand: 82 },
         fire: { capacity: 70, demand: 60 }
       },
-      eastDistrictUnlockCost: 1_000_000
+      eastDistrictUnlockCost: ECONOMY_BALANCE.progression.eastDistrictUnlockCost
     });
     this.missionOutcomeService = new MissionOutcomeService({
       economySystem: this.economySystem,
@@ -269,6 +272,10 @@ export class MetroPulseApp {
     });
 
     this.alertService = new AlertService();
+    this.economyAlertAdapter = new EconomyAlertAdapter({
+      economySystem: this.economySystem,
+      alertService: this.alertService
+    });
     this.trafficAlertAdapter = new TrafficAlertAdapter({
       model: this.trafficProductivityModel,
       alertService: this.alertService
@@ -304,6 +311,12 @@ export class MetroPulseApp {
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
+    this.economyRecoveryPanel = new EconomyRecoveryPanel({
+      economySystem: this.economySystem,
+      root: document.getElementById('economy-recovery-panel'),
+      onFeedback: message => this.uiManager.showToast(message),
+      onRecoveryStarted: () => this.saveService?.scheduleSave?.('economy-recovery')
+    });
     this.cityServicesPanel = new CityServicesPanel({
       cityServiceModel: this.cityServiceModel,
       incidentResponseService: this.incidentResponseService,
@@ -314,7 +327,20 @@ export class MetroPulseApp {
       model: this.trafficProductivityModel,
       root: document.getElementById('traffic-productivity-panel'),
       policyButton: document.getElementById('btn-bridge-priority'),
-      onPolicyChange: enabled => this.trafficSystem.toggleBridgePriority(enabled),
+      onPolicyChange: enabled => {
+        if (enabled) {
+          const decision = this.economySystem.evaluateSpending(0, {
+            source: 'traffic-policy',
+            recurringCostRate: ECONOMY_BALANCE.policies.freightPriorityCostPerSecond
+          });
+          if (!decision.allowed) {
+            this.uiManager.showToast(`${decision.reason} ${decision.remedy || ''}`.trim());
+            return false;
+          }
+        }
+        this.trafficSystem.toggleBridgePriority(enabled);
+        return true;
+      },
       onFeedback: message => this.uiManager.showToast(message)
     });
     this.settingsRuntime = new SettingsRuntime({ store: this.settingsStore, app: this });

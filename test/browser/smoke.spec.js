@@ -504,6 +504,58 @@ test('aggregate traffic drives productivity, missions, alerts, policy tradeoffs,
   expect(pageErrors).toEqual([]);
 });
 
+test('economy insolvency exposes assistance, enforces recovery restrictions, and survives reload', async ({ page }) => {
+  test.setTimeout(90_000);
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(
+    '/?testMode=1&profile=clean&seed=p4-5-recovery&traffic=8&pedestrians=8&quality=low',
+    { waitUntil: 'domcontentloaded' }
+  );
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+
+  await expect(page.locator('#economy-recovery-panel')).toHaveAttribute('data-fiscal-status', 'STABLE');
+  const insolvent = await page.evaluate(() => {
+    window.app.economySystem.registerBuilding({ id: 'browser-fiscal-drain', operatingCostRate: 10 });
+    window.app.economySystem.update(1_000_000);
+    return window.app.economySystem.snapshot();
+  });
+  expect(insolvent.fiscalStatus).toBe('INSOLVENT');
+  expect(insolvent.treasury).toBe(0);
+  await expect(page.locator('#economy-recovery-panel')).toHaveAttribute('data-fiscal-status', 'INSOLVENT');
+  await expect(page.locator('[data-fiscal="assistance"]')).toBeVisible();
+  await expect(page.locator('[data-fiscal="explanation"]')).toContainText('exhausted');
+  expect(await page.evaluate(() => window.__METROPULSE_TEST__.alerts().active
+    .some(alert => alert.dedupeKey === 'economy:fiscal-recovery' && alert.severity === 'CRITICAL'))).toBe(true);
+
+  await page.locator('[data-fiscal="assistance"]').click();
+  await expect(page.locator('#economy-recovery-panel')).toHaveAttribute('data-fiscal-status', 'RECOVERY');
+  const recovery = await page.evaluate(() => ({
+    economy: window.app.economySystem.snapshot(),
+    zoning: window.app.economySystem.evaluateSpending(2_500, { source: 'zoning' })
+  }));
+  expect(recovery.economy.treasury).toBe(100_000);
+  expect(recovery.economy.fiscal.assistanceClaims).toBe(1);
+  expect(recovery.zoning).toMatchObject({ allowed: false, code: 'RECOVERY_RESTRICTION' });
+
+  await page.locator('#btn-bridge-priority').click();
+  await expect(page.locator('#btn-bridge-priority')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.app.saveService.saveNow({ reason: 'manual' }))).toBe(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await page.locator('#btn-boot-continue').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  await expect(page.locator('#economy-recovery-panel')).toHaveAttribute('data-fiscal-status', 'RECOVERY');
+  expect(await page.evaluate(() => window.app.economySystem.snapshot().fiscal.assistanceClaims)).toBe(1);
+
+  await page.evaluate(() => window.app.economySystem.removeBuilding('browser-fiscal-drain'));
+  await expect(page.locator('#economy-recovery-panel')).toHaveAttribute('data-fiscal-status', 'STABLE');
+  expect(await page.evaluate(() => window.__METROPULSE_TEST__.alerts().active
+    .some(alert => alert.dedupeKey === 'economy:fiscal-recovery'))).toBe(false);
+  expect(pageErrors).toEqual([]);
+});
+
 test('mission failure, retry, outcome commit, result save, and recovery form one guarded lifecycle', async ({ page }) => {
   test.setTimeout(90_000);
   const pageErrors = [];

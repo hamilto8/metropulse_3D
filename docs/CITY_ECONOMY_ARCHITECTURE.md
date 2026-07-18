@@ -40,8 +40,13 @@ only place where that compatibility rule lives.
 
 The budget model applies the lowest power/water coverage as a productivity
 multiplier to revenue, then subtracts upkeep. Recurring costs can exhaust cash
-but cannot create invalid negative treasury state. Fiscal state is `STABLE`,
-`DEFICIT`, or `INSOLVENT`.
+but cannot create invalid negative treasury state. P4.5 defines `STABLE`,
+`DEFICIT`, `INSOLVENT`, and `RECOVERY`, exposes deterministic runway, and gates
+risky discretionary debits through one immutable pre-spend policy. Essential
+repair and cleanup remain available. Insolvency offers a persisted bounded
+stabilization grant and recovery restrictions rather than an unrecoverable game
+over. `ECONOMY_RECOVERY_AND_BALANCE.md` is the complete rule and tuning
+contract.
 
 Demographics derive a 62% workforce from population. Explicit job capacity
 produces employment, unemployment, vacancies, and a happiness penalty when
@@ -106,3 +111,8 @@ filled versus traffic-accessible employment remain separate explainable facts.
 `TRAFFIC_AND_PRODUCTIVITY_FEEDBACK.md` is the extension contract for aggregate
 congestion, road capacity, bridge policy, missions, sampled agents, alerts, and
 street presentation.
+
+P4.5 centralizes starting funds, base income, mission scale, incident costs,
+fines, construction recovery, and progression prices in `EconomyBalance`.
+`EconomyScenarioSimulator` advances the real economy at explicit 15-, 30-, 60-,
+and 120-minute horizons; it must never become an alternate mutable simulation.

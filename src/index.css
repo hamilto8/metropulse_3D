@@ -3499,6 +3499,36 @@ input:checked + .slider.round:before {
 }
 
 /* ── Integrated game-state, economy, and action HUD refinements ── */
+.economy-recovery-card {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(0, 240, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(5, 12, 24, 0.62);
+  font-size: 0.72rem;
+}
+
+.economy-recovery-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.economy-recovery-card p { margin: 6px 0; line-height: 1.35; }
+.economy-recovery-card ul { margin: 5px 0 0; padding-left: 17px; }
+.economy-recovery-card li { margin: 3px 0; }
+.economy-recovery-runway { color: #a7c7d9; }
+.economy-recovery-card.fiscal-stable ul { display: none; }
+.economy-recovery-card.fiscal-stable [data-fiscal="status"] { color: #00ff88; }
+.economy-recovery-card.fiscal-deficit { border-color: rgba(251, 191, 36, 0.58); }
+.economy-recovery-card.fiscal-deficit [data-fiscal="status"] { color: #fbbf24; }
+.economy-recovery-card.fiscal-insolvent { border-color: rgba(248, 113, 113, 0.75); }
+.economy-recovery-card.fiscal-insolvent [data-fiscal="status"] { color: #f87171; }
+.economy-recovery-card.fiscal-recovery { border-color: rgba(56, 189, 248, 0.7); }
+.economy-recovery-card.fiscal-recovery [data-fiscal="status"] { color: #38bdf8; }
+.economy-assistance-btn { width: 100%; margin-top: 8px; }
 .top-header-container {
   width: min(98%, 1480px);
 }

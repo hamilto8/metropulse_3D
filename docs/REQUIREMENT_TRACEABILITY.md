@@ -36,7 +36,7 @@ the responsible system owns implementation.
 | GL-006 | Mode entry validates a safe target and offers a safe alternative when invalid. | Transition coordinator | Integration + Browser | Tech Lead | Not Started |
 | GL-007 | Builder-to-Street takes ≤1.5 s warm on target and ≤3 s minimum profile. | Transition coordinator | Performance | Performance Lead | Not Started |
 | GL-008 | Street failure returns to a safe checkpoint with a bounded, disclosed consequence. | Recovery controller | Scenario + Browser | Gameplay Lead | Implemented |
-| GL-009 | Insolvency offers a recovery contract/restrictions instead of an unrecoverable game over. | Economy / missions | Scenario | Systems Designer | Not Started |
+| GL-009 | Insolvency offers a recovery contract/restrictions instead of an unrecoverable game over. | Economy / missions | Scenario + Browser | Systems Designer | Verified |
 | GL-010 | Exactly one primary mode owns camera and high-level input at a time. | GameManager / input | Integration + 50-cycle soak | Tech Lead | In Progress |
 
 ## City
@@ -47,8 +47,8 @@ the responsible system owns implementation.
 | CITY-002 | Residential, Commercial, and Operations are the three player-facing zones. | City editor / catalog | Unit + Browser | Systems Designer | Verified |
 | CITY-003 | Placement previews cost, maintenance, projected effect, prerequisites, and blockers before commit. | City editor UI/domain | Integration + Browser | UX Lead | Verified |
 | CITY-004 | Placement requires valid road access and always supports cancel before confirmation. | City editor domain | Unit + Browser | Gameplay Lead | Verified |
-| CITY-005 | Capital is one shared account with itemized recurring and burst sources/sinks. | EconomySystem | Unit + Scenario | Systems Designer | Implemented |
-| CITY-006 | Passive income supports a healthy city without trivially funding every expansion. | Economy balance data | Simulation + Playtest | Systems Designer | Not Started |
+| CITY-005 | Capital is one shared account with itemized recurring and burst sources/sinks. | EconomySystem | Unit + Scenario | Systems Designer | Verified |
+| CITY-006 | Passive income supports a healthy city without trivially funding every expansion. | Economy balance data | Simulation + Playtest | Systems Designer | Implemented |
 | CITY-007 | Population/jobs use aggregate capacity and expose demand, employment, and top satisfaction causes. | EconomySystem / TrafficProductivityModel / UI | Unit + Browser | Systems Designer | Verified |
 | CITY-008 | MVP energy shortages visibly affect productivity and selected Street lights/traffic systems. | Energy / consequence adapter | Scenario + Browser | Gameplay Lead | Not Started |
 | CITY-009 | Simplified safety/repair clears blockers and damage within bounded time. | Incident / repair service | Scenario | Systems Designer | In Progress |

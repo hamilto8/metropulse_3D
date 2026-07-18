@@ -26,7 +26,8 @@ export class TrafficProductivityPanel {
     };
     this.onClick = () => {
       const enable = this.model.bridgePolicy !== BRIDGE_POLICIES.FREIGHT_PRIORITY;
-      this.onPolicyChange(enable);
+      const changed = this.onPolicyChange(enable);
+      if (changed === false) return;
       this.onFeedback?.(enable
         ? 'Freight priority active: delivery flow improves for $120/min and −2 satisfaction.'
         : 'Balanced bridge access restored: operating cost and commuter penalty removed.');

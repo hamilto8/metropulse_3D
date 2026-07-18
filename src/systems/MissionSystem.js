@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ECONOMY_BALANCE } from './EconomyBalance.js';
 import {
   ALERT_DURATION_KINDS,
   ALERT_FOCUS_ACTIONS,
@@ -210,7 +211,9 @@ export class MissionSystem {
   }
 
   getBasePayout(mission, choiceNode = null) {
-    const scale = Number.isFinite(mission?.rewardScale) ? mission.rewardScale : 100;
+    const scale = Number.isFinite(mission?.rewardScale)
+      ? mission.rewardScale
+      : ECONOMY_BALANCE.missions.rewardScale;
     const base = Number.isFinite(mission?.baseReward) ? mission.baseReward : 400;
     const bonus = Number.isFinite(choiceNode?.rushBonus) ? choiceNode.rushBonus : 0;
     const trafficImpact = this.app?.trafficProductivityModel?.getMissionImpact?.(mission);

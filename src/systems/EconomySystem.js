@@ -1,4 +1,12 @@
 import { normalizeZoneId } from '../world/ConstructionVocabulary.js';
+import {
+  calculateBoundedFine,
+  ECONOMY_BALANCE,
+  evaluateSpendingPolicy,
+  FISCAL_STATES,
+  getFiscalState,
+  getRunwayMinutes
+} from './EconomyBalance.js';
 
 /**
  * Authoritative, renderer-agnostic economy and City Pulse model.
@@ -19,7 +27,7 @@ export const DISTRICT_IDS = Object.freeze({
   EAST_CYBER: 'EAST_CYBER'
 });
 
-export const DEFAULT_EAST_DISTRICT_UNLOCK_COST = 1_000_000;
+export const DEFAULT_EAST_DISTRICT_UNLOCK_COST = ECONOMY_BALANCE.progression.eastDistrictUnlockCost;
 
 export const ECONOMY_EVENTS = Object.freeze({
   TREASURY_CHANGED: 'TREASURY_CHANGED',
@@ -35,6 +43,8 @@ export const ECONOMY_EVENTS = Object.freeze({
   REPUTATION_CHANGED: 'REPUTATION_CHANGED',
   SERVICE_CHANGED: 'SERVICE_CHANGED',
   MOBILITY_FEEDBACK_CHANGED: 'MOBILITY_FEEDBACK_CHANGED',
+  EMERGENCY_ASSISTANCE_GRANTED: 'EMERGENCY_ASSISTANCE_GRANTED',
+  FINE_PAID: 'FINE_PAID',
   CITY_PULSE_CHANGED: 'CITY_PULSE_CHANGED',
   ZONE_CHANGED: 'ZONE_CHANGED',
   DISTRICT_UNLOCKED: 'DISTRICT_UNLOCKED',
@@ -54,6 +64,16 @@ const DEFAULT_MOBILITY_FEEDBACK = Object.freeze({
   bridgeCongestion: 0,
   managementCostRate: 0,
   explanation: Object.freeze([])
+});
+
+const DEFAULT_RECOVERY_STATE = Object.freeze({
+  active: false,
+  assistanceClaims: 0,
+  completedRecoveries: 0,
+  totalAssistance: 0,
+  startedAtRevision: null,
+  lastAssistanceRevision: null,
+  completedAtRevision: null
 });
 
 function assertRecord(value, label) {
@@ -120,6 +140,24 @@ function normalizeMobilityFeedback(feedback = DEFAULT_MOBILITY_FEEDBACK) {
     managementCostRate: assertNonNegative(feedback.managementCostRate ?? 0, 'mobility managementCostRate'),
     explanation: (feedback.explanation ?? []).map(item => String(item))
   });
+}
+
+function normalizeRecoveryState(recovery = DEFAULT_RECOVERY_STATE) {
+  assertRecord(recovery, 'recovery');
+  const active = recovery.active ?? false;
+  assertBoolean(active, 'recovery.active');
+  const optionalRevision = (value, label) => value == null
+    ? null
+    : assertNonNegativeInteger(value, label);
+  return {
+    active,
+    assistanceClaims: assertNonNegativeInteger(recovery.assistanceClaims ?? 0, 'recovery.assistanceClaims'),
+    completedRecoveries: assertNonNegativeInteger(recovery.completedRecoveries ?? 0, 'recovery.completedRecoveries'),
+    totalAssistance: assertNonNegative(recovery.totalAssistance ?? 0, 'recovery.totalAssistance'),
+    startedAtRevision: optionalRevision(recovery.startedAtRevision, 'recovery.startedAtRevision'),
+    lastAssistanceRevision: optionalRevision(recovery.lastAssistanceRevision, 'recovery.lastAssistanceRevision'),
+    completedAtRevision: optionalRevision(recovery.completedAtRevision, 'recovery.completedAtRevision')
+  };
 }
 
 function assertId(value, label = 'id') {
@@ -401,6 +439,7 @@ export class EconomySystem {
   #zones = new Map();
   #districts = new Map();
   #mobilityFeedback = DEFAULT_MOBILITY_FEEDBACK;
+  #recovery = { ...DEFAULT_RECOVERY_STATE };
   #listeners = new Set();
   #revision = 0;
 
@@ -615,6 +654,24 @@ export class EconomySystem {
     return this.#treasury >= amount;
   }
 
+  evaluateSpending(amount, context = {}) {
+    assertNonNegative(amount, 'amount');
+    assertRecord(context, 'spending context');
+    const budget = this.getBudgetBreakdown();
+    return evaluateSpendingPolicy({
+      treasury: this.#treasury,
+      netRate: budget.netRate,
+      recoveryActive: this.#recovery.active,
+      amount,
+      source: context.source ?? 'manual',
+      context
+    });
+  }
+
+  canSpend(amount, context = {}) {
+    return this.evaluateSpending(amount, context).allowed;
+  }
+
   earn(amount, { source = 'manual', referenceId = null } = {}) {
     assertNonNegative(amount, 'amount');
     if (amount === 0) return this.#treasury;
@@ -636,10 +693,13 @@ export class EconomySystem {
    * Attempts a debit. Insufficient funds are an expected game outcome, so the
    * method returns false without mutating state instead of throwing.
    */
-  spend(amount, { source = 'manual', referenceId = null } = {}) {
+  spend(amount, context = {}) {
     assertNonNegative(amount, 'amount');
+    assertRecord(context, 'spending context');
+    const { source = 'manual', referenceId = null } = context;
     if (amount === 0) return true;
-    if (!this.canAfford(amount)) return false;
+    const decision = this.evaluateSpending(amount, context);
+    if (!decision.allowed) return false;
 
     this.#commit(
       ECONOMY_EVENTS.TREASURY_CHANGED,
@@ -649,6 +709,112 @@ export class EconomySystem {
       }
     );
     return true;
+  }
+
+  /**
+   * Applies a disclosed, bounded fine. Penalties can sting but never seize
+   * more than the configured share of current liquidity.
+   */
+  applyFine(requestedAmount, { source = 'fine', referenceId = null } = {}) {
+    assertNonNegative(requestedAmount, 'requestedAmount');
+    const charged = calculateBoundedFine(requestedAmount, this.#treasury);
+    if (charged === 0) return deepFreeze({ requested: requestedAmount, charged: 0, capped: requestedAmount > 0 });
+    this.#commit(
+      ECONOMY_EVENTS.FINE_PAID,
+      { requested: requestedAmount, charged, source, referenceId },
+      () => {
+        this.#treasury -= charged;
+      }
+    );
+    return deepFreeze({ requested: requestedAmount, charged, capped: charged < requestedAmount });
+  }
+
+  getFiscalOverview() {
+    const budget = this.getBudgetBreakdown();
+    const status = getFiscalState({
+      treasury: this.#treasury,
+      netRate: budget.netRate,
+      recoveryActive: this.#recovery.active
+    });
+    const runwayMinutes = getRunwayMinutes(this.#treasury, budget.netRate);
+    const assistanceEligible = this.#treasury <= 0 && budget.netRate < 0;
+    const labels = {
+      [FISCAL_STATES.STABLE]: 'Stable',
+      [FISCAL_STATES.DEFICIT]: 'Deficit',
+      [FISCAL_STATES.INSOLVENT]: 'Insolvent',
+      [FISCAL_STATES.RECOVERY]: 'Recovery'
+    };
+    const explanations = {
+      [FISCAL_STATES.STABLE]: 'Recurring revenue covers upkeep and policy costs.',
+      [FISCAL_STATES.DEFICIT]: `The city is drawing down reserves${runwayMinutes == null ? '.' : ` with about ${Math.max(1, Math.ceil(runwayMinutes))} minutes of runway.`}`,
+      [FISCAL_STATES.INSOLVENT]: 'Capital is exhausted while recurring costs exceed revenue.',
+      [FISCAL_STATES.RECOVERY]: 'Emergency terms remain active until cashflow is non-negative and the reserve is rebuilt.'
+    };
+    return deepFreeze({
+      status,
+      label: labels[status],
+      explanation: explanations[status],
+      runwayMinutes,
+      reserveFloor: ECONOMY_BALANCE.fiscal.reserveFloor,
+      warningRunwayMinutes: ECONOMY_BALANCE.fiscal.warningRunwayMinutes,
+      emergencyGrant: ECONOMY_BALANCE.fiscal.emergencyGrant,
+      assistanceEligible,
+      restrictionsActive: this.#recovery.active,
+      restrictions: this.#recovery.active
+        ? [
+            'Essential cleanup, repair, and bounded fines remain payable.',
+            'Missions and salvage remain available.',
+            'Optional expansion is paused unless an investment restores non-negative cashflow.'
+          ]
+        : [],
+      actions: status === FISCAL_STATES.STABLE
+        ? ['Keep a reserve before adding new recurring costs.']
+        : [
+            'Complete a street contract for Capital.',
+            'Disable optional operating policies and salvage costly assets.',
+            assistanceEligible ? 'Claim emergency stabilization assistance.' : 'Restore non-negative cashflow and rebuild the reserve.'
+          ],
+      ...this.#recovery
+    });
+  }
+
+  requestEmergencyAssistance({ referenceId = 'fiscal-recovery' } = {}) {
+    const fiscal = this.getFiscalOverview();
+    if (!fiscal.assistanceEligible) {
+      return deepFreeze({
+        granted: false,
+        amount: 0,
+        reason: fiscal.status === FISCAL_STATES.STABLE
+          ? 'Emergency assistance is reserved for cities with exhausted Capital and negative cashflow.'
+          : 'Use remaining reserves before emergency assistance becomes available.',
+        fiscal
+      });
+    }
+    const amount = ECONOMY_BALANCE.fiscal.emergencyGrant;
+    this.#commit(
+      ECONOMY_EVENTS.EMERGENCY_ASSISTANCE_GRANTED,
+      { amount, referenceId },
+      () => {
+        this.#treasury += amount;
+        this.#recovery = {
+          ...this.#recovery,
+          active: true,
+          assistanceClaims: this.#recovery.assistanceClaims + 1,
+          totalAssistance: this.#recovery.totalAssistance + amount,
+          startedAtRevision: this.#recovery.active
+            ? this.#recovery.startedAtRevision
+            : this.#revision + 1,
+          lastAssistanceRevision: this.#revision + 1,
+          completedAtRevision: null
+        };
+      }
+    );
+    return deepFreeze({
+      granted: true,
+      amount,
+      reason: 'Stabilization grant issued; recovery spending restrictions are now active.',
+      fiscal: this.getFiscalOverview()
+    });
   }
 
   setPassiveIncomeRate(rate) {
@@ -1000,7 +1166,10 @@ export class EconomySystem {
     if (!district) {
       throw new RangeError(`Unknown district: ${normalizedId}`);
     }
-    return !district.unlocked && this.canAfford(district.unlockCost);
+    return !district.unlocked && this.evaluateSpending(district.unlockCost, {
+      source: 'district-unlock',
+      referenceId: normalizedId
+    }).allowed;
   }
 
   unlockDistrict(id) {
@@ -1009,7 +1178,7 @@ export class EconomySystem {
     if (!district) {
       throw new RangeError(`Unknown district: ${normalizedId}`);
     }
-    if (district.unlocked || !this.canAfford(district.unlockCost)) return false;
+    if (district.unlocked || !this.canUnlockDistrict(normalizedId)) return false;
 
     this.#commit(
       ECONOMY_EVENTS.DISTRICT_UNLOCKED,
@@ -1053,7 +1222,8 @@ export class EconomySystem {
       completedMissions: structuredClone([...this.#completedMissions.values()]),
       incidents: structuredClone([...this.#incidents.values()]),
       zones: structuredClone([...this.#zones.values()]),
-      districts: structuredClone([...this.#districts.values()])
+      districts: structuredClone([...this.#districts.values()]),
+      recovery: structuredClone(this.#recovery)
     };
   }
 
@@ -1069,6 +1239,7 @@ export class EconomySystem {
     const reputation = assertFiniteNumber(state.reputation, 'state.reputation');
     const narrativeProgress = assertNonNegativeInteger(state.narrativeProgress, 'state.narrativeProgress');
     const baseServices = normalizeServiceBase(state.baseServices || {});
+    const recovery = normalizeRecoveryState(state.recovery || DEFAULT_RECOVERY_STATE);
 
     if (!Array.isArray(state.buildings) || !Array.isArray(state.completedMissions) || !Array.isArray(state.incidents)) {
       throw new TypeError('Saved economy collections must be arrays');
@@ -1128,6 +1299,7 @@ export class EconomySystem {
       this.#incidents = incidents;
       this.#zones = zones;
       this.#districts = districts;
+      this.#recovery = recovery;
       // Mobility is a derived input owned and restored by
       // TrafficProductivityModel after the economy domain is restored.
       this.#mobilityFeedback = DEFAULT_MOBILITY_FEEDBACK;
@@ -1235,11 +1407,8 @@ export class EconomySystem {
       services: serviceDemand
     };
     const budget = this.getBudgetBreakdown();
-    const fiscalStatus = this.#treasury <= 0 && budget.netRate < 0
-      ? 'INSOLVENT'
-      : budget.netRate < 0
-        ? 'DEFICIT'
-        : 'STABLE';
+    const fiscal = this.getFiscalOverview();
+    const fiscalStatus = fiscal.status;
 
     const districts = {};
     const unlockedDistricts = [];
@@ -1292,6 +1461,7 @@ export class EconomySystem {
       happinessBreakdown,
       mobility: { ...this.#mobilityFeedback },
       fiscalStatus,
+      fiscal,
       reputation: this.#reputation,
       narrativeProgress: this.#narrativeProgress,
       cityPulse: pulse,
@@ -1354,6 +1524,7 @@ export class EconomySystem {
   #commit(type, detail, mutation) {
     const previous = this.snapshot();
     const result = mutation();
+    this.#reconcileRecovery();
     this.#revision += 1;
     const current = this.snapshot();
     const event = deepFreeze({ type, previous, current, detail: { ...detail } });
@@ -1368,6 +1539,19 @@ export class EconomySystem {
       }
     }
     return result;
+  }
+
+  #reconcileRecovery() {
+    if (!this.#recovery.active) return false;
+    const budget = this.getBudgetBreakdown();
+    if (budget.netRate < 0 || this.#treasury < ECONOMY_BALANCE.fiscal.reserveFloor) return false;
+    this.#recovery = {
+      ...this.#recovery,
+      active: false,
+      completedRecoveries: this.#recovery.completedRecoveries + 1,
+      completedAtRevision: this.#revision + 1
+    };
+    return true;
   }
 }
 
