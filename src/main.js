@@ -45,8 +45,7 @@ import {
 import { DiagnosticsService } from './debug/DiagnosticsService.js';
 import { installBrowserTestBridge } from './testing/BrowserTestBridge.js';
 import { MVP_MISSION_IDS } from './config/MvpScope.js';
-import missionsData from './data/missions.json' with { type: 'json' };
-import { validateMissionData } from './data/MissionDataValidator.js';
+import { validateGameData } from './data/GameDataValidator.js';
 import { BootPipeline } from './boot/BootPipeline.js';
 import { CapabilityChecker } from './boot/CapabilityChecker.js';
 import { SettingsBootstrap } from './boot/SettingsBootstrap.js';
@@ -67,6 +66,8 @@ export class MetroPulseApp {
     }
     this.runtimeConfig = runtimeConfig;
     this.bootSession = bootSession;
+    this.contentRegistry = bootSession.contentRegistry;
+    if (!this.contentRegistry?.has) throw new TypeError('MetroPulseApp requires validated game content.');
     if (!bootSession.settingsStore?.snapshot) throw new TypeError('MetroPulseApp requires a validated settings store.');
     this.settingsStore = bootSession.settingsStore;
     this.settings = this.settingsStore.getSettings();
@@ -452,10 +453,7 @@ function createBootPipeline({ runtimeConfig, screen, saveDiscovery }) {
       {
         id: 'data',
         label: 'Validating city and mission data…',
-        run: () => {
-          validateMissionData(missionsData);
-          return Object.freeze({ missions: missionsData.length });
-        }
+        run: () => validateGameData()
       },
       {
         id: 'settings',
@@ -465,7 +463,7 @@ function createBootPipeline({ runtimeConfig, screen, saveDiscovery }) {
       {
         id: 'saves',
         label: 'Discovering local city saves…',
-        run: () => saveDiscovery.discover()
+        run: results => saveDiscovery.discover(results.data)
       },
       {
         id: 'assets',
@@ -512,7 +510,8 @@ export async function startMetroPulseBoot({ runtimeConfig, screen } = {}) {
         const app = new MetroPulseApp(runtimeConfig, {
           ...prepared,
           gameManager,
-          settingsStore: results.settings.store
+          settingsStore: results.settings.store,
+          contentRegistry: results.data
         });
         app.assertReady();
         window.app = app;

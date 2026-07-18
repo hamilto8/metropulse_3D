@@ -6,6 +6,7 @@ export const DEFAULT_WEATHER_MODE = 'clear';
  */
 export const WEATHER_DEFINITIONS = Object.freeze({
   clear: Object.freeze({
+    id: 'clear',
     durationSeconds: 45,
     fogDensity: 0.0035,
     rainOpacity: 0,
@@ -15,6 +16,7 @@ export const WEATHER_DEFINITIONS = Object.freeze({
     statusText: '☀️ CLEAR'
   }),
   mist: Object.freeze({
+    id: 'mist',
     durationSeconds: 30,
     fogDensity: 0.015,
     rainOpacity: 0,
@@ -24,6 +26,7 @@ export const WEATHER_DEFINITIONS = Object.freeze({
     statusText: '🌫️ MIST'
   }),
   rain: Object.freeze({
+    id: 'rain',
     durationSeconds: 40,
     fogDensity: 0.008,
     rainOpacity: 0.6,
@@ -33,6 +36,7 @@ export const WEATHER_DEFINITIONS = Object.freeze({
     statusText: '🌧️ RAIN'
   }),
   thunderstorm: Object.freeze({
+    id: 'thunderstorm',
     durationSeconds: 28,
     fogDensity: 0.012,
     rainOpacity: 0.85,

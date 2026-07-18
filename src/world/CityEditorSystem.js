@@ -1,13 +1,7 @@
 import * as THREE from 'three';
 import { getBuildingSpec } from './BuildingCatalog.js';
 import { createBuildingEconomyRecord } from '../systems/BuildingEconomyAdapter.js';
-
-const WORLD_BOUNDS = Object.freeze({
-  minX: -190,
-  maxX: 810,
-  minZ: -390,
-  maxZ: 390
-});
+import { getZoneDefinition, WORLD_BOUNDS } from '../data/ContentDefinitions.js';
 
 const CORE_LANDMARKS = Object.freeze([
   { name: 'Central Park', minX: -96, maxX: -54, minZ: -96, maxZ: -54 },
@@ -22,19 +16,6 @@ const EXISTING_ROAD_Z = Object.freeze([-100, -50, 0, 50, 100]);
 const ROAD_HALF_WIDTH_WITH_CLEARANCE = 9;
 const ZONE_PARCEL_SIZE = 30;
 const ZONING_COST = 2_500;
-
-const ZONE_DEFINITIONS = Object.freeze({
-  RES: { canonical: 'RESIDENTIAL', color: 0x22c55e, happiness: 1.2, landValue: 1.5 },
-  RESIDENTIAL: { canonical: 'RESIDENTIAL', color: 0x22c55e, happiness: 1.2, landValue: 1.5 },
-  COM: { canonical: 'COMMERCIAL', color: 0xd946ef, happiness: 0.3, landValue: 2.2 },
-  COMMERCIAL: { canonical: 'COMMERCIAL', color: 0xd946ef, happiness: 0.3, landValue: 2.2 },
-  IND: { canonical: 'INDUSTRIAL', color: 0xf97316, happiness: -1.5, landValue: -1 },
-  INDUSTRIAL: { canonical: 'INDUSTRIAL', color: 0xf97316, happiness: -1.5, landValue: -1 },
-  OFFICE: { canonical: 'OFFICE', color: 0x38bdf8, happiness: 0.4, landValue: 1.8 },
-  POWER: { canonical: 'POWER_SERVICE', color: 0xfacc15, happiness: 0.2, landValue: 0.4 },
-  WATER: { canonical: 'WATER_SERVICE', color: 0x06b6d4, happiness: 0.8, landValue: 0.7 },
-  FIRE: { canonical: 'FIRE_SERVICE', color: 0xef4444, happiness: 1.5, landValue: 1.2 }
-});
 
 function rectsOverlap(a, b) {
   return a.maxX > b.minX && a.minX < b.maxX && a.maxZ > b.minZ && a.minZ < b.maxZ;
@@ -134,7 +115,7 @@ export class CityEditorSystem {
     );
     mesh.position.set(x, baseY, z);
     mesh.renderOrder = 4;
-    mesh.userData.zoneType = definition.canonical;
+    mesh.userData.zoneType = definition.id;
     return mesh;
   }
 
@@ -189,9 +170,9 @@ export class CityEditorSystem {
 
   setZoningMode(zoneType) {
     const normalized = typeof zoneType === 'string' ? zoneType.trim().toUpperCase() : '';
-    const definition = ZONE_DEFINITIONS[normalized];
+    const definition = getZoneDefinition(normalized);
     if (!definition) return false;
-    this.zoningMode = definition.canonical;
+    this.zoningMode = definition.id;
     this.toolMode = 'ZONE';
     this.clearStructureSelection();
     this.isDeleteMode = false;
@@ -937,15 +918,15 @@ export class CityEditorSystem {
   }
 
   applyLocalZoneParcel() {
-    const definition = Object.values(ZONE_DEFINITIONS).find(entry => entry.canonical === this.zoningMode);
+    const definition = getZoneDefinition(this.zoningMode);
     if (!definition) return false;
 
     const x = Math.round(this.currentHit.x / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
     const z = Math.round(this.currentHit.z / ZONE_PARCEL_SIZE) * ZONE_PARCEL_SIZE;
     const key = `${Math.round(x / ZONE_PARCEL_SIZE)},${Math.round(z / ZONE_PARCEL_SIZE)}`;
     const previous = this.zoneParcels.get(key);
-    if (previous?.zoneType === definition.canonical) {
-      this.app.uiManager?.showToast(`ℹ️ Parcel is already zoned ${definition.canonical}`);
+    if (previous?.zoneType === definition.id) {
+      this.app.uiManager?.showToast(`ℹ️ Parcel is already zoned ${definition.id}`);
       return true;
     }
 
@@ -955,8 +936,8 @@ export class CityEditorSystem {
       return Math.abs(candidate.plot.x - x) <= (candidate.plot.width || 30) / 2
         && Math.abs(candidate.plot.z - z) <= (candidate.plot.depth || 30) / 2;
     });
-    if (building?.spec && !this.isSpecCompatibleWithZone(building.spec, definition.canonical)) {
-      this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.canonical} zoning`);
+    if (building?.spec && !this.isSpecCompatibleWithZone(building.spec, definition.id)) {
+      this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.id} zoning`);
       return false;
     }
     if (typeof economy?.spend === 'function' && !economy.spend(ZONING_COST, {
@@ -979,7 +960,7 @@ export class CityEditorSystem {
       key,
       x,
       z,
-      zoneType: definition.canonical,
+      zoneType: definition.id,
       happinessModifier: definition.happiness,
       landValueModifier: definition.landValue,
       mesh
@@ -988,7 +969,7 @@ export class CityEditorSystem {
     if (typeof economy?.setZoneEffect === 'function') {
       economy.setZoneEffect({
         id: key,
-        type: definition.canonical,
+        type: definition.id,
         x,
         z,
         happinessModifier: definition.happiness,
@@ -1004,16 +985,16 @@ export class CityEditorSystem {
       economy?.adjustLandValue?.(definition.landValue);
     }
     if (building) {
-      building.zone = definition.canonical;
-      building.status = `Rezoned: ${definition.canonical}`;
+      building.zone = definition.id;
+      building.status = `Rezoned: ${definition.id}`;
       if (building.info) {
-        building.info.Zone = definition.canonical;
+        building.info.Zone = definition.id;
         building.info.Status = building.status;
       }
     }
 
     this.app.uiManager?.addAlert(
-      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.canonical} (-$${ZONING_COST.toLocaleString()}).`,
+      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.id} (-$${ZONING_COST.toLocaleString()}).`,
       'success'
     );
     this.app.saveService?.scheduleSave?.('world-edit');
@@ -1045,7 +1026,7 @@ export class CityEditorSystem {
   restoreZoneParcels(records = []) {
     if (!Array.isArray(records)) throw new TypeError('Saved zone parcels must be an array');
     for (const record of records) {
-      const definition = Object.values(ZONE_DEFINITIONS).find(entry => entry.canonical === record?.zoneType);
+      const definition = getZoneDefinition(record?.zoneType);
       if (!definition || !Number.isFinite(record.x) || !Number.isFinite(record.z)) continue;
       const key = typeof record.key === 'string'
         ? record.key
@@ -1057,7 +1038,7 @@ export class CityEditorSystem {
         key,
         x: record.x,
         z: record.z,
-        zoneType: definition.canonical,
+        zoneType: definition.id,
         happinessModifier: Number(record.happinessModifier ?? definition.happiness),
         landValueModifier: Number(record.landValueModifier ?? definition.landValue),
         mesh
@@ -1066,7 +1047,7 @@ export class CityEditorSystem {
       if (typeof economy?.setZoneEffect === 'function' && !economy.getZoneEffect?.(key)) {
         economy.setZoneEffect({
           id: key,
-          type: definition.canonical,
+          type: definition.id,
           x: record.x,
           z: record.z,
           happinessModifier: Number(record.happinessModifier ?? definition.happiness),

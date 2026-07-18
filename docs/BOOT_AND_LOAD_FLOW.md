@@ -15,8 +15,8 @@ offered only valid actions:
 | Action | Availability | Behavior |
 |---|---|---|
 | `New Game` | All compatible, validated profiles | Preserves a valid current save as the recovery slot, clears the active legacy slot, and starts a clean session. |
-| `Continue` | A structurally valid current legacy v1 save exists | Restores the current save before entering Management. |
-| `Recover Previous Save` | A structurally valid recovery legacy v1 save exists | Promotes the known-good recovery data into the current slot, then restores it. |
+| `Continue` | A structurally and content-compatible current save exists | Restores the current save before entering Management. |
+| `Recover Previous Save` | A structurally and content-compatible recovery save exists | Promotes the known-good recovery data into the current slot, then restores it. |
 
 Corrupt save data does not block a new game or a valid recovery. It disables
 only the unsafe action and explains why Continue is unavailable.
@@ -46,19 +46,22 @@ later stages and prevents runtime construction.
 
 1. **Capabilities** — verifies a real hardware WebGL 2 context, a writable
    LocalStorage round trip, and a transactional IndexedDB write.
-2. **City data** — validates mission content, stable IDs, supported objectives,
-   coordinates, dialogue references, and objective-specific requirements.
+2. **Game data** — builds the immutable P2.4 registry after validating missions,
+   dialogue, buildings, zones, districts, factions, progression, weather, MVP
+   scope, stable IDs, coordinates, references, and graph invariants.
 3. **Player settings** — loads the complete P2.3 versioned settings and bindings
    store, migrates the P2.1 schema, and safely falls back to defaults when local
    data is corrupt.
-4. **Save discovery** — parses current and recovery legacy v1 save envelopes
-   without applying either to live systems.
+4. **Save discovery** — validates current, recovery, and one-time legacy v1
+   migration sources against the exact game-content registry without applying
+   any document to live systems.
 5. **Core assets** — decodes the required boot visual and waits for fonts when
    available. System-font fallback keeps external font failure noncritical.
 
 Every stage is renderer-independent except the browser capability probe and
 asset decoder. Stage results are immutable snapshots passed to subsequent
-stages.
+stages. The detailed validation and extension contract is documented in
+`DATA_VALIDATION.md`.
 
 ## Compatibility failures
 

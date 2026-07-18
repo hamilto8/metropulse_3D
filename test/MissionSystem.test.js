@@ -28,8 +28,8 @@ function missionFixture(overrides = {}) {
     vehicleType: 'TAXI',
     passengerName: 'Test Rider',
     passengerRole: 'QA specialist',
-    pickup: { x: 10, z: 20, district: 'Test District' },
-    dropoff: { x: 110, z: 120, district: 'Destination' },
+    pickup: { x: 10, z: 20, district: 'Test District', districtId: 'WEST_CORE' },
+    dropoff: { x: 110, z: 120, district: 'Destination', districtId: 'PRIMARY_BRIDGE_CORRIDOR' },
     timeLimit: 60,
     baseReward: 10,
     rewardScale: 100,
@@ -101,7 +101,7 @@ test('mission-data validation accepts supported objectives and rejects structura
   );
   assert.throws(
     () => validateMissionData([missionFixture({ pickup: { x: 1 } })]),
-    /invalid pickup/
+    /pickup\.z/
   );
   assert.throws(
     () => validateMissionData([missionFixture({ missionType: 'ESCORT' })]),
@@ -109,7 +109,7 @@ test('mission-data validation accepts supported objectives and rejects structura
   );
   assert.throws(
     () => validateMissionData([missionFixture({ timeLimit: 0 })]),
-    /invalid timeLimit/
+    /timeLimit/
   );
   assert.throws(
     () => validateMissionData([missionFixture({ missionType: 'RACE' })]),
@@ -238,10 +238,10 @@ test('race missions advance authored checkpoints and fail when a rival finishes 
     vehicleType: 'SPORTS',
     timeLimit: 100,
     checkpoints: [
-      { x: 20, z: 20, district: 'One' },
-      { x: 30, z: 20, district: 'Two' }
+      { x: 20, z: 20, district: 'One', districtId: 'WEST_CORE' },
+      { x: 30, z: 20, district: 'Two', districtId: 'WEST_CORE' }
     ],
-    dropoff: { x: 40, z: 20, district: 'Finish' },
+    dropoff: { x: 40, z: 20, district: 'Finish', districtId: 'WEST_CORE' },
     rivals: [{ name: 'Test Rival', finishTime: 30 }]
   });
   assert.equal(system.startMission(race), true);

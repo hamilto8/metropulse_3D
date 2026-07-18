@@ -395,3 +395,35 @@ test('migrates legacy slots, preserves recovery, saves transactionally, and cont
   expect(restored.heatEscapeTime).toBeGreaterThanOrEqual(3.5);
   expect(restored.controlledPosition).not.toBeNull();
 });
+
+test('fails closed on a content-incompatible save before runtime composition', async ({ page }) => {
+  const incompatibleSave = JSON.stringify({
+    version: 1,
+    savedAt: '2026-07-18T12:00:00.000Z',
+    economy: { version: 1 },
+    world: { version: 1, buildings: [], zones: [] },
+    mission: {
+      completedMissionIds: ['mission_removed_from_build'],
+      dialogueChoices: [],
+      chronologyStep: 1,
+      runCounts: []
+    },
+    settings: {}
+  });
+  await page.addInitScript(save => {
+    localStorage.setItem('metropulse3d:city-session:v1', save);
+  }, incompatibleSave);
+
+  await page.goto('/?testMode=1&traffic=1&pedestrians=1&quality=low', {
+    waitUntil: 'domcontentloaded'
+  });
+
+  await expect(page.locator('#btn-boot-new-game')).toBeVisible();
+  await expect(page.locator('#btn-boot-continue')).toBeHidden();
+  await expect(page.locator('#boot-warning')).toContainText(
+    'save.data.missions.completedMissionIds[0]'
+  );
+  await expect(page.locator('#boot-warning')).toContainText('mission_removed_from_build');
+  await expect(page.locator('#canvas-container canvas')).toHaveCount(0);
+  expect(await page.evaluate(() => Boolean(window.app?.gameManager))).toBe(false);
+});

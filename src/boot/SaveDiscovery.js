@@ -6,6 +6,7 @@ import {
   inspectSaveDocument
 } from '../save/SaveSchema.js';
 import { validateGameState } from '../save/SaveGameState.js';
+import { getProductionContentRegistry } from '../data/GameDataValidator.js';
 
 export const RECOVERY_SAVE_KEY = 'metropulse3d:city-session:v1:recovery';
 export const SAVE_KEY = LEGACY_LOCAL_STORAGE_SAVE_KEY;
@@ -24,10 +25,15 @@ function invalidLegacy(slot, reason = null, present = false) {
   return Object.freeze({ slot, source: 'localStorage-v1', present, valid: false, savedAt: null, reason, raw: null, document: null });
 }
 
-export function inspectLegacySave(raw, slot = SAVE_SLOTS.CURRENT) {
+export function inspectLegacySave(raw, slot = SAVE_SLOTS.CURRENT, {
+  contentRegistry = getProductionContentRegistry()
+} = {}) {
   if (typeof raw !== 'string' || !raw.trim()) return invalidLegacy(slot, null, false);
   try {
-    const document = validateSaveDocumentForDiscovery(convertLegacyV1Save(JSON.parse(raw)));
+    const document = validateSaveDocumentForDiscovery(
+      convertLegacyV1Save(JSON.parse(raw)),
+      contentRegistry
+    );
     return Object.freeze({
       slot,
       source: 'localStorage-v1',
@@ -43,10 +49,10 @@ export function inspectLegacySave(raw, slot = SAVE_SLOTS.CURRENT) {
   }
 }
 
-function validateSaveDocumentForDiscovery(document) {
+function validateSaveDocumentForDiscovery(document, contentRegistry) {
   // Conversion already validates the envelope; discovery additionally checks
   // domain shapes without requiring live runtime content to exist yet.
-  validateGameState(document.data);
+  validateGameState(document.data, { contentRegistry });
   return document;
 }
 
@@ -59,15 +65,16 @@ export class SaveDiscovery {
     this.repository = repository;
   }
 
-  async discover() {
+  async discover(contentRegistry = getProductionContentRegistry()) {
     const slots = await this.repository.readSlots();
-    let current = inspectSaveDocument(slots.current, SAVE_SLOTS.CURRENT, { validateDomains: validateGameState });
-    let recovery = inspectSaveDocument(slots.recovery, SAVE_SLOTS.RECOVERY, { validateDomains: validateGameState });
+    const validateDomains = data => validateGameState(data, { contentRegistry });
+    let current = inspectSaveDocument(slots.current, SAVE_SLOTS.CURRENT, { validateDomains });
+    let recovery = inspectSaveDocument(slots.recovery, SAVE_SLOTS.RECOVERY, { validateDomains });
 
     // LocalStorage is never written by P2.2. It is consulted only when the
     // matching IndexedDB slot is absent, then removed after a successful copy.
-    if (!current.present) current = inspectLegacySave(this.storage?.getItem?.(SAVE_KEY), SAVE_SLOTS.CURRENT);
-    if (!recovery.present) recovery = inspectLegacySave(this.storage?.getItem?.(RECOVERY_SAVE_KEY), SAVE_SLOTS.RECOVERY);
+    if (!current.present) current = inspectLegacySave(this.storage?.getItem?.(SAVE_KEY), SAVE_SLOTS.CURRENT, { contentRegistry });
+    if (!recovery.present) recovery = inspectLegacySave(this.storage?.getItem?.(RECOVERY_SAVE_KEY), SAVE_SLOTS.RECOVERY, { contentRegistry });
 
     return Object.freeze({
       current,

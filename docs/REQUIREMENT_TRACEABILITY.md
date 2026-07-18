@@ -177,6 +177,6 @@ the responsible system owns implementation.
 | REL-007 | Release candidate has no open P0/P1 defects or knowingly misleading UI state. | Defect process | Release review | Release Lead | Not Started |
 | REL-008 | Art, animation, audio, writing, balance, interface, accessibility, and compatibility each receive a dedicated signoff pass. | Discipline checklists | Release review | Product Lead | Not Started |
 | REL-009 | The first-session experience hides/gates non-MVP breadth and exposes only acceptance-ready features. | Feature flags / boot flow | Browser | Product Lead | Verified |
-| REL-010 | Invalid content fails actionably in development and uses a safe production fallback where possible. | Data validation | Validation + Browser | Content Lead | In Progress |
+| REL-010 | Invalid content fails actionably in development and uses a safe production fallback where possible. | Data validation | Validation + Browser | Content Lead | Verified |
 | REL-011 | Error reports include mode/content IDs and collect no personal/save/dialogue data by default. | Diagnostics / privacy | Integration + privacy review | Tech Lead | In Progress |
 | REL-012 | A release gate may pass, pass conditionally, repeat, or cut scope; defining cross-mode/save/performance contracts cannot be cut. | Production process | Gate review | Product Lead | Verified |

@@ -200,6 +200,29 @@ test('save discovery offers only valid actions and explains a corrupt current sl
   assert.equal(inspectLegacySave(null).present, false);
 });
 
+test('save discovery rejects content-incompatible references before offering Continue', async () => {
+  const incompatible = JSON.parse(saveFixture());
+  incompatible.mission = {
+    completedMissionIds: ['mission_removed_from_build'],
+    dialogueChoices: [],
+    chronologyStep: 1,
+    runCounts: []
+  };
+  const storage = new MemoryStorage({
+    [SAVE_KEY]: JSON.stringify(incompatible)
+  });
+
+  const discovery = await new SaveDiscovery({
+    storage,
+    repository: new MemorySaveRepository()
+  }).discover();
+
+  assert.equal(discovery.actions[BOOT_ACTIONS.CONTINUE], false);
+  assert.equal(discovery.current.valid, false);
+  assert.match(discovery.current.reason, /save\.data\.missions\.completedMissionIds\[0\]/);
+  assert.match(discovery.current.reason, /mission_removed_from_build/);
+});
+
 test('new game migrates LocalStorage once, preserves recovery, and promotes it transactionally', async () => {
   const current = saveFixture('2026-07-18T12:00:00.000Z');
   const older = saveFixture('2026-07-16T12:00:00.000Z');

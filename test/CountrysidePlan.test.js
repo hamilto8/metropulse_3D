@@ -153,7 +153,7 @@ test('zoning overlays stay editor-only and conform to rolling terrain', () => {
   assert.equal(editor.syncZoneOverlayVisibility(), true);
 
   const mesh = editor.createZoneOverlayMesh(500, 25, {
-    canonical: 'COMMERCIAL',
+    id: 'COMMERCIAL',
     color: 0xd946ef
   });
   const heights = [];

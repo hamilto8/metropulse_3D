@@ -4,6 +4,8 @@ import { PAUSE_REASONS } from '../core/PauseManager.js';
 import { getBuildingSpec } from '../world/BuildingCatalog.js';
 import { SaveValidationError } from './SaveSchema.js';
 import { SETTINGS_SCHEMA_VERSION, validateSettingsDocument } from '../settings/SettingsSchema.js';
+import { CONTENT_TYPES, getProductionContentRegistry } from '../data/GameDataValidator.js';
+import { WORLD_BOUNDS } from '../data/ContentDefinitions.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -30,6 +32,40 @@ function version1(value, path) {
 function finite(value, path) {
   if (!Number.isFinite(value)) throw new SaveValidationError('must be finite.', { path });
   return value;
+}
+
+function finiteInRange(value, path, min, max) {
+  finite(value, path);
+  if (value < min || value > max) {
+    throw new SaveValidationError(`must be between ${min} and ${max}.`, { path });
+  }
+  return value;
+}
+
+function stableString(value, path) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new SaveValidationError('must be a non-empty stable ID string.', { path });
+  }
+  return value.trim();
+}
+
+function knownContent(registry, type, id, path) {
+  const stableId = stableString(id, path);
+  if (!registry.has(type, stableId)) {
+    throw new SaveValidationError(`references unknown ${type} content ID ${stableId}.`, { path });
+  }
+  return stableId;
+}
+
+function uniqueContentIds(values, path, registry, type) {
+  if (!Array.isArray(values)) throw new SaveValidationError('must be an array.', { path });
+  const ids = new Set();
+  values.forEach((value, index) => {
+    const id = knownContent(registry, type, value, `${path}[${index}]`);
+    if (ids.has(id)) throw new SaveValidationError(`duplicates stable content ID ${id}.`, { path: `${path}[${index}]` });
+    ids.add(id);
+  });
+  return ids;
 }
 
 function vector(value, path) {
@@ -140,7 +176,10 @@ export function captureGameState(app) {
   };
 }
 
-export function validateGameState(data) {
+export function validateGameState(data, {
+  contentRegistry = getProductionContentRegistry()
+} = {}) {
+  record(data, 'save.data');
   const game = version1(data.game, 'save.data.game');
   if (!STABLE_STATES.has(game.state)) throw new SaveValidationError('is not a restorable state.', { path: 'save.data.game.state' });
   if (typeof game.mayhemEnabled !== 'boolean') throw new SaveValidationError('must be boolean.', { path: 'save.data.game.mayhemEnabled' });
@@ -157,14 +196,17 @@ export function validateGameState(data) {
     if (![CONTROL_KINDS.VEHICLE, CONTROL_KINDS.PEDESTRIAN, CONTROL_KINDS.AIRCRAFT].includes(controlled.kind)) {
       throw new SaveValidationError('has an unsupported control kind.', { path: 'save.data.player.controlled.kind' });
     }
-    if (typeof controlled.contentId !== 'string' || typeof controlled.typeId !== 'string') {
-      throw new SaveValidationError('requires stable contentId and typeId strings.', { path: 'save.data.player.controlled' });
-    }
+    stableString(controlled.contentId, 'save.data.player.controlled.contentId');
+    stableString(controlled.typeId, 'save.data.player.controlled.typeId');
     vector(controlled.position, 'save.data.player.controlled.position');
     vector(controlled.rotation, 'save.data.player.controlled.rotation');
     finite(controlled.speed, 'save.data.player.controlled.speed');
     const [x, y, z] = controlled.position;
-    if (x < -1_000 || x > 1_500 || z < -1_000 || z > 1_000 || y < -100 || y > 2_000) {
+    if (
+      x < WORLD_BOUNDS.minX || x > WORLD_BOUNDS.maxX
+      || z < WORLD_BOUNDS.minZ || z > WORLD_BOUNDS.maxZ
+      || y < WORLD_BOUNDS.minY || y > WORLD_BOUNDS.maxY
+    ) {
       throw new SaveValidationError('is outside the supported world bounds.', { path: 'save.data.player.controlled.position' });
     }
   }
@@ -174,28 +216,91 @@ export function validateGameState(data) {
   version1(data.economy, 'save.data.economy');
   const world = version1(data.world, 'save.data.world');
   if (!Array.isArray(world.buildings) || !Array.isArray(world.zones || [])) throw new SaveValidationError('requires building and zone arrays.', { path: 'save.data.world' });
+  const economyIds = new Set();
   for (const [index, building] of world.buildings.entries()) {
     record(building, `save.data.world.buildings[${index}]`);
-    if (!getBuildingSpec(building.specId)) throw new SaveValidationError('references an unknown stable building ID.', { path: `save.data.world.buildings[${index}].specId` });
-    finite(building.plot?.x, `save.data.world.buildings[${index}].plot.x`);
-    finite(building.plot?.z, `save.data.world.buildings[${index}].plot.z`);
+    knownContent(contentRegistry, CONTENT_TYPES.BUILDING, building.specId, `save.data.world.buildings[${index}].specId`);
+    const buildingSpec = contentRegistry.get(CONTENT_TYPES.BUILDING, building.specId);
+    if (building.economyId != null) {
+      const economyId = stableString(building.economyId, `save.data.world.buildings[${index}].economyId`);
+      if (economyIds.has(economyId)) throw new SaveValidationError(`duplicates stable building instance ID ${economyId}.`, { path: `save.data.world.buildings[${index}].economyId` });
+      economyIds.add(economyId);
+    }
+    record(building.plot, `save.data.world.buildings[${index}].plot`);
+    finiteInRange(building.plot.x, `save.data.world.buildings[${index}].plot.x`, WORLD_BOUNDS.minX, WORLD_BOUNDS.maxX);
+    finiteInRange(building.plot.z, `save.data.world.buildings[${index}].plot.z`, WORLD_BOUNDS.minZ, WORLD_BOUNDS.maxZ);
+    if (building.plot.width != null) finiteInRange(building.plot.width, `save.data.world.buildings[${index}].plot.width`, 0.001, 200);
+    if (building.plot.depth != null) finiteInRange(building.plot.depth, `save.data.world.buildings[${index}].plot.depth`, 0.001, 200);
+    finite(building.rotationY, `save.data.world.buildings[${index}].rotationY`);
+    const width = building.plot.width ?? buildingSpec.footprint.width;
+    const depth = building.plot.depth ?? buildingSpec.footprint.depth;
+    const cosine = Math.abs(Math.cos(building.rotationY));
+    const sine = Math.abs(Math.sin(building.rotationY));
+    const halfX = (width * cosine + depth * sine) * 0.5;
+    const halfZ = (width * sine + depth * cosine) * 0.5;
+    if (
+      building.plot.x - halfX < WORLD_BOUNDS.minX || building.plot.x + halfX > WORLD_BOUNDS.maxX
+      || building.plot.z - halfZ < WORLD_BOUNDS.minZ || building.plot.z + halfZ > WORLD_BOUNDS.maxZ
+    ) {
+      throw new SaveValidationError('places its footprint outside supported world bounds.', {
+        path: `save.data.world.buildings[${index}].plot`
+      });
+    }
   }
+  const zoneKeys = new Set();
   for (const [index, zone] of (world.zones || []).entries()) {
     record(zone, `save.data.world.zones[${index}]`);
-    if (typeof zone.key !== 'string' || !zone.key.trim()) {
-      throw new SaveValidationError('requires a stable zone key.', { path: `save.data.world.zones[${index}].key` });
-    }
-    finite(zone.x, `save.data.world.zones[${index}].x`);
-    finite(zone.z, `save.data.world.zones[${index}].z`);
+    const key = stableString(zone.key, `save.data.world.zones[${index}].key`);
+    if (zoneKeys.has(key)) throw new SaveValidationError(`duplicates stable zone key ${key}.`, { path: `save.data.world.zones[${index}].key` });
+    zoneKeys.add(key);
+    knownContent(contentRegistry, CONTENT_TYPES.ZONE, zone.zoneType, `save.data.world.zones[${index}].zoneType`);
+    finiteInRange(zone.x, `save.data.world.zones[${index}].x`, WORLD_BOUNDS.minX, WORLD_BOUNDS.maxX);
+    finiteInRange(zone.z, `save.data.world.zones[${index}].z`, WORLD_BOUNDS.minZ, WORLD_BOUNDS.maxZ);
+    finite(zone.happinessModifier, `save.data.world.zones[${index}].happinessModifier`);
+    finite(zone.landValueModifier, `save.data.world.zones[${index}].landValueModifier`);
   }
   const timeWeather = version1(data.timeWeather, 'save.data.timeWeather');
-  finite(timeWeather.time, 'save.data.timeWeather.time');
-  finite(timeWeather.speed, 'save.data.timeWeather.speed');
-  if (typeof timeWeather.playing !== 'boolean' || typeof timeWeather.weather !== 'string') throw new SaveValidationError('has invalid time/weather fields.', { path: 'save.data.timeWeather' });
+  finiteInRange(timeWeather.time, 'save.data.timeWeather.time', 0, 24);
+  finiteInRange(timeWeather.speed, 'save.data.timeWeather.speed', 0, 1_000);
+  if (typeof timeWeather.playing !== 'boolean') throw new SaveValidationError('must be boolean.', { path: 'save.data.timeWeather.playing' });
+  knownContent(contentRegistry, CONTENT_TYPES.WEATHER, timeWeather.weather, 'save.data.timeWeather.weather');
   const missions = version1(data.missions, 'save.data.missions');
   if (!Array.isArray(missions.completedMissionIds) || !Array.isArray(missions.dialogueChoices) || !Array.isArray(missions.runCounts)) throw new SaveValidationError('has invalid mission collections.', { path: 'save.data.missions' });
+  uniqueContentIds(missions.completedMissionIds, 'save.data.missions.completedMissionIds', contentRegistry, CONTENT_TYPES.MISSION);
+  const runMissionIds = new Set();
+  missions.runCounts.forEach((entry, index) => {
+    if (!Array.isArray(entry) || entry.length !== 2) throw new SaveValidationError('must be a [missionId, count] pair.', { path: `save.data.missions.runCounts[${index}]` });
+    const missionId = knownContent(contentRegistry, CONTENT_TYPES.MISSION, entry[0], `save.data.missions.runCounts[${index}][0]`);
+    if (runMissionIds.has(missionId)) throw new SaveValidationError(`duplicates mission run count for ${missionId}.`, { path: `save.data.missions.runCounts[${index}][0]` });
+    runMissionIds.add(missionId);
+    if (!Number.isInteger(entry[1]) || entry[1] < 0) throw new SaveValidationError('must be a non-negative integer.', { path: `save.data.missions.runCounts[${index}][1]` });
+  });
+  missions.dialogueChoices.forEach((choice, index) => {
+    const path = `save.data.missions.dialogueChoices[${index}]`;
+    record(choice, path);
+    const missionId = knownContent(contentRegistry, CONTENT_TYPES.MISSION, choice.missionId, `${path}.missionId`);
+    const nodeId = stableString(choice.nodeId, `${path}.nodeId`);
+    const next = stableString(choice.next, `${path}.next`);
+    if (!contentRegistry.hasDialogueNode(missionId, nodeId)) throw new SaveValidationError(`references unknown dialogue node ${missionId}:${nodeId}.`, { path: `${path}.nodeId` });
+    if (!contentRegistry.hasDialogueNode(missionId, next)) throw new SaveValidationError(`references unknown dialogue node ${missionId}:${next}.`, { path: `${path}.next` });
+    if (typeof choice.choice !== 'string' || !choice.choice.trim()) throw new SaveValidationError('must be a non-empty string.', { path: `${path}.choice` });
+    const authoredNode = contentRegistry.get(CONTENT_TYPES.MISSION, missionId).dialogueTree[nodeId];
+    if (!(authoredNode.choices || []).some(authored => (
+      authored.label === choice.choice && authored.next === next
+    ))) {
+      throw new SaveValidationError('does not match an authored dialogue choice.', { path });
+    }
+  });
+  if (!Number.isInteger(missions.chronologyStep) || missions.chronologyStep < 0) throw new SaveValidationError('must be a non-negative integer.', { path: 'save.data.missions.chronologyStep' });
   if (missions.active != null) {
-    if (typeof missions.active.contentId !== 'string') throw new SaveValidationError('requires a stable mission content ID.', { path: 'save.data.missions.active.contentId' });
+    record(missions.active, 'save.data.missions.active');
+    knownContent(contentRegistry, CONTENT_TYPES.MISSION, missions.active.contentId, 'save.data.missions.active.contentId');
+    const mission = contentRegistry.get(CONTENT_TYPES.MISSION, missions.active.contentId);
+    if (missions.active.state !== 'IN_PROGRESS') {
+      throw new SaveValidationError('must be IN_PROGRESS while an active mission is persisted.', {
+        path: 'save.data.missions.active.state'
+      });
+    }
     for (const name of ['timeRemaining', 'initialTimeLimit', 'basePayout', 'payout', 'routeIndex', 'raceElapsed', 'sabotageProgress']) {
       if (!Number.isFinite(missions.active[name]) || missions.active[name] < 0) {
         throw new SaveValidationError('must be a non-negative finite number.', { path: `save.data.missions.active.${name}` });
@@ -204,8 +309,48 @@ export function validateGameState(data) {
     if (typeof missions.active.sabotageActive !== 'boolean') {
       throw new SaveValidationError('must be boolean.', { path: 'save.data.missions.active.sabotageActive' });
     }
+    if (!Number.isInteger(missions.active.routeIndex)) {
+      throw new SaveValidationError('must be an integer.', { path: 'save.data.missions.active.routeIndex' });
+    }
+    const routeLength = (mission.missionType === 'RACE' ? mission.checkpoints.length : 0) + 1;
+    if (missions.active.routeIndex >= routeLength) {
+      throw new SaveValidationError(`exceeds authored route length ${routeLength}.`, {
+        path: 'save.data.missions.active.routeIndex'
+      });
+    }
+    if (mission.missionType !== 'RACE' && missions.active.routeIndex !== 0) {
+      throw new SaveValidationError('must remain zero for a non-race mission.', {
+        path: 'save.data.missions.active.routeIndex'
+      });
+    }
+    if (mission.missionType !== 'SABOTAGE' && (missions.active.sabotageActive || missions.active.sabotageProgress !== 0)) {
+      throw new SaveValidationError('contains sabotage state for a non-sabotage mission.', {
+        path: 'save.data.missions.active.sabotageProgress'
+      });
+    }
+    if (mission.missionType === 'SABOTAGE' && missions.active.sabotageProgress > mission.sabotageDuration) {
+      throw new SaveValidationError(`exceeds authored sabotage duration ${mission.sabotageDuration}.`, {
+        path: 'save.data.missions.active.sabotageProgress'
+      });
+    }
   }
   for (const name of ['factions', 'progression', 'heat', 'settings', 'bindings', 'alerts']) version1(data[name], `save.data.${name}`);
+  record(data.factions.values, 'save.data.factions.values');
+  for (const [factionId, reputation] of Object.entries(data.factions.values)) {
+    knownContent(contentRegistry, CONTENT_TYPES.FACTION, factionId, `save.data.factions.values.${factionId}`);
+    const definition = contentRegistry.get(CONTENT_TYPES.FACTION, factionId);
+    finiteInRange(
+      reputation,
+      `save.data.factions.values.${factionId}`,
+      definition.minReputation,
+      definition.maxReputation
+    );
+  }
+  record(data.progression.values, 'save.data.progression.values');
+  for (const [progressionId, unlocked] of Object.entries(data.progression.values)) {
+    knownContent(contentRegistry, CONTENT_TYPES.PROGRESSION, progressionId, `save.data.progression.values.${progressionId}`);
+    if (typeof unlocked !== 'boolean') throw new SaveValidationError('must be boolean.', { path: `save.data.progression.values.${progressionId}` });
+  }
   if (typeof data.heat.wanted !== 'boolean' || !Number.isFinite(data.heat.escapeTimer) || data.heat.escapeTimer < 0) {
     throw new SaveValidationError('has invalid wanted state or escape timer.', { path: 'save.data.heat' });
   }
@@ -279,7 +424,8 @@ export function restoreWorld(app, world) {
   for (const saved of world.buildings) {
     const spec = getBuildingSpec(saved.specId);
     const plot = saved.plot;
-    const inBounds = plot.x >= -190 && plot.x <= 810 && plot.z >= -390 && plot.z <= 390;
+    const inBounds = plot.x >= WORLD_BOUNDS.minX && plot.x <= WORLD_BOUNDS.maxX
+      && plot.z >= WORLD_BOUNDS.minZ && plot.z <= WORLD_BOUNDS.maxZ;
     if (!spec || !inBounds) {
       report.skippedBuildings += 1;
       if (saved.economyId) app.economySystem?.removeBuilding?.(saved.economyId);

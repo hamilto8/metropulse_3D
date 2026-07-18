@@ -42,7 +42,9 @@ export class SaveValidationError extends Error {
     this.path = path;
     this.userMessage = code === 'FUTURE_SAVE_VERSION'
       ? 'This city was saved by a newer MetroPulse version and cannot be opened safely here.'
-      : 'This city save is incomplete or damaged and was not applied.';
+      : path
+        ? `This city save was not applied because ${path} ${message}`
+        : `This city save is incomplete or damaged and was not applied (${message})`;
   }
 }
 

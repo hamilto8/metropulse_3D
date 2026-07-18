@@ -174,7 +174,7 @@ export class SaveService {
     try {
       validated = validateSaveDocument(document, {
         validateDomains: data => {
-          validateGameState(data);
+          validateGameState(data, { contentRegistry: this.app.contentRegistry });
           validateGameReferences(this.app, data);
         }
       });

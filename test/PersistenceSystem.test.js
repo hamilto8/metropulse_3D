@@ -207,6 +207,59 @@ test('the whole document is validated before any live domain is mutated', () => 
   service.destroy();
 });
 
+test('save validation rejects incompatible content references before load', () => {
+  const cases = [
+    {
+      path: 'save.data.timeWeather.weather',
+      mutate: data => { data.timeWeather.weather = 'toxic_snow'; }
+    },
+    {
+      path: 'save.data.missions.completedMissionIds[0]',
+      mutate: data => { data.missions.completedMissionIds = ['mission_removed']; }
+    },
+    {
+      path: 'save.data.missions.dialogueChoices[0].nodeId',
+      mutate: data => {
+        data.missions.dialogueChoices = [{
+          missionId: 'mission_executive',
+          nodeId: 'removed_node',
+          choice: 'Accept',
+          next: 'accept_standard'
+        }];
+      }
+    },
+    {
+      path: 'save.data.world.zones[0].zoneType',
+      mutate: data => {
+        data.world.zones = [{
+          key: '0,0', x: 0, z: 0, zoneType: 'REMOVED_ZONE',
+          happinessModifier: 0, landValueModifier: 0
+        }];
+      }
+    },
+    {
+      path: 'save.data.factions.values.REMOVED_FACTION',
+      mutate: data => { data.factions.values = { REMOVED_FACTION: 10 }; }
+    },
+    {
+      path: 'save.data.progression.values.REMOVED_TIER',
+      mutate: data => { data.progression.values = { REMOVED_TIER: true }; }
+    }
+  ];
+
+  for (const fixture of cases) {
+    const data = validData();
+    fixture.mutate(data);
+    assert.throws(
+      () => validateGameState(data),
+      error => error instanceof SaveValidationError
+        && error.path === fixture.path
+        && /unknown|removed/i.test(error.message),
+      fixture.path
+    );
+  }
+});
+
 function createWorldHarness({ valid = true } = {}) {
   const calls = [];
   const app = {

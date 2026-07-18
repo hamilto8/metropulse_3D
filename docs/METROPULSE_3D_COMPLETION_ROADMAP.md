@@ -665,13 +665,43 @@ P2.3 completion evidence (2026-07-18):
 
 #### P2.4 Data validation
 
-- [ ] Validate missions, dialogue, buildings, zones, districts, factions,
+- [x] Validate missions, dialogue, buildings, zones, districts, factions,
   progression, weather, and save data at load time.
-- [ ] Use stable IDs and reject duplicates.
-- [ ] Fail closed with a useful error that identifies the source record and
+- [x] Use stable IDs and reject duplicates.
+- [x] Fail closed with a useful error that identifies the source record and
   field.
-- [ ] Add fixture tests for missing references, invalid enums, impossible
+- [x] Add fixture tests for missing references, invalid enums, impossible
   coordinates, circular prerequisites, and incompatible save content.
+
+P2.4 completion evidence (2026-07-18):
+
+- `src/data/GameDataValidator.js` composes domain validation into one immutable
+  stable-ID registry. `ContentDefinitions.js` is the renderer-free authority
+  for districts, zones, factions, progression tiers, supported world bounds,
+  and vehicle content IDs; the city editor consumes the same zone definitions
+  instead of maintaining a parallel table.
+- Mission and embedded dialogue validation enforce stable mission/node IDs,
+  reachable choice references, objective/vehicle enums, objective-specific
+  fields, finite in-world locations, and stable district references. Building,
+  zone, district, faction, progression, weather, and executable MVP-scope data
+  receive type, range, duplicate, reference, and graph validation.
+- Boot validates the complete content graph before settings, save discovery,
+  assets, or runtime composition. `DataValidationError` identifies the source,
+  record ID, field path, and failure code; `BootStageError` preserves the useful
+  remediation message and stops later stages.
+- Save discovery validates current, recovery, and migrated LocalStorage slots
+  against that exact registry. Unknown building, zone, weather, mission,
+  dialogue-node, faction, or progression IDs, duplicate instance IDs, and
+  impossible transforms disable only the affected load action before any live
+  owner is mutated. New Game remains available.
+- Fixture coverage includes missing cross-record/dialogue/prerequisite
+  references, invalid enums, duplicate stable IDs, impossible coordinates,
+  circular progression prerequisites, and six incompatible-save domains. The
+  Chrome WebGL flow verifies the visible fail-closed warning and confirms no
+  runtime world is composed for an incompatible save.
+- Verification at completion: 313 Node tests, the production build, and all
+  five Chrome WebGL acceptance flows pass. The operational and extension
+  contract is documented in `DATA_VALIDATION.md`.
 
 ### Exit gate
 
