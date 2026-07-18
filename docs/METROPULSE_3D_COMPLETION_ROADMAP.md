@@ -319,15 +319,35 @@ Dialogue may be a modal substate when its pause and input behavior are explicit.
 
 #### P1.1 State-machine expansion
 
-- [ ] Extend `GameManager` without replacing its renderer-independent event
+- [x] Extend `GameManager` without replacing its renderer-independent event
   model.
-- [ ] Define legal transitions, guards, rejection reasons, and transition
+- [x] Define legal transitions, guards, rejection reasons, and transition
   metadata.
-- [ ] Prevent direct builder entry while a street handoff or mission-critical
+- [x] Prevent direct builder entry while a street handoff or mission-critical
   state is unresolved.
-- [ ] Define what happens to the active mission, Heat, controlled entity,
+- [x] Define what happens to the active mission, Heat, controlled entity,
   camera, and simulation clock on every legal transition.
-- [ ] Make transition failure recover to a known safe state.
+- [x] Make transition failure recover to a known safe state.
+
+P1.1 completion evidence (2026-07-17):
+
+- `src/core/GameState.js` owns the complete state catalog, legal request graph,
+  and destination contracts for mission, Heat, controlled entity, camera, and
+  simulation-clock behavior.
+- `src/core/GameTransition.js` owns normalized transition inputs, destination
+  invariants, rejection codes, and typed errors. `src/core/GameManager.js` owns
+  request/commit/failure lifecycle, runtime and custom guards, immutable
+  metadata, pause resume targets, restore validation, and recovery.
+- Runtime control systems now request `STREET_ON_FOOT` or `STREET_VEHICLE`
+  explicitly. Builder eligibility delegates to `GameManager`; it no longer
+  duplicates mission/control guard policy in the editor UI.
+- `test/GameManager.test.js` covers the complete state catalog and omitted
+  edges, ownership contracts, builder blockers, mission-critical exits,
+  metadata/effects, custom guards, pause/resume, restore, observer isolation,
+  and both source-state and safe-fallback recovery.
+- Verification at completion: 247 Node tests, production build, and the
+  deterministic Playwright WebGL smoke test pass. The operational contract is
+  documented in `GAME_STATE_MACHINE.md`.
 
 #### P1.2 Transition coordinator
 

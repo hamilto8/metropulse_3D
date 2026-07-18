@@ -1,4 +1,5 @@
 import { BUILDING_CATALOG, getCatalogByCategory, getBuildingSpec } from '../world/BuildingCatalog.js';
+import { GAME_STATES } from '../core/GameManager.js';
 import { createTextElement } from './dom.js';
 
 export class CityEditorUI {
@@ -396,13 +397,9 @@ export class CityEditorUI {
       this.refreshAffordability();
       return false;
     }
-    if (
-      this.app.trafficSystem?.controlledVehicle
-      || this.app.pedestrianSystem?.controlledPedestrian
-      || this.app.aircraftSystem?.controlledAircraft
-      || this.app.missionSystem?.activeMission
-    ) {
-      this.app.uiManager?.showToast('⚠️ Return to Management with [M] before opening the City Editor.');
+    const eligibility = this.app.gameManager?.evaluateTransition?.(GAME_STATES.BUILDER);
+    if (eligibility && !eligibility.allowed) {
+      this.app.uiManager?.showToast(`⚠️ ${eligibility.reason}`);
       return false;
     }
     this.isVisible = true;
@@ -449,7 +446,7 @@ export class CityEditorUI {
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.deactivate();
     }
-    if (!preserveMode) this.setGameMode('MANAGEMENT');
+    if (!preserveMode) this.setGameMode(GAME_STATES.MANAGEMENT);
     this.syncEditorChrome(false);
     return true;
   }
@@ -481,7 +478,7 @@ export class CityEditorUI {
     }
 
     const modeLabel = document.getElementById('current-mode-label');
-    if (modeLabel) modeLabel.textContent = mode === 'BUILDER' ? 'CITY EDITOR' : 'MANAGEMENT';
+    if (modeLabel) modeLabel.textContent = mode === GAME_STATES.BUILDER ? 'CITY EDITOR' : 'MANAGEMENT';
   }
 
   syncEditorChrome(active) {

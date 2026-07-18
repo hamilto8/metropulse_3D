@@ -69,9 +69,10 @@ export class DiagnosticsService {
     return Object.freeze({
       capturedAt: new Date().toISOString(),
       state: Object.freeze({
-        mode: app.gameManager?.mode || 'BOOT',
+        mode: app.gameManager?.state || 'BOOT',
         revision: app.gameManager?.revision || 0,
-        activeTransition: app.activeTransition || null
+        activeTransition: app.gameManager?.activeTransition || null,
+        lastTransition: app.gameManager?.lastTransition || null
       }),
       scheduler: Object.freeze({
         owner: app.scheduler ? 'SimulationScheduler' : 'legacy-frame-loop',
@@ -117,7 +118,7 @@ export class DiagnosticsService {
       : 'none';
     const renderer = snapshot.performance.renderer || {};
     this.panel.textContent = [
-      `STATE ${snapshot.state.mode}  TRANSITION ${snapshot.state.activeTransition || 'none'}`,
+      `STATE ${snapshot.state.mode}  TRANSITION ${snapshot.state.activeTransition?.id || 'none'}`,
       `PAUSED ${snapshot.scheduler.paused}  CONTROL ${controlled}`,
       `MISSION ${snapshot.mission.state}:${snapshot.mission.id || 'none'}  SAVE ${snapshot.save?.status || 'unavailable'}`,
       `ENTITIES v${snapshot.entities.vehicles} p${snapshot.entities.pedestrians} a${snapshot.entities.aircraft} bodies${snapshot.entities.physicsBodies}`,

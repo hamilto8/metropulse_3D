@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_STATES } from '../core/GameManager.js';
 import { AIRCRAFT_MODES } from '../entities/AircraftFlightModel.js';
 import { PropellerAircraft } from '../entities/PropellerAircraft.js';
 import { AIRFIELD_LAYOUT, createAirfield } from '../world/Airfield.js';
@@ -135,7 +136,7 @@ export class AircraftSystem {
     this.controlSession = Object.freeze({ source, pedestrian: source === 'pedestrian' ? pedestrian : null });
     aircraft.setControlled(true);
     this.app.audioSystem?.startAircraftSound?.();
-    this.app.gameManager?.setMode?.('ACTION', { reason: 'aircraft-control', target: aircraft });
+    this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'aircraft-control', source: 'AircraftSystem', target: aircraft });
     this.app.sceneManager?.startFollowTarget?.(aircraft);
     this.app.inputManager?.restoreGameplayFocus?.();
     this.app.uiManager?.hideInspector?.();
@@ -170,7 +171,7 @@ export class AircraftSystem {
       }
     }
 
-    this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'aircraft-release' });
+    this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'aircraft-release', source: 'AircraftSystem' });
     this.app.sceneManager?.stopFollowTarget?.();
     this.app.uiManager?.updateActionHUD?.();
     return true;

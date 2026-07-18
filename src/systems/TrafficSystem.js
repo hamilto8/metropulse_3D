@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_STATES } from '../core/GameManager.js';
 import { Vehicle } from '../entities/Vehicle.js';
 import { PlayerVehicle } from '../entities/PlayerVehicle.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
@@ -170,7 +171,7 @@ export class TrafficSystem {
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       this.controlSession = Object.freeze({ source, pedestrian });
-      this.app.gameManager?.setMode?.('ACTION', { reason: 'vehicle-control' });
+      this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'vehicle-control', source: 'TrafficSystem', target: vehicle });
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
         this.app.uiManager.addAlert(`🏎️ Direct control engaged: ${vehicle.vType || 'VEHICLE'}`, 'info');
@@ -246,9 +247,6 @@ export class TrafficSystem {
       this.controlledVehicle = null;
     }
     this.controlSession = null;
-    if (!this.app.pedestrianSystem?.controlledPedestrian) {
-      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'vehicle-release' });
-    }
     vehicle.info['Status'] = 'Cruising';
 
     if (this.app && this.app.audioSystem) {
@@ -261,6 +259,10 @@ export class TrafficSystem {
     // If there is an active mission in progress, fail the mission
     if (this.app && this.app.missionSystem && this.app.missionSystem.activeMission) {
       this.app.missionSystem.failMission('released');
+    }
+
+    if (!this.app.pedestrianSystem?.controlledPedestrian) {
+      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'vehicle-release', source: 'TrafficSystem' });
     }
 
     completeAiHandoff(vehicle, {

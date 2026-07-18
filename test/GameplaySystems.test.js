@@ -171,7 +171,7 @@ test('vehicle takeover preserves forward momentum and clears AI stop state', () 
   traffic.app = {
     physicsWorld: physics,
     cityBuilder: { getTerrainHeight() { return 0; } },
-    gameManager: { setMode() {} },
+    gameManager: { setState() {} },
     audioSystem: { startEngineSound() {} }
   };
   const vehicle = new Vehicle('SEDAN', 0x3366cc, 'Momentum Test Sedan');

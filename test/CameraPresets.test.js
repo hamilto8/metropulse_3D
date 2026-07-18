@@ -200,7 +200,7 @@ function createPresetTransitionFixture({
         }
       },
       gameManager: {
-        setMode(mode, metadata) { modeChanges.push({ mode, metadata }); }
+        setState(mode, metadata) { modeChanges.push({ mode, metadata }); }
       },
       uiManager: {
         hideInspector() { inspectorHidden += 1; }
@@ -235,7 +235,7 @@ for (const kind of ['vehicle', 'pedestrian']) {
     assert.equal(entity.userControlled, false);
     assert.deepEqual(fixture.modeChanges.at(-1), {
       mode: 'MANAGEMENT',
-      metadata: { reason: 'camera-preset' }
+      metadata: { reason: 'camera-preset', source: 'SceneManager' }
     });
     assert.equal(fixture.manager.activePreset, 'bridge');
     assert.deepEqual(

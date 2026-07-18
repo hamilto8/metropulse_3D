@@ -66,7 +66,7 @@ function appFixture(overrides = {}) {
       getCongestionMetrics: () => ({ index: 0 })
     },
     gameManager: {
-      setMode() {},
+      setState() {},
       setMayhem() {}
     },
     uiManager: {
@@ -161,7 +161,7 @@ test('starting a mission binds it to the accepting vehicle and applies choice ti
   const taxi = vehicleFixture();
   app.trafficSystem.controlledVehicle = taxi;
   const transitions = [];
-  app.gameManager.setMode = (...args) => transitions.push(['mode', ...args]);
+  app.gameManager.setState = (...args) => transitions.push(['state', ...args]);
 
   const system = createSystem(app);
   const mission = missionFixture();
@@ -177,7 +177,7 @@ test('starting a mission binds it to the accepting vehicle and applies choice ti
   assert.equal(system.basePayout, 1_500);
   assert.equal(system.payout, 1_500);
   assert.equal(system.destinationBeacon instanceof THREE.Group, true);
-  assert.equal(transitions[0][1], 'ACTION');
+  assert.equal(transitions[0][1], 'STREET_VEHICLE');
 
   let failureReason = null;
   system.failMission = reason => {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_STATES } from '../core/GameManager.js';
 import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
 import { createPedestrianDescriptor } from '../entities/PedestrianArchetypes.js';
@@ -1147,7 +1148,7 @@ export class PedestrianSystem {
       
       pedestrian.userControlled = true;
       this.controlledPedestrian = pedestrian;
-      this.app.gameManager?.setMode?.('ACTION', { reason: 'pedestrian-control' });
+      this.app.gameManager?.setState?.(GAME_STATES.STREET_ON_FOOT, { reason: 'pedestrian-control', source: 'PedestrianSystem', target: pedestrian });
       pedestrian.info['Mood'] = '🎮 USER CONTROLLED';
       pedestrian.info['Activity'] = 'Walking streets';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
@@ -1252,7 +1253,7 @@ export class PedestrianSystem {
       this.controlledPedestrian = null;
     }
     if (!this.app.trafficSystem?.controlledVehicle) {
-      this.app.gameManager?.setMode?.('MANAGEMENT', { reason: 'pedestrian-release' });
+      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'pedestrian-release', source: 'PedestrianSystem' });
     }
     
     pedestrian.info['Mood'] = pedestrian.defaultMood || 'Energized';

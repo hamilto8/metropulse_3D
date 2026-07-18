@@ -26,7 +26,7 @@ import { MinimapHUD } from './ui/MinimapHUD.js';
 import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
-import { GameManager } from './core/GameManager.js';
+import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
@@ -50,7 +50,16 @@ class MetroPulseApp {
     applyFeatureVisibility(document, this.features);
 
     // Canonical state stores are renderer-agnostic and shared by both loops.
-    this.gameManager = new GameManager();
+    this.gameManager = new GameManager({
+      contextProvider: () => this.getGameStateContext(),
+      onListenerError: error => {
+        console.error('A game-state observer failed without interrupting the session.', error);
+      }
+    });
+    this.gameManager.transitionTo(GAME_STATES.LOAD, {
+      reason: 'runtime-initialization',
+      source: 'MetroPulseApp'
+    });
     this.nextEconomyBuildingId = 1;
     this.economySystem = new EconomySystem({
       initialTreasury: 650_000,
@@ -200,6 +209,11 @@ class MetroPulseApp {
       this.environment.setWeather(runtimeConfig.test.weather);
     }
 
+    this.gameManager.transitionTo(GAME_STATES.MANAGEMENT, {
+      reason: 'boot-complete',
+      source: 'MetroPulseApp'
+    });
+
     // 12. Animation Loop Setup
     this.timer = new THREE.Timer();
     this.timer.connect(document);
@@ -228,6 +242,40 @@ class MetroPulseApp {
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  /**
+   * Supplies renderer-free facts to GameManager guards. GameManager owns the
+   * policy decision; runtime systems remain the owners of their domain data.
+   */
+  getGameStateContext() {
+    const controlled = [
+      this.trafficSystem?.controlledVehicle
+        ? { kind: CONTROL_KINDS.VEHICLE, entity: this.trafficSystem.controlledVehicle }
+        : null,
+      this.pedestrianSystem?.controlledPedestrian
+        ? { kind: CONTROL_KINDS.PEDESTRIAN, entity: this.pedestrianSystem.controlledPedestrian }
+        : null,
+      this.aircraftSystem?.controlledAircraft
+        ? { kind: CONTROL_KINDS.AIRCRAFT, entity: this.aircraftSystem.controlledAircraft }
+        : null
+    ].filter(Boolean);
+    const missionState = this.missionSystem?.state || 'IDLE';
+    const missionActive = Boolean(this.missionSystem?.activeMission || this.missionSystem?.pendingMission);
+
+    return {
+      controlledEntityCount: controlled.length,
+      controlledEntityKind: controlled.length === 1
+        ? controlled[0].kind
+        : controlled.length > 1
+          ? CONTROL_KINDS.MULTIPLE
+          : CONTROL_KINDS.NONE,
+      handoffPending: Boolean(this.pedestrianSystem?.hijackTransition),
+      missionActive,
+      missionCritical: missionActive || missionState !== 'IDLE',
+      missionState,
+      heatActive: Boolean(this.pedestrianSystem?.isWanted)
+    };
   }
 
   toEconomyBuilding(building, fallbackId = null) {

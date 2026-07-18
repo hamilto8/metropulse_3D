@@ -45,7 +45,7 @@ test('vehicle release preserves its final pose and repairs AI/render membership'
     app: {
       sceneManager: { scene },
       pedestrianSystem: { controlledPedestrian: null },
-      gameManager: { setMode() {} }
+      gameManager: { setState() {} }
     },
     nodes: route.nodes,
     vehicles: [],
@@ -84,7 +84,7 @@ test('pedestrian release preserves its final pose and repairs AI/render membersh
     app: {
       sceneManager: { scene },
       trafficSystem: { controlledVehicle: null },
-      gameManager: { setMode() {} }
+      gameManager: { setState() {} }
     },
     nodes: route.nodes,
     pedestrians: [],
@@ -122,7 +122,7 @@ test('released cafe readers walk from the handoff point instead of teleporting t
     app: {
       sceneManager: { scene },
       trafficSystem: { controlledVehicle: null },
-      gameManager: { setMode() {} }
+      gameManager: { setState() {} }
     },
     nodes: route.nodes,
     pedestrians: [pedestrian],

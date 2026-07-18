@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_STATES } from '../core/GameManager.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -238,7 +239,7 @@ export class SceneManager {
     // The individual systems normally perform this transition themselves,
     // but the explicit final assignment also repairs stale control flags and
     // keeps this camera-owned transition deterministic.
-    this.app?.gameManager?.setMode?.('MANAGEMENT', { reason: 'camera-preset' });
+    this.app?.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'camera-preset', source: 'SceneManager' });
     this.app?.uiManager?.hideInspector?.();
     return true;
   }

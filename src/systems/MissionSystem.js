@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GAME_STATES } from '../core/GameManager.js';
 import missionsData from '../data/missions.json' with { type: 'json' };
 import { setTextSegments } from '../ui/dom.js';
 
@@ -385,7 +386,13 @@ export class MissionSystem {
       if (this.app.uiManager?.setMayhem) this.app.uiManager.setMayhem(true, 'mission');
     }
 
-    if (this.app.gameManager) this.app.gameManager.setMode('ACTION', { reason: 'mission', target: this.activeVehicle });
+    if (this.app.gameManager) {
+      this.app.gameManager.setState(GAME_STATES.STREET_VEHICLE, {
+        reason: 'mission',
+        source: 'MissionSystem',
+        target: this.activeVehicle
+      });
+    }
 
     if (this.app.audioSystem) {
       this.app.audioSystem.playHonk();

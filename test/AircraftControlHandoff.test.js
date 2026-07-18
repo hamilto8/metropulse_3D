@@ -43,7 +43,7 @@ function createHandoffFixture() {
       startAircraftSound() { audioCalls.push('start'); },
       stopAircraftSound() { audioCalls.push('stop'); }
     },
-    gameManager: { setMode() {} },
+    gameManager: { setState() {} },
     inputManager: { restoreGameplayFocus() {} },
     uiManager: {
       hideInspector() {}, updateActionHUD() {}, addAlert() {}, showToast() {}
