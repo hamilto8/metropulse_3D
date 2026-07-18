@@ -389,18 +389,43 @@ P1.2 completion evidence (2026-07-17):
 
 #### P1.3 Simulation scheduler
 
-- [ ] Replace the monolithic per-render-frame update policy with an explicit
+- [x] Replace the monolithic per-render-frame update policy with an explicit
   scheduler.
-- [ ] Separate render time, real-time gameplay, fixed physics time, city logical
+- [x] Separate render time, real-time gameplay, fixed physics time, city logical
   time, UI time, and paused time.
-- [ ] Run the authoritative city simulation at a fixed logical cadence,
+- [x] Run the authoritative city simulation at a fixed logical cadence,
   initially 1 Hz unless a system has a justified different rate.
-- [ ] Preserve accumulator remainder rather than discarding time after each
+- [x] Preserve accumulator remainder rather than discarding time after each
   economy update.
-- [ ] Gate systems by state and pause policy.
-- [ ] Define a stable update order and document why each stage occurs there.
-- [ ] Ensure Street Mode cannot use city speed multipliers unless explicitly
+- [x] Gate systems by state and pause policy.
+- [x] Define a stable update order and document why each stage occurs there.
+- [x] Ensure Street Mode cannot use city speed multipliers unless explicitly
   allowed by a designed assist.
+
+P1.3 completion evidence (2026-07-17):
+
+- `src/core/SimulationScheduler.js` owns six clock domains, state-clock gates,
+  fixed physics and city accumulators, catch-up budgets, immutable diagnostics,
+  unique task registration, and deterministic stage/task order without a
+  renderer, physics-engine, DOM, or game-system dependency.
+- `src/app/MetroPulseSimulationSchedule.js` is the sole production schedule.
+  `main.js` now only supplies animation-frame timestamps; it no longer advances
+  systems or owns economy timing. `PhysicsWorld.stepFixed` exposes one narrow
+  integration interval while its compatibility `step` path remains available.
+- Economy and time-of-day receive exact one-second logical ticks. Fractional
+  and budget-deferred remainders persist. City and Builder use the selected
+  city speed; Street forces a running city clock to exactly 1x, so multipliers
+  never affect Street missions, physics, AI, weather, or logical city time.
+- Transition configuration and compensation set or restore the scheduler's
+  authoritative clock policy. Paused/stopped policies halt gameplay, physics,
+  and city tasks while input, UI, camera, and rendering remain responsive for
+  P1.4's menu and accessibility work.
+- Unit coverage verifies clock separation, exact order, state/pause gates,
+  retained remainders/backlog, multiplier isolation, extensible registration,
+  timestamp clamping, and the production economy/time schedule. The operational
+  contract is documented in `SIMULATION_SCHEDULER.md`.
+- Verification at completion: 269 Node tests, production build, and the
+  deterministic Playwright WebGL transition soak pass.
 
 #### P1.4 Pause and modal behavior
 

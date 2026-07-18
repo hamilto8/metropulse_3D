@@ -133,7 +133,7 @@ export class MetroPulseTransitionRuntime {
           followTarget: scene.followTarget,
           activePreset: scene.activePreset
         } : null,
-        clockPolicy: this.app.simulationClockPolicy || null,
+        clockPolicy: this.app.scheduler?.clockPolicy || this.app.simulationClockPolicy || null,
         editorVisible: Boolean(this.app.uiManager?.cityEditorUI?.isVisible)
       }
     };
@@ -246,7 +246,10 @@ export class MetroPulseTransitionRuntime {
   }
 
   configureSimulation({ transition }) {
-    this.app.simulationClockPolicy = transition.effects?.simulationClock?.to || CLOCK_POLICIES.STOPPED;
+    const clockPolicy = transition.effects?.simulationClock?.to || CLOCK_POLICIES.STOPPED;
+    this.app.scheduler?.setClockPolicy?.(clockPolicy);
+    // Compatibility mirror for persistence/diagnostics code during migration.
+    this.app.simulationClockPolicy = clockPolicy;
     return true;
   }
 
@@ -310,7 +313,10 @@ export class MetroPulseTransitionRuntime {
       this.app.sceneManager.activePreset = camera.activePreset;
       if (camera.followTarget) this.app.sceneManager.startFollowTarget(camera.followTarget);
     }
-    this.app.simulationClockPolicy = sourceState.clockPolicy;
+    if (sourceState.clockPolicy) {
+      this.app.scheduler?.setClockPolicy?.(sourceState.clockPolicy);
+      this.app.simulationClockPolicy = sourceState.clockPolicy;
+    }
     if (sourceState.editorVisible) this.app.uiManager?.cityEditorUI?.show?.({ preserveMode: true });
     else this.app.uiManager?.cityEditorUI?.hide?.({ preserveMode: true });
   }

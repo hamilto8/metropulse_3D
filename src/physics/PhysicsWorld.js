@@ -232,4 +232,15 @@ export class PhysicsWorld {
     const dt = Math.min(delta, 0.1);
     this.world.step(1 / 120, dt, 10);
   }
+
+  /**
+   * Advances one authoritative fixed interval. SimulationScheduler owns the
+   * accumulator and catch-up budget; PhysicsWorld only integrates the step.
+   */
+  stepFixed(fixedDelta = 1 / 120) {
+    if (!Number.isFinite(fixedDelta) || fixedDelta <= 0) {
+      throw new RangeError('fixedDelta must be a positive finite number');
+    }
+    this.world.step(fixedDelta);
+  }
 }

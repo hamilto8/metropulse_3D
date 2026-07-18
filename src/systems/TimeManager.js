@@ -108,11 +108,14 @@ export class TimeManager {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 
-  update(delta) {
+  advance(delta, speed = this.speed) {
     if (this.isPlaying) {
-      this.timeVal = advanceSimulationTime(this.timeVal, delta, this.speed);
+      this.timeVal = advanceSimulationTime(this.timeVal, delta, speed);
     }
+    return this.timeVal;
+  }
 
+  updatePresentation(delta) {
     if (this.app.uiManager) {
       this.app.uiManager.updateTimeDisplay(this.timeVal);
     }
@@ -126,6 +129,12 @@ export class TimeManager {
 
     this.updateLighting();
     this.updateNightIllumination();
+  }
+
+  /** Compatibility entry point for isolated consumers outside the scheduler. */
+  update(delta) {
+    this.advance(delta);
+    this.updatePresentation(delta);
   }
 
   updateLighting() {

@@ -50,6 +50,10 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   expect(initial.testMode.weather).toBe('rain');
   expect(initial.testMode.missionId).toBe('mission_executive');
   expect(initial.state.mode).toBe('MANAGEMENT');
+  expect(initial.scheduler.owner).toBe('SimulationScheduler');
+  expect(initial.scheduler.clockPolicy).toBe('CITY');
+  expect(initial.scheduler.cityStep).toBe(1);
+  expect(initial.scheduler.paused).toBe(false);
   expect(initial.entities.vehicles).toBeGreaterThanOrEqual(12);
   expect(initial.entities.pedestrians).toBe(16);
   expect(initial.entities.physicsBodies).toBeGreaterThan(0);
@@ -101,5 +105,5 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   await expect(page.locator('#btn-launch-rocket')).toBeHidden();
   await expect(page.locator('[data-camera="rocket"]')).toBeHidden();
   await expect(page.locator('[data-feature="eastSideDevelopment"]')).toBeHidden();
-  await expect(page.locator('#development-diagnostics')).toContainText('STATE BUILDER');
+  await expect(page.locator('#development-diagnostics')).toContainText('STATE MANAGEMENT');
 });

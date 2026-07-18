@@ -74,11 +74,19 @@ export class DiagnosticsService {
         activeTransition: app.gameManager?.activeTransition || null,
         lastTransition: app.gameManager?.lastTransition || null
       }),
-      scheduler: Object.freeze({
-        owner: app.scheduler ? 'SimulationScheduler' : 'legacy-frame-loop',
-        paused: Boolean(app.scheduler?.paused || app.fatalError),
-        cityTimePaused: app.timeManager ? !app.timeManager.isPlaying : true
-      }),
+      scheduler: app.scheduler
+        ? Object.freeze({
+          owner: 'SimulationScheduler',
+          ...app.scheduler.snapshot(),
+          paused: Boolean(app.scheduler.paused || app.fatalError),
+          cityTimePaused: !app.scheduler.cityActive
+            || (app.timeManager ? !app.timeManager.isPlaying : true)
+        })
+        : Object.freeze({
+          owner: 'legacy-frame-loop',
+          paused: Boolean(app.fatalError),
+          cityTimePaused: app.timeManager ? !app.timeManager.isPlaying : true
+        }),
       controlledEntity: identifyControlledEntity(app),
       mission: Object.freeze({
         state: mission?.state || 'UNAVAILABLE',

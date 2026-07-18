@@ -54,9 +54,10 @@ reports:
   programs, and browser heap counters where the browser exposes them;
 - effective feature flags and deterministic scenario metadata.
 
-Unavailable counters are reported as `null` or with an explicit legacy owner;
-the panel does not manufacture precision. Phase 1 will replace the
-`legacy-frame-loop` diagnostic with the authoritative scheduler.
+Unavailable counters are reported as `null`; the panel does not manufacture
+precision. The Phase 1 scheduler diagnostic reports its authoritative clock
+policy, all six clocks, fixed/city cadence, accumulator remainder, and per-frame
+step counts.
 
 ## Smoke acceptance
 
@@ -65,4 +66,3 @@ IndexedDB availability, deterministic fixture values, finite entity/resource
 counts, keyboard mode switching, hidden post-MVP controls, diagnostics output,
 and the absence of uncaught errors, unhandled rejections, failed requests,
 fatal panels, or contradictory mode state.
-

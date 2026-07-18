@@ -29,6 +29,7 @@ import { EconomySystem } from './systems/EconomySystem.js';
 import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
 import { TransitionCoordinator } from './core/TransitionCoordinator.js';
 import { MetroPulseTransitionRuntime } from './app/MetroPulseTransitionRuntime.js';
+import { createMetroPulseSimulationScheduler } from './app/MetroPulseSimulationSchedule.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
@@ -208,6 +209,15 @@ class MetroPulseApp {
     this.persistenceSystem = new PersistenceSystem(this);
     this.persistenceSystem.restore();
 
+    // The scheduler is the sole owner of frame timing, fixed-step accumulation,
+    // city cadence, update order, and state-based simulation gates.
+    this.frameCount = 0;
+    this.fpsTimer = 0;
+    this.currentFps = 60;
+    this.minimapHud = new MinimapHUD(this);
+    this.scheduler = createMetroPulseSimulationScheduler(this);
+    this.simulationClockPolicy = this.scheduler.clockPolicy;
+
     this.transitionRuntime = new MetroPulseTransitionRuntime(this);
     this.transitionCoordinator.setRuntime(this.transitionRuntime);
 
@@ -222,15 +232,6 @@ class MetroPulseApp {
       source: 'MetroPulseApp'
     });
 
-    // 12. Animation Loop Setup
-    this.timer = new THREE.Timer();
-    this.timer.connect(document);
-    this.elapsedTime = 0;
-    this.economyAccumulator = 0;
-    this.frameCount = 0;
-    this.fpsTimer = 0;
-    this.currentFps = 60;
-
     // Initial UI sync
     this.uiManager.updateTimeDisplay(this.timeManager.timeVal);
     this.uiManager.updateStats(
@@ -238,8 +239,6 @@ class MetroPulseApp {
       this.pedestrianSystem.pedestrians.length,
       this.currentFps
     );
-
-    this.minimapHud = new MinimapHUD(this);
 
     this.diagnostics = new DiagnosticsService(this, {
       enabled: runtimeConfig.diagnosticsEnabled
@@ -327,126 +326,7 @@ class MetroPulseApp {
   animate(timestamp) {
     if (this.fatalError) return;
     requestAnimationFrame(this.animate);
-
-    this.timer.update(timestamp);
-    const delta = Math.min(0.1, this.timer.getDelta());
-    this.elapsedTime += delta;
-    
-    // FPS counter
-    this.frameCount++;
-    this.fpsTimer += delta;
-    if (this.fpsTimer >= 1.0) {
-      this.currentFps = this.frameCount / this.fpsTimer;
-      this.performanceSystem.recordFrameRate(this.currentFps);
-      this.frameCount = 0;
-      this.fpsTimer = 0;
-      this.uiManager.updateStats(
-        this.trafficSystem.vehicles.length,
-        this.pedestrianSystem.pedestrians.length,
-        this.currentFps
-      );
-    }
-
-    // Update simulation systems
-    if (this.inputManager) this.inputManager.update(delta);
-    this.performanceSystem.beginFrame();
-    this.physicsWorld.step(delta);
-    this.timeManager.update(delta);
-    this.trafficSystem.update(delta);
-    this.pedestrianSystem.update(delta);
-    this.aircraftSystem?.update(delta);
-    this.explosionManager.update(delta);
-    this.cometManager.update(delta);
-    this.trafficHeatmapSystem.update(delta);
-    this.audioSystem.update(this.timeManager.timeVal, delta);
-    if (this.missionSystem) this.missionSystem.update(delta);
-    this.uiManager.updateInspectorLive();
-    this.uiManager.updateActionHUD();
-    this.uiManager.updateRealEstateTracker(delta);
-    this.uiManager.updateAlertFeed(delta);
-    if (this.cityBuilder && this.cityBuilder.update) {
-      this.cityBuilder.update(delta);
-    }
-    const economyDelta = this.timeManager.isPlaying
-      ? delta * this.timeManager.speed
-      : 0;
-    this.economyAccumulator += economyDelta;
-    if (this.economyAccumulator >= 1) {
-      this.economySystem.update(this.economyAccumulator);
-      this.economyAccumulator = 0;
-    }
-    if (this.minimapHud) {
-      this.minimapHud.update(this.elapsedTime);
-    }
-
-    // Animate space rocket vapors, countdown & liftoff in Fun Mode
-    if (this.cityBuilder && this.cityBuilder.rocketFlame) {
-      if (this.funMode) {
-        if (!this.rocketLaunched) {
-          if (this.rocketCountdown > 0) {
-            this.rocketCountdown = Math.max(0, this.rocketCountdown - delta);
-            if (this.rocketCountdown <= 0) {
-              this.triggerRocketLaunch();
-            }
-          }
-        } else {
-          // Rocket is lifting off!
-          if (this.cityBuilder.rocketGroup) {
-            this.cityBuilder.rocketVelocityY += 45.0 * delta;
-            this.cityBuilder.rocketAltitude += this.cityBuilder.rocketVelocityY * delta;
-            this.cityBuilder.rocketGroup.position.y = this.cityBuilder.rocketAltitude;
-          }
-        }
-
-        // Pulse rocket flame (enlarged when launched)
-        const pulse = (this.rocketLaunched ? 2.2 : 1.0) + Math.sin(Date.now() * 0.02) * 0.15;
-        this.cityBuilder.rocketFlame.scale.set(pulse, pulse * (this.rocketLaunched ? 2.8 : 1.2), pulse);
-        this.cityBuilder.rocketFlame.visible = true;
-
-        // Animate vapors
-        if (this.cityBuilder.rocketVapors) {
-          const nozzleY = (this.cityBuilder.rocketGroup ? this.cityBuilder.rocketGroup.position.y : 1.5) + 17.0;
-          for (const vapor of this.cityBuilder.rocketVapors) {
-            vapor.visible = true;
-            vapor.userData.age += delta * (this.rocketLaunched ? 2.0 : 1.0);
-            const progress = vapor.userData.age / vapor.userData.lifetime;
-            
-            if (progress >= 1.0) {
-              vapor.userData.age = 0.0;
-              vapor.userData.lifetime = 1.5 + Math.random() * 1.5;
-              vapor.userData.speedY = 8.0 + Math.random() * 6.0;
-              vapor.userData.offsetX = (Math.random() - 0.5) * 1.5;
-              vapor.userData.offsetZ = (Math.random() - 0.5) * 1.5;
-              vapor.position.set(vapor.userData.offsetX, nozzleY, vapor.userData.offsetZ);
-              vapor.scale.set(1.0, 1.0, 1.0);
-              vapor.material.opacity = 0.0;
-            } else {
-              vapor.position.y -= vapor.userData.speedY * delta;
-              vapor.position.x += Math.sin(vapor.userData.age * 3.0 + vapor.userData.offsetX) * 2.0 * delta;
-              vapor.position.z += Math.cos(vapor.userData.age * 3.0 + vapor.userData.offsetZ) * 2.0 * delta;
-              const scaleVal = 1.0 + progress * 4.5;
-              vapor.scale.set(scaleVal, scaleVal, scaleVal);
-              if (progress < 0.2) {
-                vapor.material.opacity = (progress / 0.2) * 0.45;
-              } else {
-                vapor.material.opacity = (1.0 - progress) * 0.45;
-              }
-            }
-          }
-        }
-      } else {
-        this.cityBuilder.rocketFlame.visible = false;
-        if (this.cityBuilder.rocketVapors) {
-          for (const vapor of this.cityBuilder.rocketVapors) {
-            vapor.visible = false;
-          }
-        }
-      }
-    }
-
-    // Update camera controls and render
-    this.sceneManager.update(delta);
-    this.sceneManager.render();
+    this.scheduler.runFrame(timestamp);
   }
 }
 
