@@ -3,6 +3,8 @@
  * MVC/MVVM-based dialogue parser and UI modal controller for MetroPulse 3D missions.
  * Renders branching JSON dialogue trees, avatars, animated text, and interactive choices.
  */
+import { PAUSE_REASONS } from '../core/PauseManager.js';
+
 function hashText(value) {
   let hash = 2166136261;
   for (const char of String(value)) {
@@ -21,7 +23,7 @@ function seededRandom(seed) {
 }
 
 export class DialogueOverlay {
-  constructor() {
+  constructor({ pauseManager = null } = {}) {
     this.overlay = document.getElementById('dialogue-overlay');
     this.avatarEl = document.getElementById('dialogue-avatar');
     this.speakerEl = document.getElementById('dialogue-speaker');
@@ -36,11 +38,23 @@ export class DialogueOverlay {
     this.missionSystem = null;
     this.currentNodeId = 'start';
     this.previousFocus = null;
+    this.pauseManager = pauseManager;
+    this.pauseToken = null;
     this.onKeyDown = this.onKeyDown.bind(this);
 
     if (this.closeBtn) {
       this.closeBtn.addEventListener('click', () => this.hide());
     }
+  }
+
+  setPauseManager(pauseManager) {
+    if (pauseManager !== null && (!pauseManager.acquire || !pauseManager.release)) {
+      throw new TypeError('pauseManager must implement acquire and release');
+    }
+    if (this.currentMission) {
+      throw new Error('Cannot replace PauseManager while dialogue is open.');
+    }
+    this.pauseManager = pauseManager;
   }
 
   /**
@@ -50,6 +64,10 @@ export class DialogueOverlay {
    */
   showMissionDialogue(mission, missionSystem) {
     if (!this.overlay || !mission) return;
+    if (this.currentMission) this.hide();
+    this.pauseToken = this.pauseManager?.acquire?.(PAUSE_REASONS.DIALOGUE, {
+      source: 'DialogueOverlay'
+    }) || null;
     this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.currentMission = mission;
     this.missionSystem = missionSystem;
@@ -68,6 +86,7 @@ export class DialogueOverlay {
     if (!this.overlay || this.overlay.classList.contains('hidden')) return;
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       this.hide();
       return;
     }
@@ -319,6 +338,11 @@ export class DialogueOverlay {
     this.currentMission = null;
     this.missionSystem = null; // Release reference to prevent stale callback leaks
     document.removeEventListener('keydown', this.onKeyDown);
+    const pauseToken = this.pauseToken;
+    this.pauseToken = null;
+    if (pauseToken) {
+      this.pauseManager?.release?.(pauseToken, { source: 'DialogueOverlay' });
+    }
     const focusTarget = this.previousFocus;
     this.previousFocus = null;
     focusTarget?.focus?.();

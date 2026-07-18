@@ -5,6 +5,7 @@ const TEST_URL = '/?testMode=1&profile=clean&seed=phase-0-smoke'
   + '&mission=mission_executive&diagnostics=1&quality=low';
 
 test('boots a deterministic clean profile without runtime or UI errors', async ({ page }) => {
+  test.setTimeout(90_000);
   const pageErrors = [];
   const rejectedRequests = [];
   page.on('pageerror', error => pageErrors.push(error.message));
@@ -88,6 +89,103 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   expect(soak.cameraClear).toBe(true);
   expect(soak.inputSuspended).toBe(false);
   expect(soak.heldActionCount).toBe(0);
+
+  // P1.4 acceptance: Escape creates one true pause from every gameplay state,
+  // preserves the exact resume target, and keeps only UI/render clocks live.
+  await page.keyboard.down('w');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pause-menu')).toBeVisible();
+  await expect(page.locator('#btn-resume-game')).toBeFocused();
+  const managementPausedBefore = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
+  expect(managementPausedBefore.snapshot.state.mode).toBe('PAUSED');
+  expect(managementPausedBefore.snapshot.state.resumeState).toBe('MANAGEMENT');
+  expect(managementPausedBefore.snapshot.scheduler.clockPolicy).toBe('PAUSED');
+  expect(managementPausedBefore.heldKeys).toEqual([]);
+  await page.waitForTimeout(250);
+  const managementPausedAfter = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
+  for (const clock of ['GAMEPLAY_REAL_TIME', 'PHYSICS_FIXED', 'CITY_LOGICAL']) {
+    expect(managementPausedAfter.snapshot.scheduler.clocks[clock].elapsed)
+      .toBe(managementPausedBefore.snapshot.scheduler.clocks[clock].elapsed);
+  }
+  expect(managementPausedAfter.snapshot.scheduler.clocks.UI.elapsed)
+    .toBeGreaterThan(managementPausedBefore.snapshot.scheduler.clocks.UI.elapsed);
+  expect(managementPausedAfter.snapshot.scheduler.clocks.RENDER.elapsed)
+    .toBeGreaterThan(managementPausedBefore.snapshot.scheduler.clocks.RENDER.elapsed);
+  await page.keyboard.up('w');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#pause-menu')).toBeHidden();
+
+  const assertPauseRoundTrip = async (state, controlledType = null) => {
+    await page.evaluate(target => window.__METROPULSE_TEST__.enterState(target), state);
+    await page.keyboard.press('Escape');
+    const paused = await page.evaluate(() => window.__METROPULSE_TEST__.snapshot());
+    expect(paused.state.mode).toBe('PAUSED');
+    expect(paused.state.resumeState).toBe(state);
+    if (controlledType) expect(paused.controlledEntity?.type).toBe(controlledType);
+    await page.locator('#btn-resume-game').click();
+    const resumed = await page.evaluate(() => window.__METROPULSE_TEST__.snapshot());
+    expect(resumed.state.mode).toBe(state);
+    if (controlledType) expect(resumed.controlledEntity?.type).toBe(controlledType);
+  };
+
+  await assertPauseRoundTrip('BUILDER');
+  await expect(page.locator('.city-editor-wrapper')).toBeVisible();
+  await assertPauseRoundTrip('STREET_ON_FOOT', 'PEDESTRIAN');
+  await assertPauseRoundTrip('STREET_VEHICLE', 'VEHICLE');
+  await assertPauseRoundTrip('RESULT');
+
+  // Combat input is quarantined while paused even when a click is dispatched
+  // directly to the world canvas underneath the modal.
+  await page.evaluate(() => window.__METROPULSE_TEST__.prepareCombat());
+  await page.keyboard.press('Escape');
+  await page.locator('#canvas-container canvas').dispatchEvent('click');
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe())).swingTimer).toBe(0);
+  await page.keyboard.press('Escape');
+
+  // Dialogue owns a modal pause hold. A pause-menu hold may nest above it;
+  // closing either one cannot prematurely resume the other.
+  await page.evaluate(() => window.__METROPULSE_TEST__.openDialogue('mission_executive'));
+  await expect(page.locator('#dialogue-overlay')).toBeVisible();
+  let dialogue = await page.evaluate(() => window.__METROPULSE_TEST__.snapshot());
+  expect(dialogue.state.mode).toBe('PAUSED');
+  expect(dialogue.pause.reasons).toEqual(['DIALOGUE']);
+  await page.evaluate(() => window.__METROPULSE_TEST__.openPauseMenu());
+  await expect(page.locator('#pause-menu')).toBeVisible();
+  await page.locator('#btn-resume-game').click();
+  dialogue = await page.evaluate(() => window.__METROPULSE_TEST__.snapshot());
+  expect(dialogue.state.mode).toBe('PAUSED');
+  expect(dialogue.pause.reasons).toEqual(['DIALOGUE']);
+  await page.evaluate(() => window.__METROPULSE_TEST__.closeDialogue());
+  await expect(page.locator('#dialogue-overlay')).toBeHidden();
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.snapshot())).state.mode)
+    .toBe('STREET_VEHICLE');
+
+  // Named gameplay clocks and Mayhem state remain bit-for-bit stable while
+  // real UI time continues to pass.
+  await page.evaluate(() => window.__METROPULSE_TEST__.setMayhem(true));
+  await page.evaluate(() => window.__METROPULSE_TEST__.primeGameplayClocks());
+  await page.keyboard.press('Escape');
+  const clockProbeBefore = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
+  await page.waitForTimeout(350);
+  const clockProbeAfter = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
+  expect(clockProbeAfter.missionTime).toBe(clockProbeBefore.missionTime);
+  expect(clockProbeAfter.heatEscapeTime).toBe(clockProbeBefore.heatEscapeTime);
+  expect(clockProbeAfter.weatherTime).toBe(clockProbeBefore.weatherTime);
+  expect(clockProbeAfter.treasury).toBe(clockProbeBefore.treasury);
+  expect(clockProbeAfter.rocketCountdown).toBe(clockProbeBefore.rocketCountdown);
+  expect(clockProbeAfter.controlledPosition).toEqual(clockProbeBefore.controlledPosition);
+  expect(clockProbeAfter.snapshot.state.mode).toBe('PAUSED');
+  expect(clockProbeAfter.snapshot.state.resumeState).toBe('STREET_VEHICLE');
+  expect(clockProbeAfter.snapshot.state.lastTransition.effects.heat.to).toBe('PRESERVE_FROZEN');
+  expect(clockProbeAfter.snapshot.pause.reasons).toEqual(['MENU']);
+  await page.evaluate(() => window.__METROPULSE_TEST__.clearGameplayClockFixture());
+  await page.keyboard.press('Escape');
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.snapshot())).state.mode)
+    .toBe('STREET_VEHICLE');
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.snapshot())).state.lastTransition.status)
+    .toBe('COMMITTED');
+  await page.evaluate(() => window.__METROPULSE_TEST__.setMayhem(false));
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterState('MANAGEMENT'));
 
   await page.waitForTimeout(1_100);
   const errors = await page.evaluate(() => ({

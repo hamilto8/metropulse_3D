@@ -324,6 +324,47 @@ test('production schedule advances time and economy once per logical city tick',
   assert.ok(Math.abs(snapshot.cityRemainder - 0.1) < 1e-9);
 });
 
+test('production pause keeps responsive UI tasks but freezes gameplay-derived presentation', () => {
+  const calls = [];
+  const app = {
+    frameCount: 0,
+    fpsTimer: 0,
+    currentFps: 60,
+    timeManager: {
+      isPlaying: true,
+      speed: 1,
+      timeVal: 12,
+      updatePresentation: () => calls.push('weather-presentation')
+    },
+    economySystem: { update: () => calls.push('economy') },
+    performanceSystem: {
+      beginFrame: () => calls.push('ai-frame'),
+      recordFrameRate() {}
+    },
+    physicsWorld: { stepFixed: () => calls.push('physics') },
+    missionSystem: { update: () => calls.push('mission') },
+    trafficSystem: { vehicles: [], update: () => calls.push('traffic-ai') },
+    pedestrianSystem: { pedestrians: [], update: () => calls.push('heat-ai') },
+    uiManager: {
+      updateStats() {},
+      updateInspectorLive: () => calls.push('inspector'),
+      updateActionHUD: () => calls.push('actions'),
+      updateRealEstateTracker: () => calls.push('mayhem-value'),
+      updateAlertFeed: () => calls.push('alerts')
+    },
+    minimapHud: { update: () => calls.push('minimap') },
+    sceneManager: {
+      update: () => calls.push('camera'),
+      render: () => calls.push('render')
+    }
+  };
+  const subject = createMetroPulseSimulationScheduler(app);
+  subject.setClockPolicy(CLOCK_POLICIES.PAUSED);
+  subject.advanceFrame(1);
+
+  assert.deepEqual(calls, ['inspector', 'actions', 'minimap', 'camera', 'render']);
+});
+
 test('transition configuration and compensation move the authoritative clock policy', () => {
   const clock = scheduler({ initialClockPolicy: CLOCK_POLICIES.CITY });
   const runtime = Object.create(MetroPulseTransitionRuntime.prototype);

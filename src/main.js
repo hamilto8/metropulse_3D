@@ -18,6 +18,7 @@ import { CometManager } from './effects/CometManager.js';
 import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
 import { DialogueOverlay } from './ui/DialogueOverlay.js';
+import { PauseMenu } from './ui/PauseMenu.js';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { MissionSystem } from './systems/MissionSystem.js';
 import { CityEditorSystem } from './world/CityEditorSystem.js';
@@ -28,6 +29,7 @@ import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
 import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
 import { TransitionCoordinator } from './core/TransitionCoordinator.js';
+import { PauseManager } from './core/PauseManager.js';
 import { MetroPulseTransitionRuntime } from './app/MetroPulseTransitionRuntime.js';
 import { createMetroPulseSimulationScheduler } from './app/MetroPulseSimulationSchedule.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
@@ -220,6 +222,13 @@ class MetroPulseApp {
 
     this.transitionRuntime = new MetroPulseTransitionRuntime(this);
     this.transitionCoordinator.setRuntime(this.transitionRuntime);
+    this.pauseManager = new PauseManager({
+      gameManager: this.gameManager,
+      transitionCoordinator: this.transitionCoordinator,
+      clearHeldActions: () => this.inputManager?.clearTransientInputState?.()
+    });
+    this.pauseMenu = new PauseMenu({ pauseManager: this.pauseManager });
+    this.dialogueOverlay.setPauseManager(this.pauseManager);
 
     if (runtimeConfig.test) {
       this.timeManager.setTime(runtimeConfig.test.time);

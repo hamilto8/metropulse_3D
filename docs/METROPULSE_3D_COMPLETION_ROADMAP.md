@@ -429,14 +429,39 @@ P1.3 completion evidence (2026-07-17):
 
 #### P1.4 Pause and modal behavior
 
-- [ ] Implement a true pause state and pause menu.
-- [ ] Stop mission timers, Heat decay, physics authority, AI decisions, weather
+- [x] Implement a true pause state and pause menu.
+- [x] Stop mission timers, Heat decay, physics authority, AI decisions, weather
   clocks, and city simulation according to the pause contract.
-- [ ] Keep menu animation and accessibility navigation responsive.
-- [ ] Clear or quarantine held inputs when pausing, resuming, losing focus, or
+- [x] Keep menu animation and accessibility navigation responsive.
+- [x] Clear or quarantine held inputs when pausing, resuming, losing focus, or
   changing device.
-- [ ] Test pause during driving, walking, combat, dialogue, mission result,
+- [x] Test pause during driving, walking, combat, dialogue, mission result,
   builder placement, and Mayhem.
+
+P1.4 completion evidence (2026-07-17):
+
+- `src/core/PauseManager.js` owns reference-held pause intent on top of
+  `GameManager`'s canonical `PAUSED` state. Nested dialogue and menu holds cannot
+  resume each other, stale releases are idempotent, and failed resumes retain a
+  recoverable hold.
+- `src/ui/PauseMenu.js` and the static pause markup provide a labelled modal,
+  focus trap, visible focus, keyboard/gamepad operation, reduced-motion support,
+  and exact resume-state feedback. `DialogueOverlay` acquires its own modal
+  pause hold for its visible lifetime.
+- `InputManager` clears and quarantines keyboard, analog, and button state at
+  transition, focus-loss, visibility-loss, resume, and device-change boundaries.
+  World-click combat input moved under the same owner so it cannot bypass pause.
+- The production schedule stops mission, Heat/AI, physics, weather, city,
+  economy, Mayhem, alert, and gameplay-derived presentation time while UI,
+  accessibility navigation, camera, diagnostics, and rendering remain live.
+- Unit coverage verifies every pausable state, nested/rapid modal operations,
+  exact clock policy, Mayhem preservation, and held-device quarantine. The
+  Playwright WebGL flow verifies management, builder, walking, driving, combat,
+  dialogue, result, active mission, Heat, weather, physics pose, city economy,
+  and Mayhem pause behavior with real DOM and keyboard input.
+- Verification at completion: 277 Node tests, production build, and the
+  deterministic Playwright WebGL smoke/transition/pause acceptance flow pass.
+  The operational contract is documented in `PAUSE_AND_MODAL_BEHAVIOR.md`.
 
 #### P1.5 Interaction priority
 

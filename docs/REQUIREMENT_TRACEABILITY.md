@@ -117,7 +117,7 @@ the responsible system owns implementation.
 | UX-007 | Critical news/radio never obscures controls or becomes the sole source of objectives. | News/audio UI | Browser + A11y | Accessibility Lead | In Progress |
 | UX-008 | Onboarding is playable, skippable in explanation only, replayable from Help, and initializes all required state. | Onboarding controller | Browser + Playtest | UX Lead | Not Started |
 | UX-009 | Interaction, mission, save, and alert status use one authoritative domain snapshot rather than UI-owned truth. | UI view models | Integration | Tech Lead | In Progress |
-| UX-010 | A pause menu exposes resume, settings, help, restart/retry where valid, and safe exit/new-game choices. | Pause/menu controller | Browser | UX Lead | Not Started |
+| UX-010 | A pause menu exposes resume, settings, help, restart/retry where valid, and safe exit/new-game choices. | Pause/menu controller | Browser | UX Lead | In Progress |
 
 ## Accessibility
 
@@ -131,7 +131,7 @@ the responsible system owns implementation.
 | A11Y-006 | Camera shake, flashes, motion, and bloom can be reduced independently. | Settings / rendering | Browser + visual | Accessibility Lead | In Progress |
 | A11Y-007 | Toggle/hold options exist for sprint, braking, and relevant repeated actions. | Input settings | Integration + Browser | Accessibility Lead | Not Started |
 | A11Y-008 | Action difficulty, driving assists, and mission timer leniency are adjustable. | Assist settings | Scenario + Browser | Accessibility Lead | Not Started |
-| A11Y-009 | Gameplay and dialogue truly pause while menus remain keyboard accessible. | Scheduler / modal UI | Integration + Browser | Accessibility Lead | Not Started |
+| A11Y-009 | Gameplay and dialogue truly pause while menus remain keyboard accessible. | Scheduler / modal UI | Integration + Browser | Accessibility Lead | Verified |
 | A11Y-010 | DOM menus provide logical focus order, labels, visible focus, and keyboard operation. | UI components | Browser + axe/manual | Accessibility Lead | In Progress |
 
 ## Persistence
@@ -180,4 +180,3 @@ the responsible system owns implementation.
 | REL-010 | Invalid content fails actionably in development and uses a safe production fallback where possible. | Data validation | Validation + Browser | Content Lead | In Progress |
 | REL-011 | Error reports include mode/content IDs and collect no personal/save/dialogue data by default. | Diagnostics / privacy | Integration + privacy review | Tech Lead | In Progress |
 | REL-012 | A release gate may pass, pass conditionally, repeat, or cut scope; defining cross-mode/save/performance contracts cannot be cut. | Production process | Gate review | Product Lead | Verified |
-

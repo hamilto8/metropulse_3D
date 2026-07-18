@@ -144,9 +144,11 @@ export function createMetroPulseSimulationScheduler(app) {
   register(scheduler, 'ui.actions', SIMULATION_STAGES.PRESENTATION, 210,
     () => app.uiManager?.updateActionHUD?.());
   register(scheduler, 'ui.real-estate', SIMULATION_STAGES.PRESENTATION, 220,
-    delta => app.uiManager?.updateRealEstateTracker?.(delta));
+    delta => app.uiManager?.updateRealEstateTracker?.(delta),
+    context => context.gameplayDelta > 0);
   register(scheduler, 'ui.alerts', SIMULATION_STAGES.PRESENTATION, 230,
-    delta => app.uiManager?.updateAlertFeed?.(delta));
+    delta => app.uiManager?.updateAlertFeed?.(delta),
+    context => context.gameplayDelta > 0);
   register(scheduler, 'ui.minimap', SIMULATION_STAGES.PRESENTATION, 240,
     (_delta, context) => app.minimapHud?.update?.(context.clocks.RENDER.elapsed));
   register(scheduler, 'performance.frame-rate', SIMULATION_STAGES.PRESENTATION, 900,

@@ -59,15 +59,6 @@ export class PedestrianSystem {
     this.hijackTransition = null;
     this.spawnBaseballBats();
 
-    // Listen for attacks
-    window.addEventListener('click', (e) => {
-      if (e.target.closest('header, aside, footer, button, input') || e.target.classList.contains('action-btn')) {
-        return;
-      }
-      if (this.controlledPedestrian && this.controlledPedestrian.hasBaseballBat) {
-        this.swingBaseballBat();
-      }
-    });
   }
 
   initWaypoints() {

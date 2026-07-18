@@ -913,7 +913,8 @@ export class UIManager {
       VEHICLE: ['◉', 'DRIVING'],
       AIRCRAFT: ['✈', 'FLIGHT'],
       PEDESTRIAN: ['◆', 'ON FOOT'],
-      DIALOGUE: ['●', 'DIALOGUE']
+      DIALOGUE: ['●', 'DIALOGUE'],
+      PAUSE: ['Ⅱ', 'PAUSED']
     };
     const [icon, label] = contextDetails[context] || contextDetails.MANAGEMENT;
     if (this.adaptiveContextIcon) this.adaptiveContextIcon.textContent = icon;

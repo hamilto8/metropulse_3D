@@ -19,6 +19,7 @@ function managerWith(app) {
 test('primary action routing prioritizes mission interaction over vehicle exit', () => {
   const calls = [];
   const app = {
+    pauseManager: { menuOpen: false },
     missionSystem: {
       handleActionKey() { calls.push('mission'); return true; },
       openPendingMissionDetails() { calls.push('pending'); return true; }
@@ -96,6 +97,7 @@ test('adaptive bindings expose context-specific keyboard and Xbox prompts', () =
 
 test('control context follows modal, builder, vehicle, pedestrian, then management priority', () => {
   const app = {
+    pauseManager: { menuOpen: false },
     dialogueOverlay: { currentMission: null },
     uiManager: { cityEditorUI: { isVisible: false } },
     cityEditorSystem: { isActive: false },
@@ -115,6 +117,8 @@ test('control context follows modal, builder, vehicle, pedestrian, then manageme
   assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.BUILDER);
   app.dialogueOverlay.currentMission = {};
   assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.DIALOGUE);
+  app.pauseManager.menuOpen = true;
+  assert.equal(manager.getControlContext(), CONTROL_CONTEXTS.PAUSE);
 });
 
 test('gamepad activity ignores ordinary stick drift and recognizes intentional input', () => {
@@ -211,6 +215,48 @@ test('the browser blur listener releases motion keys when keyup cannot fire', ()
     globalThis.window = previousWindow;
     globalThis.document = previousDocument;
   }
+});
+
+test('device changes clear held actions and quarantine a held gamepad until neutral', () => {
+  const manager = managerWith({
+    uiManager: { updateControlDeviceBadge() {}, updateAdaptiveControls() {} }
+  });
+  manager.activeInterface = INPUT_INTERFACES.KEYBOARD;
+  manager.keys = { w: true };
+  manager.quarantinedKeys = new Set();
+  manager.gamepadQuarantined = false;
+  manager.state = { throttle: 1, handbrake: false };
+
+  assert.equal(manager.setInterface(INPUT_INTERFACES.GAMEPAD), true);
+  assert.equal(manager.keys.w, false);
+  assert.equal(manager.state.throttle, 0);
+  assert.equal(manager.gamepadQuarantined, true);
+
+  const buttons = Array.from({ length: 16 }, () => ({ pressed: false, value: 0 }));
+  buttons[3] = { pressed: true, value: 1 };
+  assert.equal(manager.consumeGamepadQuarantine({ buttons, axes: [0, 0, 0, 0] }), true);
+  assert.equal(manager.gamepadQuarantined, true);
+  buttons[3] = { pressed: false, value: 0 };
+  assert.equal(manager.consumeGamepadQuarantine({ buttons, axes: [0, 0, 0, 0] }), true);
+  assert.equal(manager.gamepadQuarantined, false);
+  assert.equal(manager.consumeGamepadQuarantine({ buttons, axes: [0, 0, 0, 0] }), false);
+});
+
+test('back action opens the pause menu without abandoning builder or direct control', () => {
+  const calls = [];
+  const app = {
+    pauseManager: {
+      menuOpen: false,
+      toggleMenu() { calls.push('pause'); return true; }
+    },
+    uiManager: {
+      cityEditorUI: { isVisible: true },
+      inspectorHud: { classList: { contains: () => true } }
+    },
+    trafficSystem: { controlledVehicle: {} }
+  };
+  assert.equal(managerWith(app).handleBackAction(), true);
+  assert.deepEqual(calls, ['pause']);
 });
 
 test('direct-control authority changes restore gameplay focus for driving and camera WASD', () => {

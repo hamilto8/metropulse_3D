@@ -9,7 +9,8 @@ export const CONTROL_CONTEXTS = Object.freeze({
   VEHICLE: 'VEHICLE',
   AIRCRAFT: 'AIRCRAFT',
   PEDESTRIAN: 'PEDESTRIAN',
-  DIALOGUE: 'DIALOGUE'
+  DIALOGUE: 'DIALOGUE',
+  PAUSE: 'PAUSE'
 });
 
 const key = label => Object.freeze({ label, kind: 'key' });
@@ -156,7 +157,8 @@ const CONTEXT_ACTIONS = Object.freeze({
   [CONTROL_CONTEXTS.VEHICLE]: Object.freeze(['DRIVE', 'THROTTLE', 'BRAKE', 'INTERACT', 'HANDBRAKE', 'CAMERA', 'HORN', 'MODE']),
   [CONTROL_CONTEXTS.AIRCRAFT]: Object.freeze(['AIR_ROLL', 'AIR_PITCH', 'AIR_THROTTLE', 'AIR_BRAKE', 'CAMERA', 'INTERACT', 'AIR_RESET']),
   [CONTROL_CONTEXTS.PEDESTRIAN]: Object.freeze(['MOVE', 'JUMP', 'INTERACT', 'ATTACK', 'CAMERA', 'MODE']),
-  [CONTROL_CONTEXTS.DIALOGUE]: Object.freeze(['NAVIGATE', 'CONFIRM', 'BACK'])
+  [CONTROL_CONTEXTS.DIALOGUE]: Object.freeze(['NAVIGATE', 'CONFIRM', 'BACK']),
+  [CONTROL_CONTEXTS.PAUSE]: Object.freeze(['NAVIGATE', 'CONFIRM', 'BACK'])
 });
 
 export function getControlBindings(context) {

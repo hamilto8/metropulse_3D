@@ -71,6 +71,7 @@ export class DiagnosticsService {
       state: Object.freeze({
         mode: app.gameManager?.state || 'BOOT',
         revision: app.gameManager?.revision || 0,
+        resumeState: app.gameManager?.resumeState || null,
         activeTransition: app.gameManager?.activeTransition || null,
         lastTransition: app.gameManager?.lastTransition || null
       }),
@@ -88,6 +89,7 @@ export class DiagnosticsService {
           cityTimePaused: app.timeManager ? !app.timeManager.isPlaying : true
         }),
       controlledEntity: identifyControlledEntity(app),
+      pause: app.pauseManager?.snapshot?.() || null,
       mission: Object.freeze({
         state: mission?.state || 'UNAVAILABLE',
         id: mission?.activeMission?.id || null,

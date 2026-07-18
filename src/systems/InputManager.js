@@ -25,6 +25,8 @@ export class InputManager {
     this.controllerCursor = { x: 0, y: -0.05 };
     this.lastContext = null;
     this.inputSuspensions = new Set();
+    this.quarantinedKeys = new Set();
+    this.gamepadQuarantined = false;
 
     this.state = {
       throttle: 0,
@@ -59,6 +61,11 @@ export class InputManager {
       if (isEditing || isUiControl) return;
 
       const normalizedKey = event.key.toLowerCase();
+      if (this.quarantinedKeys.has(normalizedKey)) return;
+      if (this.app?.pauseManager?.paused) {
+        if (event.key === 'Escape' && !event.repeat) this.handleBackAction();
+        return;
+      }
       this.keys[normalizedKey] = true;
       if (event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space') {
         this.keys[' '] = true;
@@ -91,7 +98,9 @@ export class InputManager {
     });
 
     window.addEventListener('keyup', (event) => {
-      this.keys[event.key.toLowerCase()] = false;
+      const normalizedKey = event.key.toLowerCase();
+      this.quarantinedKeys.delete(normalizedKey);
+      this.keys[normalizedKey] = false;
       if (event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space') {
         this.keys[' '] = false;
         this.keys.space = false;
@@ -110,6 +119,12 @@ export class InputManager {
 
     window.addEventListener('pointerdown', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
     window.addEventListener('wheel', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
+    window.addEventListener('click', event => {
+      if (this.isInputSuspended || this.app?.pauseManager?.paused) return;
+      if (event.target?.closest?.('header, aside, footer, button, input, [role="dialog"]')) return;
+      const pedestrian = this.app?.pedestrianSystem?.controlledPedestrian;
+      if (pedestrian?.hasBaseballBat) this.handleSecondaryAction();
+    });
     window.addEventListener('pointermove', (event) => {
       if (event.pointerType && event.pointerType !== 'mouse') return;
       if (Math.abs(event.movementX || 0) + Math.abs(event.movementY || 0) < 3) return;
@@ -117,8 +132,17 @@ export class InputManager {
     }, { passive: true });
   }
 
-  clearTransientInputState() {
-    for (const key of Object.keys(this.keys || {})) this.keys[key] = false;
+  clearTransientInputState({ quarantine = true } = {}) {
+    for (const key of Object.keys(this.keys || {})) {
+      if (quarantine && this.keys[key]) this.quarantinedKeys?.add?.(key);
+      this.keys[key] = false;
+    }
+    if (quarantine) this.gamepadQuarantined = true;
+    this.previousGamepadButtons = {};
+    this.resetMotionState();
+  }
+
+  resetMotionState() {
     if (this.state) {
       this.state.throttle = 0;
       this.state.brake = 0;
@@ -134,6 +158,24 @@ export class InputManager {
       this.state.flightBrake = 0;
       this.state.handbrake = false;
     }
+  }
+
+  consumeGamepadQuarantine(gamepad) {
+    if (!this.gamepadQuarantined) return false;
+    const buttons = gamepad?.buttons || [];
+    const axes = gamepad?.axes || [];
+    const buttonHeld = buttons.some(button => (
+      typeof button === 'object' ? button.pressed || button.value > 0.5 : button === 1
+    ));
+    const axisHeld = axes.some(value => Math.abs(value || 0) >= GAMEPAD_ACTIVITY_THRESHOLD);
+    buttons.forEach((button, index) => {
+      this.previousGamepadButtons[`btn${index}`] = typeof button === 'object'
+        ? Boolean(button.pressed || button.value > 0.5)
+        : button === 1;
+    });
+    if (!buttonHeld && !axisHeld) this.gamepadQuarantined = false;
+    this.resetMotionState();
+    return true;
   }
 
   suspendInput(reason = 'transition') {
@@ -253,16 +295,16 @@ export class InputManager {
       this.app.dialogueOverlay.hide();
       return true;
     }
-    if (this.app?.uiManager?.cityEditorUI?.isVisible) {
-      this.app.uiManager.toggleCityEditor();
+    if (this.app?.pauseManager?.menuOpen) {
+      this.app.pauseManager.closeMenu({ source: 'InputManager' });
       return true;
     }
     if (this.app?.uiManager?.inspectorHud && !this.app.uiManager.inspectorHud.classList.contains('hidden')) {
       this.app.uiManager.hideInspector();
       return true;
     }
-    if ([CONTROL_CONTEXTS.VEHICLE, CONTROL_CONTEXTS.AIRCRAFT, CONTROL_CONTEXTS.PEDESTRIAN].includes(this.getControlContext())) {
-      this.app?.uiManager?.handleModeToggle?.();
+    if (this.app?.pauseManager?.toggleMenu) {
+      this.app.pauseManager.toggleMenu({ source: 'InputManager' });
       return true;
     }
     return false;
@@ -287,6 +329,7 @@ export class InputManager {
   setInterface(newInterface) {
     if (!isKnownInputInterface(newInterface)) return false;
     if (this.activeInterface === newInterface) return false;
+    this.clearTransientInputState();
     this.activeInterface = newInterface;
     if (typeof document !== 'undefined') document.body.dataset.inputMethod = newInterface.toLowerCase();
     this.app?.uiManager?.updateControlDeviceBadge?.(newInterface);
@@ -295,6 +338,7 @@ export class InputManager {
   }
 
   getControlContext() {
+    if (this.app?.pauseManager?.menuOpen) return CONTROL_CONTEXTS.PAUSE;
     if (this.app?.dialogueOverlay?.currentMission) return CONTROL_CONTEXTS.DIALOGUE;
     if (this.app?.uiManager?.cityEditorUI?.isVisible || this.app?.cityEditorSystem?.isActive) return CONTROL_CONTEXTS.BUILDER;
     if (this.app?.trafficSystem?.controlledVehicle) return CONTROL_CONTEXTS.VEHICLE;
@@ -362,6 +406,13 @@ export class InputManager {
     const gamepad = this.getGamepad();
     this.state.isGamepadConnected = Boolean(gamepad);
     if (gamepad && this.isGamepadActive(gamepad)) this.setInterface(INPUT_INTERFACES.GAMEPAD);
+    if (this.consumeGamepadQuarantine(gamepad)) return;
+
+    if (this.app?.pauseManager?.paused) {
+      this.resetMotionState();
+      if (gamepad) this.handleModalGamepadActions(gamepad);
+      return;
+    }
 
     const keyboardForward = Boolean(this.keys.w || this.keys.arrowup);
     const keyboardReverse = Boolean(this.keys.s || this.keys.arrowdown);
@@ -412,6 +463,10 @@ export class InputManager {
         this.updateBuilderCursor(leftX, leftY, delta);
       }
       this.handleGamepadActions(gamepad);
+      if (this.app?.pauseManager?.paused) {
+        this.resetMotionState();
+        return;
+      }
     }
 
     this.state.throttle = throttle;
@@ -516,11 +571,31 @@ export class InputManager {
       }
     }
 
-    if (this.justPressed('btn9', pressed(9))) this.app?.uiManager?.handleModeToggle?.();
+    if (this.justPressed('btn9', pressed(9))) {
+      this.app?.pauseManager?.toggleMenu?.({ source: 'InputManager.gamepad' });
+    }
+  }
+
+  handleModalGamepadActions(gamepad) {
+    const pressed = index => this.isButtonPressed(gamepad, index);
+    const directions = [
+      ['up', 12], ['down', 13], ['left', 14], ['right', 15]
+    ];
+    for (const [direction, index] of directions) {
+      if (this.justPressed(`btn${index}`, pressed(index))) this.moveUiFocus(direction);
+    }
+    if (this.justPressed('btn0', pressed(0))) {
+      if (!this.activateFocusedControl()) this.moveUiFocus('down');
+    }
+    if (this.justPressed('btn1', pressed(1))) this.handleBackAction();
+    if (this.justPressed('btn9', pressed(9))) {
+      this.app?.pauseManager?.toggleMenu?.({ source: 'InputManager.gamepad' });
+    }
   }
 
   getUiRoot() {
     if (typeof document === 'undefined') return null;
+    if (this.app?.pauseManager?.menuOpen) return document.getElementById('pause-menu');
     if (this.app?.dialogueOverlay?.currentMission) return document.getElementById('dialogue-overlay');
     if (this.app?.uiManager?.cityEditorUI?.isVisible) return this.app.uiManager.cityEditorUI.container;
     return document.getElementById('app');

@@ -7,6 +7,7 @@ export class AudioSystem {
     this.masterGain = null;
     this.isEnabled = false;
     this.volume = 0.5;
+    this.isPaused = false;
 
     // Ambience state
     this.rumbleNode = null;
@@ -32,7 +33,7 @@ export class AudioSystem {
       if (!this.ctx) {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.value = this.volume;
+        this.masterGain.gain.value = this.getEffectiveVolume();
         this.masterGain.connect(this.ctx.destination);
         this.startBackgroundAmbience();
       }
@@ -52,8 +53,20 @@ export class AudioSystem {
   setVolume(vol) {
     this.volume = Math.max(0, Math.min(1, vol));
     if (this.masterGain && this.ctx) {
-      this.masterGain.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.05);
+      this.masterGain.gain.setTargetAtTime(this.getEffectiveVolume(), this.ctx.currentTime, 0.05);
     }
+  }
+
+  getEffectiveVolume() {
+    return this.isPaused ? this.volume * 0.18 : this.volume;
+  }
+
+  setPaused(paused) {
+    this.isPaused = Boolean(paused);
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(this.getEffectiveVolume(), this.ctx.currentTime, 0.08);
+    }
+    return this.isPaused;
   }
 
   startBackgroundAmbience() {

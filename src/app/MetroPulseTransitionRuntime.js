@@ -260,6 +260,7 @@ export class MetroPulseTransitionRuntime {
     this.app.uiManager?.hideInspector?.();
     this.app.uiManager?.updateActionHUD?.();
     this.app.inputManager?.syncControlContext?.();
+    this.app.audioSystem?.setPaused?.(transition.to === GAME_STATES.PAUSED);
     return true;
   }
 
@@ -316,6 +317,7 @@ export class MetroPulseTransitionRuntime {
     if (sourceState.clockPolicy) {
       this.app.scheduler?.setClockPolicy?.(sourceState.clockPolicy);
       this.app.simulationClockPolicy = sourceState.clockPolicy;
+      this.app.audioSystem?.setPaused?.(sourceState.clockPolicy === CLOCK_POLICIES.PAUSED);
     }
     if (sourceState.editorVisible) this.app.uiManager?.cityEditorUI?.show?.({ preserveMode: true });
     else this.app.uiManager?.cityEditorUI?.hide?.({ preserveMode: true });
