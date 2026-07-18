@@ -65,7 +65,7 @@ the responsible system owns implementation.
 |---|---|---|---|---|---|
 | STR-001 | On-foot supports responsive walk, sprint, jump/vault, interact, evade, melee, vehicle entry, and look. | Pedestrian controller | Integration + Playtest | Gameplay Lead | In Progress |
 | STR-002 | Safe-position recovery prevents slopes, curbs, obstacles, and out-of-bounds falls from trapping the player. | Pedestrian controller | Integration + Scenario | Gameplay Lead | Implemented |
-| STR-003 | One deterministic prompt selects the highest-priority eligible interaction and states important consequences. | Interaction service | Integration + Browser | Tech Lead | Not Started |
+| STR-003 | One deterministic prompt selects the highest-priority eligible interaction and states important consequences. | Interaction service | Integration + Browser | Tech Lead | Verified |
 | STR-004 | Driving is readable arcade handling with recoverable slides, grip feedback, body motion, and forgiving low-speed collisions. | Vehicle controller | Scenario + Playtest | Gameplay Lead | In Progress |
 | STR-005 | Owned/mission vehicles use Enter; unauthorized entry uses Hijack and adds Heat. | Vehicle interaction / Heat | Integration + Browser | Gameplay Lead | In Progress |
 | STR-006 | MVP contains 3–4 handling archetypes backed by data rather than many one-off vehicles. | Vehicle profiles | Unit + Playtest | Gameplay Lead | In Progress |

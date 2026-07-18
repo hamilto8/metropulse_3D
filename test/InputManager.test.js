@@ -16,59 +16,28 @@ function managerWith(app) {
   return manager;
 }
 
-test('primary action routing prioritizes mission interaction over vehicle exit', () => {
+test('primary action delegates exclusively to the interaction service', () => {
   const calls = [];
   const app = {
-    pauseManager: { menuOpen: false },
-    missionSystem: {
-      handleActionKey() { calls.push('mission'); return true; },
-      openPendingMissionDetails() { calls.push('pending'); return true; }
-    },
-    trafficSystem: {
-      controlledVehicle: {},
-      exitControlledVehicle() { calls.push('exit'); }
+    interactionService: {
+      resolvePrimary() { calls.push('resolve'); return { handled: true }; }
     }
   };
 
   assert.equal(managerWith(app).handlePrimaryAction(), true);
-  assert.deepEqual(calls, ['mission']);
+  assert.deepEqual(calls, ['resolve']);
 });
 
-test('primary action falls through from mission prompt to vehicle and pedestrian actions', () => {
-  const calls = [];
-  const app = {
-    missionSystem: {
-      handleActionKey: () => false,
-      openPendingMissionDetails: () => false
-    },
-    trafficSystem: {
-      controlledVehicle: {},
-      exitControlledVehicle() { calls.push('exit'); }
-    }
-  };
-  const manager = managerWith(app);
-  manager.handlePrimaryAction();
-  assert.deepEqual(calls, ['exit']);
-
-  app.trafficSystem.controlledVehicle = null;
-  app.pedestrianSystem = {
-    controlledPedestrian: {},
-    handlePedestrianActionKey() { calls.push('pedestrian'); }
-  };
-  manager.handlePrimaryAction();
-  assert.deepEqual(calls, ['exit', 'pedestrian']);
+test('primary action is unhandled when no interaction is published', () => {
+  assert.equal(managerWith({}).handlePrimaryAction(), false);
+  assert.equal(managerWith({ interactionService: { resolvePrimary: () => ({ handled: false }) } }).handlePrimaryAction(), false);
 });
 
-test('gamepad Y uses the canonical mission-first primary action route', () => {
+test('gamepad Y uses the canonical interaction service route', () => {
   const calls = [];
   const app = {
-    missionSystem: {
-      handleActionKey() { calls.push('mission'); return true; },
-      openPendingMissionDetails() { calls.push('pending'); return true; }
-    },
-    trafficSystem: {
-      controlledVehicle: {},
-      exitControlledVehicle() { calls.push('exit'); }
+    interactionService: {
+      resolvePrimary() { calls.push('interaction'); return { handled: true }; }
     }
   };
   const manager = managerWith(app);
@@ -76,7 +45,7 @@ test('gamepad Y uses the canonical mission-first primary action route', () => {
   buttons[3] = { pressed: true, value: 1 };
 
   manager.handleGamepadActions({ buttons, axes: [0, 0, 0, 0] });
-  assert.deepEqual(calls, ['mission']);
+  assert.deepEqual(calls, ['interaction']);
 });
 
 test('adaptive bindings expose context-specific keyboard and Xbox prompts', () => {
@@ -133,9 +102,8 @@ test('gamepad activity ignores ordinary stick drift and recognizes intentional i
 test('gamepad edge state resets on release so repeated Y presses remain reliable', () => {
   let actions = 0;
   const app = {
-    missionSystem: {
-      handleActionKey() { actions += 1; return true; },
-      openPendingMissionDetails: () => false
+    interactionService: {
+      resolvePrimary() { actions += 1; return { handled: true }; }
     }
   };
   const manager = managerWith(app);

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GAME_STATES } from '../core/GameManager.js';
 import missionsData from '../data/missions.json' with { type: 'json' };
 import { setTextSegments } from '../ui/dom.js';
+import { INTERACTION_PRIORITIES } from './InteractionService.js';
 
 // ─── Named Constants ────────────────────────────────────────────────────────
 /** Radius at which driving/following a vehicle triggers a pickup dialogue (metres) */
@@ -248,47 +249,15 @@ export class MissionSystem {
   showMissionAvailablePrompt(mission) {
     if (this.state !== 'IDLE' || this.activeMission) return;
     this.pendingMission = mission;
-
-    let prompt = document.getElementById('mission-available-prompt');
-    if (!prompt) {
-      prompt = document.createElement('div');
-      prompt.id = 'mission-available-prompt';
-      prompt.setAttribute('role', 'status');
-      prompt.setAttribute('aria-live', 'polite');
-      prompt.style.position = 'fixed';
-      prompt.style.bottom = '18%';
-      prompt.style.left = '50%';
-      prompt.style.transform = 'translateX(-50%)';
-      prompt.style.padding = '14px 28px';
-      prompt.style.borderRadius = '30px';
-      prompt.style.background = 'rgba(7, 18, 38, 0.88)';
-      prompt.style.backdropFilter = 'blur(14px)';
-      prompt.style.border = '1px solid #00f0ff';
-      prompt.style.color = '#fff';
-      prompt.style.fontFamily = 'Outfit, Inter, sans-serif';
-      prompt.style.fontSize = '1.05rem';
-      prompt.style.fontWeight = 'bold';
-      prompt.style.boxShadow = '0 0 20px rgba(0, 240, 255, 0.5)';
-      prompt.style.zIndex = '1000';
-      prompt.style.pointerEvents = 'none';
-      prompt.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-      document.body.appendChild(prompt);
-    }
-
-    setTextSegments(prompt, [
-      '🌟 ',
-      { text: 'MISSION AVAILABLE!', className: 'prompt-accent prompt-strong' },
-      ' Press ',
-      { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
-      ` for details (${mission.passengerName})`
-    ]);
-    prompt.style.display = 'block';
-    prompt.style.opacity = '1';
   }
 
   hideMissionAvailablePrompt() {
     this.pendingMission = null;
-    const prompt = document.getElementById('mission-available-prompt');
+    // Remove the legacy second prompt if a restored/long-lived page created it
+    // before InteractionPrompt became authoritative.
+    const prompt = typeof document !== 'undefined'
+      ? document.getElementById('mission-available-prompt')
+      : null;
     if (prompt) {
       prompt.style.display = 'none';
       prompt.style.opacity = '0';
@@ -297,7 +266,10 @@ export class MissionSystem {
 
   openPendingMissionDetails() {
     if (!this.pendingMission) return false;
-    const mission = this.pendingMission;
+    return this.openMissionDetails(this.pendingMission);
+  }
+
+  openMissionDetails(mission) {
     if (!this.canUseMission(mission, { requireProximity: true, notify: true }).allowed) {
       this.hideMissionAvailablePrompt();
       return false;
@@ -305,6 +277,59 @@ export class MissionSystem {
     this.hideMissionAvailablePrompt();
     this.triggerMissionDialogue(mission);
     return true;
+  }
+
+  getInteractionCandidates() {
+    const candidates = [];
+    const vehicle = this.getControlledVehicle();
+    const objective = this.activeMission?.missionType || this.activeMission?.objectiveType;
+
+    if (this.state === 'IN_PROGRESS' && objective === 'SABOTAGE') {
+      const distance = vehicle?.mesh?.position?.distanceTo?.(this._dropoffPos) ?? Infinity;
+      let failureReason = null;
+      if (!vehicle) failureReason = 'Take direct control of the mission vehicle first.';
+      else if (distance >= MISSION_COMPLETE_RADIUS) failureReason = 'Reach the sabotage target first.';
+      else if (Math.abs(vehicle.speed || 0) > 1) failureReason = 'Stop the vehicle before deploying the jammer.';
+      const actionLabel = this.activeMission.sabotageAction || 'Deploy the jammer';
+      candidates.push({
+        id: `mission-objective:${this.activeMission.id}`,
+        kind: 'MISSION_OBJECTIVE',
+        priority: INTERACTION_PRIORITIES.MISSION_OBJECTIVE,
+        prompt: actionLabel,
+        action: () => this.handleActionKey(),
+        eligibility: { allowed: !failureReason, reason: failureReason },
+        failureReason,
+        distance,
+        accessibilityLabel: `${actionLabel} for mission ${this.activeMission.title || this.activeMission.id}`,
+        metadata: { missionId: this.activeMission.id, objective }
+      });
+      return candidates;
+    }
+
+    if (this.state !== 'IDLE' || this.triggerCooldown > 0 || !vehicle) return candidates;
+    for (const ring of this.pickupRings) {
+      if (!ring.group.visible) continue;
+      const distance = vehicle.mesh.position.distanceTo(ring.group.position);
+      if (distance >= MISSION_TRIGGER_RADIUS) continue;
+      const eligibility = this.canUseMission(ring.mission, {
+        requireProximity: true,
+        notify: false
+      });
+      const passenger = ring.mission.passengerName || ring.mission.title || 'mission contact';
+      candidates.push({
+        id: `mission-pickup:${ring.mission.id}`,
+        kind: 'MISSION_PICKUP',
+        priority: INTERACTION_PRIORITIES.MISSION_PICKUP,
+        prompt: `view mission details for ${passenger}`,
+        action: () => this.openMissionDetails(ring.mission),
+        eligibility: { allowed: eligibility.allowed, reason: eligibility.reason || null },
+        failureReason: eligibility.reason || null,
+        distance,
+        accessibilityLabel: `View mission details for ${passenger}`,
+        metadata: { missionId: ring.mission.id }
+      });
+    }
+    return candidates;
   }
 
   /**
@@ -740,17 +765,20 @@ export class MissionSystem {
     // 3. If IDLE, check distance to pickup rings (MISSION_TRIGGER_RADIUS capture zone)
     //    Only a directly controlled player vehicle can trigger missions.
     if (this.state === 'IDLE' && this.triggerCooldown <= 0 && activeVehicle) {
-      let insideRingMission = null;
+      let insideRing = null;
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
-        if (activeVehicle.mesh.position.distanceTo(r.group.position) < MISSION_TRIGGER_RADIUS) {
-          insideRingMission = r.mission;
-          break;
-        }
+        const distance = activeVehicle.mesh.position.distanceTo(r.group.position);
+        if (distance >= MISSION_TRIGGER_RADIUS) continue;
+        if (
+          !insideRing
+          || distance < insideRing.distance
+          || (distance === insideRing.distance && r.mission.id < insideRing.mission.id)
+        ) insideRing = { mission: r.mission, distance };
       }
 
-      if (insideRingMission) {
-        this.showMissionAvailablePrompt(insideRingMission);
+      if (insideRing) {
+        this.showMissionAvailablePrompt(insideRing.mission);
       } else {
         this.hideMissionAvailablePrompt();
       }

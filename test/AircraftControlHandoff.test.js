@@ -4,6 +4,10 @@ import * as THREE from 'three';
 
 import { AircraftSystem } from '../src/systems/AircraftSystem.js';
 import { PedestrianSystem } from '../src/systems/PedestrianSystem.js';
+import {
+  InteractionService,
+  INTERACTION_PRIORITIES
+} from '../src/systems/InteractionService.js';
 
 function createHandoffFixture() {
   const scene = new THREE.Scene();
@@ -114,7 +118,7 @@ test('pedestrian boarding preserves identity and restores the same controlled pe
   assert.deepEqual(audioCalls, ['start', 'stop']);
 });
 
-test('pedestrian interaction prioritizes a boardable aircraft over nearby traffic', () => {
+test('interaction service prioritizes a boardable aircraft over nearby traffic', () => {
   const pedestrian = { mesh: new THREE.Group() };
   const system = Object.create(PedestrianSystem.prototype);
   let boarded = null;
@@ -130,6 +134,26 @@ test('pedestrian interaction prioritizes a boardable aircraft over nearby traffi
       vehicles: [{ mesh: { position: new THREE.Vector3(1, 0, 0) } }]
     }
   };
+  const interactionService = new InteractionService();
+  interactionService.registerProvider({
+    id: 'aircraft',
+    getCandidates: () => [{
+      id: 'aircraft-board:test',
+      kind: 'AIRCRAFT',
+      priority: INTERACTION_PRIORITIES.AIRCRAFT_BOARD,
+      prompt: 'board aircraft',
+      action: () => system.app.aircraftSystem.boardFromPedestrian(pedestrian),
+      eligibility: true,
+      failureReason: null,
+      distance: 2,
+      accessibilityLabel: 'Board aircraft'
+    }]
+  });
+  interactionService.registerProvider({
+    id: 'pedestrians',
+    getCandidates: () => system.getInteractionCandidates()
+  });
+  system.app.interactionService = interactionService;
 
   assert.equal(system.handlePedestrianActionKey(), true);
   assert.equal(boarded, pedestrian);

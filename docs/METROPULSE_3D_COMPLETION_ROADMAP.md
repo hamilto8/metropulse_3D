@@ -465,13 +465,38 @@ P1.4 completion evidence (2026-07-17):
 
 #### P1.5 Interaction priority
 
-- [ ] Replace hard-coded mission/vehicle/pedestrian branching with an
+- [x] Replace hard-coded mission/vehicle/pedestrian branching with an
   interaction service.
-- [ ] Let interactables publish eligibility, priority, prompt, action,
+- [x] Let interactables publish eligibility, priority, prompt, action,
   failure reason, distance, and accessibility label.
-- [ ] Guarantee one primary interaction prompt at a time.
-- [ ] Make action resolution deterministic when multiple vehicles, NPCs,
+- [x] Guarantee one primary interaction prompt at a time.
+- [x] Make action resolution deterministic when multiple vehicles, NPCs,
   mission points, or doors overlap.
+
+P1.5 completion evidence (2026-07-17):
+
+- `src/systems/InteractionService.js` owns the renderer-independent candidate
+  contract, immutable snapshots, provider registry, deterministic total order,
+  reentrancy guard, and isolated failure/action resolution. `InputManager`
+  now has one keyboard/gamepad primary-action route with no domain branching.
+- Mission, aircraft, traffic, pedestrian, and selected-entity owners publish
+  eligibility, priority, prompt, action, failure reason, distance,
+  accessibility label, and stable metadata through the production composition
+  in `src/app/MetroPulseInteractions.js`.
+- `src/ui/InteractionPrompt.js` is the only primary prompt presenter. It shows
+  the active keyboard/gamepad binding, publishes an accessible live-region
+  label, exposes eligibility without color-only meaning, and clears in Builder,
+  Pause, and Dialogue contexts.
+- Unit coverage verifies contract validation, immutable snapshots, mission /
+  vehicle / NPC / door overlaps, every tie-break, blocking failure reasons,
+  action/provider exceptions, publisher output, and keyboard/gamepad routing.
+  The Playwright WebGL flow verifies one prompt, prompt/action agreement,
+  vehicle exit, and prompt clearing during pause and dialogue.
+- The operational and extension contract is documented in
+  `INTERACTION_PRIORITY.md`.
+- Verification at completion: 287 Node tests, the production build, and the
+  deterministic Playwright WebGL smoke/transition/pause/interaction acceptance
+  flow pass.
 
 ### Required tests
 

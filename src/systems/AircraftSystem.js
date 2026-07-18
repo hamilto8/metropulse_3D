@@ -4,6 +4,7 @@ import { AIRCRAFT_MODES } from '../entities/AircraftFlightModel.js';
 import { PropellerAircraft } from '../entities/PropellerAircraft.js';
 import { AIRFIELD_LAYOUT, createAirfield } from '../world/Airfield.js';
 import { assessLandingSurface } from './AircraftLandingSurface.js';
+import { INTERACTION_PRIORITIES } from './InteractionService.js';
 
 const AIRSPACE_BOUNDS = Object.freeze({
   minX: -245,
@@ -90,6 +91,60 @@ export class AircraftSystem {
       return { allowed: false, reason: 'aircraft-moving', distance };
     }
     return { allowed: true, reason: null, distance };
+  }
+
+  getInteractionCandidates() {
+    if (this.controlledAircraft) {
+      const safelyStopped = !this.controlledAircraft.isAirborne
+        && this.controlledAircraft.state.speed <= 3;
+      const missionState = this.app?.missionSystem?.state || 'IDLE';
+      const missionCritical = Boolean(
+        this.app?.missionSystem?.activeMission
+        || this.app?.missionSystem?.pendingMission
+        || missionState !== 'IDLE'
+      );
+      const failureReason = !safelyStopped
+        ? 'Land and stop the aircraft before leaving the cockpit.'
+        : missionCritical
+          ? 'Resolve the active mission before leaving the cockpit.'
+          : null;
+      return [{
+        id: 'aircraft-exit:northwind-sparrow',
+        kind: 'AIRCRAFT_EXIT',
+        priority: INTERACTION_PRIORITIES.CONTROLLED_ENTITY_EXIT,
+        prompt: 'leave the cockpit',
+        action: () => this.requestExit(),
+        eligibility: { allowed: safelyStopped && !missionCritical, reason: failureReason },
+        failureReason,
+        distance: 0,
+        accessibilityLabel: 'Leave the Northwind Sparrow cockpit'
+      }];
+    }
+
+    const pedestrian = this.app.pedestrianSystem?.controlledPedestrian;
+    if (!pedestrian) return [];
+    const eligibility = this.getBoardingEligibility(pedestrian);
+    if (eligibility.reason === 'too-far' || eligibility.distance > AIRCRAFT_BOARDING_RADIUS) return [];
+    const failureReasons = {
+      unavailable: 'The aircraft is unavailable.',
+      'pedestrian-incapacitated': 'You cannot board while incapacitated.',
+      'aircraft-recovering': 'The aircraft is recovering from a crash.',
+      'aircraft-moving': 'The aircraft must be safely stopped before boarding.'
+    };
+    const failureReason = eligibility.allowed
+      ? null
+      : (failureReasons[eligibility.reason] || 'The aircraft cannot be boarded right now.');
+    return [{
+      id: 'aircraft-board:northwind-sparrow',
+      kind: 'AIRCRAFT',
+      priority: INTERACTION_PRIORITIES.AIRCRAFT_BOARD,
+      prompt: 'board Northwind Sparrow',
+      action: () => this.boardFromPedestrian(pedestrian),
+      eligibility: { allowed: eligibility.allowed, reason: failureReason },
+      failureReason,
+      distance: eligibility.distance,
+      accessibilityLabel: 'Board the Northwind Sparrow aircraft'
+    }];
   }
 
   boardFromPedestrian(pedestrian) {

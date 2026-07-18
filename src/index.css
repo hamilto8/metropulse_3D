@@ -3774,10 +3774,37 @@ body[data-input-method="gamepad"] :focus-visible {
 }
 
 #mission-available-prompt,
-#vehicle-enter-prompt {
+#vehicle-enter-prompt,
+.primary-interaction-prompt {
   border-radius: 14px !important;
   background: rgba(7, 12, 27, 0.92) !important;
   box-shadow: 0 14px 42px rgba(0, 0, 0, 0.5) !important;
+}
+
+.primary-interaction-prompt {
+  position: fixed;
+  bottom: 15%;
+  left: 50%;
+  z-index: 1000;
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 12px 24px;
+  transform: translateX(-50%);
+  border: 1px solid #00f0ff;
+  color: #fff;
+  font-family: Outfit, Inter, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+
+.primary-interaction-prompt[data-interaction-eligible="false"] {
+  border-color: #ffb020;
+}
+
+.interaction-failure-reason {
+  color: #ffd27a;
 }
 
 @media (max-width: 1180px) {

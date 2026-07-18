@@ -238,28 +238,7 @@ export class InputManager {
   }
 
   handlePrimaryAction() {
-    const missionSystem = this.app?.missionSystem;
-    if (missionSystem?.handleActionKey?.()) return true;
-    if (missionSystem?.openPendingMissionDetails?.()) return true;
-
-    const trafficSystem = this.app?.trafficSystem;
-    if (trafficSystem?.controlledVehicle) {
-      trafficSystem.exitControlledVehicle();
-      return true;
-    }
-
-    const aircraftSystem = this.app?.aircraftSystem;
-    if (aircraftSystem?.controlledAircraft) {
-      return aircraftSystem.requestExit();
-    }
-
-    const pedestrianSystem = this.app?.pedestrianSystem;
-    if (pedestrianSystem?.controlledPedestrian) {
-      pedestrianSystem.handlePedestrianActionKey();
-      return true;
-    }
-
-    return this.app?.uiManager?.activateSelectedEntity?.() || false;
+    return this.app?.interactionService?.resolvePrimary?.().handled || false;
   }
 
   handleSecondaryAction() {

@@ -4,6 +4,7 @@ import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
 import { Pedestrian } from '../entities/Pedestrian.js';
 import { createPedestrianDescriptor } from '../entities/PedestrianArchetypes.js';
 import { setTextSegments } from '../ui/dom.js';
+import { INTERACTION_PRIORITIES } from './InteractionService.js';
 import { createCafeSeating } from '../world/CafeSeating.js';
 import {
   startPedestrianKnockdown,
@@ -181,6 +182,7 @@ export class PedestrianSystem {
         ...descriptor,
         behaviorState
       });
+      ped.interactionId = `pedestrian-${serial}`;
 
       // Pick starting node
       if (descriptor.archetype === 'CAFE_READER' && this.cafeSeats.length > 0) {
@@ -761,212 +763,104 @@ export class PedestrianSystem {
       if (this.app.performanceSystem?.shouldAnimate(p, i) ?? true) p.update(delta, isRaining);
     }
 
-    // 4. Handle proximity checking for vehicles and pedestrians
-    this.updateProximityChecks();
   }
 
+  /** Compatibility refresh for callers predating the central presenter. */
   updateProximityChecks() {
-    if (!this.controlledPedestrian) {
-      const prompt = document.getElementById('vehicle-enter-prompt');
-      if (prompt) prompt.classList.add('hidden');
-      return;
-    }
-
-    const p = this.controlledPedestrian;
-    const pos = p.mesh.position;
-    const boarding = this.app.aircraftSystem?.getBoardingEligibility?.(p);
-    const prompt = this.getOrCreateInteractionPrompt();
-
-    if (boarding?.allowed) {
-      setTextSegments(prompt, [
-        '🛩️ Press ',
-        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
-        ' to Board Northwind Sparrow'
-      ]);
-      prompt.classList.remove('hidden');
-      return;
-    }
-    
-    // 1. Scan for closest vehicle
-    let closestVehicle = null;
-    let minVehDist = 3.5;
-
-    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-      const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(pos, minVehDist) || this.app.trafficSystem.vehicles;
-      for (const v of nearbyVehicles) {
-        const dist = pos.distanceTo(v.mesh.position);
-        if (dist < minVehDist) {
-          minVehDist = dist;
-          closestVehicle = v;
-        }
-      }
-    }
-
-    // 2. Scan for closest other pedestrian
-    let closestPed = null;
-    let minPedDist = 3.0;
-
-    const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(pos, minPedDist) || this.pedestrians;
-    for (const other of nearbyPedestrians) {
-      if (other === p || other.knockedDown) continue;
-      const dist = pos.distanceTo(other.mesh.position);
-      if (dist < minPedDist) {
-        minPedDist = dist;
-        closestPed = other;
-      }
-    }
-
-    // 3. Resolve priority: whichever is closer triggers prompt
-    if (closestVehicle && (closestPed === null || minVehDist < minPedDist)) {
-      // Vehicle prompt
-      setTextSegments(prompt, [
-        '🏎️ Press ',
-        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
-        ` to Hijack ${closestVehicle.name.toUpperCase()}`
-      ]);
-      prompt.classList.remove('hidden');
-    } else if (closestPed) {
-      // Pedestrian Talk prompt
-      setTextSegments(prompt, [
-        '💬 Press ',
-        { text: this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E', className: 'prompt-key' },
-        ` to Talk to ${closestPed.name.toUpperCase()}`
-      ]);
-      prompt.classList.remove('hidden');
-    } else {
-      // Check if near a baseball bat pickup
-      let nearBat = false;
-      if (p && !p.hasBaseballBat && this.baseballBats) {
-        for (const bat of this.baseballBats) {
-          if (bat.pickedUp) continue;
-          const dist = p.mesh.position.distanceTo(bat.pos);
-          if (dist < 4.0) {
-            nearBat = true;
-            if (prompt) {
-              setTextSegments(prompt, [
-                '🏏 Walk over to pick up ',
-                { text: 'BASEBALL BAT', className: 'prompt-success prompt-strong' }
-              ]);
-              prompt.classList.remove('hidden');
-            }
-            break;
-          }
-        }
-      }
-      if (!nearBat && prompt) {
-        prompt.classList.add('hidden');
-      }
-    }
+    return this.app?.interactionPrompt?.update?.() || false;
   }
 
-  getOrCreateInteractionPrompt() {
-    let prompt = document.getElementById('vehicle-enter-prompt');
-    if (prompt) return prompt;
-    prompt = document.createElement('div');
-    prompt.id = 'vehicle-enter-prompt';
-    prompt.setAttribute('role', 'status');
-    prompt.setAttribute('aria-live', 'polite');
-    Object.assign(prompt.style, {
-      position: 'fixed',
-      bottom: '15%',
-      left: '50%',
-      transform: 'translateX(-50%)',
-      padding: '12px 24px',
-      borderRadius: '24px',
-      background: 'rgba(7, 12, 30, 0.82)',
-      backdropFilter: 'blur(12px)',
-      border: '1px solid #ff007f',
-      color: '#fff',
-      fontFamily: 'Outfit, Inter, sans-serif',
-      fontSize: '0.95rem',
-      fontWeight: 'bold',
-      boxShadow: '0 0 15px rgba(255, 0, 127, 0.4)',
-      zIndex: '1000',
-      pointerEvents: 'none'
-    });
-    document.body.appendChild(prompt);
-    return prompt;
+  getInteractionCandidates() {
+    if (!this.controlledPedestrian || this.hijackTransition) return [];
+    const pedestrian = this.controlledPedestrian;
+    const position = pedestrian.mesh.position;
+    const candidates = [];
+
+    const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(position, 3.5)
+      || this.app.trafficSystem?.vehicles
+      || [];
+    for (const vehicle of nearbyVehicles) {
+      if (!vehicle?.mesh?.position) continue;
+      const distance = position.distanceTo(vehicle.mesh.position);
+      if (distance >= 3.5) continue;
+      const failureReason = vehicle.crashed || vehicle.isDestroyed
+        ? 'This vehicle cannot be entered.'
+        : null;
+      const name = vehicle.name || vehicle.vType || 'vehicle';
+      candidates.push({
+        id: `vehicle-hijack:${vehicle.interactionId || vehicle.mesh.uuid || name}`,
+        kind: 'VEHICLE',
+        priority: INTERACTION_PRIORITIES.VEHICLE_HIJACK,
+        prompt: `hijack ${name}`,
+        action: () => this.beginHijack(pedestrian, vehicle),
+        eligibility: { allowed: !failureReason, reason: failureReason },
+        failureReason,
+        distance,
+        accessibilityLabel: `Hijack ${name}`,
+        metadata: { entityType: vehicle.vType || vehicle.type || 'VEHICLE' }
+      });
+    }
+
+    const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(position, 3)
+      || this.pedestrians;
+    for (const other of nearbyPedestrians) {
+      if (other === pedestrian || !other?.mesh?.position || other.knockedDown) continue;
+      const distance = position.distanceTo(other.mesh.position);
+      if (distance >= 3) continue;
+      const name = other.name || 'citizen';
+      candidates.push({
+        id: `pedestrian-talk:${other.interactionId || other.mesh.uuid || name}`,
+        kind: 'NPC',
+        priority: INTERACTION_PRIORITIES.NPC_CONVERSATION,
+        prompt: `talk to ${name}`,
+        action: () => this.talkToPedestrian(other),
+        eligibility: true,
+        failureReason: null,
+        distance,
+        accessibilityLabel: `Talk to ${name}`,
+        metadata: { archetype: other.archetype || other.pType || 'CITIZEN' }
+      });
+    }
+    return candidates;
   }
 
   handlePedestrianActionKey() {
-    if (!this.controlledPedestrian || this.hijackTransition) return false;
+    return this.app?.interactionService?.resolvePrimary?.().handled || false;
+  }
 
-    const p = this.controlledPedestrian;
-    const pos = p.mesh.position;
+  talkToPedestrian(pedestrian) {
+    if (!pedestrian?.mesh || pedestrian.knockedDown) return false;
+    const funnyDialogues = [
+      'Corporate told me to smile 15% harder today.',
+      'Did you see the comets? Excellent for property prices!',
+      'Buy the dip! NeoTech stock is basically free!',
+      'Property damage is temporary, profit is eternal.',
+      "I'm commuting to work. My shift is 48 hours.",
+      'I love the smell of comet fuel in the morning.',
+      'Please do not step on my briefcase. It has my lunch.',
+      'My coffee costs $80. What a steal!',
+      'A drone scanned my iris and deducted $5 tax.',
+      'Living the dream! (Help me, the AI is watching)',
+      "I'm jogger #3829. Enforcing cardiovascular optimization.",
+      'Can you move? I have a corporate synergy meeting.'
+    ];
 
-    if (this.app.aircraftSystem?.getBoardingEligibility?.(p)?.allowed) {
-      return this.app.aircraftSystem.boardFromPedestrian(p);
+    this.talkingPedestrian = pedestrian;
+    this.talkingBubbleText = funnyDialogues[Math.floor(this.randomValue() * funnyDialogues.length)];
+    this.talkingBubbleTimer = 3.5;
+    this.app.audioSystem?.playUIClick?.();
+
+    let bubble = document.getElementById('pedestrian-speech-bubble');
+    if (!bubble) {
+      bubble = document.createElement('div');
+      bubble.id = 'pedestrian-speech-bubble';
+      bubble.className = 'floating-speech-bubble';
+      document.body.appendChild(bubble);
     }
-
-    // 1. Scan for closest vehicle
-    let closestVehicle = null;
-    let minVehDist = 3.5;
-
-    if (this.app.trafficSystem && this.app.trafficSystem.vehicles) {
-      const nearbyVehicles = this.app.performanceSystem?.nearbyVehicles(pos, minVehDist) || this.app.trafficSystem.vehicles;
-      for (const v of nearbyVehicles) {
-        const dist = pos.distanceTo(v.mesh.position);
-        if (dist < minVehDist) {
-          minVehDist = dist;
-          closestVehicle = v;
-        }
-      }
-    }
-
-    // 2. Scan for closest other pedestrian
-    let closestPed = null;
-    let minPedDist = 3.0;
-
-    const nearbyPedestrians = this.app.performanceSystem?.nearbyPedestrians(pos, minPedDist) || this.pedestrians;
-    for (const other of nearbyPedestrians) {
-      if (other === p || other.knockedDown) continue;
-      const dist = pos.distanceTo(other.mesh.position);
-      if (dist < minPedDist) {
-        minPedDist = dist;
-        closestPed = other;
-      }
-    }
-
-    // 3. Trigger action based on priority
-    if (closestVehicle && (closestPed === null || minVehDist < minPedDist)) {
-      return this.beginHijack(p, closestVehicle);
-    } else if (closestPed) {
-      const funnyDialogues = [
-        "Corporate told me to smile 15% harder today.",
-        "Did you see the comets? Excellent for property prices!",
-        "Buy the dip! NeoTech stock is basically free!",
-        "Property damage is temporary, profit is eternal.",
-        "I'm commuting to work. My shift is 48 hours.",
-        "I love the smell of comet fuel in the morning.",
-        "Please do not step on my briefcase. It has my lunch.",
-        "My coffee costs $80. What a steal!",
-        "A drone scanned my iris and deducted $5 tax.",
-        "Living the dream! (Help me, the AI is watching)",
-        "I'm jogger #3829. Enforcing cardiovascular optimization.",
-        "Can you move? I have a corporate synergy meeting."
-      ];
-      
-      this.talkingPedestrian = closestPed;
-      this.talkingBubbleText = funnyDialogues[Math.floor(Math.random() * funnyDialogues.length)];
-      this.talkingBubbleTimer = 3.5;
-
-      if (this.app.audioSystem) {
-        this.app.audioSystem.playUIClick();
-      }
-
-      let bubble = document.getElementById('pedestrian-speech-bubble');
-      if (!bubble) {
-        bubble = document.createElement('div');
-        bubble.id = 'pedestrian-speech-bubble';
-        bubble.className = 'floating-speech-bubble';
-        document.body.appendChild(bubble);
-      }
-      bubble.textContent = this.talkingBubbleText;
-      bubble.classList.remove('hidden');
-      this.updateSpeechBubblePosition();
-      return true;
-    }
-    return false;
+    bubble.textContent = this.talkingBubbleText;
+    bubble.classList.remove('hidden');
+    this.updateSpeechBubblePosition();
+    return true;
   }
 
   getHijackDoorPosition(vehicle, target = new THREE.Vector3()) {

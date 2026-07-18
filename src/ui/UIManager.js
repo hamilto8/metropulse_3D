@@ -1,6 +1,7 @@
 import { createTextElement } from './dom.js';
 import { getWeatherDefinition } from '../systems/Weather.js';
 import { GAME_STATES, isStreetState } from '../core/GameManager.js';
+import { INTERACTION_PRIORITIES } from '../systems/InteractionService.js';
 
 export class UIManager {
   constructor(app) {
@@ -892,6 +893,31 @@ export class UIManager {
       return true;
     }
     return false;
+  }
+
+  getInteractionCandidates() {
+    if (!this.selectedEntity) return [];
+    const type = this.selectedEntity.type || 'ENTITY';
+    const label = this.selectedEntity.name
+      || this.selectedEntity.info?.Name
+      || this.selectedEntity.info?.Model
+      || type.toLowerCase().replaceAll('_', ' ');
+    const selectedId = this.selectedEntity.interactionId
+      || this.selectedEntity.economyId
+      || this.selectedEntity.mesh?.uuid
+      || type;
+    return [{
+      id: `selected-entity:${selectedId}:${label}`,
+      kind: 'SELECTED_ENTITY',
+      priority: INTERACTION_PRIORITIES.SELECTED_ENTITY,
+      prompt: `interact with selected ${label}`,
+      action: () => this.activateSelectedEntity(),
+      eligibility: true,
+      failureReason: null,
+      distance: Infinity,
+      accessibilityLabel: `Interact with selected ${label}`,
+      metadata: { entityType: type }
+    }];
   }
 
   updateAdaptiveControls(force = false) {

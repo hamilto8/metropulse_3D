@@ -31,6 +31,8 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   });
   await expect(page.locator('#canvas-container canvas')).toBeVisible();
   await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
+  await expect(page.locator('#primary-interaction-prompt')).toHaveCount(1);
+  await expect(page.locator('#mission-available-prompt, #vehicle-enter-prompt')).toHaveCount(0);
 
   const indexedDbAvailable = await page.evaluate(async () => {
     const request = indexedDB.open('metropulse-phase0-smoke', 1);
@@ -90,11 +92,24 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   expect(soak.inputSuspended).toBe(false);
   expect(soak.heldActionCount).toBe(0);
 
+  // P1.5 acceptance: one prompt owner advertises the same deterministic
+  // interaction that keyboard input resolves.
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterState('STREET_VEHICLE'));
+  const primaryPrompt = page.locator('#primary-interaction-prompt');
+  await expect(primaryPrompt).toBeVisible();
+  await expect(primaryPrompt).toHaveAttribute('data-interaction-kind', 'VEHICLE_EXIT');
+  await expect(page.locator('.primary-interaction-prompt:not(.hidden)')).toHaveCount(1);
+  await page.keyboard.press('e');
+  await expect.poll(async () => (
+    await page.evaluate(() => window.__METROPULSE_TEST__.snapshot().state.mode)
+  )).toBe('MANAGEMENT');
+
   // P1.4 acceptance: Escape creates one true pause from every gameplay state,
   // preserves the exact resume target, and keeps only UI/render clocks live.
   await page.keyboard.down('w');
   await page.keyboard.press('Escape');
   await expect(page.locator('#pause-menu')).toBeVisible();
+  await expect(page.locator('#primary-interaction-prompt')).toBeHidden();
   await expect(page.locator('#btn-resume-game')).toBeFocused();
   const managementPausedBefore = await page.evaluate(() => window.__METROPULSE_TEST__.pauseProbe());
   expect(managementPausedBefore.snapshot.state.mode).toBe('PAUSED');
@@ -146,6 +161,7 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   // closing either one cannot prematurely resume the other.
   await page.evaluate(() => window.__METROPULSE_TEST__.openDialogue('mission_executive'));
   await expect(page.locator('#dialogue-overlay')).toBeVisible();
+  await expect(page.locator('#primary-interaction-prompt')).toBeHidden();
   let dialogue = await page.evaluate(() => window.__METROPULSE_TEST__.snapshot());
   expect(dialogue.state.mode).toBe('PAUSED');
   expect(dialogue.pause.reasons).toEqual(['DIALOGUE']);

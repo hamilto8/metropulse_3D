@@ -141,6 +141,8 @@ export function createMetroPulseSimulationScheduler(app) {
     context => context.gameplayDelta > 0);
   register(scheduler, 'ui.inspector', SIMULATION_STAGES.PRESENTATION, 200,
     () => app.uiManager?.updateInspectorLive?.());
+  register(scheduler, 'ui.primary-interaction', SIMULATION_STAGES.PRESENTATION, 205,
+    () => app.interactionPrompt?.update?.());
   register(scheduler, 'ui.actions', SIMULATION_STAGES.PRESENTATION, 210,
     () => app.uiManager?.updateActionHUD?.());
   register(scheduler, 'ui.real-estate', SIMULATION_STAGES.PRESENTATION, 220,

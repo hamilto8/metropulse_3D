@@ -19,6 +19,7 @@ import { UIManager } from './ui/UIManager.js';
 import { InspectorHUD } from './ui/InspectorHUD.js';
 import { DialogueOverlay } from './ui/DialogueOverlay.js';
 import { PauseMenu } from './ui/PauseMenu.js';
+import { InteractionPrompt } from './ui/InteractionPrompt.js';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { MissionSystem } from './systems/MissionSystem.js';
 import { CityEditorSystem } from './world/CityEditorSystem.js';
@@ -32,6 +33,7 @@ import { TransitionCoordinator } from './core/TransitionCoordinator.js';
 import { PauseManager } from './core/PauseManager.js';
 import { MetroPulseTransitionRuntime } from './app/MetroPulseTransitionRuntime.js';
 import { createMetroPulseSimulationScheduler } from './app/MetroPulseSimulationSchedule.js';
+import { createMetroPulseInteractionService } from './app/MetroPulseInteractions.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
@@ -207,6 +209,11 @@ class MetroPulseApp {
       missionId: runtimeConfig.test?.missionId || null,
       missionIds: runtimeConfig.test ? null : MVP_MISSION_IDS,
       includeMayhem: this.features.isEnabled(FEATURE_IDS.TEMPORARY_MAYHEM)
+    });
+    this.interactionService = createMetroPulseInteractionService(this);
+    this.interactionPrompt = new InteractionPrompt({
+      service: this.interactionService,
+      getActionLabel: action => this.inputManager.getActionLabel(action)
     });
     this.persistenceSystem = new PersistenceSystem(this);
     this.persistenceSystem.restore();

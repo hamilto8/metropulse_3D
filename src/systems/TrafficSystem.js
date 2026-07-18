@@ -34,6 +34,7 @@ import {
 import { TrafficControlSystem } from './TrafficControlSystem.js';
 import { createDriverRuleProfile } from './TrafficRules.js';
 import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
+import { INTERACTION_PRIORITIES } from './InteractionService.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -97,11 +98,13 @@ export class TrafficSystem {
     const safeSerial = Number.isInteger(serial) && serial >= 0 ? serial : 0;
     const colors = [0x2563eb, 0xdb2777, 0x16a34a, 0xd97706, 0x7c3aed];
     const types = ['BUSINESS', 'CASUAL', 'JOGGER'];
-    return new Pedestrian(
+    const driver = new Pedestrian(
       types[safeSerial % types.length],
       colors[safeSerial % colors.length],
       `${role} of ${vehicle?.name || 'vehicle'}`
     );
+    driver.interactionId = `vehicle-driver-${safeSerial}`;
+    return driver;
   }
 
   ensureAmbientMotorbikeRider(vehicle, serial = 0) {
@@ -376,6 +379,33 @@ export class TrafficSystem {
       this.releaseControl(v, { coordinated: true });
     }
     return true;
+  }
+
+  getInteractionCandidates() {
+    const vehicle = this.controlledVehicle;
+    if (!vehicle) return [];
+    const name = vehicle.name || vehicle.vType || 'vehicle';
+    const missionState = this.app?.missionSystem?.state || 'IDLE';
+    const missionCritical = Boolean(
+      this.app?.missionSystem?.activeMission
+      || this.app?.missionSystem?.pendingMission
+      || missionState !== 'IDLE'
+    );
+    const failureReason = missionCritical
+      ? 'Resolve the active mission before exiting the vehicle.'
+      : null;
+    return [{
+      id: `vehicle-exit:${vehicle.interactionId || vehicle.mesh?.uuid || name}`,
+      kind: 'VEHICLE_EXIT',
+      priority: INTERACTION_PRIORITIES.CONTROLLED_ENTITY_EXIT,
+      prompt: `exit ${name}`,
+      action: () => this.exitControlledVehicle(),
+      eligibility: { allowed: !failureReason, reason: failureReason },
+      failureReason,
+      distance: 0,
+      accessibilityLabel: `Exit ${name}`,
+      metadata: { entityType: vehicle.vType || 'VEHICLE' }
+    }];
   }
 
   getTerrainHeight(x, z) {
@@ -1200,6 +1230,7 @@ export class TrafficSystem {
       const name = `${names[typeIdx]} #${serial + 10}`;
 
       const vehicle = new Vehicle(vType, color, name);
+      vehicle.interactionId = `traffic-vehicle-${serial}`;
       vehicle.crashed = false;
       vehicle.crashTimer = 0;
       vehicle.emergencyTarget = null;
@@ -2045,6 +2076,7 @@ export class TrafficSystem {
       const name = `${names[typeIdx]} (Parked) #${idx + 50}`;
 
       const vehicle = new Vehicle(vType, color, name);
+      vehicle.interactionId = `parked-vehicle-${idx}`;
       vehicle.crashed = false;
       vehicle.crashTimer = 0;
       vehicle.isParked = true;
@@ -2089,6 +2121,7 @@ export class TrafficSystem {
     bikeSpots.forEach((spot, idx) => {
       const name = `Phantom Streetfighter (Parked) #${idx + 90}`;
       const vehicle = new Vehicle('MOTORBIKE', spot.color, name);
+      vehicle.interactionId = `parked-motorbike-${idx}`;
       vehicle.crashed = false;
       vehicle.crashTimer = 0;
       vehicle.isParked = true;
