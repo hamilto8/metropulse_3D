@@ -529,15 +529,43 @@ recover, configure, and pause the game without relying on browser internals.
 
 #### P2.1 Boot and load flow
 
-- [ ] Add a boot screen that performs capability checks, data validation,
+- [x] Add a boot screen that performs capability checks, data validation,
   settings load, save discovery, and initial asset preparation.
-- [ ] Offer `New Game`, `Continue`, and `Recover Previous Save` only when each
+- [x] Offer `New Game`, `Continue`, and `Recover Previous Save` only when each
   action is valid.
-- [ ] Show actionable compatibility errors for missing WebGL or storage
+- [x] Show actionable compatibility errors for missing WebGL or storage
   capabilities.
-- [ ] Show progress for operations long enough to be perceived as loading.
-- [ ] Never enter an interactive state before required world, input, save, and
+- [x] Show progress for operations long enough to be perceived as loading.
+- [x] Never enter an interactive state before required world, input, save, and
   mission services are ready.
+
+P2.1 completion evidence (2026-07-18):
+
+- `src/boot/BootPipeline.js` runs the fail-closed capability, mission-data,
+  bootstrap-settings, save-discovery, and asset-preparation stages before any
+  world service is constructed. Stage progress and failures are immutable,
+  observable contracts rather than DOM-owned rules.
+- The static, accessible boot surface and `src/ui/BootScreen.js` keep the game
+  root inert until a session action completes. New, Continue, and Recover are
+  derived from validated discovery results; starting over preserves the valid
+  current city as a recovery source.
+- Hardware WebGL 2 plus real LocalStorage and transactional IndexedDB writes are
+  required. Missing capabilities produce targeted remediation while keeping
+  WebGL, world, input, save, and mission services unconstructed.
+- `GameManager` owns the complete `BOOT -> LOAD -> MENU -> LOAD -> MANAGEMENT`
+  lifecycle. `MetroPulseApp.assertReady()` releases interaction only after the
+  renderer/world, input, persistence, mission, scheduler, and transition
+  services exist and the authoritative state reaches Management.
+- Mission validation moved to `src/data/MissionDataValidator.js` so boot and the
+  mission domain share one validation implementation. The legacy v1 save and
+  narrow settings readers are replaceable adapters for P2.2 and P2.3, not new
+  persistence authorities.
+- Verification at completion: 293 Node tests, production build, and three
+  Playwright WebGL flows pass. Coverage includes clean New Game boot, disabled
+  invalid actions, current/recovery discovery, recoverable New Game behavior,
+  actionable capability failure, and the complete prior transition/pause/
+  interaction regression suite. The operational contract is documented in
+  `BOOT_AND_LOAD_FLOW.md`.
 
 #### P2.2 Versioned SaveService
 

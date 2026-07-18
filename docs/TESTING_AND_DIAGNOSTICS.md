@@ -33,6 +33,7 @@ are unchanged. Example:
 | `weather` | Initial canonical weather state; dynamic cycling is disabled. |
 | `mission` | Selects one validated authored mission fixture. |
 | `profile=clean` | Clears the local test profile before boot. |
+| `unavailableCapabilities=webgl2,localStorage,indexedDB` | Development-only capability-failure fixture for boot acceptance tests. |
 | `quality` | Locks the existing renderer quality tier. |
 
 The read-only `window.__METROPULSE_TEST__` bridge exposes snapshots and narrow
@@ -61,8 +62,11 @@ step counts.
 
 ## Smoke acceptance
 
-The smoke test uses a clean profile and asserts successful HTTP/WebGL boot,
-IndexedDB availability, deterministic fixture values, finite entity/resource
-counts, keyboard mode switching, hidden post-MVP controls, diagnostics output,
-and the absence of uncaught errors, unhandled rejections, failed requests,
-fatal panels, or contradictory mode state.
+The smoke test uses a clean profile, verifies that the world remains absent and
+the game root inert at the boot menu, selects New Game, and then asserts
+successful HTTP/WebGL startup, IndexedDB availability, deterministic fixture
+values, finite entity/resource counts, keyboard mode switching, hidden
+post-MVP controls, diagnostics output, and the absence of uncaught errors,
+unhandled rejections, failed requests, fatal panels, or contradictory mode
+state. Separate flows cover compatibility blocking plus Continue/Recover slot
+eligibility.

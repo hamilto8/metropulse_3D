@@ -12,8 +12,82 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   </head>
-  <body>
-    <div id="app">
+  <body data-app-state="booting">
+    <section id="boot-screen" class="boot-screen" role="dialog" aria-modal="true" aria-labelledby="boot-title" aria-describedby="boot-status">
+      <div class="boot-screen-grid" aria-hidden="true"></div>
+      <div class="boot-screen-orb boot-screen-orb-a" aria-hidden="true"></div>
+      <div class="boot-screen-orb boot-screen-orb-b" aria-hidden="true"></div>
+      <div class="boot-shell">
+        <div class="boot-brand" aria-label="MetroPulse 3D">
+          <span class="boot-brand-mark" aria-hidden="true"><span></span></span>
+          <span>METROPULSE</span>
+          <small>3D</small>
+        </div>
+
+        <div class="boot-layout">
+          <div class="boot-intro">
+            <p class="boot-kicker">CITY SYSTEM / LOCAL SESSION</p>
+            <h1 id="boot-title">Every block has a pulse.</h1>
+            <p class="boot-lede">Build the skyline. Read the streets. Live with what the city becomes.</p>
+            <div class="boot-world-preview" aria-hidden="true">
+              <span class="boot-world-scanline"></span>
+              <div class="boot-world-coordinate">WEST CORE // 41.8781° N</div>
+            </div>
+          </div>
+
+          <div class="boot-card">
+            <div class="boot-card-header">
+              <span>SESSION INITIALIZATION</span>
+              <span class="boot-local-badge">LOCAL</span>
+            </div>
+
+            <div class="boot-progress-region" aria-live="polite" aria-atomic="true">
+              <p id="boot-status">Starting secure city systems…</p>
+              <div class="boot-progress-row">
+                <progress id="boot-progress" max="100" value="0">0%</progress>
+                <span id="boot-progress-label">0%</span>
+              </div>
+            </div>
+
+            <ol class="boot-stage-list" aria-label="Startup checks">
+              <li data-boot-stage="capabilities" data-status="PENDING"><span>01</span>Platform check</li>
+              <li data-boot-stage="data" data-status="PENDING"><span>02</span>City data</li>
+              <li data-boot-stage="settings" data-status="PENDING"><span>03</span>Player settings</li>
+              <li data-boot-stage="saves" data-status="PENDING"><span>04</span>Save discovery</li>
+              <li data-boot-stage="assets" data-status="PENDING"><span>05</span>Core assets</li>
+            </ol>
+
+            <p id="boot-warning" class="boot-warning" role="status" hidden></p>
+
+            <div id="boot-actions" class="boot-actions" hidden>
+              <button id="btn-boot-continue" class="boot-action boot-action-primary" type="button" hidden disabled>
+                <span>Continue</span>
+                <small id="boot-continue-meta">Saved city available</small>
+              </button>
+              <button id="btn-boot-new-game" class="boot-action" type="button" hidden disabled>
+                <span>New Game</span>
+                <small>Begin in West Core</small>
+              </button>
+              <button id="btn-boot-recover" class="boot-action boot-action-recovery" type="button" hidden disabled>
+                <span>Recover Previous Save</span>
+                <small id="boot-recovery-meta">Known-good city available</small>
+              </button>
+            </div>
+
+            <div id="boot-error" class="boot-error" role="alert" hidden>
+              <h2 id="boot-error-title">Browser setup required</h2>
+              <p id="boot-error-message"></p>
+              <ul id="boot-error-actions"></ul>
+              <button id="btn-boot-retry" type="button">Run checks again</button>
+            </div>
+
+            <p class="boot-privacy"><span aria-hidden="true">◈</span> Your city stays in this browser. No account or network save is required.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="app" inert aria-hidden="true">
       <!-- Three.js Canvas Container -->
       <div id="canvas-container"></div>
 

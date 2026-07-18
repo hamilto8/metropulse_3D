@@ -45,30 +45,40 @@ import {
 import { DiagnosticsService } from './debug/DiagnosticsService.js';
 import { installBrowserTestBridge } from './testing/BrowserTestBridge.js';
 import { MVP_MISSION_IDS } from './config/MvpScope.js';
+import missionsData from './data/missions.json' with { type: 'json' };
+import { validateMissionData } from './data/MissionDataValidator.js';
+import { BootPipeline } from './boot/BootPipeline.js';
+import { CapabilityChecker } from './boot/CapabilityChecker.js';
+import { SettingsBootstrap } from './boot/SettingsBootstrap.js';
+import { BOOT_ACTIONS, SaveDiscovery } from './boot/SaveDiscovery.js';
+import { AssetPreloader } from './boot/AssetPreloader.js';
+import { BootScreen } from './ui/BootScreen.js';
+import bootHeroUrl from './assets/hero.png?url';
 
 const bootStartedAtMs = performance.now();
 
-class MetroPulseApp {
-  constructor(runtimeConfig) {
+export class MetroPulseApp {
+  constructor(runtimeConfig, bootSession) {
     const container = document.getElementById('canvas-container');
+    if (!bootSession || !Object.values(BOOT_ACTIONS).includes(bootSession.action)) {
+      throw new TypeError('MetroPulseApp requires a validated boot session.');
+    }
     this.runtimeConfig = runtimeConfig;
+    this.bootSession = bootSession;
+    this.settings = bootSession.settings;
     this.bootStartedAtMs = bootStartedAtMs;
     this.features = runtimeConfig.featureFlags;
     applyFeatureVisibility(document, this.features);
 
-    // Canonical state stores are renderer-agnostic and shared by both loops.
-    this.gameManager = new GameManager({
-      contextProvider: () => this.getGameStateContext(),
-      onListenerError: error => {
-        console.error('A game-state observer failed without interrupting the session.', error);
-      }
-    });
+    // The boot owner creates the canonical session state before any runtime
+    // service exists; the app supplies its live renderer-free context here.
+    this.gameManager = bootSession.gameManager;
+    if (!(this.gameManager instanceof GameManager) || this.gameManager.state !== GAME_STATES.LOAD) {
+      throw new Error('MetroPulse runtime must be composed from the authoritative LOAD state.');
+    }
+    this.gameManager.setContextProvider(() => this.getGameStateContext());
     this.transitionCoordinator = new TransitionCoordinator({
       gameManager: this.gameManager
-    });
-    this.transitionCoordinator.transitionTo(GAME_STATES.LOAD, {
-      reason: 'runtime-initialization',
-      source: 'MetroPulseApp'
     });
     this.nextEconomyBuildingId = 1;
     this.economySystem = new EconomySystem({
@@ -216,7 +226,12 @@ class MetroPulseApp {
       getActionLabel: action => this.inputManager.getActionLabel(action)
     });
     this.persistenceSystem = new PersistenceSystem(this);
-    this.persistenceSystem.restore();
+    if (bootSession.restore && !this.persistenceSystem.restore()) {
+      const error = new Error('The selected city save passed discovery but could not be restored safely.');
+      error.userMessage = 'MetroPulse stopped before entering the city because the selected save could not be applied safely.';
+      error.actions = ['Reload and choose Recover Previous Save, or start a New Game.'];
+      throw error;
+    }
 
     // The scheduler is the sole owner of frame timing, fixed-step accumulation,
     // city cadence, update order, and state-based simulation gates.
@@ -260,11 +275,31 @@ class MetroPulseApp {
       enabled: runtimeConfig.diagnosticsEnabled
     });
     installBrowserTestBridge(this, this.diagnostics, runtimeErrorMonitor);
-    this.interactiveAtMs = performance.now();
-    document.body.dataset.appState = 'ready';
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  assertReady() {
+    const requiredServices = {
+      world: this.sceneManager?.renderer?.domElement && this.cityBuilder,
+      input: this.inputManager,
+      save: this.persistenceSystem,
+      mission: this.missionSystem,
+      scheduler: this.scheduler,
+      transitions: this.transitionCoordinator && this.transitionRuntime
+    };
+    const missing = Object.entries(requiredServices)
+      .filter(([, service]) => !service)
+      .map(([name]) => name);
+    if (missing.length > 0 || this.gameManager?.state !== GAME_STATES.MANAGEMENT) {
+      throw new Error(`Runtime readiness gate failed: ${missing.join(', ') || 'interactive state unavailable'}.`);
+    }
+    return true;
+  }
+
+  markInteractive() {
+    this.interactiveAtMs = performance.now();
   }
 
   /**
@@ -374,7 +409,117 @@ window.addEventListener('error', event => {
   runtimeErrorMonitor.uncaught.push(event.error?.message || event.message || 'Unknown error');
 });
 
-window.addEventListener('DOMContentLoaded', () => {
+function nextPaint() {
+  return new Promise(resolve => requestAnimationFrame(() => resolve()));
+}
+
+function createBootPipeline({ runtimeConfig, screen, saveDiscovery }) {
+  const capabilityChecker = new CapabilityChecker({
+    forceUnavailable: runtimeConfig.test?.unavailableCapabilities || []
+  });
+  const settingsBootstrap = new SettingsBootstrap();
+  const assetPreloader = new AssetPreloader();
+
+  return new BootPipeline({
+    onProgress: event => screen.renderProgress(event),
+    stages: [
+      {
+        id: 'capabilities',
+        label: 'Checking browser and storage capabilities…',
+        run: () => capabilityChecker.assertCompatible()
+      },
+      {
+        id: 'data',
+        label: 'Validating city and mission data…',
+        run: () => {
+          validateMissionData(missionsData);
+          return Object.freeze({ missions: missionsData.length });
+        }
+      },
+      {
+        id: 'settings',
+        label: 'Loading player settings…',
+        run: () => settingsBootstrap.load()
+      },
+      {
+        id: 'saves',
+        label: 'Discovering local city saves…',
+        run: () => saveDiscovery.discover()
+      },
+      {
+        id: 'assets',
+        label: 'Preparing core visual assets…',
+        run: () => assetPreloader.prepare({ images: [bootHeroUrl] })
+      }
+    ]
+  });
+}
+
+export async function startMetroPulseBoot({ runtimeConfig, screen } = {}) {
+  const saveDiscovery = new SaveDiscovery();
+  const gameManager = new GameManager({
+    onListenerError: error => {
+      console.error('A game-state observer failed without interrupting the session.', error);
+    }
+  });
+  // BOOT and LOAD precede runtime composition, so this renderer-free handoff
+  // uses the state owner directly. All post-composition transitions continue
+  // through TransitionCoordinator.
+  gameManager.transitionTo(GAME_STATES.LOAD, {
+    reason: 'startup-checks',
+    source: 'MetroPulseBoot'
+  });
+  const pipeline = createBootPipeline({ runtimeConfig, screen, saveDiscovery });
+  screen.reset();
+
+  try {
+    const results = await pipeline.run();
+    gameManager.transitionTo(GAME_STATES.MENU, {
+      reason: 'startup-actions-ready',
+      source: 'MetroPulseBoot'
+    });
+    screen.renderReady(results);
+    screen.onAction(async action => {
+      if (!screen.renderLaunching(action)) return;
+      try {
+        gameManager.transitionTo(GAME_STATES.LOAD, {
+          reason: `session-action-${action.toLowerCase()}`,
+          source: 'MetroPulseBoot'
+        });
+        const prepared = saveDiscovery.prepare(action, results.saves);
+        await nextPaint();
+        const app = new MetroPulseApp(runtimeConfig, {
+          ...prepared,
+          gameManager,
+          settings: results.settings.settings
+        });
+        app.assertReady();
+        window.app = app;
+        screen.complete();
+        app.markInteractive();
+        document.body.dataset.appState = 'ready';
+      } catch (error) {
+        console.error('MetroPulse failed to initialize the selected session.', error);
+        document.body.dataset.appState = 'boot-error';
+        screen.renderError(error);
+        screen.onRetry(() => window.location.reload());
+      }
+    });
+    return results;
+  } catch (error) {
+    if (error?.code === 'INCOMPATIBLE_BROWSER') {
+      console.warn('MetroPulse startup checks found an incompatible browser.', error);
+    } else {
+      console.error('MetroPulse startup checks failed.', error);
+    }
+    document.body.dataset.appState = 'boot-error';
+    screen.renderError(error);
+    screen.onRetry(() => startMetroPulseBoot({ runtimeConfig, screen }));
+    return null;
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
   try {
     const runtimeConfig = createRuntimeConfig({
       search: window.location.search,
@@ -385,7 +530,8 @@ window.addEventListener('DOMContentLoaded', () => {
       window.localStorage?.clear?.();
     }
     installDeterministicRandom(runtimeConfig.test);
-    window.app = new MetroPulseApp(runtimeConfig);
+    const screen = new BootScreen({ heroUrl: bootHeroUrl });
+    await startMetroPulseBoot({ runtimeConfig, screen });
   } catch (error) {
     console.error('MetroPulse failed to initialize.', error);
     showFatalError('Unable to start the city simulation', error);

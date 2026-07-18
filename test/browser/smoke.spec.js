@@ -26,9 +26,19 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
 
   const response = await page.goto(TEST_URL, { waitUntil: 'domcontentloaded' });
   expect(response?.ok()).toBe(true);
+  await expect(page.locator('#boot-screen')).toBeVisible();
+  await expect(page.locator('#app')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('#canvas-container canvas')).toHaveCount(0);
+  await expect(page.locator('#btn-boot-new-game')).toBeVisible();
+  await expect(page.locator('#btn-boot-new-game')).toBeEnabled();
+  await expect(page.locator('#btn-boot-continue')).toBeHidden();
+  await expect(page.locator('#btn-boot-recover')).toBeHidden();
+  await page.locator('#btn-boot-new-game').click();
   await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', {
     timeout: 60_000
   });
+  await expect(page.locator('#boot-screen')).toBeHidden();
+  await expect(page.locator('#app')).toHaveAttribute('aria-hidden', 'false');
   await expect(page.locator('#canvas-container canvas')).toBeVisible();
   await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
   await expect(page.locator('#primary-interaction-prompt')).toHaveCount(1);
@@ -220,4 +230,61 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   await expect(page.locator('[data-camera="rocket"]')).toBeHidden();
   await expect(page.locator('[data-feature="eastSideDevelopment"]')).toBeHidden();
   await expect(page.locator('#development-diagnostics')).toContainText('STATE MANAGEMENT');
+});
+
+test('blocks startup with actionable compatibility guidance before world services exist', async ({ page }) => {
+  const response = await page.goto(
+    '/?testMode=1&profile=clean&unavailableCapabilities=webgl2&quality=low',
+    { waitUntil: 'domcontentloaded' }
+  );
+  expect(response?.ok()).toBe(true);
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'boot-error');
+  await expect(page.locator('#boot-error')).toBeVisible();
+  await expect(page.locator('#boot-error-title')).toHaveText('Browser setup required');
+  await expect(page.locator('#boot-error-actions')).toContainText('hardware acceleration');
+  await expect(page.locator('#canvas-container canvas')).toHaveCount(0);
+  await expect(page.locator('#app')).toHaveAttribute('aria-hidden', 'true');
+  await expect(page.locator('#boot-actions')).toBeHidden();
+  await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
+});
+
+test('discovers valid continue and recovery slots and preserves the current city on new game', async ({ page }) => {
+  const currentSave = JSON.stringify({
+    version: 1,
+    savedAt: '2026-07-18T12:00:00.000Z',
+    economy: { version: 1 },
+    world: { version: 1, buildings: [] },
+    mission: {},
+    settings: {}
+  });
+  const recoverySave = JSON.stringify({
+    version: 1,
+    savedAt: '2026-07-17T12:00:00.000Z',
+    economy: { version: 1 },
+    world: { version: 1, buildings: [] },
+    mission: {},
+    settings: {}
+  });
+  await page.addInitScript(({ currentSave, recoverySave }) => {
+    localStorage.setItem('metropulse3d:city-session:v1', currentSave);
+    localStorage.setItem('metropulse3d:city-session:v1:recovery', recoverySave);
+  }, { currentSave, recoverySave });
+
+  await page.goto('/?testMode=1&traffic=4&pedestrians=4&quality=low', {
+    waitUntil: 'domcontentloaded'
+  });
+  await expect(page.locator('#btn-boot-new-game')).toBeVisible();
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await expect(page.locator('#btn-boot-recover')).toBeVisible();
+  await expect(page.locator('#boot-continue-meta')).toContainText('2026');
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', {
+    timeout: 60_000
+  });
+  const slots = await page.evaluate(() => ({
+    current: localStorage.getItem('metropulse3d:city-session:v1'),
+    recovery: localStorage.getItem('metropulse3d:city-session:v1:recovery')
+  }));
+  expect(slots.current).toBeNull();
+  expect(slots.recovery).toBe(currentSave);
 });

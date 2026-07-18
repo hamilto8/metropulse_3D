@@ -26,6 +26,15 @@ function parseFeatureOverrides(params, allowOverrides) {
   return overrides;
 }
 
+function parseUnavailableCapabilities(params) {
+  const allowed = new Set(['webgl2', 'localStorage', 'indexedDB']);
+  return Object.freeze(
+    (params.get('unavailableCapabilities') || '')
+      .split(',')
+      .filter(capability => allowed.has(capability))
+  );
+}
+
 /**
  * Converts a URL into immutable runtime policy. Test and feature overrides are
  * accepted only in explicitly enabled development/test builds.
@@ -50,7 +59,8 @@ export function createRuntimeConfig({
       time: clampNumber(params.get('time'), 9.25, 0, 24),
       weather: normalizeWeatherMode(params.get('weather') || 'clear'),
       missionId: params.get('mission') || 'mission_executive',
-      cleanProfile: params.get('profile') === 'clean'
+      cleanProfile: params.get('profile') === 'clean',
+      unavailableCapabilities: parseUnavailableCapabilities(params)
     })
     : null;
 
@@ -93,4 +103,3 @@ export function installDeterministicRandom(testConfig, target = Math) {
     target.random = previous;
   };
 }
-
