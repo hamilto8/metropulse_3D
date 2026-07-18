@@ -90,6 +90,8 @@ export class StreetLevelCameraController {
     this.element = controls?.domElement || null;
     this.onInteractionStart = options.onInteractionStart || (() => {});
     this.onModeChange = options.onModeChange || (() => {});
+    this.getSensitivity = options.getSensitivity || (() => 1);
+    this.isPointerBinding = options.isPointerBinding || (event => event.button === 0);
     this.enabled = false;
     this.lockLevel = false;
     this.activePointerId = null;
@@ -110,7 +112,7 @@ export class StreetLevelCameraController {
       if (
         !this.enabled
         || this.controls?.enabled === false
-        || event.button !== 0
+        || !this.isPointerBinding(event)
         || event.pointerType === 'touch'
       ) return;
 
@@ -133,8 +135,8 @@ export class StreetLevelCameraController {
       this.lastPointerX = event.clientX;
       this.lastPointerY = event.clientY;
       this.rotateLook(
-        movementX * POINTER_YAW_SENSITIVITY,
-        -movementY * POINTER_PITCH_SENSITIVITY
+        movementX * POINTER_YAW_SENSITIVITY * this.getSensitivity(),
+        -movementY * POINTER_PITCH_SENSITIVITY * this.getSensitivity()
       );
       event.preventDefault?.();
     };

@@ -827,7 +827,9 @@ export class CityEditorSystem {
   }
 
   onPointerDown(event) {
-    if (!this.isActive || event.button !== 0 || !this.isPointerOnEditorCanvas(event.target)) return false;
+    if (!this.isActive
+      || !this.app?.inputManager?.mouseEventMatchesAction?.(event, 'PLACE', 'BUILDER')
+      || !this.isPointerOnEditorCanvas(event.target)) return false;
     this.onPointerMove(event);
     if (this.isDeleteMode) return this.performDeleteAtMouse();
     if (this.zoningMode) return this.applyZoningAtCurrentHit();

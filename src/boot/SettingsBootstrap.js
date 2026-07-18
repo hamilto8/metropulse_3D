@@ -1,61 +1,21 @@
-export const BOOT_SETTINGS_KEY = 'metropulse3d:settings:v1';
-export const BOOT_SETTINGS_VERSION = 1;
+import {
+  DEFAULT_SETTINGS,
+  SETTINGS_SCHEMA_VERSION,
+  SETTINGS_STORAGE_KEY,
+  validateSettingsDocument
+} from '../settings/SettingsSchema.js';
+import { SettingsStore } from '../settings/SettingsStore.js';
 
-export const DEFAULT_BOOT_SETTINGS = Object.freeze({
-  version: BOOT_SETTINGS_VERSION,
-  reducedMotion: 'SYSTEM',
-  textScale: 1
-});
+// Compatibility names retained for boot consumers while the implementation is
+// now the complete P2.3 store rather than a second, narrow settings schema.
+export const BOOT_SETTINGS_KEY = SETTINGS_STORAGE_KEY;
+export const BOOT_SETTINGS_VERSION = SETTINGS_SCHEMA_VERSION;
+export const DEFAULT_BOOT_SETTINGS = DEFAULT_SETTINGS;
 
-function getDefaultStorage() {
-  try {
-    return globalThis.localStorage;
-  } catch {
-    return null;
-  }
+export class SettingsBootstrap extends SettingsStore {}
+
+export function validateBootSettings(value) {
+  return validateSettingsDocument(value).settings;
 }
-
-function normalizeSettings(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError('Settings must be an object.');
-  }
-  if (value.version !== BOOT_SETTINGS_VERSION) {
-    throw new RangeError(`Unsupported settings version: ${value.version ?? '<missing>'}`);
-  }
-
-  return Object.freeze({
-    ...DEFAULT_BOOT_SETTINGS,
-    reducedMotion: ['SYSTEM', 'REDUCE', 'FULL'].includes(value.reducedMotion)
-      ? value.reducedMotion
-      : DEFAULT_BOOT_SETTINGS.reducedMotion,
-    textScale: Number.isFinite(value.textScale)
-      ? Math.min(1.5, Math.max(0.8, value.textScale))
-      : DEFAULT_BOOT_SETTINGS.textScale
-  });
-}
-
-/**
- * Phase 2.1 bootstrap reader only. P2.3 will replace this narrow schema with
- * the complete settings/bindings store without changing the boot contract.
- */
-export class SettingsBootstrap {
-  constructor({ storage = getDefaultStorage() } = {}) {
-    this.storage = storage;
-  }
-
-  load() {
-    const warnings = [];
-    let settings = DEFAULT_BOOT_SETTINGS;
-    try {
-      const raw = this.storage?.getItem?.(BOOT_SETTINGS_KEY);
-      if (raw) settings = normalizeSettings(JSON.parse(raw));
-    } catch (error) {
-      warnings.push(`Saved settings were ignored: ${error?.message || String(error)}`);
-    }
-    return Object.freeze({ settings, warnings: Object.freeze(warnings) });
-  }
-}
-
-export { normalizeSettings as validateBootSettings };
 
 export default SettingsBootstrap;

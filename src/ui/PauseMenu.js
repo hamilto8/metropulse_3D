@@ -1,4 +1,4 @@
-const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
 /** Accessible DOM presentation for PauseManager's menu hold. */
 export class PauseMenu {
@@ -62,13 +62,18 @@ export class PauseMenu {
     if (event.key === 'Escape') {
       event.preventDefault();
       event.stopImmediatePropagation();
+      const settingsPanel = this.overlay.querySelector('#settings-panel');
+      if (settingsPanel && !settingsPanel.hasAttribute('hidden')) {
+        this.overlay.querySelector('#btn-settings-back')?.click?.();
+        return;
+      }
       this.pauseManager.closeMenu({ source: 'PauseMenu.keyboard' });
       return;
     }
     if (event.key !== 'Tab') return;
 
     const focusable = [...this.overlay.querySelectorAll(FOCUSABLE_SELECTOR)]
-      .filter(element => !element.classList.contains('hidden'));
+      .filter(element => !element.closest('[hidden], .hidden'));
     if (focusable.length === 0) {
       event.preventDefault();
       this.overlay.querySelector('[tabindex="-1"]')?.focus?.();

@@ -7,6 +7,7 @@ export class AudioSystem {
     this.masterGain = null;
     this.isEnabled = false;
     this.volume = 0.5;
+    this.channelVolumes = Object.freeze({ master: 0.5, music: 0.7, effects: 1, ambience: 0.8, dialogue: 1 });
     this.isPaused = false;
 
     // Ambience state
@@ -55,6 +56,25 @@ export class AudioSystem {
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(this.getEffectiveVolume(), this.ctx.currentTime, 0.05);
     }
+  }
+
+  applySettings(audio = {}) {
+    const clamp = (value, fallback) => Number.isFinite(value)
+      ? Math.max(0, Math.min(1, value))
+      : fallback;
+    this.channelVolumes = Object.freeze({
+      master: clamp(audio.master, this.channelVolumes.master),
+      music: clamp(audio.music, this.channelVolumes.music),
+      effects: clamp(audio.effects, this.channelVolumes.effects),
+      ambience: clamp(audio.ambience, this.channelVolumes.ambience),
+      dialogue: clamp(audio.dialogue, this.channelVolumes.dialogue)
+    });
+    this.setVolume(this.channelVolumes.master);
+    return this.channelVolumes;
+  }
+
+  getChannelVolume(channel) {
+    return this.channelVolumes[channel] ?? 1;
   }
 
   getEffectiveVolume() {
@@ -241,16 +261,18 @@ export class AudioSystem {
     const isRaining = (weatherMode === 'rain' || weatherMode === 'thunderstorm');
 
     // 1. Adjust Traffic volume: slightly louder during daytime rush hours, quieter at night
+    const ambienceVolume = this.getChannelVolume('ambience');
     let targetTrafficGain = isNight ? 0.05 : 0.10;
     if (isRushHour) targetTrafficGain = 0.15;
+    targetTrafficGain *= ambienceVolume;
     this.trafficGain.gain.setTargetAtTime(targetTrafficGain, this.ctx.currentTime, 1.0);
 
     // 2. Adjust Wind Breeze: slightly breezier in clear daytime or mist
-    const targetWindGain = isRaining ? 0.12 : (isNight ? 0.15 : 0.20);
+    const targetWindGain = (isRaining ? 0.12 : (isNight ? 0.15 : 0.20)) * ambienceVolume;
     this.windGain.gain.setTargetAtTime(targetWindGain, this.ctx.currentTime, 1.0);
 
     // 3. Adjust Rain SFX based on weather mode
-    const targetRainGain = (weatherMode === 'thunderstorm') ? 0.32 : (weatherMode === 'rain' ? 0.20 : 0.0);
+    const targetRainGain = ((weatherMode === 'thunderstorm') ? 0.32 : (weatherMode === 'rain' ? 0.20 : 0.0)) * ambienceVolume;
     this.rainGain.gain.setTargetAtTime(targetRainGain, this.ctx.currentTime, 0.5);
 
     // 4. Daytime bird chirps (only in clear weather during day)

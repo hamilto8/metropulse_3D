@@ -1,4 +1,5 @@
 :root {
+  --ui-text-scale: 1;
   --bg-dark: #070913;
   --panel-bg: rgba(13, 18, 36, 0.65);
   --glass-bg: rgba(13, 18, 36, 0.85);
@@ -22,6 +23,39 @@
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
+}
+
+html {
+  font-size: calc(16px * var(--ui-text-scale));
+}
+
+html[data-contrast-mode="high"] {
+  --panel-bg: rgba(0, 0, 0, 0.94);
+  --glass-bg: rgba(0, 0, 0, 0.97);
+  --panel-border: rgba(255, 255, 255, 0.7);
+  --text-muted: #d8e2ef;
+  --text-dim: #becbdd;
+}
+
+html[data-contrast-mode="dark"] {
+  --panel-bg: rgba(3, 6, 13, 0.92);
+  --glass-bg: rgba(3, 6, 13, 0.97);
+  --primary-glow: transparent;
+  --panel-glow: transparent;
+}
+
+html[data-color-safe-patterns="on"] [data-tone="green"] { border-bottom: 3px solid currentColor; }
+html[data-color-safe-patterns="on"] [data-tone="red"] { border-top: 3px double currentColor; }
+html[data-color-safe-patterns="on"] [data-tone="blue"] { border-inline: 3px solid currentColor; }
+html[data-color-safe-patterns="on"] [data-tone="yellow"] { outline: 1px dashed currentColor; }
+
+html[data-reduced-motion="on"] *,
+html[data-reduced-motion="on"] *::before,
+html[data-reduced-motion="on"] *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
 }
 
 [hidden] {
@@ -4430,7 +4464,8 @@ body[data-control-context="dialogue"] .bottom-time-bar {
 }
 
 .pause-menu-card {
-  width: min(480px, 100%);
+  width: min(760px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
   padding: clamp(26px, 5vw, 42px);
   border: 1px solid rgba(96, 226, 255, 0.42);
   border-radius: 20px;
@@ -4453,7 +4488,8 @@ body[data-control-context="dialogue"] .bottom-time-bar {
   letter-spacing: -0.035em;
 }
 
-.pause-menu-card > p {
+.pause-menu-card > p,
+#pause-main-panel > p {
   color: #adbacb;
   line-height: 1.55;
 }
@@ -4505,6 +4541,219 @@ body[data-control-context="dialogue"] .bottom-time-bar {
   outline: 3px solid rgba(103, 232, 249, 0.28);
   outline-offset: 3px;
   filter: brightness(1.08);
+}
+
+.pause-action-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.pause-secondary-action,
+.settings-panel button,
+.settings-panel select {
+  min-height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 9px;
+  color: #dff9ff;
+  background: rgba(15, 23, 42, 0.8);
+  font: 700 0.78rem var(--font-main);
+}
+
+.pause-secondary-action {
+  width: 100%;
+  cursor: pointer;
+}
+
+.settings-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-height: calc(100vh - 130px);
+}
+
+.settings-panel.hidden {
+  display: none;
+}
+
+.settings-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.settings-panel-header h2 {
+  font-size: clamp(1.4rem, 4vw, 2rem);
+}
+
+.settings-panel-header .pause-kicker {
+  margin: 0 0 3px;
+}
+
+.settings-panel-header > button {
+  min-width: 82px;
+  padding: 0 12px;
+}
+
+.settings-scroll-region {
+  overflow: auto;
+  padding: 18px 4px 10px 0;
+  scrollbar-gutter: stable;
+}
+
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-fields fieldset,
+.settings-bindings-fieldset {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 12px;
+  background: rgba(2, 6, 23, 0.38);
+}
+
+.settings-fields legend,
+.settings-bindings-fieldset legend {
+  padding: 0 6px;
+  color: #67e8f9;
+  font: 800 0.76rem var(--font-mono);
+  letter-spacing: 0.06em;
+}
+
+.settings-field {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(100px, 0.85fr) 40px;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+}
+
+.settings-field input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #22d3ee;
+}
+
+.settings-field input[type="range"] {
+  width: 100%;
+  accent-color: #22d3ee;
+}
+
+.settings-field select {
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.settings-field output {
+  color: #a5f3fc;
+  font: 700 0.72rem var(--font-mono);
+  text-align: right;
+}
+
+.settings-bindings-fieldset {
+  margin-top: 16px;
+}
+
+.settings-context-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #cbd5e1;
+  font-size: 0.8rem;
+}
+
+.settings-context-label select {
+  padding: 0 10px;
+}
+
+.settings-binding-help {
+  color: #8492a6;
+  font: 500 0.7rem/1.45 var(--font-mono);
+}
+
+.settings-bindings-list {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-binding-row {
+  display: grid;
+  grid-template-columns: minmax(135px, 0.65fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  color: #d8e2ef;
+  font-size: 0.78rem;
+}
+
+.settings-binding-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-binding-buttons button {
+  min-height: 32px;
+  padding: 0 9px;
+  color: #a5f3fc;
+  font: 700 0.7rem var(--font-mono);
+  cursor: pointer;
+}
+
+.settings-binding-buttons button[data-capturing="true"] {
+  min-width: 190px;
+  border-color: #fbbf24;
+  color: #fde68a;
+}
+
+.settings-binding-buttons button:disabled {
+  color: #7b8798;
+  cursor: not-allowed;
+}
+
+.settings-reset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.settings-reset-row button,
+.settings-reset-all {
+  padding: 0 12px;
+}
+
+.settings-reset-all {
+  margin-top: 14px;
+  border-color: rgba(251, 113, 133, 0.45) !important;
+  color: #fecdd3 !important;
+}
+
+.settings-status {
+  min-height: 18px;
+  margin: 10px 0 0;
+  color: #a7f3d0;
+  font: 600 0.72rem var(--font-mono);
+}
+
+.settings-status[data-error="true"] {
+  color: #fda4af;
+}
+
+@media (max-width: 720px) {
+  .pause-menu { padding: 10px; }
+  .pause-menu-card { max-height: calc(100vh - 20px); padding: 18px; }
+  .settings-panel { max-height: calc(100vh - 56px); }
+  .settings-fields { grid-template-columns: 1fr; }
+  .settings-field { grid-template-columns: minmax(120px, 1fr) minmax(90px, 1fr) 34px; }
+  .settings-binding-row { grid-template-columns: 1fr; }
 }
 
 .pause-menu-card .pause-help {

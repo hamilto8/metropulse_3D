@@ -57,7 +57,7 @@ test('adaptive bindings expose context-specific keyboard and Xbox prompts', () =
   assert.equal(driving.find(binding => binding.action === 'THROTTLE').gamepad[0].label, 'RT');
   assert.equal(driving.find(binding => binding.action === 'BRAKE').gamepad[0].label, 'LT');
   assert.equal(walking.find(binding => binding.action === 'ATTACK').gamepad[0].label, 'X');
-  assert.equal(flying.find(binding => binding.action === 'AIR_THROTTLE').keyboard[0].label, 'W / S');
+  assert.deepEqual(flying.find(binding => binding.action === 'AIR_THROTTLE').keyboard.map(token => token.label), ['W', 'S']);
   assert.equal(flying.find(binding => binding.action === 'AIR_RESET').gamepad[0].label, 'X');
   assert.equal(builder.find(binding => binding.action === 'AIM').gamepad[0].label, 'LS');
   assert.equal(getActionLabel('INTERACT', INPUT_INTERFACES.KEYBOARD), 'E');

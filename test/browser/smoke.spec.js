@@ -248,6 +248,68 @@ test('blocks startup with actionable compatibility guidance before world service
   await expect(page.locator('#fatal-error-panel')).toHaveCount(0);
 });
 
+test('settings and contextual bindings apply immediately and survive reload', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('settings-browser-fixture')) return;
+    localStorage.clear();
+    sessionStorage.setItem('settings-browser-fixture', 'seeded');
+  });
+  await page.goto('/?testMode=1&traffic=4&pedestrians=4&quality=low', {
+    waitUntil: 'domcontentloaded'
+  });
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterState('STREET_VEHICLE'));
+  await expect(page.locator('#primary-interaction-prompt')).toContainText('Press E');
+  await page.keyboard.press('Escape');
+  await page.locator('#btn-open-settings').click();
+  await expect(page.locator('#settings-panel')).toBeVisible();
+  await page.locator('#settings-binding-context').selectOption('VEHICLE');
+
+  const interactRow = page.locator('.settings-binding-row').filter({ hasText: 'Interact / exit' });
+  await interactRow.locator('button').first().click();
+  await page.keyboard.press('g');
+  await expect(interactRow.locator('button').first()).toHaveText('G');
+  await expect(page.locator('#settings-status')).toContainText('Interact');
+
+  const modeRow = page.locator('.settings-binding-row').filter({ hasText: 'Change mode' });
+  await modeRow.locator('button').first().click();
+  await page.keyboard.press('g');
+  await expect(page.locator('#settings-status')).toContainText('conflicts');
+  await expect(modeRow.locator('button').first()).toHaveText('M');
+
+  const textScale = page.locator('[data-setting-path="textScale"]');
+  await textScale.evaluate(element => {
+    element.value = '1.25';
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('html')).toHaveCSS('font-size', '20px');
+  await page.locator('#btn-settings-back').click();
+  await page.locator('#btn-resume-game').click();
+  await expect(page.locator('#primary-interaction-prompt')).toContainText('Press G');
+
+  await page.keyboard.press('e');
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.snapshot())).state.mode)
+    .toBe('STREET_VEHICLE');
+  await page.keyboard.press('g');
+  await expect.poll(async () => (
+    await page.evaluate(() => window.__METROPULSE_TEST__.snapshot().state.mode)
+  )).toBe('MANAGEMENT');
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('metropulse3d:settings:v1')));
+  expect(persisted.version).toBe(2);
+  expect(persisted.settings.textScale).toBe(1.25);
+  expect(persisted.bindings.VEHICLE.INTERACT).toEqual(['KeyG']);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  expect(await page.evaluate(() => window.app.settingsStore.get('textScale'))).toBe(1.25);
+  expect(await page.evaluate(() => window.app.settingsStore.getActionLabel('VEHICLE', 'INTERACT'))).toBe('G');
+});
+
 test('migrates legacy slots, preserves recovery, saves transactionally, and continues after reload', async ({ page }) => {
   test.setTimeout(90_000);
   const currentSave = JSON.stringify({

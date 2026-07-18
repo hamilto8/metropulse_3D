@@ -15,7 +15,7 @@ export function getPlanarTargetHeading(target) {
 }
 
 export class CameraRig {
-  constructor(camera, controls, { clearanceQuery = null } = {}) {
+  constructor(camera, controls, { clearanceQuery = null, getSensitivity = () => 1, isPointerBinding = event => event.button === 2 } = {}) {
     this.camera = camera;
     this.controls = controls;
 
@@ -42,6 +42,8 @@ export class CameraRig {
     this.chasePitch = 0;
     this.isPointerLooking = false;
     this.clearanceQuery = clearanceQuery;
+    this.getSensitivity = getSensitivity;
+    this.isPointerBinding = isPointerBinding;
     this.bindPointerLook();
   }
 
@@ -57,22 +59,23 @@ export class CameraRig {
     if (!element?.addEventListener) return;
 
     this._onPointerDown = event => {
-      if (event.button !== 2 || this.state === 'ORBIT_MACRO') return;
+      if (!this.isPointerBinding(event) || this.state === 'ORBIT_MACRO') return;
       this.isPointerLooking = true;
       element.setPointerCapture?.(event.pointerId);
       event.preventDefault();
     };
     this._onPointerMove = event => {
       if (!this.isPointerLooking) return;
-      this.chaseYaw -= event.movementX * 0.004;
+      const sensitivity = this.getSensitivity();
+      this.chaseYaw -= event.movementX * 0.004 * sensitivity;
       this.chasePitch = THREE.MathUtils.clamp(
-        this.chasePitch - event.movementY * 0.003,
+        this.chasePitch - event.movementY * 0.003 * sensitivity,
         -0.3,
         0.55
       );
     };
     this._onPointerUp = event => {
-      if (event.button !== 2) return;
+      if (!this.isPointerBinding(event)) return;
       this.isPointerLooking = false;
       element.releasePointerCapture?.(event.pointerId);
     };

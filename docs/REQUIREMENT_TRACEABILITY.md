@@ -123,14 +123,14 @@ the responsible system owns implementation.
 
 | ID | Acceptance requirement | Responsible system | Required test | Verification owner | State |
 |---|---|---|---|---|---|
-| A11Y-001 | All keyboard/mouse actions are remappable and browser-reserved conflicts are validated. | Settings / bindings | Integration + Browser | Accessibility Lead | Not Started |
-| A11Y-002 | Orbit, on-foot, and vehicle camera sensitivity are independently adjustable. | Settings / camera | Integration + Browser | Accessibility Lead | Not Started |
+| A11Y-001 | All keyboard/mouse actions are remappable and browser-reserved conflicts are validated. | Settings / bindings | Integration + Browser | Accessibility Lead | Implemented |
+| A11Y-002 | Orbit, on-foot, and vehicle camera sensitivity are independently adjustable. | Settings / camera | Integration + Browser | Accessibility Lead | Implemented |
 | A11Y-003 | Critical audio has subtitles/text alternatives and dialogue history. | Audio/subtitle UI | Browser + manual | Accessibility Lead | Not Started |
-| A11Y-004 | UI scale, minimum readable text, and high-contrast mode function in gameplay. | UI settings/theme | Browser + visual | Accessibility Lead | Not Started |
+| A11Y-004 | UI scale, minimum readable text, and high-contrast mode function in gameplay. | UI settings/theme | Browser + visual | Accessibility Lead | Implemented |
 | A11Y-005 | Overlays use colorblind-safe palettes plus icons/patterns, never color alone. | Overlay rendering | Visual + manual | Accessibility Lead | Not Started |
-| A11Y-006 | Camera shake, flashes, motion, and bloom can be reduced independently. | Settings / rendering | Browser + visual | Accessibility Lead | In Progress |
-| A11Y-007 | Toggle/hold options exist for sprint, braking, and relevant repeated actions. | Input settings | Integration + Browser | Accessibility Lead | Not Started |
-| A11Y-008 | Action difficulty, driving assists, and mission timer leniency are adjustable. | Assist settings | Scenario + Browser | Accessibility Lead | Not Started |
+| A11Y-006 | Camera shake, flashes, motion, and bloom can be reduced independently. | Settings / rendering | Browser + visual | Accessibility Lead | Implemented |
+| A11Y-007 | Toggle/hold options exist for sprint, braking, and relevant repeated actions. | Input settings | Integration + Browser | Accessibility Lead | In Progress |
+| A11Y-008 | Action difficulty, driving assists, and mission timer leniency are adjustable. | Assist settings | Scenario + Browser | Accessibility Lead | In Progress |
 | A11Y-009 | Gameplay and dialogue truly pause while menus remain keyboard accessible. | Scheduler / modal UI | Integration + Browser | Accessibility Lead | Verified |
 | A11Y-010 | DOM menus provide logical focus order, labels, visible focus, and keyboard operation. | UI components | Browser + axe/manual | Accessibility Lead | In Progress |
 

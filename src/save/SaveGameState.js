@@ -3,6 +3,7 @@ import { CONTROL_KINDS, GAME_STATES } from '../core/GameManager.js';
 import { PAUSE_REASONS } from '../core/PauseManager.js';
 import { getBuildingSpec } from '../world/BuildingCatalog.js';
 import { SaveValidationError } from './SaveSchema.js';
+import { SETTINGS_SCHEMA_VERSION, validateSettingsDocument } from '../settings/SettingsSchema.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -133,8 +134,8 @@ export function captureGameState(app) {
       escapeTimer: Math.max(0, app.pedestrianSystem?.escapeTimer || 0),
       activeIncidentId: app.pedestrianSystem?.activeCrimeIncidentId || null
     },
-    settings: { version: 1, values: structuredClone(app.settings || {}), heatmap: Boolean(app.trafficHeatmapEnabled) },
-    bindings: { version: 1, overrides: structuredClone(app.inputManager?.bindingOverrides || {}) },
+    settings: { version: 1, values: app.settingsStore?.getSettings?.() || structuredClone(app.settings || {}), heatmap: Boolean(app.trafficHeatmapEnabled) },
+    bindings: { version: 1, overrides: app.settingsStore?.getBindingOverrides?.() || {} },
     alerts: serializeAlerts(app)
   };
 }
@@ -210,6 +211,11 @@ export function validateGameState(data) {
   }
   record(data.settings.values, 'save.data.settings.values');
   record(data.bindings.overrides, 'save.data.bindings.overrides');
+  try {
+    normalizeSavedSettings(data.settings.values, data.bindings.overrides);
+  } catch (error) {
+    throw new SaveValidationError(error.message, { path: 'save.data.settings.values' });
+  }
   if (!Array.isArray(data.alerts.items)) throw new SaveValidationError('must be an array.', { path: 'save.data.alerts.items' });
   for (const [index, item] of data.alerts.items.entries()) {
     record(item, `save.data.alerts.items[${index}]`);
@@ -218,6 +224,29 @@ export function validateGameState(data) {
     }
   }
   return true;
+}
+
+function normalizeSavedSettings(values, bindings = {}) {
+  if (values?.cameraSensitivity) {
+    return validateSettingsDocument({
+      version: SETTINGS_SCHEMA_VERSION,
+      settings: values,
+      bindings
+    }, { allowMigration: false });
+  }
+  const migrated = validateSettingsDocument({
+    version: 1,
+    reducedMotion: values?.reducedMotion,
+    textScale: values?.textScale
+  });
+  if (bindings && Object.keys(bindings).length > 0) {
+    return validateSettingsDocument({
+      version: SETTINGS_SCHEMA_VERSION,
+      settings: migrated.settings,
+      bindings
+    }, { allowMigration: false });
+  }
+  return migrated;
 }
 
 export function validateGameReferences(app, data) {
@@ -312,8 +341,9 @@ export function restoreStaticGameState(app, data) {
   restoreMissionProgress(app, data.missions);
   app.factionSystem?.restore?.(data.factions);
   app.progressionSystem?.restore?.(data.progression);
-  app.settings = structuredClone(data.settings.values || {});
-  app.inputManager.bindingOverrides = structuredClone(data.bindings.overrides || {});
+  const savedPreferences = normalizeSavedSettings(data.settings.values, data.bindings.overrides);
+  app.settingsStore?.replace?.(savedPreferences, { source: 'save-restore' });
+  app.settings = app.settingsStore?.getSettings?.() || structuredClone(savedPreferences.settings);
   app.trafficHeatmapEnabled = Boolean(data.settings.heatmap);
   app.trafficHeatmapSystem?.setVisible?.(app.trafficHeatmapEnabled);
   if (app.uiManager?.heatmapToggle) app.uiManager.heatmapToggle.checked = app.trafficHeatmapEnabled;

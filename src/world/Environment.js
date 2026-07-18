@@ -386,7 +386,9 @@ export class Environment {
             activeIntensity = this.flashSequence[i].intensity;
           }
         }
-        this.flashIntensity = activeIntensity;
+        const flashPreference = this.app?.settingsStore?.get?.('motion.flashIntensity', 'FULL');
+        const flashScale = flashPreference === 'OFF' ? 0 : (flashPreference === 'REDUCED' ? 0.25 : 1);
+        this.flashIntensity = activeIntensity * flashScale;
 
         if (this.flashAge > this.flashSequence[this.flashSequence.length - 1].time) {
           this.flashSequence = [];

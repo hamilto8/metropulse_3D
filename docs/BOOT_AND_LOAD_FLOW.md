@@ -48,9 +48,9 @@ later stages and prevents runtime construction.
    LocalStorage round trip, and a transactional IndexedDB write.
 2. **City data** — validates mission content, stable IDs, supported objectives,
    coordinates, dialogue references, and objective-specific requirements.
-3. **Player settings** — reads and validates the narrow P2.1 bootstrap schema,
-   safely falling back to defaults when settings are corrupt. P2.3 can replace
-   this adapter without changing the pipeline.
+3. **Player settings** — loads the complete P2.3 versioned settings and bindings
+   store, migrates the P2.1 schema, and safely falls back to defaults when local
+   data is corrupt.
 4. **Save discovery** — parses current and recovery legacy v1 save envelopes
    without applying either to live systems.
 5. **Core assets** — decodes the required boot visual and waits for fonts when
@@ -90,11 +90,10 @@ domain restoration never reaches interactive gameplay.
 
 ## Compatibility boundary with P2.2 and P2.3
 
-P2.1 deliberately does not introduce a competing save or settings authority.
-It discovers the existing LocalStorage v1 data through a narrow adapter.
-P2.2 will replace that adapter with IndexedDB `SaveService` discovery and
-migration; P2.3 will replace the bootstrap settings reader with the complete
-settings/bindings store. The boot pipeline and UI action contract remain stable.
+P2.1 deliberately did not introduce a competing save or settings authority.
+The legacy save reader is now a one-time migration source for P2.2, and the
+bootstrap settings reader is the complete settings document and bindings store
+introduced by P2.3. The boot pipeline and UI action contract remain stable.
 
 ## Verification
 
@@ -106,3 +105,5 @@ settings/bindings store. The boot pipeline and UI action contract remain stable.
   actionable guidance, and exposes Continue/Recover only for valid slots.
 - The original deterministic transition, interaction, and pause acceptance
   flow runs after the new boot gate to guard against startup regressions.
+- Current regression evidence: 306 Node tests, the production build, and four
+  Chrome WebGL boot/transition/pause/interaction/save/settings flows pass.

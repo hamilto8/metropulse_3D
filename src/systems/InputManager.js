@@ -3,6 +3,7 @@ import {
   INPUT_INTERFACES,
   getActionLabel,
   getControlBindings,
+  getKeyboardMouseBindings,
   isKnownInputInterface
 } from './ControlBindings.js';
 
@@ -18,8 +19,10 @@ const FOCUSABLE_SELECTOR = [
 export class InputManager {
   constructor(app) {
     this.app = app;
+    this.settingsStore = app?.settingsStore || null;
     this.activeInterface = INPUT_INTERFACES.KEYBOARD;
     this.keys = {};
+    this.pressedInputs = new Set();
     this.previousGamepadButtons = {};
     this.deadzone = 0.15;
     this.controllerCursor = { x: 0, y: -0.05 };
@@ -27,6 +30,7 @@ export class InputManager {
     this.inputSuspensions = new Set();
     this.quarantinedKeys = new Set();
     this.gamepadQuarantined = false;
+    this.toggleStates = { sprint: false, braking: false, repeatedActions: false };
 
     this.state = {
       throttle: 0,
@@ -47,6 +51,11 @@ export class InputManager {
 
     this.initKeyboardListeners();
     this.initGamepadEvents();
+    this.unsubscribeSettings = this.settingsStore?.subscribe?.(event => {
+      if (event.type === 'CURRENT') return;
+      this.clearTransientInputState();
+      this.app?.uiManager?.updateAdaptiveControls?.(true);
+    });
   }
 
   initKeyboardListeners() {
@@ -61,15 +70,15 @@ export class InputManager {
       if (isEditing || isUiControl) return;
 
       const normalizedKey = event.key.toLowerCase();
-      if (this.quarantinedKeys.has(normalizedKey)) return;
+      const input = this.getKeyboardEventInput(event);
+      if (this.quarantinedKeys.has(normalizedKey) || this.quarantinedKeys.has(input)) return;
       if (this.app?.pauseManager?.paused) {
-        if (event.key === 'Escape' && !event.repeat) this.handleBackAction();
+        if (this.eventMatchesAction(event, 'BACK', CONTROL_CONTEXTS.PAUSE) && !event.repeat) this.handleBackAction();
         return;
       }
-      this.keys[normalizedKey] = true;
-      if (event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space') {
-        this.keys[' '] = true;
-        this.keys.space = true;
+      this.pressedInputs.add(input);
+      const context = this.getControlContext();
+      if (this.eventMatchesAction(event, 'JUMP', context)) {
         const hasVehicle = Boolean(this.app?.trafficSystem?.controlledVehicle);
         const pedestrian = this.app?.pedestrianSystem?.controlledPedestrian;
         if (!hasVehicle) {
@@ -79,32 +88,42 @@ export class InputManager {
       }
 
       if (event.repeat) return;
-      if (normalizedKey === 'e') this.handlePrimaryAction();
-      else if (normalizedKey === 'f') this.app?.uiManager?.toggleCityEditor?.();
-      else if (normalizedKey === 'm') this.app?.uiManager?.handleModeToggle?.();
-      else if (normalizedKey === 'x') this.handleSecondaryAction();
-      else if (normalizedKey === 'r' && this.getControlContext() === CONTROL_CONTEXTS.AIRCRAFT) {
+      if (context === CONTROL_CONTEXTS.VEHICLE
+        && this.eventMatchesAction(event, 'BRAKE', context)
+        && this.settingsStore?.get?.('toggleHold.braking') === 'TOGGLE') {
+        this.toggleStates.braking = !this.toggleStates.braking;
+      }
+      if (context === CONTROL_CONTEXTS.PEDESTRIAN
+        && this.eventMatchesAction(event, 'SPRINT', context)
+        && this.settingsStore?.get?.('toggleHold.sprint') === 'TOGGLE') {
+        this.toggleStates.sprint = !this.toggleStates.sprint;
+      }
+      if (this.eventMatchesAction(event, 'INTERACT', context)) this.handlePrimaryAction();
+      else if (this.eventMatchesAction(event, 'BUILD', context)) this.app?.uiManager?.toggleCityEditor?.();
+      else if (this.eventMatchesAction(event, 'MODE', context)) this.app?.uiManager?.handleModeToggle?.();
+      else if (this.eventMatchesAction(event, 'ATTACK', context)) this.handleSecondaryAction();
+      else if (this.eventMatchesAction(event, 'AIR_RESET', context)) {
         this.app?.aircraftSystem?.resetToRunway?.();
       }
-      else if (normalizedKey === 'r' && this.getControlContext() === CONTROL_CONTEXTS.BUILDER) {
+      else if (this.eventMatchesAction(event, 'ROTATE', context)) {
         this.app?.cityEditorSystem?.rotateSelection?.();
-      } else if (event.key === 'Delete' && this.getControlContext() === CONTROL_CONTEXTS.BUILDER) {
+      } else if (this.eventMatchesAction(event, 'DELETE', context)) {
         this.app?.cityEditorUI?.container?.querySelector?.('#btn-tool-delete')?.click?.();
-      } else if (event.key === 'Escape') {
+      } else if (this.eventMatchesAction(event, 'BACK', context)) {
         this.handleBackAction();
-      } else if (event.key === 'Shift') {
+      } else if (this.eventMatchesAction(event, 'PAUSE_MENU', context)) {
+        this.handleBackAction();
+      } else if (this.eventMatchesAction(event, 'HORN', context)) {
         this.handleHornAction();
       }
     });
 
     window.addEventListener('keyup', (event) => {
       const normalizedKey = event.key.toLowerCase();
+      const input = this.getKeyboardEventInput(event);
       this.quarantinedKeys.delete(normalizedKey);
-      this.keys[normalizedKey] = false;
-      if (event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space') {
-        this.keys[' '] = false;
-        this.keys.space = false;
-      }
+      this.quarantinedKeys.delete(input);
+      this.pressedInputs.delete(input);
     });
 
     // Browsers do not dispatch keyup when focus leaves the window. Clearing
@@ -119,11 +138,13 @@ export class InputManager {
 
     window.addEventListener('pointerdown', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
     window.addEventListener('wheel', () => this.setInterface(INPUT_INTERFACES.KEYBOARD), { passive: true });
-    window.addEventListener('click', event => {
+    window.addEventListener('pointerup', event => {
       if (this.isInputSuspended || this.app?.pauseManager?.paused) return;
       if (event.target?.closest?.('header, aside, footer, button, input, [role="dialog"]')) return;
       const pedestrian = this.app?.pedestrianSystem?.controlledPedestrian;
-      if (pedestrian?.hasBaseballBat) this.handleSecondaryAction();
+      if (pedestrian?.hasBaseballBat && this.mouseEventMatchesAction(event, 'ATTACK', CONTROL_CONTEXTS.PEDESTRIAN)) {
+        this.handleSecondaryAction();
+      }
     });
     window.addEventListener('pointermove', (event) => {
       if (event.pointerType && event.pointerType !== 'mouse') return;
@@ -133,6 +154,15 @@ export class InputManager {
   }
 
   clearTransientInputState({ quarantine = true } = {}) {
+    for (const input of this.pressedInputs || []) {
+      if (quarantine) this.quarantinedKeys?.add?.(input);
+    }
+    this.pressedInputs?.clear?.();
+    if (this.toggleStates) {
+      this.toggleStates.sprint = false;
+      this.toggleStates.braking = false;
+      this.toggleStates.repeatedActions = false;
+    }
     for (const key of Object.keys(this.keys || {})) {
       if (quarantine && this.keys[key]) this.quarantinedKeys?.add?.(key);
       this.keys[key] = false;
@@ -327,11 +357,75 @@ export class InputManager {
   }
 
   getActiveBindings() {
-    return getControlBindings(this.getControlContext());
+    return getControlBindings(this.getControlContext(), this.settingsStore?.getBindingOverrides?.());
   }
 
   getActionLabel(action) {
-    return getActionLabel(action, this.activeInterface);
+    const context = this.getControlContext();
+    return this.settingsStore?.getActionLabel?.(context, action, this.activeInterface)
+      || getActionLabel(action, this.activeInterface, context);
+  }
+
+  getActionInputs(action, context = this.getControlContext()) {
+    return this.settingsStore?.getBindings?.(context, action)
+      || getKeyboardMouseBindings(context, action);
+  }
+
+  getKeyboardEventInput(event) {
+    if (event?.code) return event.code;
+    const key = String(event?.key || '');
+    if (key === ' ' || key === 'Spacebar') return 'Space';
+    if (key.length === 1 && /[a-z]/i.test(key)) return `Key${key.toUpperCase()}`;
+    return key;
+  }
+
+  eventMatchesAction(event, action, context = this.getControlContext()) {
+    return this.getActionInputs(action, context).includes(this.getKeyboardEventInput(event));
+  }
+
+  mouseEventMatchesAction(event, action, context = this.getControlContext()) {
+    return this.getActionInputs(action, context).includes(`Mouse${event?.button ?? 0}`);
+  }
+
+  isActionPressed(action, context = this.getControlContext()) {
+    return this.getActionInputs(action, context).some(input => this.pressedInputs?.has?.(input));
+  }
+
+  isActionInputPressed(action, inputIndex, context = this.getControlContext()) {
+    const inputs = this.getActionInputs(action, context);
+    return Boolean(inputs[inputIndex] && this.pressedInputs?.has?.(inputs[inputIndex]));
+  }
+
+  isActionActive(action, context, toggleSettingPath, toggleStateKey) {
+    if (this.settingsStore?.get?.(toggleSettingPath, 'HOLD') === 'TOGGLE') {
+      return Boolean(this.toggleStates?.[toggleStateKey]);
+    }
+    return this.isActionPressed(action, context);
+  }
+
+  syncLegacyKeys(context) {
+    for (const key of Object.keys(this.keys)) this.keys[key] = false;
+    const set = (name, pressed) => { this.keys[name] = Boolean(pressed); };
+    if (context === CONTROL_CONTEXTS.VEHICLE) {
+      set('a', this.isActionInputPressed('DRIVE', 0, context) || this.isActionInputPressed('DRIVE', 2, context));
+      set('d', this.isActionInputPressed('DRIVE', 1, context) || this.isActionInputPressed('DRIVE', 3, context));
+      set('w', this.isActionPressed('THROTTLE', context));
+      set('s', this.isActionActive('BRAKE', context, 'toggleHold.braking', 'braking'));
+      set(' ', this.isActionPressed('HANDBRAKE', context));
+      set('r', this.isActionPressed('VEHICLE_RESET', context));
+    } else if (context === CONTROL_CONTEXTS.PEDESTRIAN) {
+      set('w', this.isActionInputPressed('MOVE', 0, context) || this.isActionInputPressed('MOVE', 4, context));
+      set('s', this.isActionInputPressed('MOVE', 1, context) || this.isActionInputPressed('MOVE', 5, context));
+      set('a', this.isActionInputPressed('MOVE', 2, context) || this.isActionInputPressed('MOVE', 6, context));
+      set('d', this.isActionInputPressed('MOVE', 3, context) || this.isActionInputPressed('MOVE', 7, context));
+      set('shift', this.isActionActive('SPRINT', context, 'toggleHold.sprint', 'sprint'));
+      set(' ', this.isActionPressed('JUMP', context));
+    } else if (context === CONTROL_CONTEXTS.MANAGEMENT) {
+      const inputs = this.getActionInputs('PAN', context);
+      for (const [index, key] of ['w', 's', 'a', 'd', 'q', 'e', 'shift'].entries()) {
+        set(key, Boolean(inputs[index] && this.pressedInputs?.has?.(inputs[index])));
+      }
+    }
   }
 
   applyDeadzone(value, deadzone = this.deadzone) {
@@ -382,6 +476,7 @@ export class InputManager {
     }
     const context = this.getControlContext();
     this.syncControlContext(context);
+    this.syncLegacyKeys(context);
     const gamepad = this.getGamepad();
     this.state.isGamepadConnected = Boolean(gamepad);
     if (gamepad && this.isGamepadActive(gamepad)) this.setInterface(INPUT_INTERFACES.GAMEPAD);
@@ -393,13 +488,20 @@ export class InputManager {
       return;
     }
 
-    const keyboardForward = Boolean(this.keys.w || this.keys.arrowup);
-    const keyboardReverse = Boolean(this.keys.s || this.keys.arrowdown);
-    const keyboardLeft = Boolean(this.keys.a || this.keys.arrowleft);
-    const keyboardRight = Boolean(this.keys.d || this.keys.arrowright);
-    const keyboardFlightThrottleUp = Boolean(this.keys.w);
-    const keyboardFlightThrottleDown = Boolean(this.keys.s);
-    const keyboardFlightPitch = (this.keys.arrowdown ? 1 : 0) - (this.keys.arrowup ? 1 : 0);
+    const keyboardForward = context === CONTROL_CONTEXTS.PEDESTRIAN
+      ? Boolean(this.keys.w)
+      : this.isActionPressed('THROTTLE', CONTROL_CONTEXTS.VEHICLE);
+    const keyboardReverse = context === CONTROL_CONTEXTS.PEDESTRIAN
+      ? Boolean(this.keys.s)
+      : this.isActionActive('BRAKE', CONTROL_CONTEXTS.VEHICLE, 'toggleHold.braking', 'braking');
+    const keyboardLeft = context === CONTROL_CONTEXTS.PEDESTRIAN
+      ? Boolean(this.keys.a)
+      : Boolean(this.keys.a);
+    const keyboardRight = Boolean(this.keys.d);
+    const keyboardFlightThrottleUp = this.isActionInputPressed('AIR_THROTTLE', 0, CONTROL_CONTEXTS.AIRCRAFT);
+    const keyboardFlightThrottleDown = this.isActionInputPressed('AIR_THROTTLE', 1, CONTROL_CONTEXTS.AIRCRAFT);
+    const keyboardFlightPitch = (this.isActionInputPressed('AIR_PITCH', 1, CONTROL_CONTEXTS.AIRCRAFT) ? 1 : 0)
+      - (this.isActionInputPressed('AIR_PITCH', 0, CONTROL_CONTEXTS.AIRCRAFT) ? 1 : 0);
 
     let throttle = keyboardForward ? 1 : 0;
     let brake = keyboardReverse ? 1 : 0;
@@ -408,8 +510,11 @@ export class InputManager {
     let moveY = (keyboardForward ? 1 : 0) - (keyboardReverse ? 1 : 0);
     let cameraPanX = 0;
     let cameraPanY = 0;
-    let handbrake = Boolean(this.keys[' ']);
-    let flightRoll = (this.keys.d ? 1 : 0) - (this.keys.a ? 1 : 0);
+    let handbrake = context === CONTROL_CONTEXTS.AIRCRAFT
+      ? this.isActionPressed('AIR_BRAKE', context)
+      : this.isActionPressed('HANDBRAKE', CONTROL_CONTEXTS.VEHICLE);
+    let flightRoll = (this.isActionInputPressed('AIR_ROLL', 1, CONTROL_CONTEXTS.AIRCRAFT) ? 1 : 0)
+      - (this.isActionInputPressed('AIR_ROLL', 0, CONTROL_CONTEXTS.AIRCRAFT) ? 1 : 0);
     let flightPitch = keyboardFlightPitch;
     let flightThrottleUp = keyboardFlightThrottleUp ? 1 : 0;
     let flightThrottleDown = keyboardFlightThrottleDown ? 1 : 0;

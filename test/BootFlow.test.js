@@ -168,17 +168,16 @@ test('settings bootstrap validates supported values and safely falls back from c
     })
   });
   const loaded = new SettingsBootstrap({ storage }).load();
-  assert.deepEqual(loaded.settings, {
-    version: 1,
-    reducedMotion: 'REDUCE',
-    textScale: 1.5
-  });
+  assert.equal(loaded.settings.motion.reducedMotion, 'REDUCE');
+  assert.equal(loaded.settings.textScale, 1.5);
+  assert.equal(loaded.settings.cameraSensitivity.onFoot, 1);
+  assert.equal(JSON.parse(storage.getItem('metropulse3d:settings:v1')).version, 2);
   assert.deepEqual(loaded.warnings, []);
   assert.throws(() => validateBootSettings({ version: 99 }), /Unsupported settings version/);
 
   storage.setItem('metropulse3d:settings:v1', '{bad json');
   const recovered = new SettingsBootstrap({ storage }).load();
-  assert.equal(recovered.settings, DEFAULT_BOOT_SETTINGS);
+  assert.deepEqual(recovered.settings, DEFAULT_BOOT_SETTINGS);
   assert.match(recovered.warnings[0], /Saved settings were ignored/);
 });
 

@@ -35,11 +35,12 @@ export class InspectorHUD {
   }
 
   initClickEvent() {
-    window.addEventListener('click', (event) => {
+    window.addEventListener('pointerup', (event) => {
       // Don't raycast if clicking UI elements
       if (event.target.closest('header, aside, footer, button, input')) {
         return;
       }
+      if (!this.app?.inputManager?.mouseEventMatchesAction?.(event, 'SELECT', 'MANAGEMENT')) return;
 
       const rect = this.app.sceneManager.renderer.domElement.getBoundingClientRect();
       this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;

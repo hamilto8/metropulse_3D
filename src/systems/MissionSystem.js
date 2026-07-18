@@ -322,7 +322,9 @@ export class MissionSystem {
     this.state = 'IN_PROGRESS';
 
     // Determine time limit and reward
-    this.timeRemaining = choiceNode?.timeLimitOverride || mission.timeLimit || 60;
+    const baseTimeLimit = choiceNode?.timeLimitOverride || mission.timeLimit || 60;
+    const timerLeniency = this.app?.settingsStore?.get?.('timerLeniency', 1) ?? 1;
+    this.timeRemaining = baseTimeLimit * timerLeniency;
     this.initialTimeLimit = this.timeRemaining;
     this.basePayout = this.getBasePayout(mission, choiceNode);
     this.payout = this.basePayout;

@@ -618,18 +618,50 @@ P2.2 completion evidence (2026-07-18):
 
 #### P2.3 Settings and bindings store
 
-- [ ] Create one renderer-independent settings schema with defaults, validation,
+- [x] Create one renderer-independent settings schema with defaults, validation,
   versioning, and persistence.
-- [ ] Support remapping for every required keyboard/mouse action.
-- [ ] Detect binding conflicts and provide reset-to-default by context and
+- [x] Support remapping for every required keyboard/mouse action.
+- [x] Detect binding conflicts and provide reset-to-default by context and
   globally.
-- [ ] Store mouse sensitivity, camera sensitivity, audio channels, subtitle
+- [x] Store mouse sensitivity, camera sensitivity, audio channels, subtitle
   preferences, text scale, contrast mode, color-safe patterns, motion settings,
   toggle/hold choices, driving assists, difficulty, and timer leniency.
-- [ ] Make UI prompts render the current binding rather than static labels.
-- [ ] Keep controller support only if it meets the same state and prompt
+- [x] Make UI prompts render the current binding rather than static labels.
+- [x] Keep controller support only if it meets the same state and prompt
   correctness; otherwise classify it as post-MVP rather than blocking core
   keyboard/mouse completion.
+
+P2.3 completion evidence (2026-07-18):
+
+- `src/settings/SettingsStore.js` is the renderer-independent authority for a
+  versioned settings document, atomic LocalStorage persistence, immutable
+  snapshots/events, schema-v1 migration, scoped/global reset, and validated
+  save restoration. `src/settings/SettingsSchema.js` owns all defaults, ranges,
+  enums, and the complete preference contract.
+- `ControlBindings` now defines every required keyboard/mouse action by control
+  context. Overrides are validated against known contexts/actions and compatible
+  input kinds; same-context conflicts, duplicates, browser-reserved keys, and
+  invalid pointer/keyboard substitutions fail before persistence. Controller
+  bindings remain fixed and continue to use the same context and prompt paths.
+- `InputManager`, selection, Builder placement, orbit/street/chase camera input,
+  adaptive controls, mission hints, and the primary interaction prompt resolve
+  live bindings from the store. Binding changes clear held input and refresh
+  visible prompts immediately; toggle/hold braking and sprint share the same
+  authoritative input state.
+- The accessible pause settings surface edits every required preference and
+  binding, captures keyboard/mouse inputs, reports conflicts without overwriting
+  the valid binding, resets one context or all bindings, and supports complete
+  preference reset. Text scale, contrast/color patterns, motion reduction,
+  camera sensitivity/shake, bloom/flashes, master/ambience audio, timer leniency,
+  and vehicle auto-recovery are connected to live consumers without reload.
+- Save capture and restore use the store snapshot rather than parallel
+  `app.settings` or `bindingOverrides` truths. Older P2.1/P2.2 settings payloads
+  migrate through the same validator before any live restore mutation.
+- Verification at completion: 306 Node tests, the production build, and all
+  four Chrome WebGL acceptance flows pass. Browser coverage proves immediate
+  remapping, prompt correctness, conflict rejection, old/new action behavior,
+  live text scaling, persistence, and reload restoration. The operational and
+  extension contract is documented in `SETTINGS_AND_BINDINGS_STORE.md`.
 
 #### P2.4 Data validation
 

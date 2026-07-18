@@ -17,6 +17,7 @@ import {
 import { TIME_OF_DAY_VISUALS } from '../systems/TimeOfDayVisuals.js';
 import { RENDER_QUALITY_TIERS } from '../systems/PerformanceSystem.js';
 import { CELESTIAL_ORBIT } from './CelestialOrbit.js';
+import { CONTROL_CONTEXTS } from '../systems/ControlBindings.js';
 
 export const RENDER_QUALITY_PROFILES = Object.freeze({
   [RENDER_QUALITY_TIERS.HIGH]: Object.freeze({
@@ -113,12 +114,35 @@ export class SceneManager {
       this.controls,
       {
         onInteractionStart: () => this.breakToFreeOrbit(),
-        onModeChange: () => this.app?.uiManager?.updateAdaptiveControls?.(true)
+        onModeChange: () => this.app?.uiManager?.updateAdaptiveControls?.(true),
+        getSensitivity: () => (
+          this.app?.settingsStore?.get?.('mouseSensitivity', 1)
+          * this.app?.settingsStore?.get?.('cameraSensitivity.orbit', 1)
+        ),
+        isPointerBinding: event => this.app?.inputManager?.mouseEventMatchesAction?.(
+          event,
+          'ORBIT',
+          CONTROL_CONTEXTS.MANAGEMENT
+        ) ?? event.button === 0
       }
     );
 
     // Phase 2: Cinematic Camera Rig
-    this.cameraRig = new CameraRig(this.camera, this.controls);
+    this.cameraRig = new CameraRig(this.camera, this.controls, {
+      getSensitivity: () => {
+        const context = this.app?.inputManager?.getControlContext?.();
+        const cameraKey = context === CONTROL_CONTEXTS.VEHICLE || context === CONTROL_CONTEXTS.AIRCRAFT
+          ? 'vehicle'
+          : 'onFoot';
+        return (this.app?.settingsStore?.get?.('mouseSensitivity', 1) || 1)
+          * (this.app?.settingsStore?.get?.(`cameraSensitivity.${cameraKey}`, 1) || 1);
+      },
+      isPointerBinding: event => this.app?.inputManager?.mouseEventMatchesAction?.(
+        event,
+        'CAMERA',
+        this.app?.inputManager?.getControlContext?.()
+      ) ?? event.button === 2
+    });
     this.cameraClearanceQuery = null;
 
     // Camera Transition / Follow state
@@ -392,10 +416,11 @@ export class SceneManager {
   }
 
   triggerShake(intensity = 0.35) {
-    this.shakeIntensity = intensity;
+    const scale = this.app?.settingsStore?.get?.('motion.cameraShake', 1) ?? 1;
+    this.shakeIntensity = intensity * scale;
     this.shakeTimer = 0.8;
     if (this.cameraRig) {
-      this.cameraRig.triggerShake(intensity);
+      this.cameraRig.triggerShake(intensity * scale);
     }
   }
 

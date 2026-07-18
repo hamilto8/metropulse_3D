@@ -274,7 +274,12 @@ export class PlayerVehicle {
     );
     const analogThrottle = controls.throttle;
     const analogBrake = controls.reverse;
-    const analogSteer = controls.steer;
+    const steeringAssist = typeof window !== 'undefined'
+      && window.app?.settingsStore?.get?.('drivingAssists.steering') === 'ASSISTED';
+    const speedAssistScale = steeringAssist
+      ? Math.max(0.55, 1 - Math.abs(this.speedKmH || 0) / 240)
+      : 1;
+    const analogSteer = controls.steer * speedAssistScale;
     const isHandbrake = controls.handbrake;
 
     // Calculate forward speed along vehicle forward vector (+Z local)
@@ -300,11 +305,17 @@ export class PlayerVehicle {
     }
 
     // 2. Engine & Braking (Analog smooth throttle & brake)
-    const { engineForce, brakeForce } = resolvePlayerVehicleDriveForces(
+    const driveForces = resolvePlayerVehicleDriveForces(
       controls,
       currentForwardSpeed,
       this.driveProfile
     );
+    const brakingAssist = typeof window !== 'undefined'
+      && window.app?.settingsStore?.get?.('drivingAssists.brakingAssist', false) === true;
+    const engineForce = driveForces.engineForce;
+    const brakeForce = brakingAssist && driveForces.brakeForce > 0
+      ? driveForces.brakeForce * 1.25
+      : driveForces.brakeForce;
 
     // 3. Lateral grip stabilization
     if (!isHandbrake && Math.abs(currentForwardSpeed) > 1.0) {
@@ -342,7 +353,9 @@ export class PlayerVehicle {
       horizontalSpeed
     }, delta);
     this.stuckElapsed = mobility.elapsed;
-    if (mobility.shouldRecover && this.recoveryCooldown <= 0) {
+    const autoRecovery = typeof window === 'undefined'
+      || window.app?.settingsStore?.get?.('drivingAssists.autoRecovery', true) !== false;
+    if (autoRecovery && mobility.shouldRecover && this.recoveryCooldown <= 0) {
       this.recoverToSafePose();
       this.stuckElapsed = 0;
       this.recoveryCooldown = 4;

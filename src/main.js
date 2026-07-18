@@ -50,6 +50,8 @@ import { validateMissionData } from './data/MissionDataValidator.js';
 import { BootPipeline } from './boot/BootPipeline.js';
 import { CapabilityChecker } from './boot/CapabilityChecker.js';
 import { SettingsBootstrap } from './boot/SettingsBootstrap.js';
+import { SettingsRuntime } from './settings/SettingsRuntime.js';
+import { SettingsMenu } from './ui/SettingsMenu.js';
 import { BOOT_ACTIONS, SaveDiscovery } from './boot/SaveDiscovery.js';
 import { AssetPreloader } from './boot/AssetPreloader.js';
 import { BootScreen } from './ui/BootScreen.js';
@@ -65,7 +67,9 @@ export class MetroPulseApp {
     }
     this.runtimeConfig = runtimeConfig;
     this.bootSession = bootSession;
-    this.settings = bootSession.settings;
+    if (!bootSession.settingsStore?.snapshot) throw new TypeError('MetroPulseApp requires a validated settings store.');
+    this.settingsStore = bootSession.settingsStore;
+    this.settings = this.settingsStore.getSettings();
     this.bootStartedAtMs = bootStartedAtMs;
     this.features = runtimeConfig.featureFlags;
     applyFeatureVisibility(document, this.features);
@@ -208,6 +212,7 @@ export class MetroPulseApp {
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
+    this.settingsRuntime = new SettingsRuntime({ store: this.settingsStore, app: this });
 
     // 11.2 City Editor & Map Expansion System
     this.cityEditorSystem = new CityEditorSystem(this);
@@ -251,6 +256,7 @@ export class MetroPulseApp {
       clearHeldActions: () => this.inputManager?.clearTransientInputState?.()
     });
     this.pauseMenu = new PauseMenu({ pauseManager: this.pauseManager });
+    this.settingsMenu = new SettingsMenu({ store: this.settingsStore });
     this.dialogueOverlay.setPauseManager(this.pauseManager);
 
     if (runtimeConfig.test) {
@@ -506,7 +512,7 @@ export async function startMetroPulseBoot({ runtimeConfig, screen } = {}) {
         const app = new MetroPulseApp(runtimeConfig, {
           ...prepared,
           gameManager,
-          settings: results.settings.settings
+          settingsStore: results.settings.store
         });
         app.assertReady();
         window.app = app;
