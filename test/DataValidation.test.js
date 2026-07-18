@@ -106,3 +106,45 @@ test('progression prerequisites must exist and remain acyclic', () => {
   );
 });
 
+test('mission prerequisites remain referentially valid and acyclic', () => {
+  const missingData = gameDataFixture();
+  missingData.missions[0].prerequisites = ['mission_removed'];
+  assert.throws(
+    () => validateGameData(missingData),
+    error => error.code === 'MISSING_REFERENCE'
+      && error.path === 'missions[mission_executive].prerequisites[0].missionId'
+  );
+
+  const circularData = gameDataFixture();
+  circularData.missions[0].prerequisites = ['mission_scientist'];
+  circularData.missions[2].prerequisites = ['mission_executive'];
+  assert.throws(
+    () => validateGameData(circularData),
+    error => error.code === 'CIRCULAR_PREREQUISITE'
+      && error.source === 'missions'
+  );
+});
+
+test('every mission declares a known weather policy and valid retry bounds', () => {
+  const missingPolicy = gameDataFixture();
+  delete missingPolicy.missions[0].weatherPolicy;
+  assert.throws(
+    () => validateGameData(missingPolicy),
+    error => error.path === 'missions[mission_executive].weatherPolicy'
+  );
+
+  const unknownPolicy = gameDataFixture();
+  unknownPolicy.missions[0].weatherPolicy = 'WARP_STORM';
+  assert.throws(
+    () => validateGameData(unknownPolicy),
+    error => error.code === 'INVALID_ENUM'
+      && error.path === 'missions[mission_executive].weatherPolicy'
+  );
+
+  const retry = gameDataFixture();
+  retry.missions[0].retryPolicy = { strategy: 'RESTART', maxAttempts: 0 };
+  assert.throws(
+    () => validateGameData(retry),
+    error => error.path === 'missions[mission_executive].retryPolicy.maxAttempts'
+  );
+});

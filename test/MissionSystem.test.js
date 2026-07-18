@@ -34,6 +34,8 @@ function missionFixture(overrides = {}) {
     baseReward: 10,
     rewardScale: 100,
     narrativeProgressDelta: 1,
+    prerequisites: [],
+    weatherPolicy: 'STANDARD_ROAD',
     dialogueTree: {
       start: {
         text: 'Can you take me there?',
@@ -78,11 +80,11 @@ function appFixture(overrides = {}) {
   return Object.assign(app, overrides);
 }
 
-function createSystem(app = appFixture()) {
+function createSystem(app = appFixture(), missionDefinitions = [missionFixture()]) {
   return new MissionSystem(app, {
     currentMission: null,
     showMissionDialogue() {}
-  });
+  }, { missionDefinitions });
 }
 
 test('mission-data validation accepts supported objectives and rejects structural defects', () => {
@@ -170,7 +172,7 @@ test('starting a mission binds it to the accepting vehicle and applies choice ti
     timeLimitOverride: 45,
     rushBonus: 5
   }), true);
-  assert.equal(system.state, 'IN_PROGRESS');
+  assert.equal(system.state, 'ACTIVE');
   assert.equal(system.activeVehicle, taxi);
   assert.equal(system.timeRemaining, 45);
   assert.equal(system.initialTimeLimit, 45);
@@ -192,8 +194,8 @@ test('delivery timers advance deterministically and fail at zero while survival 
   const deliveryApp = appFixture();
   const deliveryVehicle = vehicleFixture();
   deliveryApp.trafficSystem.controlledVehicle = deliveryVehicle;
-  const deliverySystem = createSystem(deliveryApp);
   const delivery = missionFixture({ timeLimit: 1 });
+  const deliverySystem = createSystem(deliveryApp, [delivery]);
   assert.equal(deliverySystem.startMission(delivery), true);
 
   let deliveryFailure = null;
@@ -209,7 +211,6 @@ test('delivery timers advance deterministically and fail at zero while survival 
   const survivalApp = appFixture();
   const survivalVehicle = vehicleFixture({ type: 'SPORTS' });
   survivalApp.trafficSystem.controlledVehicle = survivalVehicle;
-  const survivalSystem = createSystem(survivalApp);
   const survival = missionFixture({
     id: 'mission-test-survival',
     missionType: 'SURVIVAL',
@@ -217,6 +218,7 @@ test('delivery timers advance deterministically and fail at zero while survival 
     dropoff: undefined,
     timeLimit: 1
   });
+  const survivalSystem = createSystem(survivalApp, [survival]);
   assert.equal(survivalSystem.startMission(survival), true);
 
   let completions = 0;
@@ -231,7 +233,6 @@ test('race missions advance authored checkpoints and fail when a rival finishes 
   const app = appFixture();
   const racer = vehicleFixture({ type: 'SPORTS' });
   app.trafficSystem.controlledVehicle = racer;
-  const system = createSystem(app);
   const race = missionFixture({
     id: 'mission-test-race',
     missionType: 'RACE',
@@ -244,6 +245,7 @@ test('race missions advance authored checkpoints and fail when a rival finishes 
     dropoff: { x: 40, z: 20, district: 'Finish', districtId: 'WEST_CORE' },
     rivals: [{ name: 'Test Rival', finishTime: 30 }]
   });
+  const system = createSystem(app, [race]);
   assert.equal(system.startMission(race), true);
   assert.equal(system.routePoints.length, 3);
 
@@ -263,7 +265,6 @@ test('sabotage missions require a stopped on-target interaction and hold period'
   const app = appFixture();
   const cruiser = vehicleFixture({ type: 'POLICE', x: 110, z: 120 });
   app.trafficSystem.controlledVehicle = cruiser;
-  const system = createSystem(app);
   const sabotage = missionFixture({
     id: 'mission-test-sabotage',
     missionType: 'SABOTAGE',
@@ -271,6 +272,7 @@ test('sabotage missions require a stopped on-target interaction and hold period'
     sabotageAction: 'Disable target network',
     sabotageDuration: 2
   });
+  const system = createSystem(app, [sabotage]);
   cruiser.mesh.position.set(10, 0, 20);
   assert.equal(system.startMission(sabotage), true);
   cruiser.mesh.position.set(110, 0, 120);
@@ -286,44 +288,47 @@ test('sabotage missions require a stopped on-target interaction and hold period'
   assert.equal(completions, 1);
 });
 
-test('completion sends adjusted taxi payout to the shared economy and isolates repeat-run narrative progress', () => {
-  const completions = [];
+test('completion commits adjusted taxi payout before result recovery and isolates repeat runs', () => {
+  const transactions = [];
   const app = appFixture({
-    economySystem: {
-      recordMissionCompletion(mission, reward, metadata) {
-        completions.push({ mission, reward, metadata });
-        return true;
+    missionOutcomeService: {
+      snapshot: () => ({ followUpMissions: {} }),
+      apply(transaction) {
+        transactions.push(transaction);
+        return { transactionId: transaction.transactionId, effects: [], summary: transaction.summary };
       }
     }
   });
-  const system = createSystem(app);
-  system.showPayoutToast = () => {};
-
   const mission = missionFixture();
+  const system = createSystem(app, [mission]);
+  system.showPayoutToast = () => {};
+  system.showFailureToast = () => {};
+
   const completeRun = () => {
-    system.activeMission = mission;
-    system.activeVehicle = vehicleFixture();
-    system.state = 'IN_PROGRESS';
+    const vehicle = vehicleFixture();
+    app.trafficSystem.controlledVehicle = vehicle;
+    assert.equal(system.startMission(mission), true);
     system.initialTimeLimit = 100;
     system.timeRemaining = 50;
     system.basePayout = 1_000;
     system.payout = 1_000;
     system.congestionSamples = 2;
     system.congestionTotal = 1;
-    system.completeMission();
+    assert.equal(system.completeMission(), true);
+    assert.equal(system.state, 'RESULT');
+    system.acknowledgeResult();
   };
 
   completeRun();
   completeRun();
 
-  assert.equal(completions.length, 2);
-  assert.equal(completions[0].mission.id, mission.id);
-  assert.equal(completions[0].reward, 1_060);
-  assert.equal(completions[0].metadata.satisfaction, 62);
-  assert.equal(completions[1].mission.id, `${mission.id}:run-2`);
-  assert.equal(completions[1].mission.narrativeProgressDelta, 0);
+  assert.equal(transactions.length, 2);
+  assert.equal(transactions[0].transactionId, `mission:${mission.id}:run-1:attempt-1:SUCCESS`);
+  assert.equal(transactions[0].commands[0].amount, 1_060);
+  assert.equal(transactions[1].transactionId, `mission:${mission.id}:run-2:attempt-1:SUCCESS`);
   assert.equal(system.narrativeState.completedMissionIds.has(mission.id), true);
   assert.equal(system.narrativeState.chronologyStep, 1);
+  assert.equal(system.missionRunCounts.get(mission.id), 2);
 });
 
 test('fallback congestion estimate is bounded and weights crashes above stopped traffic', () => {

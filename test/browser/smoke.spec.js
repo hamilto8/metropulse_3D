@@ -232,6 +232,66 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   await expect(page.locator('#development-diagnostics')).toContainText('STATE MANAGEMENT');
 });
 
+test('mission failure, retry, outcome commit, result save, and recovery form one guarded lifecycle', async ({ page }) => {
+  test.setTimeout(90_000);
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(
+    '/?testMode=1&profile=clean&seed=p3-2-lifecycle&traffic=12&pedestrians=8'
+      + '&weather=rain&mission=mission_executive&quality=low',
+    { waitUntil: 'domcontentloaded' }
+  );
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+
+  const treasuryBefore = await page.evaluate(() => window.app.economySystem.treasury);
+  const active = await page.evaluate(() => window.__METROPULSE_TEST__.startMission('mission_executive'));
+  expect(active.phase).toBe('ACTIVE');
+  expect(active.run.weather.disposition).toBe('ADAPTED');
+  expect(active.run.attempt).toBe(1);
+
+  const failed = await page.evaluate(() => window.__METROPULSE_TEST__.resolveMission('FAILURE'));
+  expect(failed.phase).toBe('RESULT');
+  expect(failed.run.resolution.outcome).toBe('FAILURE');
+  expect(failed.run.receipt.transactionId).toContain('attempt-1:FAILURE');
+  await expect(page.locator('#btn-retry-mission')).toBeVisible();
+  expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryBefore);
+
+  const retried = await page.evaluate(() => window.__METROPULSE_TEST__.retryMission());
+  expect(retried.phase).toBe('ACTIVE');
+  expect(retried.run.attempt).toBe(2);
+  await expect(page.locator('#btn-retry-mission')).toBeHidden();
+
+  const completed = await page.evaluate(() => window.__METROPULSE_TEST__.resolveMission('SUCCESS'));
+  expect(completed.phase).toBe('RESULT');
+  expect(completed.run.receipt.transactionId).toContain('attempt-2:SUCCESS');
+  expect(completed.progress.completedMissionIds).toContain('mission_executive');
+  await expect(page.locator('#mission-hud-title')).toContainText('complete');
+  const treasuryAfterCompletion = await page.evaluate(() => window.app.economySystem.treasury);
+  expect(treasuryAfterCompletion).toBeGreaterThan(treasuryBefore);
+
+  expect(await page.evaluate(() => window.app.saveService.saveNow({ reason: 'manual' }))).toBe(true);
+  const savedPhase = await page.evaluate(async () => {
+    const current = await window.app.saveService.repository.read('current');
+    return current.data.missions.lifecycle.phase;
+  });
+  expect(savedPhase).toBe('RESULT');
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await page.locator('#btn-boot-continue').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  expect(await page.evaluate(() => window.__METROPULSE_TEST__.missionLifecycle().phase)).toBe('RESULT');
+  expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryAfterCompletion);
+  await expect(page.locator('#mission-hud-title')).toContainText('complete');
+
+  const recovered = await page.evaluate(() => window.__METROPULSE_TEST__.acknowledgeMissionResult());
+  expect(recovered.phase).toBe('IDLE');
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.snapshot().state.mode)).toBe('MANAGEMENT');
+  await expect(page.locator('#mission-hud')).toBeHidden();
+  expect(pageErrors).toEqual([]);
+});
+
 test('blocks startup with actionable compatibility guidance before world services exist', async ({ page }) => {
   const response = await page.goto(
     '/?testMode=1&profile=clean&unavailableCapabilities=webgl2&quality=low',

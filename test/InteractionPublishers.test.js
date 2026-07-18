@@ -85,7 +85,10 @@ test('mission publisher emits overlapping pickups and a blocking sabotage failur
   const missionB = { id: 'b', vehicleType: 'TAXI', pickup: { x: -1, z: 0 }, passengerName: 'B' };
   const system = Object.create(MissionSystem.prototype);
   system.app = { trafficSystem: { controlledVehicle: vehicle } };
-  system.state = 'IDLE';
+  system.lifecycle = {
+    phase: 'IDLE',
+    evaluateAvailability: mission => ({ missionId: mission.id, available: true, reasons: [] })
+  };
   system.triggerCooldown = 0;
   system.activeMission = null;
   system.pickupRings = [missionB, missionA].map(mission => ({
@@ -97,7 +100,7 @@ test('mission publisher emits overlapping pickups and a blocking sabotage failur
   assert.deepEqual(pickups.map(value => value.id), ['mission-pickup:b', 'mission-pickup:a']);
   assert.ok(pickups.every(value => value.priority === INTERACTION_PRIORITIES.MISSION_PICKUP));
 
-  system.state = 'IN_PROGRESS';
+  system.lifecycle.phase = 'ACTIVE';
   system.activeMission = {
     id: 'sabotage',
     title: 'Signal Jam',

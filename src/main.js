@@ -361,7 +361,7 @@ export class MetroPulseApp {
         ? { kind: CONTROL_KINDS.AIRCRAFT, entity: this.aircraftSystem.controlledAircraft }
         : null
     ].filter(Boolean);
-    const missionState = this.missionSystem?.state || 'IDLE';
+    const missionState = this.missionSystem?.lifecycle?.phase || 'IDLE';
     const missionActive = Boolean(this.missionSystem?.activeMission || this.missionSystem?.pendingMission);
 
     return {
@@ -373,7 +373,7 @@ export class MetroPulseApp {
           : CONTROL_KINDS.NONE,
       handoffPending: Boolean(this.pedestrianSystem?.hijackTransition),
       missionActive,
-      missionCritical: missionActive || missionState !== 'IDLE',
+      missionCritical: this.missionSystem?.lifecycle?.isMissionCritical ?? (missionActive || missionState !== 'IDLE'),
       missionState,
       heatActive: Boolean(this.pedestrianSystem?.isWanted)
     };

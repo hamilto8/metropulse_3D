@@ -2,8 +2,12 @@ import * as THREE from 'three';
 import { GAME_STATES } from '../core/GameManager.js';
 import missionsData from '../data/missions.json' with { type: 'json' };
 import { validateMissionData } from '../data/MissionDataValidator.js';
-import { setTextSegments } from '../ui/dom.js';
 import { INTERACTION_PRIORITIES } from './InteractionService.js';
+import {
+  MISSION_PHASES,
+  MissionLifecycleController,
+  MissionLifecycleError
+} from '../missions/MissionLifecycleController.js';
 
 // ─── Named Constants ────────────────────────────────────────────────────────
 /** Radius at which driving/following a vehicle triggers a pickup dialogue (metres) */
@@ -19,30 +23,28 @@ export { validateMissionData } from '../data/MissionDataValidator.js';
  * Manages interactive 3D pickup rings, destination holographic light beacons,
  * live timer countdowns, dynamic navigation arrows, and fare payouts.
  *
- * State machine:
- *   IDLE → DIALOGUE_ACTIVE → IN_PROGRESS → COMPLETED | FAILED
- *   Any state → IDLE (via cancelMission or clearActiveMission)
+ * Three.js/DOM execution adapter for the renderer-free mission lifecycle.
+ * MissionLifecycleController owns availability, phases, checkpoints, retry,
+ * weather compatibility, cleanup commitment, results, and recovery.
  */
 export class MissionSystem {
   constructor(app, dialogueOverlay, {
     missionId = null,
     missionIds = null,
-    includeMayhem = true
+    includeMayhem = true,
+    missionDefinitions = missionsData
   } = {}) {
     this.app = app;
     this.scene = app.sceneManager.scene;
     this.dialogueOverlay = dialogueOverlay;
 
-    /** @type {'IDLE'|'DIALOGUE_ACTIVE'|'IN_PROGRESS'|'COMPLETED'|'FAILED'} */
-    this.state = 'IDLE';
-
-    validateMissionData(missionsData);
+    validateMissionData(missionDefinitions);
     const allowedIds = missionId
       ? new Set([missionId])
       : Array.isArray(missionIds)
         ? new Set(missionIds)
         : null;
-    const selectedMissions = missionsData.filter(mission => (
+    const selectedMissions = missionDefinitions.filter(mission => (
       (!allowedIds || allowedIds.has(mission.id))
       && (includeMayhem || !mission.requiresMayhem)
     ));
@@ -51,6 +53,12 @@ export class MissionSystem {
     }
     this.missions = selectedMissions;
     this.availableMissions = [...this.missions];
+    this.lifecycle = new MissionLifecycleController({
+      missions: this.missions,
+      conditionService: app.cityConditionService,
+      outcomeService: app.missionOutcomeService,
+      weatherProvider: () => app.environment?.weatherMode || 'clear'
+    });
     this.activeMission = null;
     this.timeRemaining = 0;
     this.payout = 0;
@@ -65,13 +73,6 @@ export class MissionSystem {
     this.raceLeader = null;
     this.sabotageProgress = 0;
     this.sabotageActive = false;
-    this.narrativeState = {
-      completedMissionIds: new Set(),
-      dialogueChoices: [],
-      chronologyStep: 0
-    };
-    this.missionRunCounts = new Map();
-
     /** Cached dropoff position Vector3 — set on startMission, avoids per-frame allocation */
     this._dropoffPos = new THREE.Vector3();
 
@@ -93,6 +94,7 @@ export class MissionSystem {
     this.hudTimerEl = document.getElementById('mission-hud-timer');
     this.hudFareEl = document.getElementById('mission-hud-fare');
     this.cancelBtn = document.getElementById('btn-cancel-mission');
+    this.retryBtn = document.getElementById('btn-retry-mission');
 
     // Payout toast element (injected dynamically)
     this._toastEl = null;
@@ -102,8 +104,43 @@ export class MissionSystem {
     if (this.cancelBtn) {
       this.cancelBtn.addEventListener('click', () => this.cancelMission());
     }
+    if (this.retryBtn) {
+      this.retryBtn.addEventListener('click', () => this.retryMission());
+    }
 
     this.initPickupBeacons();
+  }
+
+  get state() {
+    return this.lifecycle.phase;
+  }
+
+  get narrativeState() {
+    const progress = this.lifecycle.progressSnapshot();
+    return {
+      completedMissionIds: new Set(progress.completedMissionIds),
+      dialogueChoices: progress.dialogueChoices,
+      chronologyStep: progress.chronologyStep
+    };
+  }
+
+  set narrativeState(value) {
+    const current = this.lifecycle.progressSnapshot();
+    this.lifecycle.restoreProgress({
+      completedMissionIds: [...(value?.completedMissionIds || [])],
+      dialogueChoices: value?.dialogueChoices || [],
+      chronologyStep: value?.chronologyStep || 0,
+      runCounts: current.runCounts
+    });
+  }
+
+  get missionRunCounts() {
+    return new Map(this.lifecycle.progressSnapshot().runCounts);
+  }
+
+  set missionRunCounts(value) {
+    const current = this.lifecycle.progressSnapshot();
+    this.lifecycle.restoreProgress({ ...current, runCounts: [...(value || new Map())] });
   }
 
   /**
@@ -182,10 +219,16 @@ export class MissionSystem {
     const vehicle = this.getControlledVehicle();
     let reason = '';
     if (!mission) reason = 'Mission data is unavailable.';
-    else if (!vehicle) reason = 'Take direct control of a vehicle first.';
-    else if (vehicle.vType !== mission.vehicleType) reason = `Requires a ${mission.vehicleType} vehicle.`;
-    else if (requireProximity && vehicle.mesh.position.distanceTo(new THREE.Vector3(mission.pickup.x, vehicle.mesh.position.y, mission.pickup.z)) >= MISSION_TRIGGER_RADIUS) {
-      reason = 'Drive into the mission pickup ring first.';
+    else {
+      const availability = this.lifecycle.evaluateAvailability(mission);
+      if (!availability.available) reason = availability.reasons[0] || 'Mission is unavailable.';
+    }
+    if (!reason) {
+      if (!vehicle) reason = 'Take direct control of a vehicle first.';
+      else if (vehicle.vType !== mission.vehicleType) reason = `Requires a ${mission.vehicleType} vehicle.`;
+      else if (requireProximity && vehicle.mesh.position.distanceTo(new THREE.Vector3(mission.pickup.x, vehicle.mesh.position.y, mission.pickup.z)) >= MISSION_TRIGGER_RADIUS) {
+        reason = 'Drive into the mission pickup ring first.';
+      }
     }
 
     if (reason && notify && this.app?.uiManager) this.app.uiManager.showToast(`⚠️ ${reason}`);
@@ -194,16 +237,11 @@ export class MissionSystem {
 
   recordDialogueChoice(mission, nodeId, choice) {
     if (!mission || !choice) return;
-    this.narrativeState.dialogueChoices.push({
-      missionId: mission.id,
-      nodeId,
-      choice: choice.label,
-      next: choice.next
-    });
+    this.lifecycle.recordDialogueChoice(mission.id, nodeId, choice);
   }
 
   showMissionAvailablePrompt(mission) {
-    if (this.state !== 'IDLE' || this.activeMission) return;
+    if (this.state !== MISSION_PHASES.IDLE || this.activeMission) return;
     this.pendingMission = mission;
   }
 
@@ -231,8 +269,7 @@ export class MissionSystem {
       return false;
     }
     this.hideMissionAvailablePrompt();
-    this.triggerMissionDialogue(mission);
-    return true;
+    return this.triggerMissionDialogue(mission);
   }
 
   getInteractionCandidates() {
@@ -240,7 +277,7 @@ export class MissionSystem {
     const vehicle = this.getControlledVehicle();
     const objective = this.activeMission?.missionType || this.activeMission?.objectiveType;
 
-    if (this.state === 'IN_PROGRESS' && objective === 'SABOTAGE') {
+    if (this.state === MISSION_PHASES.ACTIVE && objective === 'SABOTAGE') {
       const distance = vehicle?.mesh?.position?.distanceTo?.(this._dropoffPos) ?? Infinity;
       let failureReason = null;
       if (!vehicle) failureReason = 'Take direct control of the mission vehicle first.';
@@ -262,7 +299,7 @@ export class MissionSystem {
       return candidates;
     }
 
-    if (this.state !== 'IDLE' || this.triggerCooldown > 0 || !vehicle) return candidates;
+    if (this.state !== MISSION_PHASES.IDLE || this.triggerCooldown > 0 || !vehicle) return candidates;
     for (const ring of this.pickupRings) {
       if (!ring.group.visible) continue;
       const distance = vehicle.mesh.position.distanceTo(ring.group.position);
@@ -295,11 +332,18 @@ export class MissionSystem {
    */
   triggerMissionDialogue(mission) {
     if (this.triggerCooldown > 0 || this.activeMission) return false;
-    if (this.state === 'DIALOGUE_ACTIVE') return false;
+    if (this.state === MISSION_PHASES.BRIEFING) return false;
     if (!this.canUseMission(mission, { requireProximity: true, notify: true }).allowed) return false;
     this.hideMissionAvailablePrompt();
     if (this.dialogueOverlay && !this.dialogueOverlay.currentMission) {
-      this.state = 'DIALOGUE_ACTIVE';
+      try {
+        this.lifecycle.prepare(mission.id);
+        this.lifecycle.beginBriefing();
+      } catch (error) {
+        const message = error instanceof MissionLifecycleError ? error.message : 'Mission preparation failed.';
+        this.app?.uiManager?.showToast?.(`⚠️ ${message}`);
+        return false;
+      }
       this.dialogueOverlay.showMissionDialogue(mission, this);
       return true;
     }
@@ -314,19 +358,45 @@ export class MissionSystem {
   startMission(mission, choiceNode) {
     const eligibility = this.canUseMission(mission, { requireProximity: true, notify: true });
     if (!eligibility.allowed || this.activeMission) {
-      this.state = 'IDLE';
+      this.lifecycle.abandonBriefing();
       return false;
+    }
+    if (this.state === MISSION_PHASES.IDLE) {
+      try {
+        this.lifecycle.prepare(mission.id);
+        this.lifecycle.beginBriefing();
+      } catch (error) {
+        this.app?.uiManager?.showToast?.(`⚠️ ${error.message}`);
+        return false;
+      }
     }
     this.activeMission = mission;
     this.activeVehicle = eligibility.vehicle;
-    this.state = 'IN_PROGRESS';
 
     // Determine time limit and reward
     const baseTimeLimit = choiceNode?.timeLimitOverride || mission.timeLimit || 60;
     const timerLeniency = this.app?.settingsStore?.get?.('timerLeniency', 1) ?? 1;
-    this.timeRemaining = baseTimeLimit * timerLeniency;
+    const baseReward = this.getBasePayout(mission, choiceNode);
+    try {
+      this.lifecycle.accept({
+        choice: choiceNode ? {
+          rushBonus: choiceNode.rushBonus || 0,
+          timeLimitOverride: choiceNode.timeLimitOverride || null
+        } : null,
+        baseTimeLimit: baseTimeLimit * timerLeniency,
+        baseReward
+      });
+    } catch (error) {
+      this.activeMission = null;
+      this.activeVehicle = null;
+      this.lifecycle.abandonBriefing();
+      this.app?.uiManager?.showToast?.(`⚠️ ${error.message}`);
+      return false;
+    }
+    const run = this.lifecycle.snapshot().run;
+    this.timeRemaining = run.initialTimeLimit;
     this.initialTimeLimit = this.timeRemaining;
-    this.basePayout = this.getBasePayout(mission, choiceNode);
+    this.basePayout = run.baseReward;
     this.payout = this.basePayout;
     this.congestionSamples = 0;
     this.congestionTotal = 0;
@@ -343,6 +413,7 @@ export class MissionSystem {
     this.sabotageProgress = 0;
     this.sabotageActive = false;
     if (this.routePoints[0]) this.setNavigationTarget(this.routePoints[0]);
+    this.lifecycle.beginExecution();
 
     // Hide pickup ring for this mission
     const ringObj = this.pickupRings.find(r => r.mission.id === mission.id);
@@ -382,6 +453,9 @@ export class MissionSystem {
     if (this.app.audioSystem) {
       this.app.audioSystem.playHonk();
     }
+    if (run.weather.disposition === 'ADAPTED') {
+      this.app?.uiManager?.showToast?.(`🌦️ ${run.weather.reason}`);
+    }
     return true;
   }
 
@@ -397,7 +471,7 @@ export class MissionSystem {
   /** Starts the distinct sabotage interaction when the player is stopped on target. */
   handleActionKey() {
     const objective = this.activeMission?.missionType || this.activeMission?.objectiveType;
-    if (this.state !== 'IN_PROGRESS' || objective !== 'SABOTAGE') return false;
+    if (this.state !== MISSION_PHASES.ACTIVE || objective !== 'SABOTAGE') return false;
 
     const vehicle = this.getControlledVehicle();
     const inRange = vehicle?.mesh?.position?.distanceTo?.(this._dropoffPos) < MISSION_COMPLETE_RADIUS;
@@ -572,8 +646,7 @@ export class MissionSystem {
 
   /** Called when the player successfully delivers a passenger to the destination. */
   completeMission() {
-    if (!this.activeMission) return;
-    this.state = 'COMPLETED';
+    if (!this.activeMission || this.state !== MISSION_PHASES.ACTIVE) return false;
 
     const objective = this.activeMission.missionType || this.activeMission.objectiveType || 'DELIVERY';
     let satisfaction = 100;
@@ -584,20 +657,15 @@ export class MissionSystem {
       this.payout = Math.round(this.basePayout * (0.75 + satisfaction / 200));
     }
 
-    if (this.app?.economySystem) {
-      const previousRuns = this.missionRunCounts.get(this.activeMission.id) || 0;
-      const runNumber = previousRuns + 1;
-      this.missionRunCounts.set(this.activeMission.id, runNumber);
-      const economyMission = runNumber === 1
-        ? this.activeMission
-        : { ...this.activeMission, id: `${this.activeMission.id}:run-${runNumber}`, narrativeProgressDelta: 0 };
-      this.app.economySystem.recordMissionCompletion?.(economyMission, this.payout, { satisfaction });
-    } else if (this.app?.cityBuilder) {
-      this.app.cityBuilder.treasury = (this.app.cityBuilder.treasury || 0) + this.payout;
-    }
-
-    this.narrativeState.completedMissionIds.add(this.activeMission.id);
-    this.narrativeState.chronologyStep = Math.max(this.narrativeState.chronologyStep, this.narrativeState.completedMissionIds.size);
+    const committed = this.commitMissionResult({
+      outcome: 'SUCCESS',
+      payout: this.payout,
+      satisfaction,
+      summary: objective === 'TAXI'
+        ? `${this.activeMission.passengerName} arrived with ${satisfaction}% satisfaction.`
+        : `${this.activeMission.title} completed successfully.`
+    });
+    if (!committed) return false;
 
     // Show payout toast (always visible, regardless of Fun Mode)
     this.showPayoutToast(this.payout, objective === 'TAXI' ? `${this.activeMission.passengerName} (${satisfaction}% satisfaction)` : this.activeMission.passengerName);
@@ -613,13 +681,13 @@ export class MissionSystem {
       newsEl.textContent = `*** 💰 MISSION COMPLETE: ${this.activeMission.title}! EARNED $${this.payout.toLocaleString('en-US')}! *** ` + newsEl.textContent;
     }
 
-    this.clearActiveMission();
+    this.presentMissionResult({ success: true, satisfaction });
+    return true;
   }
 
   /** Called when the mission fails (e.g. timeout or released vehicle control). */
   failMission(reason = 'timeout') {
-    if (!this.activeMission) return;
-    this.state = 'FAILED';
+    if (!this.activeMission || this.state !== MISSION_PHASES.ACTIVE) return false;
 
     let toastMsg = 'Time ran out!';
     let tickerMsg = `*** ❌ FARE FAILED: Time ran out for ${this.activeMission.passengerName}! *** `;
@@ -633,7 +701,18 @@ export class MissionSystem {
     } else if (reason === 'race_lost') {
       toastMsg = 'A rival crossed the finish line first.';
       tickerMsg = `*** 🏁 RACE LOST: ${this.activeMission.title} has a new corporate champion. *** `;
+    } else if (reason === 'cancelled') {
+      toastMsg = 'Mission cancelled. Recovery options are available.';
+      tickerMsg = `*** ❌ MISSION CANCELLED: ${this.activeMission.title}. *** `;
     }
+
+    const committed = this.commitMissionResult({
+      outcome: 'FAILURE',
+      reason,
+      payout: 0,
+      summary: toastMsg
+    });
+    if (!committed) return false;
 
     const newsEl = document.querySelector('.chyron-ticker-text span');
     if (newsEl) {
@@ -647,17 +726,181 @@ export class MissionSystem {
 
     this.showFailureToast(toastMsg, this.activeMission.passengerName);
 
-    this.clearActiveMission();
+    this.presentMissionResult({ success: false });
+    return true;
+  }
+
+  commitMissionResult({ outcome, reason = null, payout = 0, satisfaction = null, summary }) {
+    try {
+      if (outcome === 'SUCCESS') {
+        this.lifecycle.resolveSuccess({ payout, satisfaction, summary });
+      } else {
+        this.lifecycle.resolveFailure(reason || 'failed', { payout: 0, satisfaction, summary });
+      }
+      this.lifecycle.beginCleanup();
+      const transaction = this.lifecycle.createOutcomeTransaction();
+      const receipt = this.app?.missionOutcomeService?.apply
+        ? this.app.missionOutcomeService.apply(transaction)
+        : {
+            transactionId: transaction.transactionId,
+            source: transaction.source,
+            summary: transaction.summary,
+            effects: []
+          };
+      this.lifecycle.commitCleanup(receipt);
+      this.app?.saveService?.scheduleSave?.('mission-progress');
+      return true;
+    } catch (error) {
+      if (this.state === MISSION_PHASES.CLEANUP) this.lifecycle.recordCleanupFailure(error);
+      this.app?.uiManager?.showToast?.('⚠️ Mission result could not be committed. Gameplay remains locked for safe recovery.');
+      console.error('Mission cleanup transaction failed.', error);
+      return false;
+    }
+  }
+
+  presentMissionResult({ success, satisfaction = null, transition = true }) {
+    if (this.destinationBeacon) {
+      this.disposeBeacon(this.destinationBeacon);
+      this.destinationBeacon = null;
+    }
+    if (this.hudEl) this.hudEl.classList.remove('hidden');
+    if (this.hudTitleEl) {
+      this.hudTitleEl.textContent = success
+        ? `${this.activeMission.title} complete${satisfaction == null ? '' : ` · ${satisfaction}% satisfaction`}`
+        : `${this.activeMission.title} failed`;
+    }
+    if (this.hudDistEl) this.hudDistEl.textContent = success ? 'RESULT COMMITTED' : 'RECOVERY READY';
+    if (this.hudTimerEl) this.hudTimerEl.textContent = success ? '✓ COMPLETE' : '↻ FAILED';
+    if (this.hudFareEl) this.hudFareEl.textContent = success ? `+$${this.payout.toLocaleString('en-US')}` : '$0';
+    if (this.cancelBtn) {
+      this.cancelBtn.textContent = 'Continue';
+      this.cancelBtn.title = 'Continue to management';
+      this.cancelBtn.setAttribute('aria-label', 'Acknowledge mission result and continue');
+    }
+    const retry = this.lifecycle.getRetryDecision();
+    if (this.retryBtn) {
+      this.retryBtn.classList.toggle('hidden', !retry.allowed);
+      this.retryBtn.disabled = !retry.allowed;
+      this.retryBtn.title = retry.reason;
+    }
+    if (transition) {
+      const transitionResult = this.requestTransition(GAME_STATES.RESULT, {
+        reason: 'mission-result-committed',
+        source: 'MissionSystem'
+      });
+      if (!transitionResult.ok) {
+        this.app?.uiManager?.showToast?.('⚠️ Result committed, but the result view could not open. Continue to recover safely.');
+      }
+    }
   }
 
   /** Called when the player manually cancels an active mission. */
   cancelMission() {
     if (!this.activeMission) return;
-    this.clearActiveMission();
+    if (this.state === MISSION_PHASES.RESULT) {
+      return this.acknowledgeResult();
+    }
+    if (this.state === MISSION_PHASES.ACTIVE) return this.failMission('cancelled');
+    return false;
+  }
+
+  retryMission() {
+    if (this.state !== MISSION_PHASES.RESULT) return false;
+    const decision = this.lifecycle.getRetryDecision();
+    if (!decision.allowed) return false;
+    const transitionResult = this.requestTransition(GAME_STATES.STREET_VEHICLE, {
+      reason: 'mission-retry',
+      source: 'MissionSystem',
+      target: this.activeVehicle,
+      control: this.activeVehicle ? {
+        action: 'ACQUIRE',
+        kind: 'VEHICLE',
+        entity: this.activeVehicle,
+        source: 'mission-retry'
+      } : undefined
+    });
+    if (!transitionResult.ok) {
+      this.app?.uiManager?.showToast?.(`⚠️ Retry could not begin: ${transitionResult.error?.message || 'vehicle control unavailable'}`);
+      return false;
+    }
+    const recovery = this.lifecycle.beginRecovery({ retry: true });
+    const checkpoint = recovery.decision.checkpoint?.payload || null;
+    this.lifecycle.finishRecovery({ retry: true });
+    this.restoreRetryExecution(checkpoint);
+    this.lifecycle.beginExecution();
+    this.showActiveMissionHud();
+    if (this.retryBtn) this.retryBtn.classList.add('hidden');
+    return true;
+  }
+
+  acknowledgeResult() {
+    if (this.state !== MISSION_PHASES.RESULT) return false;
+    const lifecycleBeforeRecovery = this.lifecycle.serialize();
+    this.lifecycle.beginRecovery({ retry: false });
+    this.lifecycle.finishRecovery({ retry: false });
+    const transitionResult = this.requestTransition(GAME_STATES.MANAGEMENT, {
+      reason: 'mission-result-acknowledged',
+      source: 'MissionSystem'
+    });
+    if (!transitionResult.ok) {
+      this.lifecycle.restore(lifecycleBeforeRecovery, { contentRegistry: this.app.contentRegistry });
+      this.app?.uiManager?.showToast?.(`⚠️ Result recovery could not finish: ${transitionResult.error?.message || 'management unavailable'}`);
+      return false;
+    }
+    this.clearMissionPresentation();
+    return true;
+  }
+
+  requestTransition(destination, options) {
+    const owner = this.app.transitionCoordinator || this.app.gameManager;
+    if (!owner) return { ok: true, snapshot: null, error: null };
+    if (typeof owner.tryTransitionTo === 'function') return owner.tryTransitionTo(destination, options);
+    try {
+      const transitionMethod = owner.transitionTo || owner.setState;
+      const snapshot = transitionMethod?.call(owner, destination, options) ?? null;
+      return { ok: true, snapshot, error: null };
+    } catch (error) {
+      console.warn(`Mission transition to ${destination} failed.`, error);
+      return { ok: false, snapshot: null, error };
+    }
+  }
+
+  restoreRetryExecution(checkpoint) {
+    const run = this.lifecycle.snapshot().run;
+    this.timeRemaining = checkpoint?.timeRemaining ?? run.initialTimeLimit;
+    this.initialTimeLimit = run.initialTimeLimit;
+    this.basePayout = run.baseReward;
+    this.payout = checkpoint?.payout ?? run.baseReward;
+    this.routeIndex = checkpoint?.routeIndex ?? 0;
+    this.raceElapsed = checkpoint?.raceElapsed ?? 0;
+    this.sabotageProgress = 0;
+    this.sabotageActive = false;
+    this.congestionSamples = checkpoint?.congestionSamples ?? 0;
+    this.congestionTotal = checkpoint?.congestionTotal ?? 0;
+    const target = this.routePoints[this.routeIndex];
+    if (target) {
+      this.setNavigationTarget(target);
+      if ((this.activeMission.missionType || this.activeMission.objectiveType) !== 'SURVIVAL') this.createDestinationBeacon(target);
+    }
+  }
+
+  showActiveMissionHud() {
+    if (this.hudEl) this.hudEl.classList.remove('hidden');
+    if (this.cancelBtn) {
+      this.cancelBtn.textContent = '✕';
+      this.cancelBtn.title = 'Cancel Mission';
+      this.cancelBtn.setAttribute('aria-label', 'Cancel active mission');
+    }
   }
 
   /** Resets all mission state, removes beacon, hides HUD, and starts cooldown timer. */
   clearActiveMission() {
+    if (this.state === MISSION_PHASES.ACTIVE) return this.failMission('cancelled');
+    if (this.state === MISSION_PHASES.RESULT) return this.acknowledgeResult();
+    return false;
+  }
+
+  clearMissionPresentation() {
     if (this.destinationBeacon) {
       this.disposeBeacon(this.destinationBeacon);
       this.destinationBeacon = null;
@@ -685,7 +928,12 @@ export class MissionSystem {
     this.raceLeader = null;
     this.sabotageProgress = 0;
     this.sabotageActive = false;
-    this.state = 'IDLE';
+    if (this.retryBtn) this.retryBtn.classList.add('hidden');
+    if (this.cancelBtn) {
+      this.cancelBtn.textContent = '✕';
+      this.cancelBtn.title = 'Cancel Mission';
+      this.cancelBtn.setAttribute('aria-label', 'Cancel active mission');
+    }
   }
 
   /**
@@ -701,13 +949,17 @@ export class MissionSystem {
     const activeVehicle = this.getControlledVehicle();
     const activeVType = activeVehicle ? activeVehicle.vType : null;
 
+    if (this.state === MISSION_PHASES.CHECKPOINT) this.lifecycle.resumeFromCheckpoint();
+
     // 1. Dynamic visibility & rotation of pickup rings
     for (const r of this.pickupRings) {
-      if (this.state === 'IN_PROGRESS') {
+      const missionOccupied = this.state !== MISSION_PHASES.IDLE;
+      const available = this.lifecycle.evaluateAvailability(r.mission).available;
+      if (missionOccupied) {
         r.group.visible = false;
       } else {
         // Show only matching vehicle types when driving, or show all when free-floating (no active vehicle)
-        r.group.visible = !activeVType || (r.mission.vehicleType === activeVType);
+        r.group.visible = available && (!activeVType || (r.mission.vehicleType === activeVType));
       }
 
       if (r.group.visible) {
@@ -722,7 +974,7 @@ export class MissionSystem {
 
     // 3. If IDLE, check distance to pickup rings (MISSION_TRIGGER_RADIUS capture zone)
     //    Only a directly controlled player vehicle can trigger missions.
-    if (this.state === 'IDLE' && this.triggerCooldown <= 0 && activeVehicle) {
+    if (this.state === MISSION_PHASES.IDLE && this.triggerCooldown <= 0 && activeVehicle) {
       let insideRing = null;
       for (const r of this.pickupRings) {
         if (!r.group.visible) continue;
@@ -744,7 +996,7 @@ export class MissionSystem {
       this.hideMissionAvailablePrompt();
     }
 
-    if (this.state !== 'IN_PROGRESS') return;
+    if (this.state !== MISSION_PHASES.ACTIVE) return;
 
     if (!activeVehicle || !activeVehicle.mesh || activeVehicle !== this.activeVehicle || activeVehicle.vType !== this.activeMission?.vehicleType) {
       this.failMission('vehicle_lost');
@@ -810,7 +1062,9 @@ export class MissionSystem {
         this.createDestinationBeacon(nextTarget);
         if (this.hudTitleEl) this.hudTitleEl.textContent = `${this.activeMission.title}: checkpoint ${this.routeIndex + 1}/${this.routePoints.length}`;
         this.app?.uiManager?.showToast?.(`🏁 Checkpoint ${this.routeIndex}/${this.routePoints.length - 1} cleared`);
+        this.recordExecutionCheckpoint(`route-${this.routeIndex}`);
       } else if (objective === 'SABOTAGE') {
+        if (!this.lifecycle.snapshot().run.checkpoint) this.recordExecutionCheckpoint('sabotage-target');
         if (this.hudDistEl) {
           const action = this.app?.inputManager?.getActionLabel?.('INTERACT') || 'E';
           this.hudDistEl.textContent = `STOP · PRESS ${action.toUpperCase()}`;
@@ -856,5 +1110,21 @@ export class MissionSystem {
       return sum;
     }, 0);
     return Math.max(0, Math.min(1, weighted / vehicles.length));
+  }
+
+  recordExecutionCheckpoint(checkpointId) {
+    if (this.state !== MISSION_PHASES.ACTIVE) return false;
+    this.lifecycle.recordCheckpoint(`${this.activeMission.id}:${checkpointId}`, {
+      timeRemaining: Math.max(0, this.timeRemaining),
+      payout: Math.max(0, this.payout),
+      routeIndex: this.routeIndex,
+      raceElapsed: Math.max(0, this.raceElapsed),
+      congestionSamples: this.congestionSamples,
+      congestionTotal: this.congestionTotal
+    });
+    this.app?.saveService?.scheduleSave?.('checkpoint', {
+      checkpoint: `${this.activeMission.id}:${checkpointId}`
+    });
+    return true;
   }
 }

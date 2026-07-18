@@ -10,6 +10,7 @@ import {
   createEmptyMissionOutcomeState,
   validateMissionOutcomeState
 } from '../missions/MissionOutcomeService.js';
+import { validateMissionLifecycleState } from '../missions/MissionLifecycleController.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -94,7 +95,11 @@ function controlledDescriptor(app) {
     [CONTROL_KINDS.PEDESTRIAN, app.pedestrianSystem?.controlledPedestrian, app.pedestrianSystem?.pedestrians],
     [CONTROL_KINDS.AIRCRAFT, app.aircraftSystem?.controlledAircraft, app.aircraftSystem?.aircraft ? [app.aircraftSystem.aircraft] : []]
   ];
-  const [kind, entity, collection] = candidates.find(([, candidate]) => candidate) || [];
+  const active = candidates.find(([, candidate]) => candidate)
+    || (app.missionSystem?.lifecycle?.phase === 'RESULT' && app.missionSystem?.activeVehicle
+      ? [CONTROL_KINDS.VEHICLE, app.missionSystem.activeVehicle, app.trafficSystem?.vehicles]
+      : null);
+  const [kind, entity, collection] = active || [];
   if (!entity?.mesh) return null;
   let contentId = entity.persistenceId || entity.interactionId;
   if (!contentId) {
@@ -119,7 +124,9 @@ function serializeMission(app) {
   const active = system?.activeMission
     ? {
         contentId: system.activeMission.id,
-        state: system.state,
+        // Retained for v1 save readers; detailed lifecycle phase is persisted
+        // separately under missions.lifecycle.
+        state: 'IN_PROGRESS',
         timeRemaining: system.timeRemaining,
         initialTimeLimit: system.initialTimeLimit,
         basePayout: system.basePayout,
@@ -137,6 +144,7 @@ function serializeMission(app) {
     chronologyStep: system?.narrativeState?.chronologyStep || 0,
     runCounts: [...(system?.missionRunCounts || new Map()).entries()],
     contracts: app.missionOutcomeService?.serialize?.() ?? null,
+    lifecycle: system?.lifecycle?.serialize?.() ?? null,
     active
   };
 }
@@ -309,6 +317,18 @@ export function validateGameState(data, {
       validateMissionOutcomeState(missions.contracts, { contentRegistry });
     } catch (error) {
       throw new SaveValidationError(error.message, { path: 'save.data.missions.contracts' });
+    }
+  }
+  if (missions.lifecycle != null) {
+    try {
+      validateMissionLifecycleState(missions.lifecycle, { contentRegistry });
+    } catch (error) {
+      throw new SaveValidationError(error.message, { path: 'save.data.missions.lifecycle' });
+    }
+    if (missions.active && missions.lifecycle.selectedMissionId !== missions.active.contentId) {
+      throw new SaveValidationError('must reference the same mission as the active execution snapshot.', {
+        path: 'save.data.missions.lifecycle.selectedMissionId'
+      });
     }
   }
   if (missions.active != null) {
@@ -501,10 +521,36 @@ export function restoreWorld(app, world) {
 function restoreMissionProgress(app, mission) {
   const system = app.missionSystem;
   if (!system) return;
-  system.narrativeState.completedMissionIds = new Set(mission.completedMissionIds);
-  system.narrativeState.dialogueChoices = structuredClone(mission.dialogueChoices);
-  system.narrativeState.chronologyStep = Math.max(0, Math.trunc(mission.chronologyStep || 0));
-  system.missionRunCounts = new Map(mission.runCounts.filter(entry => Array.isArray(entry) && typeof entry[0] === 'string' && Number.isInteger(entry[1]) && entry[1] >= 0));
+  if (mission.lifecycle) {
+    if (!system.lifecycle?.restoreProgress) {
+      throw new SaveValidationError('runtime mission lifecycle owner is unavailable.', {
+        path: 'save.data.missions.lifecycle'
+      });
+    }
+    system.lifecycle.restoreProgress(mission.lifecycle.progress);
+    system.pendingLifecycleRestore = structuredClone(mission.lifecycle);
+    return;
+  }
+  if (!system.lifecycle?.restoreProgress) {
+    system.narrativeState = {
+      completedMissionIds: new Set(mission.completedMissionIds),
+      dialogueChoices: structuredClone(mission.dialogueChoices),
+      chronologyStep: Math.max(0, Math.trunc(mission.chronologyStep || 0))
+    };
+    system.missionRunCounts = new Map(mission.runCounts);
+    return;
+  }
+  system.lifecycle.restoreProgress({
+    completedMissionIds: mission.completedMissionIds,
+    dialogueChoices: mission.dialogueChoices,
+    chronologyStep: Math.max(0, Math.trunc(mission.chronologyStep || 0)),
+    runCounts: mission.runCounts.filter(entry => (
+      Array.isArray(entry)
+      && typeof entry[0] === 'string'
+      && Number.isInteger(entry[1])
+      && entry[1] >= 0
+    ))
+  });
 }
 
 export function restoreStaticGameState(app, data) {
@@ -584,7 +630,21 @@ function restoreActiveMission(app, saved) {
   if (!mission) throw new SaveValidationError(`unknown mission content ID ${saved.contentId}.`, { path: 'save.data.missions.active.contentId' });
   system.activeMission = mission;
   system.activeVehicle = app.trafficSystem?.controlledVehicle || null;
-  system.state = 'IN_PROGRESS';
+  if (system.pendingLifecycleRestore) {
+    system.lifecycle.restore(system.pendingLifecycleRestore, { contentRegistry: app.contentRegistry });
+    system.pendingLifecycleRestore = null;
+  }
+  if (!system.lifecycle?.hasActiveRun) {
+    // Legacy v1 saves predate the complete lifecycle. Re-enter through the
+    // controller so the restored execution has one authoritative owner.
+    system.lifecycle.prepare(mission.id);
+    system.lifecycle.beginBriefing();
+    system.lifecycle.accept({
+      baseTimeLimit: Math.max(saved.initialTimeLimit || saved.timeRemaining || mission.timeLimit, 0.001),
+      baseReward: Math.max(saved.basePayout || saved.payout || 0, 0)
+    });
+    system.lifecycle.beginExecution();
+  }
   system.timeRemaining = Math.max(0, saved.timeRemaining || 0);
   system.initialTimeLimit = Math.max(system.timeRemaining, saved.initialTimeLimit || 0);
   system.basePayout = Math.max(0, saved.basePayout || 0);
@@ -596,13 +656,21 @@ function restoreActiveMission(app, saved) {
   system.sabotageProgress = Math.max(0, saved.sabotageProgress || 0);
   system.sabotageActive = Boolean(saved.sabotageActive);
   const target = system.routePoints[system.routeIndex];
-  if (target) {
+  if (target && system.state !== 'RESULT') {
     system.setNavigationTarget(target);
     if (objective !== 'SURVIVAL') system.createDestinationBeacon(target);
   }
   const ring = system.pickupRings.find(item => item.mission.id === mission.id);
   if (ring) ring.group.visible = false;
   system.hudEl?.classList?.remove?.('hidden');
+  if (system.state === 'RESULT') {
+    const resolution = system.lifecycle.snapshot().run.resolution;
+    system.presentMissionResult({
+      success: resolution?.outcome === 'SUCCESS',
+      satisfaction: resolution?.satisfaction ?? null,
+      transition: false
+    });
+  }
 }
 
 function restoreAlerts(app, alerts) {

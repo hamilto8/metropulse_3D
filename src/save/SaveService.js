@@ -31,6 +31,15 @@ export const AUTOSAVE_REASONS = Object.freeze({
   MANUAL: 'manual'
 });
 
+export class MissionSaveBlockedError extends Error {
+  constructor(decision) {
+    super(decision?.reason || 'Saving is temporarily unavailable while the mission result is committing.');
+    this.name = 'MissionSaveBlockedError';
+    this.code = decision?.code || 'MISSION_COMMIT_IN_PROGRESS';
+    this.userMessage = this.message;
+  }
+}
+
 function safeWindow() {
   try { return globalThis.window; } catch { return null; }
 }
@@ -97,7 +106,12 @@ export class SaveService {
   }
 
   createSnapshot({ reason = AUTOSAVE_REASONS.MANUAL, reasons = [reason], checkpoint = null } = {}) {
-    return createSaveDocument(captureGameState(this.app), {
+    const missionSave = this.app.missionSystem?.lifecycle?.canSave?.();
+    if (missionSave?.allowed === false) throw new MissionSaveBlockedError(missionSave);
+    const data = captureGameState(this.app);
+    validateGameState(data, { contentRegistry: this.app.contentRegistry });
+    validateGameReferences(this.app, data);
+    return createSaveDocument(data, {
       now: this.now,
       idFactory: this.idFactory,
       reason,
@@ -108,6 +122,7 @@ export class SaveService {
 
   scheduleSave(reason = AUTOSAVE_REASONS.WORLD_EDIT, { checkpoint = null } = {}) {
     if (this.restoring) return false;
+    if (this.app.missionSystem?.lifecycle?.canSave?.().allowed === false) return false;
     this.pendingReasons.add(reason);
     if (checkpoint != null) this.pendingCheckpoint = checkpoint;
     if (this.timer) return true;
@@ -128,6 +143,11 @@ export class SaveService {
 
   async saveNow({ reason = AUTOSAVE_REASONS.MANUAL, checkpoint = null } = {}) {
     if (this.restoring) return false;
+    const missionSave = this.app.missionSystem?.lifecycle?.canSave?.();
+    if (missionSave?.allowed === false) {
+      this.lastError = new MissionSaveBlockedError(missionSave);
+      return false;
+    }
     clearTimeout(this.timer);
     this.timer = null;
     this.pendingReasons.add(reason);

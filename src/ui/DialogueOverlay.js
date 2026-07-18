@@ -139,14 +139,14 @@ export class DialogueOverlay {
       startBtn.className = 'dialogue-choice-btn';
       startBtn.textContent = '🚕 Start Ride / Let\'s Go!';
       startBtn.addEventListener('click', () => {
-        // Capture both refs BEFORE calling hide(), which nulls them out.
+        // Start first so closing presentation cannot abandon the accepted
+        // renderer-free briefing state.
         const mission = this.currentMission;
         const missionSystem = this.missionSystem;
-        this.hide();
-        // Now safe to call startMission with the captured refs.
         if (missionSystem && mission) {
           missionSystem.startMission(mission, node);
         }
+        this.hide();
       });
       this.choicesEl.appendChild(startBtn);
       return;
@@ -330,10 +330,8 @@ export class DialogueOverlay {
     }
     if (this.missionSystem) {
       this.missionSystem.triggerCooldown = 4.0;
-      // Revert state from DIALOGUE_ACTIVE to IDLE if no mission was started
-      if (this.missionSystem.state === 'DIALOGUE_ACTIVE') {
-        this.missionSystem.state = 'IDLE';
-      }
+      // Closing an unaccepted briefing returns the lifecycle to IDLE.
+      this.missionSystem.lifecycle?.abandonBriefing?.();
     }
     this.currentMission = null;
     this.missionSystem = null; // Release reference to prevent stale callback leaks

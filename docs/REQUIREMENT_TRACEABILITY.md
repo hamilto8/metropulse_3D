@@ -35,7 +35,7 @@ the responsible system owns implementation.
 | GL-005 | A new player completes Builder → Street → Builder without external help. | Onboarding controller | Browser + Playtest | UX Lead | Not Started |
 | GL-006 | Mode entry validates a safe target and offers a safe alternative when invalid. | Transition coordinator | Integration + Browser | Tech Lead | Not Started |
 | GL-007 | Builder-to-Street takes ≤1.5 s warm on target and ≤3 s minimum profile. | Transition coordinator | Performance | Performance Lead | Not Started |
-| GL-008 | Street failure returns to a safe checkpoint with a bounded, disclosed consequence. | Recovery controller | Scenario + Browser | Gameplay Lead | Not Started |
+| GL-008 | Street failure returns to a safe checkpoint with a bounded, disclosed consequence. | Recovery controller | Scenario + Browser | Gameplay Lead | Implemented |
 | GL-009 | Insolvency offers a recovery contract/restrictions instead of an unrecoverable game over. | Economy / missions | Scenario | Systems Designer | Not Started |
 | GL-010 | Exactly one primary mode owns camera and high-level input at a time. | GameManager / input | Integration + 50-cycle soak | Tech Lead | In Progress |
 
@@ -82,12 +82,12 @@ the responsible system owns implementation.
 |---|---|---|---|---|---|
 | MIS-001 | MVP release set is frozen at 10 authored missions and 6 activity templates. | MVP scope config | Unit | Product Lead | Verified |
 | MIS-002 | Templates define prerequisites, valid tagged locations, route logic, fail conditions, modifiers, rewards, and city consequences. | Mission schema | Validation + Scenario | Content Lead | In Progress |
-| MIS-003 | Every mission implements Offer, Accept, Brief, Execute, Resolve, Debrief, and Cleanup. | Mission controller | Integration + Browser | Gameplay Lead | Not Started |
+| MIS-003 | Every mission implements Offer, Accept, Brief, Execute, Resolve, Debrief, and Cleanup. | Mission controller | Integration + Browser | Gameplay Lead | In Progress |
 | MIS-004 | Offers disclose objective, reward range, risks, city conditions, and prerequisites. | Mission UI/domain | Browser + UX | UX Lead | Not Started |
 | MIS-005 | Execution uses 2–4 beats built from shared mechanics. | Mission content | Content validation + Playtest | Content Lead | In Progress |
 | MIS-006 | Debrief plainly itemizes performance, damage, Heat, reputation, city effects, and unlocks. | Result/debrief UI | Browser + Playtest | UX Lead | Not Started |
 | MIS-007 | Cleanup releases temporary entities and applies/persists results exactly once. | Mission transactions | Integration + restart soak | Tech Lead | In Progress |
-| MIS-008 | Failure provides checkpoint/retry/recovery and cannot duplicate reward or persistent damage. | Mission recovery | Integration + Browser | Tech Lead | Not Started |
+| MIS-008 | Failure provides checkpoint/retry/recovery and cannot duplicate reward or persistent damage. | Mission recovery | Integration + Browser | Tech Lead | Verified |
 | MIS-009 | A designer can author a second mission from templates without core-system code changes. | Content pipeline | Content exercise | Content Lead | In Progress |
 | MIS-010 | Generated activities choose only authored valid locations and never impossible routes. | Activity generator / graph | Scenario | AI Lead | Not Started |
 
@@ -145,7 +145,7 @@ the responsible system owns implementation.
 | SAVE-005 | A rotating recovery slot protects against corruption and interrupted writes. | SaveService | Integration + fault injection | Tech Lead | Not Started |
 | SAVE-006 | Ordered migrations retain originals, reject future versions safely, and offer a new-game recovery path. | Save migrations | Unit + Browser | Tech Lead | Not Started |
 | SAVE-007 | Save/load preserves city, player, mission, economy, progression, and controlled-entity state across the support matrix. | SaveService / session | Scenario + Browser | QA Lead | In Progress |
-| SAVE-008 | Mission rewards and major transactions cannot duplicate across save/load or retry. | Transaction ledger | Integration | Tech Lead | In Progress |
+| SAVE-008 | Mission rewards and major transactions cannot duplicate across save/load or retry. | Transaction ledger | Integration | Tech Lead | Verified |
 | SAVE-009 | MVP performs no offline income or unbounded background-tab catch-up. | Scheduler / SaveService | Integration + Browser | Tech Lead | In Progress |
 | SAVE-010 | A clean profile, valid resume, corrupt-save recovery, and explicit new game are understandable and functional. | Boot flow / SaveService | Browser | UX Lead | In Progress |
 

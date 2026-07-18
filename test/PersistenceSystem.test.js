@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SaveService, SAVE_STATUS } from '../src/save/SaveService.js';
+import { MissionSaveBlockedError, SaveService, SAVE_STATUS } from '../src/save/SaveService.js';
+import { MissionLifecycleController } from '../src/missions/MissionLifecycleController.js';
 import {
   SAVE_FORMAT,
   SAVE_SCHEMA_VERSION,
@@ -196,6 +197,65 @@ test('autosave reasons coalesce and checkpoints are recorded in metadata', async
   assert.deepEqual(repository.current.metadata.reasons.sort(), ['checkpoint', 'economy-change', 'world-edit']);
   assert.equal(repository.current.metadata.checkpoint, 'mission_executive:dropoff');
   service.destroy();
+});
+
+test('mission cleanup blocks manual saves and autosaves until its result is committed', async () => {
+  const repository = new MemoryRepository();
+  const { app } = createAppHarness();
+  let allowed = false;
+  app.missionSystem.lifecycle = {
+    canSave: () => ({
+      allowed,
+      code: allowed ? null : 'MISSION_COMMIT_IN_PROGRESS',
+      reason: allowed ? null : 'Mission cleanup is still committing.'
+    })
+  };
+  const service = new SaveService(app, { repository, windowRef: null, documentRef: null });
+
+  assert.equal(service.scheduleSave('mission-progress'), false);
+  assert.equal(await service.saveNow({ reason: 'manual' }), false);
+  assert.equal(repository.commits.length, 0);
+  assert.throws(() => service.createSnapshot(), error => (
+    error instanceof MissionSaveBlockedError && error.code === 'MISSION_COMMIT_IN_PROGRESS'
+  ));
+
+  allowed = true;
+  assert.equal(await service.saveNow({ reason: 'manual' }), true);
+  assert.equal(repository.commits.length, 1);
+  service.destroy();
+});
+
+test('active checkpoint lifecycle state is validated with the legacy execution adapter', () => {
+  const contentRegistry = getProductionContentRegistry();
+  const mission = contentRegistry.get('missions', 'mission_executive');
+  const lifecycle = new MissionLifecycleController({ missions: [mission] });
+  lifecycle.prepare(mission.id);
+  lifecycle.beginBriefing();
+  lifecycle.accept({ baseTimeLimit: 70, baseReward: 50_000 });
+  lifecycle.beginExecution();
+  lifecycle.recordCheckpoint(`${mission.id}:pickup`, { timeRemaining: 64 });
+
+  const data = validData();
+  data.missions.lifecycle = lifecycle.serialize();
+  data.missions.active = {
+    contentId: mission.id,
+    state: 'IN_PROGRESS',
+    timeRemaining: 64,
+    initialTimeLimit: 70,
+    basePayout: 50_000,
+    payout: 50_000,
+    routeIndex: 0,
+    raceElapsed: 0,
+    sabotageProgress: 0,
+    sabotageActive: false
+  };
+  assert.equal(validateGameState(data, { contentRegistry }), true);
+
+  data.missions.lifecycle.selectedMissionId = 'mission_missing';
+  assert.throws(
+    () => validateGameState(data, { contentRegistry }),
+    /unknown mission mission_missing/
+  );
 });
 
 test('the whole document is validated before any live domain is mutated', () => {

@@ -382,7 +382,11 @@ export function validateGameData(sources = PRODUCTION_GAME_DATA) {
     }
     vehicleIds.add(id);
   });
-  validateMissionData(sources.missions, { districtIndex: districts, vehicleIds });
+  validateMissionData(sources.missions, {
+    districtIndex: districts,
+    vehicleIds,
+    weatherIds: new Set(Object.keys(WEATHER_DEFINITIONS))
+  });
   const missionIndex = new Map(sources.missions.map(mission => [mission.id, mission]));
 
   const indexes = {

@@ -92,6 +92,50 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
       app.missionSystem.testMissionId = mission.id;
       return Object.freeze({ id: mission.id, type: mission.missionType || mission.objectiveType });
     },
+    missionLifecycle: () => app.missionSystem?.lifecycle?.snapshot?.() || null,
+    startMission: missionId => {
+      ensureManagement();
+      const mission = app.missionSystem?.missions?.find(candidate => candidate.id === missionId);
+      if (!mission) throw new RangeError(`Unknown mission: ${missionId}`);
+      const vehicle = (app.trafficSystem?.vehicles || []).find(candidate => (
+        candidate?.mesh?.parent
+        && candidate.vType === mission.vehicleType
+        && !candidate.crashed
+        && !candidate.isDestroyed
+        && !candidate.userControlled
+      ));
+      if (!vehicle) throw new Error(`No ${mission.vehicleType} vehicle is available for ${missionId}`);
+      app.transitionCoordinator.transitionTo('STREET_VEHICLE', {
+        reason: 'browser-mission-start',
+        source: 'BrowserTestBridge',
+        target: vehicle,
+        control: { action: 'ACQUIRE', kind: 'VEHICLE', entity: vehicle, source: 'mission-test' }
+      });
+      vehicle.mesh.position.set(mission.pickup.x, vehicle.mesh.position.y, mission.pickup.z);
+      if (vehicle.physicsBody?.position) {
+        vehicle.physicsBody.position.x = mission.pickup.x;
+        vehicle.physicsBody.position.z = mission.pickup.z;
+      }
+      app.missionSystem.triggerCooldown = 0;
+      if (!app.missionSystem.startMission(mission)) throw new Error(`Could not start ${missionId}`);
+      return app.missionSystem.lifecycle.snapshot();
+    },
+    resolveMission: outcome => {
+      const success = String(outcome).toUpperCase() === 'SUCCESS';
+      const committed = success
+        ? app.missionSystem.completeMission()
+        : app.missionSystem.failMission('timeout');
+      if (!committed) throw new Error('Mission result did not commit');
+      return app.missionSystem.lifecycle.snapshot();
+    },
+    retryMission: () => {
+      if (!app.missionSystem.retryMission()) throw new Error('Mission retry was rejected');
+      return app.missionSystem.lifecycle.snapshot();
+    },
+    acknowledgeMissionResult: () => {
+      if (!app.missionSystem.acknowledgeResult()) throw new Error('Mission result acknowledgement was rejected');
+      return app.missionSystem.lifecycle.snapshot();
+    },
     enterState,
     openPauseMenu: () => app.pauseManager?.openMenu?.({ source: 'BrowserTestBridge' }),
     closePauseMenu: () => app.pauseManager?.closeMenu?.({ source: 'BrowserTestBridge' }),
@@ -99,7 +143,8 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
       enterState('STREET_VEHICLE');
       const mission = app.missionSystem?.missions?.find(candidate => candidate.id === missionId);
       if (!mission) throw new RangeError(`Unknown mission: ${missionId}`);
-      app.missionSystem.state = 'DIALOGUE_ACTIVE';
+      app.missionSystem.lifecycle.prepare(mission.id);
+      app.missionSystem.lifecycle.beginBriefing();
       app.dialogueOverlay.showMissionDialogue(mission, app.missionSystem);
       return pauseProbe();
     },
@@ -115,10 +160,45 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
     primeGameplayClocks: () => {
       enterState('STREET_VEHICLE');
       const mission = app.missionSystem?.missions?.[0];
+      let controlledVehicle = app.trafficSystem?.controlledVehicle;
+      if (controlledVehicle?.vType !== mission.vehicleType) {
+        app.transitionCoordinator.transitionTo('MANAGEMENT', {
+          reason: 'browser-clock-matching-vehicle',
+          source: 'BrowserTestBridge'
+        });
+        const matchingVehicle = (app.trafficSystem?.vehicles || []).find(candidate => (
+          candidate?.mesh?.parent
+          && candidate.vType === mission.vehicleType
+          && !candidate.crashed
+          && !candidate.isDestroyed
+          && !candidate.userControlled
+        ));
+        if (!matchingVehicle) throw new Error(`Clock fixture lacks a ${mission.vehicleType} vehicle`);
+        app.transitionCoordinator.transitionTo('STREET_VEHICLE', {
+          reason: 'browser-clock-matching-vehicle',
+          source: 'BrowserTestBridge',
+          target: matchingVehicle,
+          control: { action: 'ACQUIRE', kind: 'VEHICLE', entity: matchingVehicle, source: 'clock-test' }
+        });
+        controlledVehicle = matchingVehicle;
+      }
+      app.missionSystem.testLifecycleBeforeClock = app.missionSystem.lifecycle.serialize();
+      app.missionSystem.lifecycle.prepare(mission.id);
+      app.missionSystem.lifecycle.beginBriefing();
+      app.missionSystem.lifecycle.accept({
+        baseTimeLimit: 42,
+        baseReward: app.missionSystem.getBasePayout(mission)
+      });
+      app.missionSystem.lifecycle.beginExecution();
       app.missionSystem.activeMission = mission;
-      app.missionSystem.activeVehicle = app.trafficSystem?.controlledVehicle;
-      app.missionSystem.state = 'IN_PROGRESS';
+      app.missionSystem.activeVehicle = controlledVehicle;
       app.missionSystem.timeRemaining = 42;
+      app.missionSystem.initialTimeLimit = 42;
+      app.missionSystem.basePayout = app.missionSystem.getBasePayout(mission);
+      app.missionSystem.payout = app.missionSystem.basePayout;
+      app.missionSystem.routePoints = mission.dropoff ? [mission.dropoff] : [];
+      app.missionSystem.routeIndex = 0;
+      if (mission.dropoff) app.missionSystem.setNavigationTarget(mission.dropoff);
       app.pedestrianSystem.isWanted = true;
       app.pedestrianSystem.escapeTimer = 3.5;
       return pauseProbe();
@@ -126,7 +206,11 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
     clearGameplayClockFixture: () => {
       app.missionSystem.activeMission = null;
       app.missionSystem.activeVehicle = null;
-      app.missionSystem.state = 'IDLE';
+      app.missionSystem.lifecycle.restore(
+        app.missionSystem.testLifecycleBeforeClock,
+        { contentRegistry: app.contentRegistry }
+      );
+      app.missionSystem.testLifecycleBeforeClock = null;
       app.pedestrianSystem.isWanted = false;
       app.pedestrianSystem.escapeTimer = 0;
       return pauseProbe();

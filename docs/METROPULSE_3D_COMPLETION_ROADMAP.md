@@ -779,15 +779,49 @@ P3.1 completion evidence (2026-07-18):
 
 #### P3.2 Complete mission lifecycle
 
-- [ ] Implement mission availability and prerequisite evaluation.
-- [ ] Add preparation/briefing, approach, active execution, checkpoint,
+- [x] Implement mission availability and prerequisite evaluation.
+- [x] Add preparation/briefing, approach, active execution, checkpoint,
   completion/failure, cleanup, result, and recovery states.
-- [ ] Add checkpoint/retry rules appropriate to each activity template.
-- [ ] Do not clear an active mission before its cleanup and result transaction
+- [x] Add checkpoint/retry rules appropriate to each activity template.
+- [x] Do not clear an active mission before its cleanup and result transaction
   are committed.
-- [ ] Prevent mode changes or saves from bypassing mission cleanup.
-- [ ] Make mission weather compatibility explicit: allowed, adapted, delayed,
+- [x] Prevent mode changes or saves from bypassing mission cleanup.
+- [x] Make mission weather compatibility explicit: allowed, adapted, delayed,
   or blocked with a clear reason.
+
+P3.2 completion evidence (2026-07-18):
+
+- `src/missions/MissionLifecycleController.js` is the renderer-free lifecycle
+  authority. It publishes immutable availability and phase snapshots, evaluates
+  mission/follow-up/city prerequisites, retains stable run/attempt identities,
+  and owns progress, checkpoint, result, and bounded recovery rules.
+- The complete state path is preparation, briefing, approach, active execution,
+  checkpoint, completion/failure, cleanup, result, and recovery. The legacy
+  `MissionSystem` now adapts world/Three.js/DOM events to that controller rather
+  than clearing or rewarding itself.
+- Cleanup creates one attempt-scoped idempotent transaction and requires the
+  matching `MissionOutcomeService` receipt before entering Result. Capital is
+  awarded only by the outcome authority. Cleanup failure retains mission
+  ownership and blocks mode escape and persistence.
+- Shared weather policies explicitly produce Allowed, Adapted, Delayed, or
+  Blocked decisions with reasons and locked timing/reward adaptations. Every
+  authored mission declares prerequisites and a weather policy, validated at
+  boot with missing-reference and circular-graph rejection.
+- Taxi/Courier/Delivery restart approach, Race and Sabotage restore the latest
+  meaningful checkpoint, and Survival restarts with a tighter attempt bound.
+  Retry exhaustion is explicit; attempt transaction IDs cannot collide.
+- Save capture is lifecycle-gated and fully validated before write. Active,
+  checkpoint, and Result snapshots restore safely; boot defers active lifecycle
+  ownership until entity/state restoration, and Result retains a recovery
+  vehicle descriptor without violating live control ownership.
+- Focused unit coverage exercises availability, every phase, weather decisions,
+  checkpoint strategies, retry bounds, idempotent cleanup, cleanup failure,
+  immutable round-trip state, authoring validation, and save guards. The Chrome
+  WebGL flow covers failure, retry, successful consequence commit, Result save
+  and reload, and recovery to Management. The operational contract is documented
+  in `MISSION_LIFECYCLE.md`.
+- Verification at completion: 339 Node tests, the production build, and all six
+  Chrome WebGL acceptance flows pass.
 
 #### P3.3 Result and explanation UI
 

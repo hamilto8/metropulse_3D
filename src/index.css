@@ -1463,6 +1463,22 @@ input[type="range"]:disabled::-webkit-slider-runnable-track {
   background: rgba(223, 0, 84, 0.6);
 }
 
+.mission-retry-btn {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid rgba(68, 255, 136, 0.75);
+  border-radius: 999px;
+  background: rgba(68, 255, 136, 0.16);
+  color: #dfffea;
+  font: 700 0.78rem var(--font-mono);
+  cursor: pointer;
+}
+
+.mission-retry-btn:hover,
+.mission-retry-btn:focus-visible {
+  background: rgba(68, 255, 136, 0.32);
+}
+
 /* Dialogue Modal Overlay */
 .dialogue-overlay {
   position: absolute;
