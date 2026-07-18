@@ -1126,20 +1126,41 @@ export class PedestrianSystem {
     }
   }
 
-  toggleUserControl(pedestrian) {
+  toggleUserControl(pedestrian, { coordinated = false } = {}) {
     if (!pedestrian) return false;
+    if (!coordinated && this.app?.transitionCoordinator) {
+      if (pedestrian.userControlled && this.controlledPedestrian === pedestrian) {
+        this.app.transitionCoordinator.transitionTo(GAME_STATES.MANAGEMENT, {
+          reason: 'pedestrian-release',
+          source: 'PedestrianSystem',
+          target: pedestrian,
+          control: { action: 'RELEASE', kind: 'PEDESTRIAN', entity: pedestrian }
+        });
+        return false;
+      }
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.STREET_ON_FOOT, {
+        reason: 'pedestrian-control',
+        source: 'PedestrianSystem',
+        target: pedestrian,
+        control: { action: 'ACQUIRE', kind: 'PEDESTRIAN', entity: pedestrian }
+      });
+      return result.ok;
+    }
     
     if (pedestrian.userControlled && this.controlledPedestrian === pedestrian) {
-      this.releaseControl(pedestrian);
+      this.releaseControl(pedestrian, { coordinated: true });
       return false;
     } else {
       // Release any currently controlled pedestrian
       if (this.controlledPedestrian && this.controlledPedestrian !== pedestrian) {
-        this.releaseControl(this.controlledPedestrian);
+        this.releaseControl(this.controlledPedestrian, { coordinated: true });
       }
       // Release control of any vehicle to prevent conflicts
       if (this.app.trafficSystem && this.app.trafficSystem.controlledVehicle) {
-        this.app.trafficSystem.releaseControl(this.app.trafficSystem.controlledVehicle);
+        this.app.trafficSystem.releaseControl(
+          this.app.trafficSystem.controlledVehicle,
+          { coordinated: true }
+        );
       }
       if (pedestrian.archetype === 'CRIMINAL' && pedestrian.behaviorState?.target) {
         finishAggression(pedestrian, pedestrian.behaviorState, this.random);
@@ -1148,7 +1169,6 @@ export class PedestrianSystem {
       
       pedestrian.userControlled = true;
       this.controlledPedestrian = pedestrian;
-      this.app.gameManager?.setState?.(GAME_STATES.STREET_ON_FOOT, { reason: 'pedestrian-control', source: 'PedestrianSystem', target: pedestrian });
       pedestrian.info['Mood'] = '🎮 USER CONTROLLED';
       pedestrian.info['Activity'] = 'Walking streets';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
@@ -1244,18 +1264,23 @@ export class PedestrianSystem {
     }
   }
 
-  releaseControl(pedestrian) {
+  releaseControl(pedestrian, { coordinated = false } = {}) {
     if (!pedestrian?.mesh) return false;
+    if (!coordinated && this.controlledPedestrian === pedestrian && this.app?.transitionCoordinator) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.MANAGEMENT, {
+        reason: 'pedestrian-release',
+        source: 'PedestrianSystem',
+        target: pedestrian,
+        control: { action: 'RELEASE', kind: 'PEDESTRIAN', entity: pedestrian }
+      });
+      return result.ok;
+    }
     const handoffPose = captureAiHandoffPose(pedestrian);
     if (!handoffPose) return false;
     pedestrian.userControlled = false;
     if (this.controlledPedestrian === pedestrian) {
       this.controlledPedestrian = null;
     }
-    if (!this.app.trafficSystem?.controlledVehicle) {
-      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'pedestrian-release', source: 'PedestrianSystem' });
-    }
-    
     pedestrian.info['Mood'] = pedestrian.defaultMood || 'Energized';
     pedestrian.info['Activity'] = pedestrian.defaultActivity || 'Strolling Downtown';
     if (pedestrian.behaviorState) {

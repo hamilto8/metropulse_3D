@@ -71,6 +71,20 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   ));
   expect(mission.id).toBe('mission_executive');
 
+  // Regression for the obstructed editor camera plus the P1.2 ownership soak.
+  // Each cycle covers management -> pedestrian -> vehicle -> pedestrian ->
+  // management -> builder -> management using the real runtime coordinator.
+  const soak = await page.evaluate(() => window.__METROPULSE_TEST__.runTransitionSoak(50));
+  expect(soak.cycles).toBe(50);
+  expect(soak.after.state.mode).toBe('MANAGEMENT');
+  expect(soak.after.state.activeTransition).toBeNull();
+  expect(soak.after.controlledEntity).toBeNull();
+  expect(soak.after.entities.physicsBodies).toBe(soak.before.entities.physicsBodies);
+  expect(soak.after.entities.sceneObjects).toBe(soak.before.entities.sceneObjects);
+  expect(soak.cameraClear).toBe(true);
+  expect(soak.inputSuspended).toBe(false);
+  expect(soak.heldActionCount).toBe(0);
+
   await page.waitForTimeout(1_100);
   const errors = await page.evaluate(() => ({
     bridge: window.__METROPULSE_TEST__.getErrors(),

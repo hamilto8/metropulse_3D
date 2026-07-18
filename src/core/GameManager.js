@@ -3,7 +3,7 @@
  *
  * GameManager decides whether a transition is legal and records its contract.
  * It deliberately does not manipulate Three.js, DOM, audio, or entity systems;
- * those declared effects are executed by the Phase 1 transition coordinator.
+ * those declared effects are executed by TransitionCoordinator.
  */
 
 import {
@@ -380,7 +380,7 @@ export class GameManager {
         to: transition.to,
         transitionId: transition.id
       });
-      this.failTransition(error, { context });
+      if (safeOptions.deferFailure !== true) this.failTransition(error, { context });
       throw error;
     }
 
@@ -409,7 +409,7 @@ export class GameManager {
           to: transition.to,
           transitionId: transition.id
         });
-        this.failTransition(error, { context });
+        if (safeOptions.deferFailure !== true) this.failTransition(error, { context });
         throw error;
       }
     }

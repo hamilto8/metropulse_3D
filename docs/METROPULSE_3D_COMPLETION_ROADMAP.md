@@ -351,18 +351,41 @@ P1.1 completion evidence (2026-07-17):
 
 #### P1.2 Transition coordinator
 
-- [ ] Implement a coordinator that executes transition steps in a defined
+- [x] Implement a coordinator that executes transition steps in a defined
   order: validate, suspend input, clear held actions, capture source state,
   hand off entity ownership, position camera, configure simulation, configure
   UI/audio, validate destination, then commit.
-- [ ] Make partial transitions compensatable or idempotent.
-- [ ] Ensure the source controlled entity cannot be orphaned or controlled by
+- [x] Make partial transitions compensatable or idempotent.
+- [x] Ensure the source controlled entity cannot be orphaned or controlled by
   two systems.
-- [ ] Ensure vehicle-to-pedestrian, pedestrian-to-vehicle, management-to-street,
+- [x] Ensure vehicle-to-pedestrian, pedestrian-to-vehicle, management-to-street,
   street-to-management, and management-to-builder handoffs preserve valid
   transforms.
-- [ ] Add safe camera spawn/clearance queries so a camera cannot begin inside a
+- [x] Add safe camera spawn/clearance queries so a camera cannot begin inside a
   tree, building, vehicle, terrain, or water volume.
+
+P1.2 completion evidence (2026-07-17):
+
+- `src/core/TransitionCoordinator.js` owns the ordered synchronous transaction,
+  reentrancy guard, compensation stack, unconditional cleanup, events, and
+  destination-contract validation. `src/app/MetroPulseTransitionRuntime.js`
+  adapts entity, camera, simulation-policy, UI, and ownership-driven audio
+  effects without moving renderer concerns into `GameManager`.
+- Traffic, pedestrian, aircraft, mission, camera-preset, and city-editor entry
+  paths request the production coordinator. Narrow coordinated domain methods
+  prevent nested transitions while preserving existing AI/physics handoffs.
+- `src/camera/CameraClearanceQuery.js` and `CameraRig` share deterministic
+  terrain, water, building, scenery/tree, vehicle, pedestrian, and aircraft
+  clearance for both spawn and continuous chase poses.
+- Unit coverage verifies exact phase order, held-input cleanup, compensation,
+  destination ownership, idempotency, reentrancy, slopes, obstacle classes,
+  water, and fail-closed camera search. The Playwright smoke flow performs 50
+  complete management/builder/on-foot/vehicle cycles and checks transforms,
+  ownership, camera clearance, input, physics bodies, and scene objects.
+- Verification at completion: 258 Node tests, production build, and the
+  deterministic Playwright WebGL transition soak pass. The operational
+  contract is documented in `TRANSITION_COORDINATOR.md` and
+  `GAME_STATE_MACHINE.md`.
 
 #### P1.3 Simulation scheduler
 

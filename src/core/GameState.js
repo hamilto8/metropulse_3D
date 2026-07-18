@@ -2,7 +2,8 @@
  * Renderer-independent game-session state definitions.
  *
  * This module describes policy; GameManager owns the mutable state and the
- * future TransitionCoordinator will execute the declared effects.
+ * TransitionCoordinator executes the declared effects through the runtime
+ * adapter while this module remains renderer-independent.
  */
 
 export const GAME_STATES = Object.freeze({

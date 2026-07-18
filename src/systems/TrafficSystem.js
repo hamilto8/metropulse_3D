@@ -136,18 +136,39 @@ export class TrafficSystem {
     return true;
   }
 
-  toggleUserControl(vehicle, { source = 'camera', pedestrian = null } = {}) {
+  toggleUserControl(vehicle, { source = 'camera', pedestrian = null, coordinated = false } = {}) {
     if (!vehicle || vehicle.isDestroyed) return false;
+    if (!coordinated && this.app?.transitionCoordinator) {
+      if (vehicle.userControlled && this.controlledVehicle === vehicle) {
+        this.app.transitionCoordinator.transitionTo(GAME_STATES.MANAGEMENT, {
+          reason: 'vehicle-release',
+          source: 'TrafficSystem',
+          target: vehicle,
+          control: { action: 'RELEASE', kind: 'VEHICLE', entity: vehicle }
+        });
+        return false;
+      }
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.STREET_VEHICLE, {
+        reason: 'vehicle-control',
+        source: 'TrafficSystem',
+        target: vehicle,
+        control: { action: 'ACQUIRE', kind: 'VEHICLE', entity: vehicle, source, pedestrian }
+      });
+      return result.ok;
+    }
     if (vehicle.userControlled && this.controlledVehicle === vehicle) {
-      this.releaseControl(vehicle);
+      this.releaseControl(vehicle, { coordinated: true });
       return false;
     } else {
       if (this.controlledVehicle && this.controlledVehicle !== vehicle) {
-        this.releaseControl(this.controlledVehicle);
+        this.releaseControl(this.controlledVehicle, { coordinated: true });
       }
       // Release control of any pedestrian to prevent conflicts
       if (this.app && this.app.pedestrianSystem && this.app.pedestrianSystem.controlledPedestrian) {
-        this.app.pedestrianSystem.releaseControl(this.app.pedestrianSystem.controlledPedestrian);
+        this.app.pedestrianSystem.releaseControl(
+          this.app.pedestrianSystem.controlledPedestrian,
+          { coordinated: true }
+        );
       }
       
       // If the vehicle was parked, unpark it!
@@ -171,7 +192,6 @@ export class TrafficSystem {
       vehicle.userControlled = true;
       this.controlledVehicle = vehicle;
       this.controlSession = Object.freeze({ source, pedestrian });
-      this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'vehicle-control', source: 'TrafficSystem', target: vehicle });
       vehicle.info['Status'] = '🎮 USER CONTROLLED';
       if (this.app.uiManager && this.app.uiManager.addAlert) {
         this.app.uiManager.addAlert(`🏎️ Direct control engaged: ${vehicle.vType || 'VEHICLE'}`, 'info');
@@ -220,8 +240,17 @@ export class TrafficSystem {
     }
   }
 
-  releaseControl(vehicle) {
+  releaseControl(vehicle, { coordinated = false } = {}) {
     if (!vehicle?.mesh) return false;
+    if (!coordinated && this.controlledVehicle === vehicle && this.app?.transitionCoordinator) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.MANAGEMENT, {
+        reason: 'vehicle-release',
+        source: 'TrafficSystem',
+        target: vehicle,
+        control: { action: 'RELEASE', kind: 'VEHICLE', entity: vehicle }
+      });
+      return result.ok;
+    }
     const handoffPose = captureAiHandoffPose(vehicle);
     if (!handoffPose) return false;
     vehicle.userControlled = false;
@@ -261,10 +290,6 @@ export class TrafficSystem {
       this.app.missionSystem.failMission('released');
     }
 
-    if (!this.app.pedestrianSystem?.controlledPedestrian) {
-      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'vehicle-release', source: 'TrafficSystem' });
-    }
-
     completeAiHandoff(vehicle, {
       pose: handoffPose,
       nodes: this.nodes?.values?.(),
@@ -283,13 +308,28 @@ export class TrafficSystem {
     return true;
   }
 
-  exitControlledVehicle() {
+  exitControlledVehicle({ coordinated = false } = {}) {
     const v = this.controlledVehicle;
     if (!v) return false;
+    if (!coordinated && this.app?.transitionCoordinator) {
+      const resumesPedestrian = this.controlSession?.source === 'pedestrian';
+      const destination = resumesPedestrian
+        ? GAME_STATES.STREET_ON_FOOT
+        : GAME_STATES.MANAGEMENT;
+      const result = this.app.transitionCoordinator.tryTransitionTo(destination, {
+        reason: resumesPedestrian ? 'vehicle-to-pedestrian' : 'vehicle-release',
+        source: 'TrafficSystem',
+        target: v,
+        control: resumesPedestrian
+          ? { action: 'EXIT_VEHICLE', kind: 'PEDESTRIAN', sourceVehicle: v }
+          : { action: 'RELEASE', kind: 'VEHICLE', entity: v }
+      });
+      return result.ok;
+    }
     const session = this.controlSession || { source: 'camera', pedestrian: null };
 
     if (session.source !== 'pedestrian') {
-      this.releaseControl(v);
+      this.releaseControl(v, { coordinated: true });
       this.app.sceneManager?.stopFollowTarget?.();
       this.app.uiManager?.hideInspector?.();
       return true;
@@ -324,7 +364,7 @@ export class TrafficSystem {
       // second time while switching modes.
       // Camera ownership is independent from input ownership, so restore both
       // through the same lifecycle used by collision-driven rider ejection.
-      this.resumePedestrianControl(v, ped);
+      this.resumePedestrianControl(v, ped, { coordinated: true });
     }
 
     v.info['Driver'] = 'None (Exited)';
@@ -333,7 +373,7 @@ export class TrafficSystem {
 
     // If no pedestrian system is available, still return the vehicle to AI.
     if (!this.app.pedestrianSystem) {
-      this.releaseControl(v);
+      this.releaseControl(v, { coordinated: true });
     }
     return true;
   }
@@ -388,10 +428,10 @@ export class TrafficSystem {
     return true;
   }
 
-  resumePedestrianControl(vehicle, pedestrian) {
+  resumePedestrianControl(vehicle, pedestrian, { coordinated = false } = {}) {
     if (!vehicle || !pedestrian || !this.app?.pedestrianSystem) return false;
-    this.releaseControl(vehicle);
-    const resumed = this.app.pedestrianSystem.toggleUserControl(pedestrian);
+    this.releaseControl(vehicle, { coordinated: true });
+    const resumed = this.app.pedestrianSystem.toggleUserControl(pedestrian, { coordinated: true });
     if (!resumed) return false;
     this.app.sceneManager?.startFollowTarget?.(pedestrian);
     this.app.uiManager?.hideInspector?.();

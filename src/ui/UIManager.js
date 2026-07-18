@@ -333,7 +333,6 @@ export class UIManager {
               this.btnTakeControl.classList.remove('active');
             }
           }
-          this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'released-control', source: 'UIManager' });
         }
       }
     });
@@ -354,7 +353,6 @@ export class UIManager {
               return;
             }
             this.app.pedestrianSystem.handlePedestrianActionKey();
-            this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'hijack', source: 'UIManager', target: this.selectedEntity });
             return;
           }
           const isNowControlled = ts.toggleUserControl(this.selectedEntity);
@@ -363,13 +361,11 @@ export class UIManager {
 
           // Phase 2: Cinematic swoop transition to street level or ascend back to macro view
           if (isNowControlled) {
-            this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'vehicle-control', source: 'UIManager', target: this.selectedEntity });
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
             this.hideInspector();
           } else {
-            this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'vehicle-release', source: 'UIManager' });
             this.app.sceneManager.stopFollowTarget();
             this.btnFollowTarget.innerHTML = '🎯 Follow Target';
             this.btnFollowTarget.classList.remove('active');
@@ -381,13 +377,11 @@ export class UIManager {
           this.btnTakeControl.classList.toggle('active', isNowControlled);
 
           if (isNowControlled) {
-            this.app.gameManager?.setState?.(GAME_STATES.STREET_ON_FOOT, { reason: 'pedestrian-control', source: 'UIManager', target: this.selectedEntity });
             this.app.sceneManager.startFollowTarget(this.selectedEntity);
             this.btnFollowTarget.innerHTML = '❌ Stop Following';
             this.btnFollowTarget.classList.add('active');
             this.hideInspector();
           } else {
-            this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'pedestrian-release', source: 'UIManager' });
             this.app.sceneManager.stopFollowTarget();
             this.btnFollowTarget.innerHTML = '🎯 Follow Target';
             this.btnFollowTarget.classList.remove('active');
@@ -470,7 +464,6 @@ export class UIManager {
           pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCat));
         }
         if (this.app.cityEditorSystem?.setZoningMode) this.app.cityEditorSystem.setZoningMode(zoneType);
-        this.app.gameManager?.setState?.(GAME_STATES.BUILDER, { reason: 'zoning', source: 'UIManager' });
       });
     });
 
@@ -500,7 +493,6 @@ export class UIManager {
             this.cityEditorUI.updateBlueprintPreview(this.app.cityEditorSystem?.selectedSpec);
           }
         }
-        this.app.gameManager?.setState?.(GAME_STATES.BUILDER, { reason: 'infrastructure', source: 'UIManager' });
       });
     });
 
@@ -609,15 +601,15 @@ export class UIManager {
         return;
       }
       if (vehicle) this.app.trafficSystem.releaseControl(vehicle);
-      if (pedestrian) this.app.pedestrianSystem.releaseControl(pedestrian);
-      this.app.sceneManager?.stopFollowTarget?.();
-      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'mode-toggle', source: 'UIManager' });
+      else if (pedestrian) this.app.pedestrianSystem.releaseControl(pedestrian);
       return;
     }
 
     if (mode === GAME_STATES.BUILDER || this.cityEditorUI?.isVisible) {
-      this.cityEditorUI?.hide?.();
-      this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'mode-toggle', source: 'UIManager' });
+      this.app.transitionCoordinator?.transitionTo?.(GAME_STATES.MANAGEMENT, {
+        reason: 'mode-toggle',
+        source: 'UIManager'
+      });
       return;
     }
 
@@ -679,7 +671,7 @@ export class UIManager {
     }
     if (this.modeLabel) {
       const labels = {
-        [GAME_STATES.BUILDER]: 'CITY BUILDER',
+        [GAME_STATES.BUILDER]: 'CITY EDITOR',
         [GAME_STATES.STREET_ON_FOOT]: 'ON FOOT',
         [GAME_STATES.STREET_VEHICLE]: 'STREET VEHICLE'
       };
@@ -1329,12 +1321,17 @@ export class UIManager {
       this.showToast('⚠️ Return to Management with [M] before opening the City Editor.');
       return false;
     }
-    this.cityEditorUI.toggle();
-    const isActive = this.cityEditorUI.isVisible;
-    this.app.gameManager?.setState?.(
-      isActive ? GAME_STATES.BUILDER : GAME_STATES.MANAGEMENT,
-      { reason: 'city-editor', source: 'UIManager' }
-    );
+    const destination = enteringBuilder ? GAME_STATES.BUILDER : GAME_STATES.MANAGEMENT;
+    const result = this.app.transitionCoordinator?.tryTransitionTo?.(destination, {
+      reason: 'city-editor',
+      source: 'UIManager'
+    });
+    if (result && !result.ok) {
+      this.showToast(`⚠️ ${result.error?.message || 'City Editor transition failed.'}`);
+      return false;
+    }
+    if (!this.app.transitionCoordinator) this.cityEditorUI.toggle();
+    const isActive = destination === GAME_STATES.BUILDER;
     if (this.btnExpandCity) {
       this.btnExpandCity.classList.toggle('active', isActive);
     }

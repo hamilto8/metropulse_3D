@@ -15,7 +15,7 @@ export function getPlanarTargetHeading(target) {
 }
 
 export class CameraRig {
-  constructor(camera, controls) {
+  constructor(camera, controls, { clearanceQuery = null } = {}) {
     this.camera = camera;
     this.controls = controls;
 
@@ -41,7 +41,15 @@ export class CameraRig {
     this.chaseYaw = 0;
     this.chasePitch = 0;
     this.isPointerLooking = false;
+    this.clearanceQuery = clearanceQuery;
     this.bindPointerLook();
+  }
+
+  setClearanceQuery(clearanceQuery) {
+    if (clearanceQuery !== null && typeof clearanceQuery?.resolve !== 'function') {
+      throw new TypeError('clearanceQuery must expose resolve() or be null');
+    }
+    this.clearanceQuery = clearanceQuery;
   }
 
   bindPointerLook() {
@@ -166,7 +174,7 @@ export class CameraRig {
     const offsetX = -Math.sin(viewRotation) * horizontalDistance;
     const offsetZ = -Math.cos(viewRotation) * horizontalDistance;
 
-    const desiredCamPos = new THREE.Vector3(
+    let desiredCamPos = new THREE.Vector3(
       targetPos.x + offsetX,
       targetPos.y + height + Math.sin(this.chasePitch) * distance,
       targetPos.z + offsetZ
@@ -182,6 +190,17 @@ export class CameraRig {
         : Math.min(6.0, Math.abs(this.followTarget.speed || 0) * 0.12);
       lookAtPos.x += Math.sin(rotation) * forwardDist;
       lookAtPos.z += Math.cos(rotation) * forwardDist;
+    }
+
+    if (this.clearanceQuery) {
+      const awayFromTarget = desiredCamPos.clone().sub(targetPos).setY(0).normalize();
+      desiredCamPos = this.clearanceQuery.resolve(desiredCamPos, {
+        ignore: [this.followTarget],
+        preferredDirection: awayFromTarget,
+        radius: 0.8,
+        terrainClearance: 0.8,
+        maxSearchRadius: Math.max(18, distance * 1.5)
+      });
     }
 
     return { camPos: desiredCamPos, lookAt: lookAtPos };

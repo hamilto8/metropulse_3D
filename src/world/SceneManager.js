@@ -119,6 +119,7 @@ export class SceneManager {
 
     // Phase 2: Cinematic Camera Rig
     this.cameraRig = new CameraRig(this.camera, this.controls);
+    this.cameraClearanceQuery = null;
 
     // Camera Transition / Follow state
     this.targetCameraPos = null;
@@ -203,6 +204,31 @@ export class SceneManager {
     this.presets = createCameraPresets();
   }
 
+  setCameraClearanceQuery(query) {
+    if (query !== null && typeof query?.resolve !== 'function') {
+      throw new TypeError('camera clearance query must expose resolve() or be null');
+    }
+    this.cameraClearanceQuery = query;
+    this.cameraRig?.setClearanceQuery?.(query);
+  }
+
+  resolveSafeCameraPosition(position, options = {}) {
+    if (!position?.isVector3) throw new TypeError('position must be a THREE.Vector3');
+    if (!this.cameraClearanceQuery) return position.clone();
+    return this.cameraClearanceQuery.resolve(position, options);
+  }
+
+  applyImmediateCameraPose(position, target, options = {}) {
+    if (!position?.isVector3 || !target?.isVector3) return false;
+    this.cameraRig?.removeAppliedShake?.();
+    const safePosition = this.resolveSafeCameraPosition(position, options);
+    this.camera.position.copy(safePosition);
+    this.controls.target.copy(target);
+    this.camera.lookAt(target);
+    this.controls.update?.();
+    return true;
+  }
+
   releaseDirectControlForCamera() {
     const trafficSystem = this.app?.trafficSystem;
     const pedestrianSystem = this.app?.pedestrianSystem;
@@ -236,10 +262,16 @@ export class SceneManager {
       if (restoredPilot) pedestrianSystem.releaseControl(restoredPilot);
     }
 
-    // The individual systems normally perform this transition themselves,
-    // but the explicit final assignment also repairs stale control flags and
-    // keeps this camera-owned transition deterministic.
-    this.app?.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'camera-preset', source: 'SceneManager' });
+    const metadata = { reason: 'camera-preset', source: 'SceneManager' };
+    if (this.app?.transitionCoordinator?.tryTransitionTo) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(
+        GAME_STATES.MANAGEMENT,
+        metadata
+      );
+      if (!result.ok) return false;
+    } else {
+      this.app?.gameManager?.setState?.(GAME_STATES.MANAGEMENT, metadata);
+    }
     this.app?.uiManager?.hideInspector?.();
     return true;
   }

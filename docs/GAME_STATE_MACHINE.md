@@ -7,14 +7,16 @@
 ## Purpose and boundary
 
 `GameManager` is the only authority for game-session state and transition
-policy. It is renderer-independent: it does not import Three.js, access the
-DOM, manipulate entities, operate cameras, or advance clocks.
+policy. `TransitionCoordinator` is the only production owner of runtime
+transition orchestration. `GameManager` remains renderer-independent: it does
+not import Three.js, access the DOM, manipulate entities, operate cameras, or
+advance clocks.
 
 `GameState.js` contains immutable policy data, `GameTransition.js` contains
 context normalization, destination invariants, rejection records, and the
 typed transition error, and `GameManager.js` owns mutable state and lifecycle.
-P1.2's transition coordinator will consume the declared effect contract to
-perform runtime handoffs in a compensatable order.
+The P1.2 coordinator consumes the declared effect contract through
+`MetroPulseTransitionRuntime` and performs handoffs in a compensatable order.
 
 Mayhem remains an independent overlay. It never replaces a primary game state.
 
@@ -95,16 +97,19 @@ The low-level lifecycle is:
 1. `evaluateTransition(destination)` returns a non-mutating eligibility result.
 2. `beginTransition(destination)` validates the request, records immutable
    metadata/effects, and enters `TRANSITION`.
-3. Runtime handoff work may occur while the transition is active.
+3. `TransitionCoordinator` suspends input, clears held actions, captures the
+   source, hands off ownership, positions a clearance-checked camera,
+   configures simulation policy, and synchronizes UI/audio.
 4. `commitTransition()` re-samples context, validates destination ownership,
    runs commit guards, and enters the destination.
 5. `failTransition(error)` returns to the source when its ownership contract
    still holds. Otherwise it selects `MANAGEMENT` when control and mission
    state are clean, falling back to `MENU` for an unresolved unsafe session.
 
-`transitionTo()` is the synchronous request-and-commit convenience used until
-P1.2 moves runtime handoffs between `beginTransition()` and
-`commitTransition()`.
+`GameManager.transitionTo()` remains a low-level compatibility convenience for
+isolated policy tests. Production feature code calls
+`TransitionCoordinator.transitionTo()` so runtime work always occurs between
+`beginTransition()` and `commitTransition()`.
 
 Each transition records an ID, source, destination, recovery state, timestamps,
 status, reason/source/correlation metadata, a safe target descriptor, and the
@@ -124,9 +129,36 @@ Every state declares policies for five owned concepts:
 - simulation clock: stopped, city, builder, handoff, street, result, paused,
   or menu.
 
-`getTransitionEffects(from, to)` produces the immutable before/after contract
-that P1.2–P1.4 will execute. P1.1 defines policy but does not claim that the
-legacy frame loop already enforces every clock/camera/audio effect.
+`getTransitionEffects(from, to)` produces the immutable before/after contract.
+P1.2 executes control, camera, input, UI/audio, and simulation-policy effects;
+fixed-cadence clock scheduling remains P1.3.
+
+## Runtime coordinator
+
+The execution order is stable and observable:
+
+1. validate the request;
+2. suspend input sampling;
+3. clear keyboard/gamepad held actions;
+4. capture source ownership, transforms, camera, clock policy, and editor UI;
+5. hand off controlled-entity ownership;
+6. resolve and position the destination camera;
+7. configure the destination simulation-clock policy;
+8. synchronize UI and ownership-driven audio;
+9. validate the live destination ownership contract;
+10. commit the `GameManager` transition and resume input.
+
+If a phase fails, registered compensations run in reverse order before
+`GameManager.failTransition()`. Source entity transforms and control sessions,
+camera pose/follow ownership, editor visibility, and clock policy are restored.
+Cleanup is idempotent and always resumes input. Reentrant transition requests
+are rejected while the active execution remains intact.
+
+`CameraClearanceQuery` is shared by initial transition placement and the chase
+camera rig. It tests terrain clearance, low water volumes, authored and placed
+buildings, scenery/tree colliders, vehicles, pedestrians, and aircraft. An
+obstructed desired pose is moved through a deterministic radial search; failure
+to find a safe pose fails closed and triggers transition compensation.
 
 ## Events and snapshots
 

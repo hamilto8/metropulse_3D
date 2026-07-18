@@ -27,6 +27,8 @@ import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
 import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
+import { TransitionCoordinator } from './core/TransitionCoordinator.js';
+import { MetroPulseTransitionRuntime } from './app/MetroPulseTransitionRuntime.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
@@ -56,7 +58,10 @@ class MetroPulseApp {
         console.error('A game-state observer failed without interrupting the session.', error);
       }
     });
-    this.gameManager.transitionTo(GAME_STATES.LOAD, {
+    this.transitionCoordinator = new TransitionCoordinator({
+      gameManager: this.gameManager
+    });
+    this.transitionCoordinator.transitionTo(GAME_STATES.LOAD, {
       reason: 'runtime-initialization',
       source: 'MetroPulseApp'
     });
@@ -203,13 +208,16 @@ class MetroPulseApp {
     this.persistenceSystem = new PersistenceSystem(this);
     this.persistenceSystem.restore();
 
+    this.transitionRuntime = new MetroPulseTransitionRuntime(this);
+    this.transitionCoordinator.setRuntime(this.transitionRuntime);
+
     if (runtimeConfig.test) {
       this.timeManager.setTime(runtimeConfig.test.time);
       this.environment.setDynamicWeather(false);
       this.environment.setWeather(runtimeConfig.test.weather);
     }
 
-    this.gameManager.transitionTo(GAME_STATES.MANAGEMENT, {
+    this.transitionCoordinator.transitionTo(GAME_STATES.MANAGEMENT, {
       reason: 'boot-complete',
       source: 'MetroPulseApp'
     });

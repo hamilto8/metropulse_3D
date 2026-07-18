@@ -392,12 +392,22 @@ export class CityEditorUI {
     }
   }
 
-  show() {
+  show({ preserveMode = false } = {}) {
     if (this.isVisible) {
       this.refreshAffordability();
       return false;
     }
-    const eligibility = this.app.gameManager?.evaluateTransition?.(GAME_STATES.BUILDER);
+    if (!preserveMode && this.app.transitionCoordinator) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.BUILDER, {
+        reason: 'city-editor-ui',
+        source: 'CityEditorUI'
+      });
+      if (!result.ok) this.app.uiManager?.showToast?.(`⚠️ ${result.error?.message || 'City Editor unavailable.'}`);
+      return result.ok;
+    }
+    const eligibility = preserveMode
+      ? null
+      : this.app.gameManager?.evaluateTransition?.(GAME_STATES.BUILDER);
     if (eligibility && !eligibility.allowed) {
       this.app.uiManager?.showToast(`⚠️ ${eligibility.reason}`);
       return false;
@@ -428,7 +438,7 @@ export class CityEditorUI {
     if (this.app.cityEditorSystem) {
       this.app.cityEditorSystem.activate();
     }
-    this.setGameMode('BUILDER');
+    if (!preserveMode) this.setGameMode(GAME_STATES.BUILDER);
     this.syncEditorChrome(true);
     this.renderCatalog();
     this.refreshAffordability();
@@ -437,6 +447,14 @@ export class CityEditorUI {
 
   hide({ preserveMode = false } = {}) {
     if (!this.isVisible) return false;
+    if (!preserveMode && this.app.transitionCoordinator) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.MANAGEMENT, {
+        reason: 'city-editor-ui',
+        source: 'CityEditorUI'
+      });
+      if (!result.ok) this.app.uiManager?.showToast?.(`⚠️ ${result.error?.message || 'Could not leave City Editor.'}`);
+      return result.ok;
+    }
     this.isVisible = false;
     this.container.style.display = 'none';
 
@@ -466,8 +484,11 @@ export class CityEditorUI {
   }
 
   setGameMode(mode) {
-    const gameManager = this.app.gameManager;
-    if (gameManager) {
+    const coordinator = this.app.transitionCoordinator;
+    if (coordinator) {
+      coordinator.transitionTo(mode, { reason: 'city-editor-ui', source: 'CityEditorUI' });
+    } else {
+      const gameManager = this.app.gameManager;
       const transitionMethods = ['requestMode', 'setMode', 'transitionTo', 'setState'];
       for (const methodName of transitionMethods) {
         if (typeof gameManager[methodName] === 'function') {

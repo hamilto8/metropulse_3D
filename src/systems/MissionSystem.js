@@ -386,8 +386,10 @@ export class MissionSystem {
       if (this.app.uiManager?.setMayhem) this.app.uiManager.setMayhem(true, 'mission');
     }
 
-    if (this.app.gameManager) {
-      this.app.gameManager.setState(GAME_STATES.STREET_VEHICLE, {
+    const transitionOwner = this.app.transitionCoordinator || this.app.gameManager;
+    if (transitionOwner) {
+      const transitionMethod = transitionOwner.transitionTo || transitionOwner.setState;
+      transitionMethod?.call(transitionOwner, GAME_STATES.STREET_VEHICLE, {
         reason: 'mission',
         source: 'MissionSystem',
         target: this.activeVehicle

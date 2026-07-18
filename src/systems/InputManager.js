@@ -24,6 +24,7 @@ export class InputManager {
     this.deadzone = 0.15;
     this.controllerCursor = { x: 0, y: -0.05 };
     this.lastContext = null;
+    this.inputSuspensions = new Set();
 
     this.state = {
       throttle: 0,
@@ -48,6 +49,7 @@ export class InputManager {
 
   initKeyboardListeners() {
     window.addEventListener('keydown', (event) => {
+      if (this.inputSuspensions.size > 0) return;
       this.setInterface(INPUT_INTERFACES.KEYBOARD);
       const target = event.target;
       const isEditing = target?.tagName === 'INPUT'
@@ -132,6 +134,24 @@ export class InputManager {
       this.state.flightBrake = 0;
       this.state.handbrake = false;
     }
+  }
+
+  suspendInput(reason = 'transition') {
+    const token = Object.freeze({ reason, id: Symbol(reason) });
+    this.inputSuspensions.add(token);
+    this.clearTransientInputState();
+    return token;
+  }
+
+  resumeInput(token) {
+    if (!this.inputSuspensions.has(token)) return false;
+    this.inputSuspensions.delete(token);
+    this.clearTransientInputState();
+    return true;
+  }
+
+  get isInputSuspended() {
+    return this.inputSuspensions.size > 0;
   }
 
   /**
@@ -333,6 +353,10 @@ export class InputManager {
   }
 
   update(delta) {
+    if (this.isInputSuspended) {
+      this.clearTransientInputState();
+      return;
+    }
     const context = this.getControlContext();
     this.syncControlContext(context);
     const gamepad = this.getGamepad();

@@ -108,6 +108,22 @@ export class AircraftSystem {
     if (aircraft.isCrashed) aircraft.resetToSpawn();
     if (this.controlledAircraft === aircraft) return true;
 
+    if (!options.coordinated && this.app?.transitionCoordinator) {
+      const result = this.app.transitionCoordinator.tryTransitionTo(GAME_STATES.STREET_VEHICLE, {
+        reason: 'aircraft-control',
+        source: 'AircraftSystem',
+        target: aircraft,
+        control: {
+          action: 'ACQUIRE',
+          kind: 'AIRCRAFT',
+          entity: aircraft,
+          source: options.source || 'camera',
+          pedestrian: options.pedestrian || null
+        }
+      });
+      return result.ok;
+    }
+
     let source = options.source || 'camera';
     let pedestrian = options.pedestrian || null;
     const walkingPedestrian = this.app.pedestrianSystem?.controlledPedestrian || null;
@@ -121,12 +137,12 @@ export class AircraftSystem {
     }
 
     const vehicle = this.app.trafficSystem?.controlledVehicle;
-    if (vehicle) this.app.trafficSystem.releaseControl(vehicle);
+    if (vehicle) this.app.trafficSystem.releaseControl(vehicle, { coordinated: true });
     if (source === 'pedestrian') {
       const suspended = this.app.pedestrianSystem?.suspendControlledPedestrian?.(pedestrian);
       if (!suspended) return false;
     } else if (walkingPedestrian) {
-      this.app.pedestrianSystem.releaseControl(walkingPedestrian);
+      this.app.pedestrianSystem.releaseControl(walkingPedestrian, { coordinated: true });
     }
     if (this.app.uiManager?.cityEditorUI?.isVisible) {
       this.app.uiManager.cityEditorUI.hide({ preserveMode: true });
@@ -136,7 +152,6 @@ export class AircraftSystem {
     this.controlSession = Object.freeze({ source, pedestrian: source === 'pedestrian' ? pedestrian : null });
     aircraft.setControlled(true);
     this.app.audioSystem?.startAircraftSound?.();
-    this.app.gameManager?.setState?.(GAME_STATES.STREET_VEHICLE, { reason: 'aircraft-control', source: 'AircraftSystem', target: aircraft });
     this.app.sceneManager?.startFollowTarget?.(aircraft);
     this.app.inputManager?.restoreGameplayFocus?.();
     this.app.uiManager?.hideInspector?.();
@@ -147,12 +162,32 @@ export class AircraftSystem {
     return true;
   }
 
-  releaseControl({ force = false } = {}) {
+  releaseControl({ force = false, coordinated = false } = {}) {
     const aircraft = this.controlledAircraft;
     if (!aircraft) return false;
     if (!force && (aircraft.isAirborne || aircraft.state.speed > 3)) {
       this.app.uiManager?.showToast?.('Land and stop the aircraft before leaving the cockpit.');
       return false;
+    }
+
+    if (!coordinated && this.app?.transitionCoordinator) {
+      const destination = this.controlSession?.source === 'pedestrian'
+        ? GAME_STATES.STREET_ON_FOOT
+        : GAME_STATES.MANAGEMENT;
+      const result = this.app.transitionCoordinator.tryTransitionTo(destination, {
+        reason: destination === GAME_STATES.STREET_ON_FOOT
+          ? 'aircraft-to-pedestrian'
+          : 'aircraft-release',
+        source: 'AircraftSystem',
+        target: aircraft,
+        control: {
+          action: 'EXIT_AIRCRAFT',
+          kind: destination === GAME_STATES.STREET_ON_FOOT ? 'PEDESTRIAN' : 'NONE',
+          sourceAircraft: aircraft,
+          force
+        }
+      });
+      return result.ok;
     }
 
     if (force && aircraft.isAirborne) aircraft.resetToSpawn();
@@ -171,7 +206,6 @@ export class AircraftSystem {
       }
     }
 
-    this.app.gameManager?.setState?.(GAME_STATES.MANAGEMENT, { reason: 'aircraft-release', source: 'AircraftSystem' });
     this.app.sceneManager?.stopFollowTarget?.();
     this.app.uiManager?.updateActionHUD?.();
     return true;
@@ -202,7 +236,7 @@ export class AircraftSystem {
     if (!pedestrianSystem.restoreSuspendedPedestrian?.(pedestrian, exitPose.position, exitPose.heading)) {
       return false;
     }
-    if (!pedestrianSystem.toggleUserControl(pedestrian)) return false;
+    if (!pedestrianSystem.toggleUserControl(pedestrian, { coordinated: true })) return false;
     this.app.sceneManager?.startFollowTarget?.(pedestrian);
     this.app.uiManager?.hideInspector?.();
     this.app.uiManager?.addAlert?.(`🚶 ${pedestrian.name || 'Pilot'} exited the aircraft and resumed walk control.`, 'info');
