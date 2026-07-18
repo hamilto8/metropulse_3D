@@ -29,7 +29,7 @@ the responsible system owns implementation.
 | ID | Acceptance requirement | Responsible system | Required test | Verification owner | State |
 |---|---|---|---|---|---|
 | GL-001 | Builder decisions and Street play operate on one recognizable persistent city. | Game session / world | Browser + Scenario | Gameplay Lead | In Progress |
-| GL-002 | At least three city conditions materially alter Street routes, hazards, opportunities, or rewards. | Consequence contracts | Scenario + Playtest | Systems Designer | Not Started |
+| GL-002 | At least three city conditions materially alter Street routes, hazards, opportunities, or rewards. | Consequence contracts | Scenario + Playtest | Systems Designer | In Progress |
 | GL-003 | At least three Street outcomes materially alter Capital, traffic, services, safety, reputation, or damage. | Consequence contracts | Scenario + Playtest | Systems Designer | In Progress |
 | GL-004 | A player can explain what changed, why, and the next useful response. | Debrief / City Pulse | Playtest | UX Lead | Not Started |
 | GL-005 | A new player completes Builder → Street → Builder without external help. | Onboarding controller | Browser + Playtest | UX Lead | Not Started |

@@ -11,10 +11,18 @@ import {
   validateSaveDocument
 } from '../src/save/SaveSchema.js';
 import {
+  captureGameState,
   restoreStaticGameState,
   restoreWorld,
   validateGameState
 } from '../src/save/SaveGameState.js';
+import { DISTRICT_DEFINITIONS } from '../src/data/ContentDefinitions.js';
+import { getProductionContentRegistry } from '../src/data/GameDataValidator.js';
+import {
+  MISSION_OUTCOME_COMMANDS,
+  MissionOutcomeService
+} from '../src/missions/MissionOutcomeService.js';
+import { EconomySystem } from '../src/systems/EconomySystem.js';
 
 class MemoryRepository {
   constructor(current = null) {
@@ -205,6 +213,53 @@ test('the whole document is validated before any live domain is mutated', () => 
   assert.deepEqual(calls, []);
   assert.equal(service.getStatus().status, SAVE_STATUS.ERROR);
   service.destroy();
+});
+
+test('condition/consequence receipts and derived faction views survive save validation and restore', () => {
+  const contentRegistry = getProductionContentRegistry();
+  const source = createAppHarness().app;
+  source.economySystem = new EconomySystem({ initialTreasury: 500 });
+  source.missionOutcomeService = new MissionOutcomeService({
+    economySystem: source.economySystem,
+    contentRegistry,
+    districtDefinitions: DISTRICT_DEFINITIONS
+  });
+  source.missionOutcomeService.apply({
+    transactionId: 'mission:save-contract:success',
+    source: { kind: 'MISSION', contentId: 'mission_executive', outcome: 'SUCCESS' },
+    summary: { title: 'Saved outcome', description: 'A durable consequence fixture.' },
+    commands: [
+      { type: MISSION_OUTCOME_COMMANDS.CAPITAL_ADJUSTED, amount: 50 },
+      { type: MISSION_OUTCOME_COMMANDS.FACTION_REPUTATION_ADJUSTED, factionId: 'RESIDENTS', delta: 4 },
+      { type: MISSION_OUTCOME_COMMANDS.PROGRESSION_SET, progressionId: 'OPERATOR', unlocked: true },
+      { type: MISSION_OUTCOME_COMMANDS.AUTHORED_FLAG_SET, flagId: 'save.contract.applied', value: true }
+    ]
+  });
+
+  const data = captureGameState(source);
+  assert.equal(validateGameState(data, { contentRegistry }), true);
+  assert.equal(data.economy.treasury, 550);
+  assert.deepEqual(data.factions.values, { RESIDENTS: 4 });
+  assert.deepEqual(data.progression.values, { OPERATOR: true });
+
+  const target = createAppHarness().app;
+  target.economySystem = new EconomySystem();
+  target.missionOutcomeService = new MissionOutcomeService({
+    economySystem: target.economySystem,
+    contentRegistry,
+    districtDefinitions: DISTRICT_DEFINITIONS
+  });
+  restoreStaticGameState(target, data);
+  assert.equal(target.economySystem.treasury, 550);
+  assert.equal(target.missionOutcomeService.hasApplied('mission:save-contract:success'), true);
+  assert.equal(target.missionOutcomeService.snapshot().flags['save.contract.applied'].value, true);
+
+  const mismatched = structuredClone(data);
+  mismatched.factions.values.RESIDENTS = 5;
+  assert.throws(
+    () => validateGameState(mismatched, { contentRegistry }),
+    /authoritative mission outcome faction view/
+  );
 });
 
 test('save validation rejects incompatible content references before load', () => {

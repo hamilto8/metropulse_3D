@@ -742,14 +742,40 @@ scales. A recommended structure is:
 
 #### P3.1 Condition and consequence contracts
 
-- [ ] Define renderer-independent city-condition queries for traffic,
+- [x] Define renderer-independent city-condition queries for traffic,
   bridge state, service coverage, safety, repair status, land value, weather,
   district state, and authored flags.
-- [ ] Define mission outcome commands for Capital, building/infrastructure
+- [x] Define mission outcome commands for Capital, building/infrastructure
   state, incidents, repairs, service outages, traffic, factions, progression,
   unlocks, news, and follow-up missions.
-- [ ] Make every consequence idempotent through a transaction/outcome ID.
-- [ ] Store sufficient source information to explain the result to the player.
+- [x] Make every consequence idempotent through a transaction/outcome ID.
+- [x] Store sufficient source information to explain the result to the player.
+
+P3.1 completion evidence (2026-07-18):
+
+- `src/missions/CityConditionService.js` provides immutable, renderer-free
+  traffic, bridge, service, safety, repair, land-value, weather, district, and
+  authored-flag snapshots. Authored rules share one path/operator evaluator,
+  and extension resolvers cannot replace built-in authorities.
+- `src/missions/MissionOutcomeService.js` validates all required consequence
+  families as one transaction, reduces them against cloned state, preserves
+  the authoritative EconomySystem Capital account, rejects unaffordable or
+  partially invalid transactions before mutation, and publishes one immutable
+  receipt.
+- Stable transaction IDs are normalized into deterministic fingerprints.
+  Exact replay returns the original result without mutation; conflicting reuse
+  fails closed. Receipts retain structured source/run/outcome identity plus
+  per-command before, after, reason, and player-facing summary data.
+- Outcome ledgers persist under the mission save domain and restore without
+  replay. Faction and progression save domains are validated derived views, so
+  mismatched persisted truths are rejected before live restore.
+- Focused coverage exercises every command family, condition composition,
+  authored-ID rejection, atomic late-command and affordability failures,
+  duplicate/conflicting replay, explanation immutability, corruption rejection,
+  and save/restore behavior. The operational and extension contract is
+  documented in `CONDITION_AND_CONSEQUENCE_CONTRACTS.md`.
+- Verification at completion: 327 Node tests, the production build, and all
+  five Chrome WebGL boot/transition/settings/save/content-validation flows pass.
 
 #### P3.2 Complete mission lifecycle
 

@@ -6,6 +6,10 @@ import { SaveValidationError } from './SaveSchema.js';
 import { SETTINGS_SCHEMA_VERSION, validateSettingsDocument } from '../settings/SettingsSchema.js';
 import { CONTENT_TYPES, getProductionContentRegistry } from '../data/GameDataValidator.js';
 import { WORLD_BOUNDS } from '../data/ContentDefinitions.js';
+import {
+  createEmptyMissionOutcomeState,
+  validateMissionOutcomeState
+} from '../missions/MissionOutcomeService.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -74,6 +78,12 @@ function vector(value, path) {
   return value;
 }
 
+function sameRecord(left, right) {
+  const leftEntries = Object.entries(left).sort(([a], [b]) => a.localeCompare(b));
+  const rightEntries = Object.entries(right).sort(([a], [b]) => a.localeCompare(b));
+  return JSON.stringify(leftEntries) === JSON.stringify(rightEntries);
+}
+
 function serializeOptional(owner, fallback = {}) {
   return owner?.serialize?.() ?? { version: 1, values: structuredClone(fallback) };
 }
@@ -126,6 +136,7 @@ function serializeMission(app) {
     dialogueChoices: structuredClone(system?.narrativeState?.dialogueChoices || []),
     chronologyStep: system?.narrativeState?.chronologyStep || 0,
     runCounts: [...(system?.missionRunCounts || new Map()).entries()],
+    contracts: app.missionOutcomeService?.serialize?.() ?? null,
     active
   };
 }
@@ -144,6 +155,7 @@ function serializeAlerts(app) {
 
 export function captureGameState(app) {
   const game = app.gameManager?.snapshot?.() || {};
+  const outcomeSnapshot = app.missionOutcomeService?.snapshot?.() ?? null;
   return {
     game: {
       version: 1,
@@ -162,8 +174,8 @@ export function captureGameState(app) {
       weather: app.environment?.weatherMode || 'clear'
     },
     missions: serializeMission(app),
-    factions: serializeOptional(app.factionSystem, app.factions || {}),
-    progression: serializeOptional(app.progressionSystem, app.progression || {}),
+    factions: serializeOptional(app.factionSystem, outcomeSnapshot?.factions ?? app.factions ?? {}),
+    progression: serializeOptional(app.progressionSystem, outcomeSnapshot?.progression ?? app.progression ?? {}),
     heat: {
       version: 1,
       wanted: Boolean(app.pedestrianSystem?.isWanted),
@@ -292,6 +304,13 @@ export function validateGameState(data, {
     }
   });
   if (!Number.isInteger(missions.chronologyStep) || missions.chronologyStep < 0) throw new SaveValidationError('must be a non-negative integer.', { path: 'save.data.missions.chronologyStep' });
+  if (missions.contracts != null) {
+    try {
+      validateMissionOutcomeState(missions.contracts, { contentRegistry });
+    } catch (error) {
+      throw new SaveValidationError(error.message, { path: 'save.data.missions.contracts' });
+    }
+  }
   if (missions.active != null) {
     record(missions.active, 'save.data.missions.active');
     knownContent(contentRegistry, CONTENT_TYPES.MISSION, missions.active.contentId, 'save.data.missions.active.contentId');
@@ -350,6 +369,18 @@ export function validateGameState(data, {
   for (const [progressionId, unlocked] of Object.entries(data.progression.values)) {
     knownContent(contentRegistry, CONTENT_TYPES.PROGRESSION, progressionId, `save.data.progression.values.${progressionId}`);
     if (typeof unlocked !== 'boolean') throw new SaveValidationError('must be boolean.', { path: `save.data.progression.values.${progressionId}` });
+  }
+  if (missions.contracts != null) {
+    if (!sameRecord(missions.contracts.state.factions, data.factions.values)) {
+      throw new SaveValidationError('must match the authoritative mission outcome faction view.', {
+        path: 'save.data.factions.values'
+      });
+    }
+    if (!sameRecord(missions.contracts.state.progression, data.progression.values)) {
+      throw new SaveValidationError('must match the authoritative mission outcome progression view.', {
+        path: 'save.data.progression.values'
+      });
+    }
   }
   if (typeof data.heat.wanted !== 'boolean' || !Number.isFinite(data.heat.escapeTimer) || data.heat.escapeTimer < 0) {
     throw new SaveValidationError('has invalid wanted state or escape timer.', { path: 'save.data.heat' });
@@ -478,6 +509,10 @@ function restoreMissionProgress(app, mission) {
 
 export function restoreStaticGameState(app, data) {
   app.economySystem.restore(data.economy);
+  app.missionOutcomeService?.restore?.(data.missions.contracts ?? createEmptyMissionOutcomeState({
+    factions: data.factions.values,
+    progression: data.progression.values
+  }));
   const worldReport = restoreWorld(app, data.world);
   app.timeManager?.setTime?.(data.timeWeather.time);
   app.timeManager?.setPlaying?.(data.timeWeather.playing);

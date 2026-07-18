@@ -54,6 +54,9 @@ import { SettingsMenu } from './ui/SettingsMenu.js';
 import { BOOT_ACTIONS, SaveDiscovery } from './boot/SaveDiscovery.js';
 import { AssetPreloader } from './boot/AssetPreloader.js';
 import { BootScreen } from './ui/BootScreen.js';
+import { DISTRICT_DEFINITIONS } from './data/ContentDefinitions.js';
+import { MissionOutcomeService } from './missions/MissionOutcomeService.js';
+import { CityConditionService } from './missions/CityConditionService.js';
 import bootHeroUrl from './assets/hero.png?url';
 
 const bootStartedAtMs = performance.now();
@@ -99,6 +102,11 @@ export class MetroPulseApp {
         fire: { capacity: 70, demand: 60 }
       },
       eastDistrictUnlockCost: 1_000_000
+    });
+    this.missionOutcomeService = new MissionOutcomeService({
+      economySystem: this.economySystem,
+      contentRegistry: this.contentRegistry,
+      districtDefinitions: DISTRICT_DEFINITIONS
     });
 
     // 0. Physics World (cannon-es Phase 1 prototype)
@@ -210,6 +218,19 @@ export class MetroPulseApp {
     // flag is off. A scope flag must never turn an existing road into a void.
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
     this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
+    this.cityConditionService = new CityConditionService({
+      economySystem: this.economySystem,
+      outcomeService: this.missionOutcomeService,
+      trafficProvider: () => this.trafficSystem.getCongestionMetrics(),
+      bridgeProvider: bridgeId => ({
+        id: bridgeId,
+        state: 'OPEN',
+        access: 'OPEN',
+        condition: 1,
+        safety: 1
+      }),
+      weatherProvider: () => ({ mode: this.environment.weatherMode })
+    });
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
