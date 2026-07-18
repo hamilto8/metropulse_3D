@@ -989,13 +989,50 @@ P4.2 completion evidence (2026-07-18):
 
 #### P4.3 Services and incidents
 
-- [ ] Implement energy and simplified safety/repair as the MVP service model.
-- [ ] Model service reach or network access where location should matter.
-- [ ] Add local outages, damaged infrastructure, repair tasks, and cleanup
+- [x] Implement energy and simplified safety/repair as the MVP service model.
+- [x] Model service reach or network access where location should matter.
+- [x] Add local outages, damaged infrastructure, repair tasks, and cleanup
   requirements that can become street objectives.
-- [ ] Preserve explainable aggregate metrics for fast management decisions.
-- [ ] Avoid introducing a full utility-network simulator unless playtesting
+- [x] Preserve explainable aggregate metrics for fast management decisions.
+- [x] Avoid introducing a full utility-network simulator unless playtesting
   proves it is needed.
+
+Implementation contract: `SERVICE_AND_INCIDENT_MODEL.md`.
+
+P4.3 completion evidence (2026-07-18):
+
+- `CityServiceModel` is a read-only composite over the authoritative economy
+  and outcome ledger. It preserves fast capacity/demand summaries while adding
+  documented district access, operational facility-radius reach, spatial
+  outage falloff, immutable contributors, health states, and plain-language
+  explanations. `CityConditionService` consumes the same local readings used
+  by the interface and mission rules.
+- `IncidentResponseService` reports damage, outages, cleanup, and repair as one
+  atomic outcome transaction, then funds the complete response through one
+  affordability-gated management transaction. Work orders and relationships
+  extend the existing Phase 3 repairs collection, so there is no second truth
+  or new save domain. Optional command extensions preserve legacy receipt
+  fingerprints.
+- Cleanup and repair become canonical on-foot interactions with proximity,
+  prerequisite, vehicle, and mission-ownership guards. Cleanup blocks repair;
+  completion atomically restores infrastructure, closes its outage and
+  incident, resolves the structured alert, and removes a derived Three.js
+  marker. Production new games start with one bounded bridge relay response;
+  restored games never duplicate it.
+- The accessible City Services panel exposes Energy, Safety, issue cause,
+  response cost, funding, task order, and progress. Structured alerts support
+  management focus before funding and a Street waypoint afterward. Aggregate
+  City Pulse metrics remain concise and retain detailed contributor tooltips;
+  Water remains a compatibility/placement metric under DD-014.
+- Focused coverage exercises facility reach, district access, spatial outage
+  isolation, mission condition parity, immutable subscriptions, atomic report
+  and funding, unaffordability, cleanup-before-repair, resolution, legacy-safe
+  extended-contract persistence, restore events, and interaction guards. The
+  Chrome WebGL flow funds a local outage, completes cleanup and partial repair
+  through real input, reloads the save, resumes the street objective, and
+  verifies restored service and infrastructure.
+- Verification at completion: 369 Node tests, the production build, and all
+  seven Chrome WebGL acceptance flows pass.
 
 #### P4.4 Traffic and productivity feedback
 

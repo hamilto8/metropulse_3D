@@ -361,6 +361,79 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   await expect(page.locator('#development-diagnostics')).toContainText('STATE MANAGEMENT');
 });
 
+test('local service incident becomes a funded, persistent cleanup and repair street objective', async ({ page }) => {
+  test.setTimeout(90_000);
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(
+    '/?testMode=1&profile=clean&seed=p4-3-services&traffic=8&pedestrians=8&quality=low',
+    { waitUntil: 'domcontentloaded' }
+  );
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+
+  const before = await page.evaluate(() => ({
+    treasury: window.app.economySystem.treasury,
+    local: window.app.cityServiceModel.getCoverage('power', { position: { x: 205, z: 18 } }).coverage
+  }));
+  await page.evaluate(() => window.__METROPULSE_TEST__.reportServiceIncident());
+  await expect(page.locator('[data-incident-id="browser-service-relay"]')).toBeVisible();
+  await expect(page.locator('#service-energy-summary')).toContainText('Energy');
+  const disrupted = await page.evaluate(() => ({
+    local: window.app.cityServiceModel.getCoverage('power', { position: { x: 205, z: 18 } }).coverage,
+    aggregate: window.__METROPULSE_TEST__.serviceSnapshot().energy.coverage,
+    alert: window.__METROPULSE_TEST__.alerts().active.find(alert => alert.relatedEntityIds.includes('browser-service-relay'))
+  }));
+  expect(disrupted.local).toBeLessThan(before.local);
+  expect(disrupted.aggregate).toBeLessThan(1);
+  expect(disrupted.alert.focusAction.type).toBe('MANAGEMENT_CAMERA');
+
+  await page.locator('[data-schedule-incident="browser-service-relay"]').click();
+  await expect(page.locator('[data-incident-id="browser-service-relay"]')).toContainText('Street objective ready');
+  expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(before.treasury - 3_000);
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.alerts().active
+    .find(alert => alert.relatedEntityIds.includes('browser-service-relay')))).focusAction.type).toBe('STREET_WAYPOINT');
+
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterServiceWork('work:browser-service-relay:cleanup'));
+  const prompt = page.locator('#primary-interaction-prompt');
+  await expect(prompt).toBeVisible();
+  await expect(prompt).toHaveAttribute('data-interaction-kind', 'SERVICE_CLEANUP');
+  await page.keyboard.press('e');
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.serviceWorkOrders()
+    .find(order => order.id === 'work:browser-service-relay:cleanup').progress)).toBe(0.5);
+  await page.keyboard.press('e');
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.serviceWorkOrders()
+    .find(order => order.id === 'work:browser-service-relay:cleanup').status)).toBe('COMPLETE');
+
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterServiceWork('work:browser-service-relay:repair'));
+  await expect(prompt).toHaveAttribute('data-interaction-kind', 'SERVICE_REPAIR');
+  await page.keyboard.press('e');
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.serviceWorkOrders()
+    .find(order => order.id === 'work:browser-service-relay:repair').progress)).toBe(0.5);
+  expect(await page.evaluate(() => window.app.saveService.saveNow({ reason: 'manual' }))).toBe(true);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await page.locator('#btn-boot-continue').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  expect(await page.evaluate(() => window.__METROPULSE_TEST__.serviceWorkOrders()
+    .find(order => order.id === 'work:browser-service-relay:repair').progress)).toBe(0.5);
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterServiceWork('work:browser-service-relay:repair'));
+  await expect(page.locator('#primary-interaction-prompt')).toHaveAttribute('data-interaction-kind', 'SERVICE_REPAIR');
+  await page.keyboard.press('e');
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.serviceSnapshot().activeIncidentCount)).toBe(0);
+  await expect(page.locator('#service-work-orders')).toContainText('No local incidents');
+  const restored = await page.evaluate(() => ({
+    local: window.app.cityServiceModel.getCoverage('power', { position: { x: 205, z: 18 } }).coverage,
+    outageActive: window.app.missionOutcomeService.snapshot().serviceOutages['outage:browser-service-relay'].active,
+    infrastructure: window.app.missionOutcomeService.snapshot().infrastructure['browser-relay'].state
+  }));
+  expect(restored.local).toBe(before.local);
+  expect(restored.outageActive).toBe(false);
+  expect(restored.infrastructure).toBe('ACTIVE');
+  expect(pageErrors).toEqual([]);
+});
+
 test('mission failure, retry, outcome commit, result save, and recovery form one guarded lifecycle', async ({ page }) => {
   test.setTimeout(90_000);
   const pageErrors = [];

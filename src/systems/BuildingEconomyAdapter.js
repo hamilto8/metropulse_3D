@@ -41,6 +41,20 @@ function getFinancialRates(building, spec, { fallbackIncomePerMinute }) {
   };
 }
 
+const DEFAULT_SERVICE_REACH = Object.freeze({
+  power: 180,
+  water: 160,
+  fire: 140
+});
+
+function serviceReach(spec, service, capacity) {
+  if (capacity <= 0) return 0;
+  return nonNegative(
+    spec[`${service}Reach`] ?? spec[`${service}Radius`] ?? spec.serviceReach,
+    DEFAULT_SERVICE_REACH[service]
+  );
+}
+
 export function createBuildingEconomyRecord(building, {
   spec = building?.spec || {},
   id,
@@ -104,14 +118,17 @@ export function createBuildingEconomyRecord(building, {
     services: {
       power: {
         capacity: nonNegative(spec.powerSupply),
+        reach: serviceReach(spec, 'power', nonNegative(spec.powerSupply)),
         demand: nonNegative(spec.powerDemand)
       },
       water: {
         capacity: nonNegative(spec.waterSupply),
+        reach: serviceReach(spec, 'water', nonNegative(spec.waterSupply)),
         demand: nonNegative(spec.waterDemand)
       },
       fire: {
         capacity: nonNegative(spec.fireCoverage),
+        reach: serviceReach(spec, 'fire', nonNegative(spec.fireCoverage)),
         demand: nonNegative(
           spec.fireDemand,
           Math.ceil((population + employees) / 180)

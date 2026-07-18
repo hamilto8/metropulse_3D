@@ -39,6 +39,7 @@ export const MISSION_OUTCOME_COMMANDS = Object.freeze({
 });
 
 export const REPAIR_STATUSES = Object.freeze(['NOT_STARTED', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETE', 'CANCELLED']);
+export const WORK_ORDER_TYPES = Object.freeze(['REPAIR', 'CLEANUP']);
 export const ACCESS_STATES = Object.freeze(['OPEN', 'RESTRICTED', 'CLOSED']);
 export const FOLLOW_UP_STATUSES = Object.freeze(['LOCKED', 'AVAILABLE', 'COMPLETED', 'FAILED', 'EXPIRED']);
 
@@ -189,11 +190,31 @@ function normalizeCommand(command, index, context) {
         condition: numberInRange(command.condition, 0, 1, `${type}.condition`, 1),
         safety: numberInRange(command.safety, 0, 1, `${type}.safety`, 1)
       };
-    case MISSION_OUTCOME_COMMANDS.INCIDENT_RECORDED:
+    case MISSION_OUTCOME_COMMANDS.INCIDENT_RECORDED: {
+      const hasExtensions = ['title', 'cause', 'targetId', 'service', 'cleanupRequired', 'repairRequired']
+        .some(key => Object.hasOwn(command, key));
+      const service = command.service == null
+        ? null
+        : assertId(command.service, `${type}.service`).toLowerCase();
+      if (service !== null && !SERVICE_NAMES.has(service)) {
+        throw new RangeError(`${type}.service must be power, water, or fire`);
+      }
       return {
         ...base,
         incidentId: assertId(command.incidentId, `${type}.incidentId`),
         incidentType: assertId(command.incidentType ?? 'GENERAL', `${type}.incidentType`).toUpperCase(),
+        ...(hasExtensions ? {
+          title: optionalString(command.title, `${type}.title`),
+          cause: optionalString(command.cause, `${type}.cause`),
+          targetId: optionalString(command.targetId, `${type}.targetId`),
+          service,
+          cleanupRequired: command.cleanupRequired == null
+            ? false
+            : assertBoolean(command.cleanupRequired, `${type}.cleanupRequired`),
+          repairRequired: command.repairRequired == null
+            ? false
+            : assertBoolean(command.repairRequired, `${type}.repairRequired`)
+        } : {}),
         districtId: context.knownDistrict(command.districtId, `${type}.districtId`, true),
         severity: numberInRange(command.severity, 0, 10, `${type}.severity`, 1),
         active: true,
@@ -202,23 +223,58 @@ function normalizeCommand(command, index, context) {
         position: command.position == null ? null : normalizePosition(command.position, `${type}.position`),
         influenceRadius: Math.max(0, assertFiniteNumber(command.influenceRadius ?? 0, `${type}.influenceRadius`))
       };
+    }
     case MISSION_OUTCOME_COMMANDS.INCIDENT_RESOLVED:
       return { ...base, incidentId: assertId(command.incidentId, `${type}.incidentId`) };
-    case MISSION_OUTCOME_COMMANDS.REPAIR_SET:
+    case MISSION_OUTCOME_COMMANDS.REPAIR_SET: {
+      const hasExtensions = [
+        'workType', 'label', 'incidentId', 'prerequisiteTargetId', 'outageId',
+        'infrastructureId', 'service', 'districtId', 'position', 'interactionRadius', 'resolvesIncident'
+      ].some(key => Object.hasOwn(command, key));
+      const service = command.service == null
+        ? null
+        : assertId(command.service, `${type}.service`).toLowerCase();
+      if (service !== null && !SERVICE_NAMES.has(service)) {
+        throw new RangeError(`${type}.service must be power, water, or fire`);
+      }
       return {
         ...base,
         targetId: assertId(command.targetId, `${type}.targetId`),
+        ...(hasExtensions ? {
+          workType: enumValue(command.workType, WORK_ORDER_TYPES, `${type}.workType`, 'REPAIR'),
+          label: optionalString(command.label, `${type}.label`),
+          incidentId: optionalString(command.incidentId, `${type}.incidentId`),
+          prerequisiteTargetId: optionalString(command.prerequisiteTargetId, `${type}.prerequisiteTargetId`),
+          outageId: optionalString(command.outageId, `${type}.outageId`),
+          infrastructureId: optionalString(command.infrastructureId, `${type}.infrastructureId`),
+          service,
+          districtId: context.knownDistrict(command.districtId, `${type}.districtId`, true),
+          position: command.position == null ? null : normalizePosition(command.position, `${type}.position`),
+          interactionRadius: numberInRange(command.interactionRadius, 1, 25, `${type}.interactionRadius`, 7),
+          resolvesIncident: command.resolvesIncident == null
+            ? false
+            : assertBoolean(command.resolvesIncident, `${type}.resolvesIncident`)
+        } : {}),
         status: enumValue(command.status, REPAIR_STATUSES, `${type}.status`, 'NOT_STARTED'),
         progress: numberInRange(command.progress, 0, 1, `${type}.progress`, 0),
         estimatedCost: Math.max(0, assertFiniteNumber(command.estimatedCost ?? 0, `${type}.estimatedCost`))
       };
+    }
     case MISSION_OUTCOME_COMMANDS.SERVICE_OUTAGE_SET: {
+      const hasExtensions = ['targetId', 'cause', 'position', 'influenceRadius']
+        .some(key => Object.hasOwn(command, key));
       const service = assertId(command.service, `${type}.service`).toLowerCase();
       if (!SERVICE_NAMES.has(service)) throw new RangeError(`${type}.service must be power, water, or fire`);
       return {
         ...base,
         outageId: assertId(command.outageId, `${type}.outageId`),
         service,
+        ...(hasExtensions ? {
+          targetId: optionalString(command.targetId, `${type}.targetId`),
+          cause: optionalString(command.cause, `${type}.cause`),
+          position: command.position == null ? null : normalizePosition(command.position, `${type}.position`),
+          influenceRadius: Math.max(0, assertFiniteNumber(command.influenceRadius ?? 0, `${type}.influenceRadius`))
+        } : {}),
         districtId: context.knownDistrict(command.districtId, `${type}.districtId`, true),
         active: command.active == null ? true : assertBoolean(command.active, `${type}.active`),
         severity: numberInRange(command.severity, 0, 1, `${type}.severity`, 1),
@@ -307,6 +363,10 @@ function applyCommand(state, command, transactionId, context) {
     case MISSION_OUTCOME_COMMANDS.INCIDENT_RECORDED:
       return setRecord(state, 'incidents', command.incidentId, {
         type: command.incidentType, districtId: command.districtId, severity: command.severity,
+        ...(Object.hasOwn(command, 'title') ? {
+          title: command.title, cause: command.cause, targetId: command.targetId, service: command.service,
+          cleanupRequired: command.cleanupRequired, repairRequired: command.repairRequired
+        } : {}),
         active: true, happinessModifier: command.happinessModifier,
         landValueModifier: command.landValueModifier, position: command.position,
         influenceRadius: command.influenceRadius, ...source
@@ -319,11 +379,23 @@ function applyCommand(state, command, transactionId, context) {
     }
     case MISSION_OUTCOME_COMMANDS.REPAIR_SET:
       return setRecord(state, 'repairs', command.targetId, {
+        ...(Object.hasOwn(command, 'workType') ? {
+          workType: command.workType, label: command.label, incidentId: command.incidentId,
+          prerequisiteTargetId: command.prerequisiteTargetId, outageId: command.outageId,
+          infrastructureId: command.infrastructureId, service: command.service,
+          districtId: command.districtId, position: command.position,
+          interactionRadius: command.interactionRadius, resolvesIncident: command.resolvesIncident
+        } : {}),
         status: command.status, progress: command.progress, estimatedCost: command.estimatedCost, ...source
       }, command.type, explanation);
     case MISSION_OUTCOME_COMMANDS.SERVICE_OUTAGE_SET:
       return setRecord(state, 'serviceOutages', command.outageId, {
-        service: command.service, districtId: command.districtId, active: command.active,
+        service: command.service,
+        ...(Object.hasOwn(command, 'targetId') ? {
+          targetId: command.targetId, cause: command.cause,
+          position: command.position, influenceRadius: command.influenceRadius
+        } : {}),
+        districtId: command.districtId, active: command.active,
         severity: command.severity, coverageMultiplier: command.coverageMultiplier, ...source
       }, command.type, explanation);
     case MISSION_OUTCOME_COMMANDS.TRAFFIC_SET:
@@ -397,10 +469,14 @@ function validateStoredState(state, contentRegistry) {
   }
   for (const [id, repair] of Object.entries(state.repairs)) {
     assertRecord(repair, `outcome state.repairs.${id}`);
+    enumValue(repair.workType, WORK_ORDER_TYPES, `outcome state.repairs.${id}.workType`, 'REPAIR');
     enumValue(repair.status, REPAIR_STATUSES, `outcome state.repairs.${id}.status`, null);
     numberInRange(repair.progress, 0, 1, `outcome state.repairs.${id}.progress`, null);
     if (repair.estimatedCost < 0) throw new RangeError(`outcome state.repairs.${id}.estimatedCost cannot be negative`);
     assertFiniteNumber(repair.estimatedCost, `outcome state.repairs.${id}.estimatedCost`);
+    if (repair.position != null) normalizePosition(repair.position, `outcome state.repairs.${id}.position`);
+    if (repair.interactionRadius != null) numberInRange(repair.interactionRadius, 1, 25, `outcome state.repairs.${id}.interactionRadius`, null);
+    if (repair.resolvesIncident != null) assertBoolean(repair.resolvesIncident, `outcome state.repairs.${id}.resolvesIncident`);
   }
   for (const [id, outage] of Object.entries(state.serviceOutages)) {
     assertRecord(outage, `outcome state.serviceOutages.${id}`);
@@ -408,6 +484,11 @@ function validateStoredState(state, contentRegistry) {
     assertBoolean(outage.active, `outcome state.serviceOutages.${id}.active`);
     numberInRange(outage.severity, 0, 1, `outcome state.serviceOutages.${id}.severity`, null);
     numberInRange(outage.coverageMultiplier, 0, 1, `outcome state.serviceOutages.${id}.coverageMultiplier`, null);
+    if (outage.position != null) normalizePosition(outage.position, `outcome state.serviceOutages.${id}.position`);
+    if (outage.influenceRadius != null) {
+      if (outage.influenceRadius < 0) throw new RangeError(`outcome state.serviceOutages.${id}.influenceRadius cannot be negative`);
+      assertFiniteNumber(outage.influenceRadius, `outcome state.serviceOutages.${id}.influenceRadius`);
+    }
   }
   for (const [id, policy] of Object.entries(state.traffic)) {
     assertRecord(policy, `outcome state.traffic.${id}`);
@@ -637,7 +718,9 @@ export class MissionOutcomeService {
     this.#state = clone(value.state);
     this.#transactions = transactions;
     this.#sequence = value.sequence;
-    return this.snapshot();
+    const snapshot = this.snapshot();
+    this.#publish(deepFreeze({ type: 'RESTORED', current: snapshot }));
+    return snapshot;
   }
 
   subscribe(listener, { emitCurrent = false } = {}) {

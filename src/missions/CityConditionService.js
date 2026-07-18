@@ -98,6 +98,7 @@ function districtForPosition(definitions, x, z) {
 export class CityConditionService {
   #economySystem;
   #outcomeService;
+  #serviceModel;
   #trafficProvider;
   #bridgeProvider;
   #weatherProvider;
@@ -108,6 +109,7 @@ export class CityConditionService {
   constructor({
     economySystem,
     outcomeService = null,
+    serviceModel = null,
     trafficProvider = null,
     bridgeProvider = null,
     weatherProvider = null,
@@ -118,6 +120,10 @@ export class CityConditionService {
     }
     this.#economySystem = economySystem;
     this.#outcomeService = outcomeService;
+    if (serviceModel !== null && !serviceModel?.getCoverage) {
+      throw new TypeError('serviceModel must expose getCoverage or be null');
+    }
+    this.#serviceModel = serviceModel;
     this.#trafficProvider = trafficProvider;
     this.#bridgeProvider = bridgeProvider;
     this.#weatherProvider = weatherProvider;
@@ -236,10 +242,30 @@ export class CityConditionService {
     }, this.#sources([authored, repair]), this.#revision());
   }
 
-  getServiceCoverage(service, { districtId = null } = {}) {
+  getServiceCoverage(service, request = {}) {
+    const { districtId = null } = request;
     const normalizedService = assertId(service, 'service').toLowerCase();
     if (!SERVICE_NAMES.has(normalizedService)) throw new RangeError('service must be power, water, or fire');
     if (districtId) this.#knownDistrict(districtId);
+    if (this.#serviceModel) {
+      const local = this.#serviceModel.getCoverage(normalizedService, {
+        districtId,
+        position: request.position,
+        x: request.x,
+        z: request.z
+      });
+      return condition(CITY_CONDITION_TYPES.SERVICE_COVERAGE, districtId ? `${districtId}:${normalizedService}` : normalizedService, {
+        service: normalizedService,
+        districtId: local.districtId,
+        position: local.position,
+        coverage: local.coverage,
+        coveragePercent: local.coveragePercent,
+        adequate: local.adequate,
+        health: local.health,
+        outageActive: local.outageActive,
+        explanation: local.explanation
+      }, local.facts, this.#sources(local.facts.outages), this.#revision());
+    }
     const economy = this.#economySystem.snapshot();
     const base = economy.services[normalizedService];
     const outages = Object.entries(this.#outcomes().serviceOutages || {})

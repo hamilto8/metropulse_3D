@@ -206,11 +206,19 @@ function normalizeBuilding(building) {
         nestedState.capacity ?? serviceCapacity[service] ?? 0,
         `building.services.${service}.capacity`
       ),
+      reach: assertNonNegative(
+        nestedState.reach ?? nestedState.radius ?? 0,
+        `building.services.${service}.reach`
+      ),
       demand: assertNonNegative(
         nestedState.demand ?? serviceDemand[service] ?? 0,
         `building.services.${service}.demand`
       )
     };
+  }
+
+  if (position === null && Object.values(services).some(service => service.reach > 0)) {
+    throw new TypeError('building.position is required when service reach is greater than zero');
   }
 
   const name = building.name ?? id;

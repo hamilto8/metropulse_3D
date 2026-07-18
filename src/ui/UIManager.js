@@ -153,6 +153,12 @@ export class UIManager {
     if (this.app.economySystem?.subscribe) {
       this._unsubscribeEconomy = this.app.economySystem.subscribe(event => this.updateEconomy(event?.current || event), { emitCurrent: true });
     }
+    if (this.app.cityServiceModel?.subscribe) {
+      this._unsubscribeCityServices = this.app.cityServiceModel.subscribe(
+        () => this.updateEconomy(this.app.economySystem.snapshot()),
+        { emitCurrent: true }
+      );
+    }
     this.syncTimePlayingControl(this.app.timeManager?.isPlaying);
     this.syncTimeSpeedControl(this.app.timeManager?.speed);
     this.updateDynamicWeatherBtnState();
@@ -785,7 +791,10 @@ export class UIManager {
     const pulse = state.cityPulse || state;
     const cash = Number(state.cash ?? state.treasury ?? state.budget ?? pulse.budget ?? 0);
     const population = Math.max(0, Math.round(Number(state.population ?? pulse.population ?? 0)));
-    const energy = Math.max(0, Math.min(100, Math.round(Number(state.energy ?? state.energyPercent ?? pulse.energy ?? 0))));
+    const cityServices = this.app.cityServiceModel?.snapshot?.() || null;
+    const energy = Math.max(0, Math.min(100, Math.round(Number(
+      cityServices?.energy?.coveragePercent ?? state.energy ?? state.energyPercent ?? pulse.energy ?? 0
+    ))));
     const happiness = Math.max(0, Math.min(100, Math.round(Number(state.happiness ?? pulse.happiness ?? 0))));
     const landValue = Math.max(0, Math.round(Number(state.landValue ?? pulse.landValue ?? 0)));
     const reputation = Math.round(Number(state.reputation ?? 0));
@@ -838,10 +847,16 @@ export class UIManager {
         if (typeof service?.coverage === 'number') return service.coverage * 100;
         return fallback;
       };
-      const power = Math.round(toCoverage(services.power, energy));
+      const power = Math.round(cityServices?.energy?.coveragePercent ?? toCoverage(services.power, energy));
       const water = Math.round(toCoverage(services.water));
-      const fire = Math.round(toCoverage(services.fire));
-      this.pulseServices.textContent = `P ${power}% · W ${water}% · F ${fire}%`;
+      const fire = Math.round(cityServices?.safety?.coveragePercent ?? toCoverage(services.fire));
+      const issues = cityServices?.activeIncidentCount ?? 0;
+      this.pulseServices.textContent = `E ${power}% · Safety ${fire}% · ${issues} issue${issues === 1 ? '' : 's'}`;
+      this.pulseServices.title = [
+        cityServices?.energy?.explanation,
+        cityServices?.safety?.explanation,
+        `Water compatibility coverage ${water}%`
+      ].filter(Boolean).join(' · ');
     }
 
     if (this.btnUnlockEast) {

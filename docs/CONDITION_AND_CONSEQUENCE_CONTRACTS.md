@@ -119,7 +119,7 @@ Supported commands cover the complete P3.1 requirement:
 | `INFRASTRUCTURE_STATE_SET` | State, access, condition, and safety of a stable infrastructure ID. |
 | `INCIDENT_RECORDED` / `INCIDENT_RESOLVED` | Persistent incident lifecycle and spatial modifiers. |
 | `REPAIR_SET` | Repair status, normalized progress, and estimated cost. |
-| `SERVICE_OUTAGE_SET` | District/global outage and coverage multiplier. |
+| `SERVICE_OUTAGE_SET` | District/global or radius-based outage and coverage multiplier. |
 | `TRAFFIC_SET` | Scoped density, access, enforcement, and hazard policy. |
 | `FACTION_REPUTATION_ADJUSTED` | Authored-faction delta clamped to its declared range. |
 | `PROGRESSION_SET` | Stable Operator/Broker/Magnate progression state. |
@@ -204,3 +204,9 @@ When adding a consequence family:
 P3.2 should consume these APIs while adding lifecycle states. P3.3 and later
 work should project the same receipts into debrief, news, visible traffic,
 closures, hazards, and follow-up offers rather than introducing parallel paths.
+
+P4.3 extends, but does not replace, these command families. `REPAIR_SET` may
+carry cleanup/repair work-order metadata and a street position;
+`SERVICE_OUTAGE_SET` may carry a target, cause, position, and influence radius;
+and incident records may declare their response requirements. Optional fields
+preserve old transaction fingerprints. See `SERVICE_AND_INCIDENT_MODEL.md`.

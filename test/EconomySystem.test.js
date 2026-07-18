@@ -404,7 +404,10 @@ test('versioned economy persistence restores treasury, buildings, missions, and 
     population: 20,
     employees: 4,
     position: { x: 10, z: 20 },
-    amenityRadius: 30
+    amenityRadius: 30,
+    services: {
+      power: { capacity: 10, demand: 0, reach: 75 }
+    }
   });
   source.completeMission({ id: 'saved-mission', reward: 50, narrativeProgressDelta: 1 });
   source.unlockEastDistrict();
@@ -415,6 +418,7 @@ test('versioned economy persistence restores treasury, buildings, missions, and 
   assert.equal(restored.treasury, source.treasury);
   assert.equal(restored.narrativeProgress, 1);
   assert.equal(restored.buildings.some(building => building.id === 'saved-building'), true);
+  assert.equal(restored.buildings.find(building => building.id === 'saved-building').services.power.reach, 75);
   assert.equal(restored.completedMissions.some(mission => mission.id === 'saved-mission'), true);
   assert.equal(target.isDistrictUnlocked(DISTRICT_IDS.EAST_CYBER_METROPOLIS), true);
   assert.throws(() => target.restore({ version: 99 }), /Unsupported economy state version/);

@@ -126,6 +126,11 @@ export function createMetroPulseSimulationScheduler(app) {
     delta => app.cityBuilder?.update?.(delta));
   register(scheduler, 'world.rocket', SIMULATION_STAGES.GAMEPLAY, 910,
     (delta, context) => updateRocketSimulation(app, delta, context));
+  register(scheduler, 'world.service-task-markers', SIMULATION_STAGES.GAMEPLAY, 920,
+    (delta, context) => app.serviceTaskMarkerSystem?.update?.(
+      delta,
+      context.clocks[SIMULATION_CLOCKS.GAMEPLAY].elapsed
+    ));
 
   // Time-of-day advances before economy so every city tick observes the same
   // authoritative logical instant. Both receive exactly one logical second.

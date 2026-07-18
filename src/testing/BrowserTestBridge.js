@@ -217,6 +217,38 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
     },
     setMayhem: enabled => app.uiManager?.setMayhem?.(Boolean(enabled), 'BrowserTestBridge'),
     alerts: () => app.alertService?.snapshot?.() || null,
+    serviceSnapshot: () => app.cityServiceModel?.snapshot?.() || null,
+    reportServiceIncident: () => app.incidentResponseService?.reportIncident?.({
+      id: 'browser-service-relay',
+      type: 'ENERGY_RELAY_DAMAGE',
+      title: 'Acceptance relay damaged',
+      cause: 'A deterministic relay strike created a local outage and debris field.',
+      targetId: 'browser-relay',
+      infrastructureId: 'browser-relay',
+      districtId: 'PRIMARY_BRIDGE_CORRIDOR',
+      service: 'power',
+      severity: 5,
+      cleanupCost: 1_000,
+      repairCost: 2_000,
+      coverageMultiplier: 0.35,
+      position: { x: 205, z: 18 },
+      influenceRadius: 90
+    }),
+    scheduleServiceResponse: incidentId => app.incidentResponseService?.scheduleResponse?.(incidentId),
+    serviceWorkOrders: () => app.incidentResponseService?.getWorkOrders?.() || [],
+    enterServiceWork: workOrderId => {
+      const order = app.incidentResponseService?.getWorkOrder?.(workOrderId);
+      if (!order?.position) throw new Error(`Street work order is unavailable: ${workOrderId}`);
+      enterState('STREET_ON_FOOT');
+      const pedestrian = app.pedestrianSystem?.controlledPedestrian;
+      if (!pedestrian?.mesh?.position) throw new Error('Service work setup lacks a controlled pedestrian.');
+      pedestrian.mesh.position.set(
+        order.position.x,
+        (app.cityBuilder?.getHillHeight?.(order.position.x, order.position.z) || 0) + 1,
+        order.position.z
+      );
+      return Object.freeze({ workOrder: order, snapshot: diagnostics.snapshot() });
+    },
     publishAlertFixture: (actionType = 'STREET_WAYPOINT') => app.alertService?.publish?.({
       dedupeKey: `browser-fixture:${actionType}`,
       type: 'SYSTEM',

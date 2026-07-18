@@ -34,6 +34,7 @@ export function createMetroPulseInteractionService(app) {
   });
 
   register('missions', app.missionSystem);
+  register('service-work', app.serviceWorkInteractionProvider);
   register('aircraft', app.aircraftSystem);
   register('traffic', app.trafficSystem);
   register('pedestrians', app.pedestrianSystem);

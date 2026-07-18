@@ -25,6 +25,7 @@ Every building record can provide:
 - `grossIncomeRate` and `operatingCostRate` in credits per simulation second;
 - `population`, `housingCapacity`, `employees`, and `jobCapacity`;
 - power, water, and fire capacity/demand;
+- optional power, water, and fire reach for capacity-providing facilities;
 - global happiness/land-value effects or a positioned amenity radius;
 - an operational lifecycle flag.
 
@@ -92,3 +93,8 @@ Direct action systems retain their real-time deltas.
 Future depth should prioritize localized service networks, gradual occupancy
 and migration, traffic/productivity feedback, a fixed-point transaction ledger,
 and save migrations before adding further scalar bonuses.
+
+P4.3 implements the first localized layer without changing economy ownership.
+`CityServiceModel` combines these aggregate readings with facility reach and
+outcome-owned spatial outages. `SERVICE_AND_INCIDENT_MODEL.md` is the extension
+contract for service reach, response funding, cleanup, repair, and street work.

@@ -19,10 +19,10 @@
 | DD-011 | The browser minimum/recommended hardware and exact compatibility matrix remain product decisions requiring measured profiles. | Unresolved | Performance Lead | 2026-09-25 | Record CPU/GPU/RAM/viewport/browser profiles and revise budgets from evidence. |
 | DD-012 | Faction count is 3–4; operations may merge with residents if the fourth track does not create a distinct tradeoff. | Unresolved | Narrative Lead | 2027-01-08 | Prototype one choice per track and test whether players can predict consequences. |
 | DD-013 | MVP accessibility includes all GDD v3 baseline options; none may be relabeled as post-MVP to protect schedule. | Accepted | Product Lead | 2026-07-17 | Scope cuts must come from cosmetics/variants before accessibility. |
+| DD-014 | P4.3 uses Energy plus simplified Safety/Repair as the primary MVP service model. Local behavior combines district backbone access, facility-radius reach, and spatial outage falloff; Water remains a compatibility/placement metric. | Accepted | Systems Designer | 2026-07-18 | Implemented by `CityServiceModel`; do not add a node/edge utility simulator without playtest evidence and a superseding decision. |
 
 ## Decision entry template
 
 New entries must state: context, selected option, alternatives considered,
 player consequence, technical/save consequence, evidence, owner, deadline, and
 the requirement IDs or scope constants affected.
-

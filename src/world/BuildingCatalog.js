@@ -309,6 +309,7 @@ export const BUILDING_CATALOG = [
     generatorType: 'ENERGY_ARRAY',
     incomePerMinute: -450,
     powerSupply: 90,
+    powerReach: 220,
     waterDemand: 2,
     happiness: 2,
     specialty: 'Clean Power Grid'
@@ -383,6 +384,7 @@ export const BUILDING_CATALOG = [
     incomePerMinute: -500,
     powerDemand: 9,
     waterSupply: 100,
+    waterReach: 190,
     happiness: 2,
     specialty: 'Water Purification & Distribution'
   },
@@ -408,6 +410,7 @@ export const BUILDING_CATALOG = [
     powerDemand: 5,
     waterDemand: 5,
     fireCoverage: 45,
+    fireReach: 175,
     happiness: 7,
     specialty: 'Emergency Fire Response'
   },

@@ -17,6 +17,13 @@ test('canonical building adapter preserves public-service upkeep and derives cit
   assert.equal(record.jobCapacity, 310);
   assert.ok(record.services.fire.demand > 0);
   assert.deepEqual(record.position, { x: 20, z: 30 });
+
+  const energy = createBuildingEconomyRecord({
+    economyId: 'array-1',
+    plot: { x: -20, z: 10 }
+  }, { spec: getBuildingSpec('SOLAR_GRID') });
+  assert.equal(energy.services.power.capacity, 90);
+  assert.equal(energy.services.power.reach, 220);
 });
 
 test('unknown building catalog identifiers fail closed', () => {

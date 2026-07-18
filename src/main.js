@@ -58,6 +58,11 @@ import { BootScreen } from './ui/BootScreen.js';
 import { DISTRICT_DEFINITIONS } from './data/ContentDefinitions.js';
 import { MissionOutcomeService } from './missions/MissionOutcomeService.js';
 import { CityConditionService } from './missions/CityConditionService.js';
+import { CityServiceModel } from './systems/CityServiceModel.js';
+import { IncidentResponseService } from './systems/IncidentResponseService.js';
+import { ServiceWorkInteractionProvider } from './systems/ServiceWorkInteractionProvider.js';
+import { ServiceTaskMarkerSystem } from './world/ServiceTaskMarkerSystem.js';
+import { CityServicesPanel } from './ui/CityServicesPanel.js';
 import {
   ALERT_DURATION_KINDS,
   ALERT_FOCUS_ACTIONS,
@@ -115,6 +120,11 @@ export class MetroPulseApp {
     this.missionOutcomeService = new MissionOutcomeService({
       economySystem: this.economySystem,
       contentRegistry: this.contentRegistry,
+      districtDefinitions: DISTRICT_DEFINITIONS
+    });
+    this.cityServiceModel = new CityServiceModel({
+      economySystem: this.economySystem,
+      outcomeService: this.missionOutcomeService,
       districtDefinitions: DISTRICT_DEFINITIONS
     });
 
@@ -230,6 +240,7 @@ export class MetroPulseApp {
     this.cityConditionService = new CityConditionService({
       economySystem: this.economySystem,
       outcomeService: this.missionOutcomeService,
+      serviceModel: this.cityServiceModel,
       trafficProvider: () => this.trafficSystem.getCongestionMetrics(),
       bridgeProvider: bridgeId => ({
         id: bridgeId,
@@ -260,9 +271,25 @@ export class MetroPulseApp {
       getGameState: () => this.gameManager?.state,
       onFeedback: message => this.uiManager?.showToast?.(message)
     });
+    this.incidentResponseService = new IncidentResponseService({
+      outcomeService: this.missionOutcomeService,
+      economySystem: this.economySystem,
+      alertService: this.alertService
+    });
+    this.serviceTaskMarkerSystem = new ServiceTaskMarkerSystem({
+      scene: this.sceneManager.scene,
+      incidentResponseService: this.incidentResponseService,
+      groundHeight: (x, z) => this.cityBuilder.getHillHeight(x, z)
+    });
 
     // 11. UI Controls Manager
     this.uiManager = new UIManager(this);
+    this.cityServicesPanel = new CityServicesPanel({
+      cityServiceModel: this.cityServiceModel,
+      incidentResponseService: this.incidentResponseService,
+      root: document.getElementById('city-services-panel'),
+      onFeedback: message => this.uiManager.showToast(message)
+    });
     this.settingsRuntime = new SettingsRuntime({ store: this.settingsStore, app: this });
 
     // 11.2 City Editor & Map Expansion System
@@ -275,6 +302,15 @@ export class MetroPulseApp {
       missionId: runtimeConfig.test?.missionId || null,
       missionIds: runtimeConfig.test ? null : MVP_MISSION_IDS,
       includeMayhem: this.features.isEnabled(FEATURE_IDS.TEMPORARY_MAYHEM)
+    });
+    this.serviceWorkInteractionProvider = new ServiceWorkInteractionProvider({
+      incidentResponseService: this.incidentResponseService,
+      getPlayerPosition: () => {
+        const controlled = this.pedestrianSystem?.controlledPedestrian || this.trafficSystem?.controlledVehicle;
+        const position = controlled?.mesh?.position;
+        return position ? { x: position.x, z: position.z } : null;
+      },
+      isMissionCritical: () => Boolean(this.missionSystem?.lifecycle?.isMissionCritical)
     });
     this.resultScreen = new MissionResultScreen({
       lifecycle: this.missionSystem.lifecycle,
@@ -333,6 +369,7 @@ export class MetroPulseApp {
       error.actions = ['Reload and choose Recover Previous Save, or start a New Game.'];
       throw error;
     }
+    if (!bootSession.restore && !runtimeConfig.test) this.createInitialServiceIncident();
 
     // Initial UI sync
     this.uiManager.updateTimeDisplay(this.timeManager.timeVal);
@@ -438,6 +475,27 @@ export class MetroPulseApp {
   removeEconomyBuilding(building) {
     if (!building?.economyId) return null;
     return this.economySystem.removeBuilding(building.economyId);
+  }
+
+  createInitialServiceIncident() {
+    return this.incidentResponseService.reportIncident({
+      id: 'bridge-relay-failure',
+      type: 'ENERGY_RELAY_DAMAGE',
+      title: 'Bridge energy relay damaged',
+      cause: 'A transformer strike scattered debris and reduced power along the primary bridge approach.',
+      targetId: 'primary-bridge-relay',
+      infrastructureId: 'primary-bridge-relay',
+      districtId: 'PRIMARY_BRIDGE_CORRIDOR',
+      service: 'power',
+      severity: 5,
+      cleanupRequired: true,
+      repairRequired: true,
+      cleanupCost: 1_500,
+      repairCost: 4_500,
+      coverageMultiplier: 0.45,
+      position: { x: 205, z: 18 },
+      influenceRadius: 90
+    });
   }
 
   triggerRocketLaunch() {
