@@ -1,6 +1,8 @@
+import { normalizeZoneId } from '../world/ConstructionVocabulary.js';
+
 export const SAVE_FORMAT = 'METROPULSE_3D_SAVE';
-export const SAVE_SCHEMA_VERSION = 1;
-export const SAVE_FEATURE_VERSION = 1;
+export const SAVE_SCHEMA_VERSION = 2;
+export const SAVE_FEATURE_VERSION = 2;
 export const LEGACY_LOCAL_STORAGE_SAVE_KEY = 'metropulse3d:city-session:v1';
 
 export const SAVE_SLOTS = Object.freeze({
@@ -81,8 +83,49 @@ function migrateSchema0(document) {
   };
 }
 
+function normalizePersistedZoneIds(data) {
+  const normalize = zone => {
+    if (!zone || typeof zone !== 'object') return zone;
+    const field = 'zoneType' in zone ? 'zoneType' : 'type';
+    const normalized = normalizeZoneId(zone[field]);
+    return normalized ? { ...zone, [field]: normalized } : zone;
+  };
+  return {
+    ...data,
+    world: data.world ? {
+      ...data.world,
+      zones: (data.world.zones || []).map(normalize)
+    } : data.world,
+    economy: data.economy ? {
+      ...data.economy,
+      buildings: (data.economy.buildings || []).map(building => ({
+        ...building,
+        kind: normalizeZoneId(building?.kind) || building?.kind
+      })),
+      zones: (data.economy.zones || []).map(normalize)
+    } : data.economy
+  };
+}
+
+function migrateSchema1(document) {
+  return {
+    ...document,
+    schemaVersion: 2,
+    featureVersion: Math.max(2, document.featureVersion || 1),
+    metadata: {
+      ...document.metadata,
+      migrationHistory: [
+        ...(document.metadata?.migrationHistory || []),
+        'P4.1_ZONE_VOCABULARY'
+      ]
+    },
+    data: normalizePersistedZoneIds(document.data)
+  };
+}
+
 export const SAVE_MIGRATIONS = Object.freeze(new Map([
-  [0, migrateSchema0]
+  [0, migrateSchema0],
+  [1, migrateSchema1]
 ]));
 
 export function migrateSaveDocument(input) {
@@ -182,7 +225,7 @@ export function convertLegacyV1Save(legacy) {
       checkpoint: null,
       migratedFrom: 'localStorage-v1'
     },
-    data: {
+    data: normalizePersistedZoneIds({
       game: { version: 1, state: 'MANAGEMENT', resumeState: null, mayhemEnabled: Boolean(legacy.settings?.mayhem) },
       economy: legacy.economy,
       world: legacy.world,
@@ -213,7 +256,7 @@ export function convertLegacyV1Save(legacy) {
       },
       bindings: { version: 1, overrides: {} },
       alerts: { version: 1, items: [] }
-    }
+    })
   });
 }
 

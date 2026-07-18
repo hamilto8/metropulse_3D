@@ -1,3 +1,5 @@
+import { MVP_ZONE_LABELS as CONSTRUCTION_ZONE_LABELS } from '../world/ConstructionVocabulary.js';
+
 /** Phase 0 product-scope constants. Changes require a written GDD amendment. */
 export const MVP_WORLD_FOOTPRINT = Object.freeze([
   'WEST_CORE',
@@ -27,11 +29,7 @@ export const MVP_MISSION_IDS = Object.freeze([
   'mission_mayhem_escape'
 ]);
 
-export const MVP_ZONE_LABELS = Object.freeze({
-  RESIDENTIAL: 'Residential',
-  COMMERCIAL: 'Commercial',
-  INDUSTRIAL: 'Operations'
-});
+export const MVP_ZONE_LABELS = CONSTRUCTION_ZONE_LABELS;
 
 if (MVP_MISSION_IDS.length < 8 || MVP_MISSION_IDS.length > 12) {
   throw new Error('MVP mission scope must remain between 8 and 12 authored missions');
@@ -39,4 +37,3 @@ if (MVP_MISSION_IDS.length < 8 || MVP_MISSION_IDS.length > 12) {
 if (MVP_ACTIVITY_TEMPLATES.length < 5 || MVP_ACTIVITY_TEMPLATES.length > 7) {
   throw new Error('MVP activity scope must remain between 5 and 7 templates');
 }
-

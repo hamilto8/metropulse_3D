@@ -1,3 +1,5 @@
+import { normalizeZoneId } from '../world/ConstructionVocabulary.js';
+
 /**
  * Authoritative, renderer-agnostic economy and City Pulse model.
  *
@@ -271,9 +273,11 @@ function normalizeBuilding(building) {
 
 function normalizeZoneEffect(zone) {
   assertRecord(zone, 'zone');
+  const zoneType = normalizeZoneId(zone.type ?? zone.zoneType);
+  if (!zoneType) throw new RangeError(`Unknown zone type: ${String(zone.type ?? zone.zoneType)}`);
   return deepFreeze({
     id: assertId(zone.id ?? zone.key, 'zone.id'),
-    type: assertId(zone.type ?? zone.zoneType, 'zone.type'),
+    type: zoneType,
     happinessModifier: assertFiniteNumber(
       zone.happinessModifier ?? 0,
       'zone.happinessModifier'
@@ -1154,7 +1158,7 @@ export class EconomySystem {
     const demand = {
       residential: residentialDemand,
       commercial: clamp(Math.round((residentialDemand + jobsDemand) / 2), 0, 100),
-      industrial: jobsDemand,
+      operations: jobsDemand,
       services: serviceDemand
     };
     const budget = this.getBudgetBreakdown();

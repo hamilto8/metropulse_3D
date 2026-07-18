@@ -1,11 +1,12 @@
-export const BUILDING_CATEGORIES = {
-  COMMERCIAL: 'Commercial & Skyscraper',
-  RESIDENTIAL: 'Residential & Housing',
-  INDUSTRIAL: 'Operations & Logistics',
-  CIVIC: 'Civic & Medical Services',
-  INFRASTRUCTURE: 'Roads & Transit',
-  UTILITIES: 'Power, Water & Emergency Services'
-};
+import {
+  CATALOG_STAGES,
+  CONSTRUCTION_CATEGORIES,
+  getCatalogAccess,
+  isCatalogSpecDisclosed,
+  PROGRESSION_TIERS
+} from './ConstructionVocabulary.js';
+
+export const BUILDING_CATEGORIES = CONSTRUCTION_CATEGORIES;
 
 export const BUILDING_CATALOG = [
   // Commercial
@@ -13,6 +14,8 @@ export const BUILDING_CATALOG = [
     id: 'NEOTECH_HQ',
     name: 'NeoTech Quantum Tower',
     category: 'COMMERCIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.MAGNATE,
     icon: '🏢',
     description: 'High-tech AI and robotics research tower with neon cyber accents and rooftop landing pad.',
     footprint: { width: 40, depth: 40 },
@@ -34,6 +37,8 @@ export const BUILDING_CATALOG = [
     id: 'APEX_BANK',
     name: 'Apex Financial Spire',
     category: 'COMMERCIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.MAGNATE,
     icon: '🏦',
     description: 'Decentralized financial headquarters featuring golden architectural ribs and corporate beacon.',
     footprint: { width: 44, depth: 44 },
@@ -55,6 +60,8 @@ export const BUILDING_CATALOG = [
     id: 'CYBERCAFE',
     name: 'CyberCafe 24/7',
     category: 'COMMERCIAL',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '☕',
     description: 'Bustling cyber cafe with glowing magenta canopy and high-speed quantum network access.',
     footprint: { width: 30, depth: 30 },
@@ -77,6 +84,8 @@ export const BUILDING_CATALOG = [
     id: 'GALAXY_CINEMA',
     name: 'Galaxy Hologram Cinema',
     category: 'COMMERCIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🎬',
     description: 'Futuristic multiplex displaying immersive 3D holographic movie experiences.',
     footprint: { width: 36, depth: 36 },
@@ -101,6 +110,8 @@ export const BUILDING_CATALOG = [
     id: 'SKYLINE_CONDOS',
     name: 'Skyline Luxury Condos',
     category: 'RESIDENTIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🏙️',
     description: 'Multi-tiered residential skyscraper with wraparound panoramic glass balconies.',
     footprint: { width: 36, depth: 36 },
@@ -122,6 +133,8 @@ export const BUILDING_CATALOG = [
     id: 'METRO_LOFTS',
     name: 'Metro Cyber Lofts',
     category: 'RESIDENTIAL',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '🏬',
     description: 'Contemporary urban residential lofts designed for metropolitan living.',
     footprint: { width: 30, depth: 30 },
@@ -143,6 +156,8 @@ export const BUILDING_CATALOG = [
     id: 'GARDEN_TOWER',
     name: 'Eco-Spire Garden Tower',
     category: 'RESIDENTIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🌿',
     description: 'Sustainable vertical garden complex with illuminated terrace gardens and clean energy systems.',
     footprint: { width: 38, depth: 38 },
@@ -165,7 +180,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'MED_CENTER',
     name: 'Bio-Regen Medical Center',
-    category: 'CIVIC',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🏥',
     description: 'State-of-the-art cybernetic emergency medical hospital and trauma recovery center.',
     footprint: { width: 42, depth: 42 },
@@ -187,7 +204,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'CYBER_POLICE',
     name: 'Metro Peacekeeping Precinct',
-    category: 'CIVIC',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🚓',
     description: 'Metropolitan police precinct equipped with drone launch bays and security command array.',
     footprint: { width: 34, depth: 34 },
@@ -210,7 +229,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'SOLAR_PLAZA',
     name: 'Cyber Plaza & Fountain',
-    category: 'CIVIC',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '⛲',
     description: 'Public park and gathering plaza featuring glowing bio-trees and a illuminated water fountain.',
     footprint: { width: 40, depth: 40 },
@@ -234,6 +255,8 @@ export const BUILDING_CATALOG = [
     id: 'ROAD_STRAIGHT',
     name: 'Asphalt Road Segment',
     category: 'INFRASTRUCTURE',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '🛣️',
     description: 'Standard 30m asphalt roadway with glowing lane dividers and sidewalk curbs.',
     footprint: { width: 30, depth: 30 },
@@ -252,6 +275,8 @@ export const BUILDING_CATALOG = [
     id: 'ROAD_INTERSECTION',
     name: '4-Way Road Crossing',
     category: 'INFRASTRUCTURE',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '➕',
     description: 'Four-way intersection junction connecting urban road blocks with crosswalks.',
     footprint: { width: 30, depth: 30 },
@@ -269,7 +294,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'SOLAR_GRID',
     name: 'Quantum Energy Array',
-    category: 'UTILITIES',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '⚡',
     description: 'High-output solar and zero-point energy generation station powering the city.',
     footprint: { width: 26, depth: 26 },
@@ -291,7 +318,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'CYBER_FAB',
     name: 'Titan Cyber-Fabrication Works',
-    category: 'INDUSTRIAL',
+    category: 'OPERATIONS',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '🏭',
     description: 'Automated fabrication campus producing transit components and corporate-grade consumer optimism.',
     footprint: { width: 44, depth: 44 },
@@ -312,7 +341,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'ORBITAL_LOGISTICS',
     name: 'Orbital Logistics Exchange',
-    category: 'INDUSTRIAL',
+    category: 'OPERATIONS',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '🚚',
     description: 'River-crossing freight exchange serving Orbital Systems and the east-bank corporate arcology.',
     footprint: { width: 40, depth: 40 },
@@ -335,7 +366,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'WATER_RECLAMATION',
     name: 'AquaLoop Reclamation Hub',
-    category: 'UTILITIES',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.BROKER,
     icon: '💧',
     description: 'Closed-loop municipal water treatment and distribution plant.',
     footprint: { width: 34, depth: 34 },
@@ -356,7 +389,9 @@ export const BUILDING_CATALOG = [
   {
     id: 'FIRE_STATION',
     name: 'Phoenix Fire & Rescue',
-    category: 'UTILITIES',
+    category: 'FACILITIES',
+    catalogStage: CATALOG_STAGES.STARTER,
+    progressionTier: PROGRESSION_TIERS.OPERATOR,
     icon: '🚒',
     description: 'Rapid-response fire service protecting buildings from infrastructure and Mayhem hazards.',
     footprint: { width: 32, depth: 32 },
@@ -380,6 +415,8 @@ export const BUILDING_CATALOG = [
     id: 'BRIDGE_DECK',
     name: 'Smart Bridge Deck Segment',
     category: 'INFRASTRUCTURE',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.MAGNATE,
     icon: '🌉',
     description: 'Reinforced smart-lane deck segment with adaptive congestion signage.',
     footprint: { width: 30, depth: 30 },
@@ -399,6 +436,8 @@ export const BUILDING_CATALOG = [
     id: 'AETHER_LANDMARK',
     name: 'Aether Prosperity Beacon',
     category: 'COMMERCIAL',
+    catalogStage: CATALOG_STAGES.ADVANCED,
+    progressionTier: PROGRESSION_TIERS.MAGNATE,
     icon: '🌆',
     description: 'Prestige landmark broadcasting that quarterly growth is a civic virtue.',
     footprint: { width: 46, depth: 46 },
@@ -419,11 +458,24 @@ export const BUILDING_CATALOG = [
   }
 ];
 
-export function getCatalogByCategory(category) {
-  if (!category || category === 'ALL') return BUILDING_CATALOG;
-  return BUILDING_CATALOG.filter(item => item.category === category);
+export function getCatalogByCategory(category, {
+  includeAdvanced = true,
+  progression = {},
+  includeLocked = true
+} = {}) {
+  return BUILDING_CATALOG.filter(item => (
+    (!category || category === 'ALL' || item.category === category)
+    && isCatalogSpecDisclosed(item, { includeAdvanced })
+    && (includeLocked || getCatalogAccess(item, progression).unlocked)
+  ));
 }
 
 export function getBuildingSpec(id) {
   return BUILDING_CATALOG.find(item => item.id === id) || null;
 }
+
+export function getDefaultBuildingSpec() {
+  return BUILDING_CATALOG.find(item => item.catalogStage === CATALOG_STAGES.STARTER) || null;
+}
+
+export { getCatalogAccess };

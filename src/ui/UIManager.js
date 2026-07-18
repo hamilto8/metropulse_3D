@@ -471,20 +471,22 @@ export class UIManager {
         if (this.cityEditorUI) {
           if (!this.cityEditorUI.isVisible && !this.cityEditorUI.show()) return;
           const categoryMap = {
-            res: 'RESIDENTIAL',
-            com: 'COMMERCIAL',
-            ind: 'INDUSTRIAL',
-            office: 'COMMERCIAL',
-            fire: 'CIVIC',
-            power: 'UTILITIES',
-            water: 'UTILITIES'
+            RESIDENTIAL: 'RESIDENTIAL',
+            COMMERCIAL: 'COMMERCIAL',
+            OPERATIONS: 'OPERATIONS'
           };
           const targetCat = categoryMap[zoneType] || 'ALL';
           this.cityEditorUI.currentCategory = targetCat;
           this.cityEditorUI.currentPage = 0;
+          const selectedSpec = this.cityEditorUI.ensureValidSelection();
           this.cityEditorUI.renderCatalog();
+          this.cityEditorUI.updateBlueprintPreview(selectedSpec);
           const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
-          pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCat));
+          pills.forEach(p => {
+            const active = p.dataset.category === targetCat;
+            p.classList.toggle('active', active);
+            p.setAttribute('aria-pressed', String(active));
+          });
         }
         if (this.app.cityEditorSystem?.setZoningMode) this.app.cityEditorSystem.setZoningMode(zoneType);
       });
@@ -497,24 +499,33 @@ export class UIManager {
           if (!this.cityEditorUI.isVisible && !this.cityEditorUI.show()) return;
           const infraSpecMap = {
             road: 'ROAD_STRAIGHT',
-            bridge: 'BRIDGE_DECK',
-            pipe: 'WATER_RECLAMATION',
-            power: 'SOLAR_GRID'
+            power: 'SOLAR_GRID',
+            water: 'WATER_RECLAMATION',
+            fire: 'FIRE_STATION'
           };
           const specId = infraSpecMap[btn.dataset.infra];
-          if (specId) this.cityEditorUI.selectedSpecId = specId;
-          const targetCategory = btn.dataset.infra === 'pipe' || btn.dataset.infra === 'power'
-            ? 'UTILITIES'
+          const targetCategory = ['power', 'water', 'fire'].includes(btn.dataset.infra)
+            ? 'FACILITIES'
             : 'INFRASTRUCTURE';
           this.cityEditorUI.currentCategory = targetCategory;
           this.cityEditorUI.currentPage = 0;
-          this.cityEditorUI.renderCatalog();
           const pills = this.cityEditorUI.container.querySelectorAll('.tray-tab-pill');
-          pills.forEach(p => p.classList.toggle('active', p.dataset.category === targetCategory));
+          pills.forEach(p => {
+            const active = p.dataset.category === targetCategory;
+            p.classList.toggle('active', active);
+            p.setAttribute('aria-pressed', String(active));
+          });
           if (specId) {
-            this.app.cityEditorSystem?.selectBuilding?.(specId);
-            this.cityEditorUI.updateBlueprintPreview(this.app.cityEditorSystem?.selectedSpec);
+            const selected = this.app.cityEditorSystem?.selectBuilding?.(specId);
+            if (selected) {
+              this.cityEditorUI.selectedSpecId = specId;
+            } else {
+              const fallback = this.cityEditorUI.ensureValidSelection();
+              if (fallback) this.app.cityEditorSystem?.selectBuilding?.(fallback.id);
+            }
           }
+          this.cityEditorUI.renderCatalog();
+          this.cityEditorUI.updateBlueprintPreview(this.app.cityEditorSystem?.selectedSpec);
         }
       });
     });
@@ -805,7 +816,7 @@ export class UIManager {
     }
     const demand = state.demand || {};
     if (this.pulseDemand) {
-      this.pulseDemand.textContent = `${Math.round(demand.residential ?? 0)}/${Math.round(demand.commercial ?? 0)}/${Math.round(demand.industrial ?? 0)}`;
+      this.pulseDemand.textContent = `${Math.round(demand.residential ?? 0)}/${Math.round(demand.commercial ?? 0)}/${Math.round(demand.operations ?? 0)}`;
       this.pulseDemand.title = 'Residential / Commercial / Operations development demand';
     }
     const happinessBreakdown = state.happinessBreakdown;

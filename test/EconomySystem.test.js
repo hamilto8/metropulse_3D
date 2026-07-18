@@ -77,7 +77,7 @@ test('jobs, housing, demand, and happiness expose an explainable labor-market fe
   assert.equal(state.demographics.unemploymentRate, 0.5);
   assert.equal(state.happinessBreakdown.employment, -7.5);
   assert.equal(state.cityPulse.happiness, 62.5);
-  assert.ok(state.demand.industrial > 0);
+  assert.ok(state.demand.operations > 0);
 });
 
 test('zoning effects replace and remove cleanly without clamping the base happiness value', () => {
@@ -100,6 +100,7 @@ test('zoning effects replace and remove cleanly without clamping the base happin
     happinessModifier: -2,
     landValueModifier: -1
   });
+  assert.equal(economy.getZoneEffect('0,0').type, 'OPERATIONS');
   assert.equal(economy.snapshot().cityPulse.happiness, 97);
   economy.removeZoneEffect('0,0');
   assert.equal(economy.snapshot().cityPulse.happiness, 99);

@@ -1,3 +1,5 @@
+import { normalizeZoneId } from '../world/ConstructionVocabulary.js';
+
 /**
  * Renderer-independent authored definitions used by validation and domain
  * consumers. Stable IDs are persistence contracts; labels and presentation
@@ -63,23 +65,22 @@ export const ZONE_DEFINITIONS = Object.freeze([
     aliases: ['RES'], color: 0x22c55e, happiness: 1.2, landValue: 1.5
   }),
   zone('COMMERCIAL', 'Commercial', {
-    aliases: ['COM'], color: 0xd946ef, happiness: 0.3, landValue: 2.2
+    aliases: ['COM', 'OFFICE'], color: 0xd946ef, happiness: 0.3, landValue: 2.2
   }),
-  zone('INDUSTRIAL', 'Operations', {
-    aliases: ['IND'], color: 0xf97316, happiness: -1.5, landValue: -1
+  zone('OPERATIONS', 'Operations', {
+    aliases: ['OPS', 'IND', 'INDUSTRIAL'], color: 0xf97316, happiness: -1.5, landValue: -1
   }),
-  zone('OFFICE', 'Office (compatibility)', {
-    color: 0x38bdf8, happiness: 0.4, landValue: 1.8, releaseScope: 'COMPATIBILITY'
+  zone('POWER_SERVICE', 'Legacy Power Parcel', {
+    aliases: ['POWER'], color: 0xfacc15, happiness: 0.2, landValue: 0.4,
+    kind: 'SERVICE', releaseScope: 'COMPATIBILITY'
   }),
-  zone('POWER_SERVICE', 'Power Service', {
-    aliases: ['POWER'], color: 0xfacc15, happiness: 0.2, landValue: 0.4, kind: 'SERVICE'
-  }),
-  zone('WATER_SERVICE', 'Water Service', {
+  zone('WATER_SERVICE', 'Legacy Water Parcel', {
     aliases: ['WATER'], color: 0x06b6d4, happiness: 0.8, landValue: 0.7,
-    kind: 'SERVICE', releaseScope: 'POST_MVP'
+    kind: 'SERVICE', releaseScope: 'COMPATIBILITY'
   }),
-  zone('FIRE_SERVICE', 'Fire Service', {
-    aliases: ['FIRE'], color: 0xef4444, happiness: 1.5, landValue: 1.2, kind: 'SERVICE'
+  zone('FIRE_SERVICE', 'Legacy Fire Parcel', {
+    aliases: ['FIRE'], color: 0xef4444, happiness: 1.5, landValue: 1.2,
+    kind: 'SERVICE', releaseScope: 'COMPATIBILITY'
   }),
   zone('SUBURBAN_RESIDENTIAL', 'Suburban Residential', {
     color: 0x65a30d, happiness: 1.4, landValue: 1.1,
@@ -95,7 +96,8 @@ for (const definition of ZONE_DEFINITIONS) {
 
 export function getZoneDefinition(idOrAlias) {
   if (typeof idOrAlias !== 'string') return null;
-  return ZONES_BY_INPUT.get(idOrAlias.trim().toUpperCase()) || null;
+  const normalized = normalizeZoneId(idOrAlias);
+  return ZONES_BY_INPUT.get(normalized || idOrAlias.trim().toUpperCase()) || null;
 }
 
 export const FACTION_DEFINITIONS = Object.freeze([
@@ -130,4 +132,3 @@ export const VEHICLE_CONTENT_IDS = Object.freeze([
   'SEDAN', 'SPORTS', 'SPORTS_CAR', 'BUS', 'TRUCK', 'TAXI', 'POLICE',
   'AMBULANCE', 'ICECREAM', 'DUMP_TRUCK', 'MOTORBIKE'
 ]);
-

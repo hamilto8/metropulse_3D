@@ -113,7 +113,7 @@ test('save envelope versions storage schema independently from feature versions'
   });
   assert.equal(document.format, SAVE_FORMAT);
   assert.equal(document.schemaVersion, SAVE_SCHEMA_VERSION);
-  assert.equal(document.featureVersion, 1);
+  assert.equal(document.featureVersion, 2);
   assert.equal(document.data.economy.version, 1);
   assert.equal(document.metadata.saveId, 'save-1');
 });
@@ -122,14 +122,38 @@ test('schema migrations run forward and future saves fail with a player-facing e
   const current = createSaveDocument(validData(), { idFactory: () => 'save-current' });
   const old = { ...current, schemaVersion: 0 };
   const migrated = validateSaveDocument(old, { validateDomains: validateGameState });
-  assert.equal(migrated.schemaVersion, 1);
+  assert.equal(migrated.schemaVersion, SAVE_SCHEMA_VERSION);
   assert.equal(migrated.metadata.migratedFromSchema, 0);
+  assert.deepEqual(migrated.metadata.migrationHistory, ['P4.1_ZONE_VOCABULARY']);
 
   assert.throws(
     () => validateSaveDocument({ ...current, schemaVersion: 99 }),
     error => error instanceof SaveValidationError
       && error.code === 'FUTURE_SAVE_VERSION'
       && /newer MetroPulse/.test(error.userMessage)
+  );
+});
+
+test('P4.1 migration canonicalizes Industrial and Office parcels without losing effects', () => {
+  const old = structuredClone(createSaveDocument(validData(), { idFactory: () => 'save-p4-zone' }));
+  old.schemaVersion = 1;
+  old.featureVersion = 1;
+  old.data.world.zones = [
+    { key: '1,1', x: 30, z: 30, zoneType: 'INDUSTRIAL', happinessModifier: -7, landValueModifier: -3 },
+    { key: '2,1', x: 60, z: 30, zoneType: 'OFFICE', happinessModifier: 4, landValueModifier: 8 }
+  ];
+  old.data.economy.zones = [
+    { id: '1,1', type: 'INDUSTRIAL', position: { x: 30, z: 30 }, happinessModifier: -7, landValueModifier: -3 },
+    { id: '2,1', type: 'OFFICE', position: { x: 60, z: 30 }, happinessModifier: 4, landValueModifier: 8 }
+  ];
+
+  const migrated = validateSaveDocument(old, { validateDomains: validateGameState });
+  assert.equal(migrated.schemaVersion, SAVE_SCHEMA_VERSION);
+  assert.deepEqual(migrated.data.world.zones.map(zone => zone.zoneType), ['OPERATIONS', 'COMMERCIAL']);
+  assert.deepEqual(migrated.data.economy.zones.map(zone => zone.type), ['OPERATIONS', 'COMMERCIAL']);
+  assert.deepEqual(
+    migrated.data.world.zones.map(zone => [zone.happinessModifier, zone.landValueModifier]),
+    [[-7, -3], [4, 8]]
   );
 });
 

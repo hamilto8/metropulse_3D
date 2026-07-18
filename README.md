@@ -18,7 +18,7 @@
 
 ## 🎮 Hybrid Game Loops
 
-- **Management / Builder:** Zone parcels, place data-driven buildings and infrastructure, manage power/water/fire coverage, inspect spatial amenity/Mayhem land values, monitor City Pulse, and invest to unlock the East Cyber-Metropolis.
+- **Management / Builder:** Paint Residential, Commercial, or Operations parcels; construct facilities and infrastructure; manage power/water/fire coverage; inspect spatial amenity/Mayhem land values; and monitor City Pulse.
 - **Persistent City Session:** Treasury, buildings, zoning, unlocks, mission progress, weather, time, overlays, and Mayhem state save locally and restore automatically, with explicit Save City and Start New City controls.
 - **Action / Street:** Possess pedestrians, collect a baseball bat, hijack nearby vehicles, drive with `cannon-es` RaycastVehicle physics, trigger police response, and complete timed taxi, courier, race, delivery, sabotage, and survival missions.
 - **Living Economy:** Placement and zoning costs, revenue, upkeep, service productivity, housing, jobs, unemployment, citizen happiness drivers, development demand, incidents, mission payouts, and narrative progress all flow through one observable economy model.

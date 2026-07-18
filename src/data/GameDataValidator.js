@@ -20,6 +20,7 @@ import {
 } from './DataValidation.js';
 import { validateMissionData } from './MissionDataValidator.js';
 import { BUILDING_CATALOG, BUILDING_CATEGORIES } from '../world/BuildingCatalog.js';
+import { CATALOG_STAGES, PROGRESSION_TIERS } from '../world/ConstructionVocabulary.js';
 import { DEFAULT_WEATHER_MODE, WEATHER_DEFINITIONS } from '../systems/Weather.js';
 import {
   MVP_ACTIVITY_TEMPLATES,
@@ -45,6 +46,8 @@ const BUILDING_GENERATORS = new Set([
   'ROAD_SEGMENT', 'ENERGY_ARRAY', 'INDUSTRIAL', 'UTILITY'
 ]);
 const ROAD_TYPES = new Set(['STRAIGHT', 'INTERSECTION', 'BRIDGE']);
+const CATALOG_STAGE_IDS = new Set(Object.values(CATALOG_STAGES));
+const PROGRESSION_TIER_IDS = new Set(Object.values(PROGRESSION_TIERS));
 
 function immutableCounts(indexes, dialogueCount) {
   const counts = Object.fromEntries(
@@ -187,6 +190,12 @@ function validateBuildings(records, categories) {
     }
     assertEnum(record.category, categories, {
       source: CONTENT_TYPES.BUILDING, recordId: id, field: 'category'
+    });
+    assertEnum(record.catalogStage, CATALOG_STAGE_IDS, {
+      source: CONTENT_TYPES.BUILDING, recordId: id, field: 'catalogStage'
+    });
+    assertEnum(record.progressionTier, PROGRESSION_TIER_IDS, {
+      source: CONTENT_TYPES.BUILDING, recordId: id, field: 'progressionTier'
     });
     assertEnum(record.generatorType, BUILDING_GENERATORS, {
       source: CONTENT_TYPES.BUILDING, recordId: id, field: 'generatorType'

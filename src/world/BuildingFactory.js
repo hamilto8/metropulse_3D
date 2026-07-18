@@ -210,7 +210,7 @@ export class BuildingFactory {
       value: Math.max(150000, Math.round(height * 8500 + employees * 180)),
       landValue: 100 + Math.round(height * 0.45),
       status,
-      zone: type.includes('HOTEL') || type.includes('TOWER') || type.includes('BANK') ? 'COMMERCIAL' : 'OFFICE',
+      zone: 'COMMERCIAL',
       isUserPlaced: false,
       isDestroyed: false,
       rubbleGroup: null,
@@ -219,7 +219,7 @@ export class BuildingFactory {
         'Employees': employees,
         'Value': `$${Math.max(150000, Math.round(height * 8500 + employees * 180)).toLocaleString('en-US')}`,
         'Land Value': 100 + Math.round(height * 0.45),
-        'Zone': type.includes('HOTEL') || type.includes('TOWER') || type.includes('BANK') ? 'COMMERCIAL' : 'OFFICE',
+        'Zone': 'COMMERCIAL',
         'Specialty': specialty,
         'Status': status
       }

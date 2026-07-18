@@ -17,7 +17,11 @@ test('MVP scope locks mission, activity, world, and Operations vocabulary budget
     'CENTRAL_PARK',
     'PRIMARY_BRIDGE_CORRIDOR'
   ]);
-  assert.equal(MVP_ZONE_LABELS.INDUSTRIAL, 'Operations');
+  assert.deepEqual(MVP_ZONE_LABELS, {
+    RESIDENTIAL: 'Residential',
+    COMMERCIAL: 'Commercial',
+    OPERATIONS: 'Operations'
+  });
   assert.equal(new Set(MVP_MISSION_IDS).size, MVP_MISSION_IDS.length);
   assert.ok(MVP_MISSION_IDS.every(id => missions.some(mission => mission.id === id)));
 });
@@ -29,4 +33,3 @@ test('frozen MVP missions use only the frozen activity-template families', () =>
   )));
   assert.deepEqual([...templateTypes].sort(), [...MVP_ACTIVITY_TEMPLATES].sort());
 });
-

@@ -1,7 +1,15 @@
 import * as THREE from 'three';
-import { getBuildingSpec } from './BuildingCatalog.js';
+import {
+  getBuildingSpec,
+  getCatalogAccess,
+  getDefaultBuildingSpec
+} from './BuildingCatalog.js';
 import { createBuildingEconomyRecord } from '../systems/BuildingEconomyAdapter.js';
 import { getZoneDefinition, WORLD_BOUNDS } from '../data/ContentDefinitions.js';
+import {
+  isMvpDevelopmentZone,
+  normalizeZoneId
+} from './ConstructionVocabulary.js';
 
 const CORE_LANDMARKS = Object.freeze([
   { name: 'Central Park', minX: -96, maxX: -54, minZ: -96, maxZ: -54 },
@@ -58,7 +66,7 @@ export class CityEditorSystem {
     this.zoneOverlayGroup.visible = false;
     this.scene.add(this.zoneOverlayGroup);
 
-    this.selectedSpec = getBuildingSpec('NEOTECH_HQ');
+    this.selectedSpec = getDefaultBuildingSpec();
     this.ghostGroup = null;
     this.structurePreview = null;
     this.shadowFootprint = null;
@@ -158,6 +166,11 @@ export class CityEditorSystem {
   selectBuilding(specId) {
     const spec = getBuildingSpec(specId);
     if (!spec) return false;
+    const access = this.getBuildingAccess(spec);
+    if (!access.unlocked) {
+      this.app.uiManager?.showToast(`🔒 ${spec.name}: ${access.reason}`);
+      return false;
+    }
     this.selectedSpec = spec;
     this.toolMode = 'PLACE';
     this.clearStructureSelection();
@@ -169,7 +182,8 @@ export class CityEditorSystem {
   }
 
   setZoningMode(zoneType) {
-    const normalized = typeof zoneType === 'string' ? zoneType.trim().toUpperCase() : '';
+    const normalized = normalizeZoneId(zoneType);
+    if (!isMvpDevelopmentZone(normalized)) return false;
     const definition = getZoneDefinition(normalized);
     if (!definition) return false;
     this.zoningMode = definition.id;
@@ -178,7 +192,7 @@ export class CityEditorSystem {
     this.isDeleteMode = false;
     this.disposeGhostGroup();
     this.syncZoneOverlayVisibility();
-    this.app.uiManager?.showToast(`🗺️ Zoning tool active: ${normalized}`);
+    this.app.uiManager?.showToast(`🗺️ Zoning tool active: ${definition.label}`);
     return true;
   }
 
@@ -566,14 +580,28 @@ export class CityEditorSystem {
 
   isSpecCompatibleWithZone(spec, zoneType) {
     if (!spec || !zoneType || spec.category === 'INFRASTRUCTURE') return true;
+    const normalizedZone = normalizeZoneId(zoneType);
     const allowed = {
       RESIDENTIAL: ['RESIDENTIAL'],
-      COMMERCIAL: ['COMMERCIAL', 'OFFICE'],
-      INDUSTRIAL: ['INDUSTRIAL'],
-      CIVIC: ['RESIDENTIAL', 'COMMERCIAL', 'OFFICE', 'FIRE_SERVICE'],
-      UTILITIES: ['POWER_SERVICE', 'WATER_SERVICE', 'FIRE_SERVICE', 'INDUSTRIAL']
+      COMMERCIAL: ['COMMERCIAL'],
+      OPERATIONS: ['OPERATIONS'],
+      FACILITIES: [
+        'RESIDENTIAL', 'COMMERCIAL', 'OPERATIONS',
+        'POWER_SERVICE', 'WATER_SERVICE', 'FIRE_SERVICE'
+      ]
     };
-    return (allowed[spec.category] || []).includes(zoneType);
+    return (allowed[spec.category] || []).includes(normalizedZone);
+  }
+
+  getProgressionValues() {
+    return this.app.progressionSystem?.snapshot?.()?.values
+      || this.app.missionOutcomeService?.snapshot?.()?.progression
+      || this.app.progression
+      || {};
+  }
+
+  getBuildingAccess(spec = this.selectedSpec) {
+    return getCatalogAccess(spec, this.getProgressionValues());
   }
 
   checkZoningValidity(x, z, y = 0) {
@@ -926,7 +954,7 @@ export class CityEditorSystem {
     const key = `${Math.round(x / ZONE_PARCEL_SIZE)},${Math.round(z / ZONE_PARCEL_SIZE)}`;
     const previous = this.zoneParcels.get(key);
     if (previous?.zoneType === definition.id) {
-      this.app.uiManager?.showToast(`ℹ️ Parcel is already zoned ${definition.id}`);
+      this.app.uiManager?.showToast(`ℹ️ Parcel is already zoned ${definition.label}`);
       return true;
     }
 
@@ -937,7 +965,7 @@ export class CityEditorSystem {
         && Math.abs(candidate.plot.z - z) <= (candidate.plot.depth || 30) / 2;
     });
     if (building?.spec && !this.isSpecCompatibleWithZone(building.spec, definition.id)) {
-      this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.id} zoning`);
+      this.app.uiManager?.showToast(`⚠️ ${building.name} is incompatible with ${definition.label} zoning`);
       return false;
     }
     if (typeof economy?.spend === 'function' && !economy.spend(ZONING_COST, {
@@ -986,15 +1014,15 @@ export class CityEditorSystem {
     }
     if (building) {
       building.zone = definition.id;
-      building.status = `Rezoned: ${definition.id}`;
+      building.status = `Rezoned: ${definition.label}`;
       if (building.info) {
-        building.info.Zone = definition.id;
+        building.info.Zone = definition.label;
         building.info.Status = building.status;
       }
     }
 
     this.app.uiManager?.addAlert(
-      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.id} (-$${ZONING_COST.toLocaleString()}).`,
+      `🗺️ Parcel ${Math.round(x)}, ${Math.round(z)} rezoned ${definition.label} (-$${ZONING_COST.toLocaleString()}).`,
       'success'
     );
     this.app.saveService?.scheduleSave?.('world-edit');
@@ -1120,6 +1148,12 @@ export class CityEditorSystem {
   placeSelectedBuilding() {
     if (!this.selectedSpec || !this.currentHit.valid || !this.app.buildingFactory?.placeUserBuilding) {
       this.app.uiManager?.showToast('⚠️ Cannot place structure here: blocked, underwater, locked, or out of bounds');
+      return false;
+    }
+
+    const access = this.getBuildingAccess(this.selectedSpec);
+    if (!access.unlocked) {
+      this.app.uiManager?.showToast(`🔒 ${this.selectedSpec.name}: ${access.reason}`);
       return false;
     }
 

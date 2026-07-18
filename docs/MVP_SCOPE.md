@@ -7,8 +7,9 @@
 ## Locked release target
 
 - World: West Core, Central Park, and the complete primary bridge corridor.
-- Zones: Residential, Commercial, and **Operations**. `INDUSTRIAL` remains an
-  internal compatibility key only; it is not MVP product vocabulary.
+- Zones: Residential, Commercial, and **Operations**. `INDUSTRIAL`, `IND`, and
+  `OFFICE` are load/input aliases normalized to canonical zone IDs; they are
+  not MVP product vocabulary or newly persisted IDs.
 - Authored missions: exactly 10 selected stable IDs, within the frozen 8–12 budget.
 - Activity templates: Taxi, Courier, Delivery, Race, Sabotage, and Survival
   (6 families, within the frozen 5–7 budget).

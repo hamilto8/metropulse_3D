@@ -17,7 +17,8 @@ test('production content validates into a read-only stable-ID registry', () => {
 
   assert.equal(registry.has(CONTENT_TYPES.MISSION, 'mission_executive'), true);
   assert.equal(registry.has(CONTENT_TYPES.BUILDING, 'NEOTECH_HQ'), true);
-  assert.equal(registry.has(CONTENT_TYPES.ZONE, 'INDUSTRIAL'), true);
+  assert.equal(registry.has(CONTENT_TYPES.ZONE, 'OPERATIONS'), true);
+  assert.equal(registry.has(CONTENT_TYPES.ZONE, 'INDUSTRIAL'), false);
   assert.equal(registry.has(CONTENT_TYPES.DISTRICT, 'WEST_CORE'), true);
   assert.equal(registry.has(CONTENT_TYPES.FACTION, 'RESIDENTS'), true);
   assert.equal(registry.has(CONTENT_TYPES.PROGRESSION, 'MAGNATE'), true);
@@ -26,7 +27,7 @@ test('production content validates into a read-only stable-ID registry', () => {
   assert.deepEqual(registry.counts, {
     missions: 15,
     buildings: 19,
-    zones: 8,
+    zones: 7,
     districts: 4,
     factions: 4,
     progression: 3,

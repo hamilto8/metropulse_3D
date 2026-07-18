@@ -203,48 +203,33 @@
             </div>
           </div>
 
-          <!-- ZONING & BUILDING Accordion -->
+          <!-- MVP development zoning and construction entry points -->
           <div class="accordion-section">
             <button type="button" class="accordion-header" aria-expanded="true">
-              <span>ZONING &amp; BUILDING</span>
+              <span>DEVELOPMENT ZONES</span>
               <span class="accordion-arrow">⌄</span>
             </button>
+            <p class="zoning-help">Paint a development policy. Power, water, safety, and civic services are built as facilities.</p>
             <div class="zoning-grid">
-              <button class="zoning-card res-card" data-zone="res" title="Residential Zone">
+              <button class="zoning-card res-card" data-zone="RESIDENTIAL" title="Residential development zone">
                 <span class="zone-icon">🏡</span>
-                <span class="zone-label">Res</span>
+                <span class="zone-label">Residential</span>
               </button>
-              <button class="zoning-card com-card" data-zone="com" title="Commercial Zone">
+              <button class="zoning-card com-card" data-zone="COMMERCIAL" title="Commercial development zone">
                 <span class="zone-icon">🏬</span>
-                <span class="zone-label">Com</span>
+                <span class="zone-label">Commercial</span>
               </button>
-              <button class="zoning-card ind-card" data-zone="ind" title="Operations Zone">
+              <button class="zoning-card ind-card" data-zone="OPERATIONS" title="Operations development zone">
                 <span class="zone-icon">🏭</span>
-                <span class="zone-label">Ops</span>
-              </button>
-              <button class="zoning-card office-card" data-zone="office" title="Office Tower">
-                <span class="zone-icon">🏢</span>
-                <span class="zone-label">Office</span>
-              </button>
-              <button class="zoning-card power-card" data-zone="power" title="Power Grid">
-                <span class="zone-icon">⚡</span>
-                <span class="zone-label">Power</span>
-              </button>
-              <button class="zoning-card water-card" data-zone="water" title="Water Infrastructure">
-                <span class="zone-icon">💧</span>
-                <span class="zone-label">Water</span>
-              </button>
-              <button class="zoning-card fire-card" data-zone="fire" title="Fire Rescue Dept">
-                <span class="zone-icon">🔥</span>
-                <span class="zone-label">Fire</span>
+                <span class="zone-label">Operations</span>
               </button>
             </div>
           </div>
 
-          <!-- INFRASTRUCTURE Accordion -->
+          <!-- Facilities are constructed assets, not zoning policies. -->
           <div class="accordion-section">
             <button type="button" class="accordion-header" aria-expanded="true">
-              <span>INFRASTRUCTURE</span>
+              <span>FACILITIES &amp; INFRASTRUCTURE</span>
               <span class="accordion-arrow">⌄</span>
             </button>
             <div class="infra-grid">
@@ -252,17 +237,17 @@
                 <span class="infra-icon">🛣️</span>
                 <span>Road</span>
               </button>
-              <button class="infra-btn" data-infra="bridge" title="Bridge Construction">
-                <span class="infra-icon">🌉</span>
-                <span>Bridge</span>
-              </button>
-              <button class="infra-btn" data-infra="pipe" title="Pipe Infrastructure">
-                <span class="infra-icon">🔧</span>
-                <span>Pipe</span>
-              </button>
-              <button class="infra-btn" data-infra="power" title="Power Pylons">
-                <span class="infra-icon">🗼</span>
+              <button class="infra-btn" data-infra="power" title="Energy facilities">
+                <span class="infra-icon">⚡</span>
                 <span>Power</span>
+              </button>
+              <button class="infra-btn" data-infra="water" title="Water facilities">
+                <span class="infra-icon">💧</span>
+                <span>Water</span>
+              </button>
+              <button class="infra-btn" data-infra="fire" title="Safety facilities">
+                <span class="infra-icon">🚒</span>
+                <span>Safety</span>
               </button>
             </div>
           </div>

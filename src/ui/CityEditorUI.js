@@ -1,4 +1,9 @@
-import { BUILDING_CATALOG, getCatalogByCategory, getBuildingSpec } from '../world/BuildingCatalog.js';
+import {
+  getCatalogAccess,
+  getCatalogByCategory,
+  getBuildingSpec,
+  getDefaultBuildingSpec
+} from '../world/BuildingCatalog.js';
 import { GAME_STATES } from '../core/GameManager.js';
 import { createTextElement } from './dom.js';
 
@@ -10,7 +15,8 @@ export class CityEditorUI {
     this.searchQuery = '';
     this.currentPage = 0;
     this.pageSize = 4;
-    this.selectedSpecId = BUILDING_CATALOG[0].id;
+    this.selectedSpecId = getDefaultBuildingSpec()?.id || null;
+    this.includeAdvanced = false;
     this.isVisible = false;
     this.activeTool = 'PLACE'; // PLACE, MOVE, ROTATE, DELETE
     this.previousTimeBarDisplay = '';
@@ -26,6 +32,12 @@ export class CityEditorUI {
         this.refreshAffordability();
       }, 250);
     }) || null;
+    this.unsubscribeProgression = this.app.missionOutcomeService?.subscribe?.(() => {
+      if (!this.isVisible) return;
+      this.ensureValidSelection();
+      this.renderCatalog();
+      this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
+    }) || null;
   }
 
   initDOM() {
@@ -39,7 +51,7 @@ export class CityEditorUI {
         <div class="tray-header-row">
           <div class="tray-title-group">
             <div class="tray-cube-icon">📦</div>
-            <span>BUILDINGS</span>
+            <span>CONSTRUCTION</span>
           </div>
           <div class="tray-search-bar">
             <span>🔍</span>
@@ -54,10 +66,13 @@ export class CityEditorUI {
           <button class="tray-tab-pill active" data-category="ALL">All</button>
           <button class="tray-tab-pill" data-category="RESIDENTIAL">Residential</button>
           <button class="tray-tab-pill" data-category="COMMERCIAL">Commercial</button>
-          <button class="tray-tab-pill" data-category="INDUSTRIAL">Operations</button>
-          <button class="tray-tab-pill" data-category="CIVIC">Civic</button>
-          <button class="tray-tab-pill" data-category="UTILITIES">Utilities</button>
+          <button class="tray-tab-pill" data-category="OPERATIONS">Operations</button>
+          <button class="tray-tab-pill" data-category="FACILITIES">Facilities</button>
           <button class="tray-tab-pill" data-category="INFRASTRUCTURE">Infrastructure</button>
+          <label class="catalog-advanced-filter">
+            <input type="checkbox" id="editor-advanced-filter">
+            <span>Show advanced</span>
+          </label>
         </div>
 
         <!-- Main Tray Body Grid -->
@@ -125,7 +140,18 @@ export class CityEditorUI {
     searchInput.addEventListener('input', (e) => {
       this.searchQuery = e.target.value.trim().toLowerCase();
       this.currentPage = 0;
+      this.ensureValidSelection();
       this.renderCatalog();
+      this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
+    });
+
+    const advancedFilter = this.container.querySelector('#editor-advanced-filter');
+    advancedFilter.addEventListener('change', () => {
+      this.includeAdvanced = advancedFilter.checked;
+      this.currentPage = 0;
+      this.ensureValidSelection();
+      this.renderCatalog();
+      this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
     });
 
     // Category tabs
@@ -141,7 +167,9 @@ export class CityEditorUI {
         btn.setAttribute('aria-pressed', 'true');
         this.currentCategory = btn.dataset.category;
         this.currentPage = 0;
+        this.ensureValidSelection();
         this.renderCatalog();
+        this.updateBlueprintPreview(getBuildingSpec(this.selectedSpecId));
       });
     });
 
@@ -169,6 +197,11 @@ export class CityEditorUI {
       const editor = this.app.cityEditorSystem;
       const spec = getBuildingSpec(this.selectedSpecId);
       if (!editor || !spec) return;
+      const access = this.getSpecAccess(spec);
+      if (!access.unlocked) {
+        this.app.uiManager?.showToast(`🔒 ${spec.name}: ${access.reason}`);
+        return;
+      }
       if (!editor.canAfford(spec)) {
         this.app.uiManager?.showToast(`💳 Insufficient credits for ${spec.name}`);
         this.refreshAffordability();
@@ -234,7 +267,11 @@ export class CityEditorUI {
   }
 
   getFilteredCatalog() {
-    let items = getCatalogByCategory(this.currentCategory);
+    let items = getCatalogByCategory(this.currentCategory, {
+      includeAdvanced: this.includeAdvanced,
+      progression: this.getProgressionValues(),
+      includeLocked: true
+    });
     if (this.searchQuery) {
       items = items.filter(item =>
         item.name.toLowerCase().includes(this.searchQuery) ||
@@ -242,6 +279,25 @@ export class CityEditorUI {
       );
     }
     return items;
+  }
+
+  getProgressionValues() {
+    return this.app.progressionSystem?.snapshot?.()?.values
+      || this.app.missionOutcomeService?.snapshot?.()?.progression
+      || this.app.progression
+      || {};
+  }
+
+  getSpecAccess(spec) {
+    return getCatalogAccess(spec, this.getProgressionValues());
+  }
+
+  ensureValidSelection() {
+    const visible = this.getFilteredCatalog();
+    const selected = visible.find(spec => spec.id === this.selectedSpecId && this.getSpecAccess(spec).unlocked);
+    const replacement = selected || visible.find(spec => this.getSpecAccess(spec).unlocked) || getDefaultBuildingSpec();
+    if (replacement) this.selectedSpecId = replacement.id;
+    return replacement || null;
   }
 
   renderCatalog() {
@@ -286,14 +342,14 @@ export class CityEditorUI {
       const formattedPrice = spec.cost
         ? `$${Number(spec.cost).toLocaleString()}`
         : `$350,000`;
-      const affordable = this.app.cityEditorSystem?.canAfford(spec) ?? true;
+      const access = this.getSpecAccess(spec);
+      const affordable = access.unlocked && (this.app.cityEditorSystem?.canAfford(spec) ?? true);
 
       card.classList.toggle('unaffordable', !affordable);
+      card.classList.toggle('catalog-locked', !access.unlocked);
       card.setAttribute('aria-disabled', String(!affordable));
-      if (!affordable) {
-        card.style.opacity = '0.62';
-        card.title = `Insufficient credits for ${spec.name}`;
-      }
+      if (!access.unlocked) card.style.opacity = '0.72';
+      else if (!affordable) card.style.opacity = '0.62';
 
       const preview = createTextElement('span', 'building-card-preview', spec.icon || '🏢');
       preview.setAttribute('aria-hidden', 'true');
@@ -302,21 +358,29 @@ export class CityEditorUI {
       const stats = document.createElement('span');
       stats.className = 'building-card-stats';
       const price = createTextElement('span', 'building-card-price', formattedPrice);
-      price.style.color = affordable ? '#00ff88' : '#f87171';
+      price.style.color = affordable ? '#00ff88' : access.unlocked ? '#f87171' : '#fbbf24';
       const netPerMinute = Number(spec.incomePerMinute || 0);
       const impact = netPerMinute === 0
         ? `${spec.footprint.width}m x ${spec.footprint.depth}m`
         : `${netPerMinute > 0 ? '+' : '−'}$${Math.abs(netPerMinute).toLocaleString()}/min`;
-      stats.append(price, createTextElement('span', 'building-card-dim', impact));
-      card.title = [
+      const availability = access.unlocked ? impact : `🔒 ${access.requiredTier}`;
+      stats.append(price, createTextElement('span', 'building-card-dim', availability));
+      const description = [
         spec.description,
         spec.residents ? `${spec.residents.toLocaleString()} residents` : null,
         spec.employees ? `${spec.employees.toLocaleString()} jobs` : null,
         spec.happiness ? `${spec.happiness > 0 ? '+' : ''}${spec.happiness} happiness` : null
       ].filter(Boolean).join(' · ');
+      card.title = !access.unlocked
+        ? `${spec.name}: ${access.reason}`
+        : !affordable ? `Insufficient credits for ${spec.name}` : description;
       card.append(preview, title, stats);
 
       card.addEventListener('click', () => {
+        if (!access.unlocked) {
+          this.app.uiManager?.showToast(`🔒 ${spec.name}: ${access.reason}`);
+          return;
+        }
         if (!affordable) {
           this.app.uiManager?.showToast(`💳 Insufficient credits for ${spec.name}`);
           return;
@@ -371,24 +435,29 @@ export class CityEditorUI {
     const placeBtn = this.container.querySelector('#btn-place-building');
     const placeLabel = this.container.querySelector('#btn-place-building-label');
     const cost = editor?.getPlacementCost(spec) ?? Number(spec.cost || 0);
-    const affordable = editor?.canAfford(spec) ?? true;
+    const access = this.getSpecAccess(spec);
+    const affordable = access.unlocked && (editor?.canAfford(spec) ?? true);
     const credits = editor?.getAvailableCredits?.() ?? null;
 
     if (priceEl) {
       const costText = `$${Number(cost).toLocaleString()}`;
       const balanceText = credits == null ? '' : ` • Treasury $${Number(credits).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
       priceEl.textContent = `${costText}${balanceText}`;
-      priceEl.style.color = affordable ? '#00ff88' : '#f87171';
+      priceEl.style.color = affordable ? '#00ff88' : access.unlocked ? '#f87171' : '#fbbf24';
     }
     if (placeBtn) {
       placeBtn.disabled = !affordable;
       placeBtn.setAttribute('aria-disabled', String(!affordable));
-      placeBtn.title = affordable ? `Place ${spec.name}` : `Insufficient credits for ${spec.name}`;
+      placeBtn.title = affordable
+        ? `Place ${spec.name}`
+        : access.unlocked ? `Insufficient credits for ${spec.name}` : access.reason;
       placeBtn.style.opacity = affordable ? '1' : '0.55';
       placeBtn.style.cursor = affordable ? 'pointer' : 'not-allowed';
     }
     if (placeLabel) {
-      placeLabel.textContent = affordable ? 'Place Building' : 'Insufficient Credits';
+      placeLabel.textContent = affordable
+        ? 'Place Building'
+        : access.unlocked ? 'Insufficient Credits' : access.reason;
     }
   }
 
@@ -440,6 +509,7 @@ export class CityEditorUI {
     }
     if (!preserveMode) this.setGameMode(GAME_STATES.BUILDER);
     this.syncEditorChrome(true);
+    this.ensureValidSelection();
     this.renderCatalog();
     this.refreshAffordability();
     return true;
@@ -508,5 +578,13 @@ export class CityEditorUI {
     if (uiManager?.expandCityLabel) {
       uiManager.expandCityLabel.textContent = active ? 'Expand City: ACTIVE 🏗️' : 'Expand City Mode [F]';
     }
+  }
+
+  destroy() {
+    if (this.affordabilityRefreshTimer) clearTimeout(this.affordabilityRefreshTimer);
+    this.unsubscribeEconomy?.();
+    this.unsubscribeProgression?.();
+    this.container?.remove();
+    this.container = null;
   }
 }

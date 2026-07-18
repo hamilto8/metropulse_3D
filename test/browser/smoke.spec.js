@@ -81,6 +81,37 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   expect(builder.state.mode).toBe('BUILDER');
   expect(builder.controlledEntity).toBeNull();
 
+  // P4.1 acceptance: the product exposes three development zones, treats
+  // services as constructed facilities, and progressively discloses depth.
+  await expect(page.locator('.zoning-card[data-zone]')).toHaveCount(3);
+  await expect(page.locator('.zoning-card[data-zone] .zone-label')).toHaveText([
+    'Residential', 'Commercial', 'Operations'
+  ]);
+  await expect(page.locator('.zoning-card[data-zone="OFFICE"], .zoning-card[data-zone="POWER_SERVICE"]')).toHaveCount(0);
+  await expect(page.locator('[data-infra="power"]')).toBeVisible();
+  await expect(page.locator('[data-infra="water"]')).toBeVisible();
+  await expect(page.locator('[data-infra="fire"]')).toBeVisible();
+  expect(await page.evaluate(() => window.app.uiManager.cityEditorUI.getFilteredCatalog().map(spec => spec.id))).toEqual([
+    'CYBERCAFE', 'METRO_LOFTS', 'ROAD_STRAIGHT', 'SOLAR_GRID', 'CYBER_FAB', 'FIRE_STATION'
+  ]);
+  await expect(page.locator('.tray-tab-pill[data-category="OPERATIONS"]')).toHaveText('Operations');
+  await expect(page.locator('.tray-tab-pill[data-category="FACILITIES"]')).toHaveText('Facilities');
+  await expect(page.locator('.tray-tab-pill[data-category="INDUSTRIAL"], .tray-tab-pill[data-category="UTILITIES"]')).toHaveCount(0);
+  await page.locator('#editor-advanced-filter').check();
+  await expect(page.locator('.building-card[data-id="NEOTECH_HQ"]')).toHaveClass(/catalog-locked/);
+  await expect(page.locator('.building-card[data-id="NEOTECH_HQ"] .building-card-dim')).toContainText('MAGNATE');
+  const zoningCompatibility = await page.evaluate(() => ({
+    industrialAccepted: window.app.cityEditorSystem.setZoningMode('INDUSTRIAL'),
+    industrialCanonical: window.app.cityEditorSystem.zoningMode,
+    serviceAccepted: window.app.cityEditorSystem.setZoningMode('POWER_SERVICE')
+  }));
+  expect(zoningCompatibility).toEqual({
+    industrialAccepted: true,
+    industrialCanonical: 'OPERATIONS',
+    serviceAccepted: false
+  });
+  await page.evaluate(() => window.app.cityEditorSystem.clearZoningMode());
+
   await page.evaluate(() => window.__METROPULSE_TEST__.setTime(18.5));
   await page.evaluate(() => window.__METROPULSE_TEST__.setWeather('mist'));
   const mission = await page.evaluate(() => (

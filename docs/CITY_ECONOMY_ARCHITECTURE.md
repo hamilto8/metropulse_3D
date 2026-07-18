@@ -45,7 +45,7 @@ but cannot create invalid negative treasury state. Fiscal state is `STABLE`,
 Demographics derive a 62% workforce from population. Explicit job capacity
 produces employment, unemployment, vacancies, and a happiness penalty when
 residents cannot find work. Housing and job availability feed visible
-residential, commercial, and industrial demand scores.
+residential, commercial, and operations demand scores.
 
 Happiness is reported as an explainable breakdown:
 
@@ -65,6 +65,12 @@ Zones are persistent 30-metre parcels with stable IDs. Rezoning costs credits,
 replaces the previous policy atomically, and is stored as an explicit economy
 effect. A zoned parcel constrains incompatible new development; infrastructure
 remains allowed so roads and service connections can cross district types.
+
+The MVP has exactly three development-zone IDs: `RESIDENTIAL`, `COMMERCIAL`,
+and `OPERATIONS`. Utility, safety, and civic capacity comes from constructed
+`FACILITIES`, not additional player-facing zone types. Save schema 2 normalizes
+legacy `INDUSTRIAL` parcels to `OPERATIONS` and `OFFICE` parcels to
+`COMMERCIAL` while preserving their stable parcel keys and numeric effects.
 
 ## Simulation clock
 

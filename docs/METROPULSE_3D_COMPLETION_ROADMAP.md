@@ -935,14 +935,16 @@ that reliably creates street gameplay conditions.
 
 #### P4.1 MVP zoning and construction vocabulary
 
-- [ ] Present Residential, Commercial, and Operations as the primary MVP zones.
-- [ ] Treat utilities and civic/service assets as facilities rather than
+- [x] Present Residential, Commercial, and Operations as the primary MVP zones.
+- [x] Treat utilities and civic/service assets as facilities rather than
   additional zone types unless the GDD is amended.
-- [ ] Map or migrate existing Industrial and Office parcels without corrupting
+- [x] Map or migrate existing Industrial and Office parcels without corrupting
   saves.
-- [ ] Reduce the first-session catalog to the assets needed for the next
+- [x] Reduce the first-session catalog to the assets needed for the next
   meaningful decision.
-- [ ] Retain advanced structures behind progression or optional filters.
+- [x] Retain advanced structures behind progression or optional filters.
+
+Implementation contract: `CONSTRUCTION_VOCABULARY.md`.
 
 #### P4.2 Placement intelligence
 
