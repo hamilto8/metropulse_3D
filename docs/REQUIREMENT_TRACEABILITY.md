@@ -85,7 +85,7 @@ the responsible system owns implementation.
 | MIS-003 | Every mission implements Offer, Accept, Brief, Execute, Resolve, Debrief, and Cleanup. | Mission controller | Integration + Browser | Gameplay Lead | In Progress |
 | MIS-004 | Offers disclose objective, reward range, risks, city conditions, and prerequisites. | Mission UI/domain | Browser + UX | UX Lead | Not Started |
 | MIS-005 | Execution uses 2–4 beats built from shared mechanics. | Mission content | Content validation + Playtest | Content Lead | In Progress |
-| MIS-006 | Debrief plainly itemizes performance, damage, Heat, reputation, city effects, and unlocks. | Result/debrief UI | Browser + Playtest | UX Lead | Not Started |
+| MIS-006 | Debrief plainly itemizes performance, damage, Heat, reputation, city effects, and unlocks. | Result/debrief UI | Browser + Playtest | UX Lead | Implemented |
 | MIS-007 | Cleanup releases temporary entities and applies/persists results exactly once. | Mission transactions | Integration + restart soak | Tech Lead | In Progress |
 | MIS-008 | Failure provides checkpoint/retry/recovery and cannot duplicate reward or persistent damage. | Mission recovery | Integration + Browser | Tech Lead | Verified |
 | MIS-009 | A designer can author a second mission from templates without core-system code changes. | Content pipeline | Content exercise | Content Lead | In Progress |

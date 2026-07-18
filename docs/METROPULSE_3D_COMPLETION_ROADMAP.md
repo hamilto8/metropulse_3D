@@ -825,13 +825,45 @@ P3.2 completion evidence (2026-07-18):
 
 #### P3.3 Result and explanation UI
 
-- [ ] Show what happened, why it happened, what changed, and what the player can
+- [x] Show what happened, why it happened, what changed, and what the player can
   do next.
-- [ ] Separate reward, city consequence, faction consequence, and progression
+- [x] Separate reward, city consequence, faction consequence, and progression
   sections.
-- [ ] Support success, partial success, failure, abandonment, arrest, and
+- [x] Support success, partial success, failure, abandonment, arrest, and
   vehicle-loss outcomes.
-- [ ] Announce results accessibly and preserve them in a reviewable log.
+- [x] Announce results accessibly and preserve them in a reviewable log.
+
+P3.3 completion evidence (2026-07-18):
+
+- `src/ui/MissionResultViewModel.js` is a renderer-free projection of the
+  lifecycle Result snapshot and the immutable outcome explanation. It owns the
+  six-result presentation taxonomy, plain-language cause mapping, before/after
+  formatting, stable consequence categorization, and next-action copy without
+  querying or mutating live city state.
+- `src/ui/MissionResultScreen.js` renders one responsive debrief with explicit
+  What, Why, Changes, and Next Move hierarchy. Reward/performance, city,
+  faction, and progression/unlock sections remain distinct and expose useful
+  empty states instead of implying an unrecorded change.
+- Retry and recovery remain delegated to `MissionSystem` and
+  `MissionLifecycleController`. The result UI does not award Capital, infer a
+  retry, acknowledge a result, or create a second mission status.
+- Result announcements use an atomic assertive live region. The modal moves and
+  traps focus, provides labelled controls and visible focus, uses status text in
+  addition to color, honors global contrast/reduced-motion/text-scale settings,
+  and never lets Escape silently acknowledge a committed outcome.
+- The reviewable Outcome Log reads mission receipts directly from the durable,
+  idempotent `MissionOutcomeService` ledger, ordered by transaction sequence.
+  It therefore preserves original explanations through acknowledgement and
+  save/reload without another persistence schema or UI-owned history.
+- Focused unit coverage exercises consequence categories, plain-language
+  formatting, immutable history, retry guidance, and success, partial,
+  failure, abandonment, arrest, and vehicle-loss classification. The Chrome
+  WebGL lifecycle flow verifies failure and success debriefs, retry visibility,
+  accessible announcement, all four sections, two-attempt log history, Result
+  save/reload, and recovery to Management. The operational and extension
+  contract is documented in `RESULT_AND_EXPLANATION_UI.md`.
+- Verification at completion: 343 Node tests, the production build, and all six
+  Chrome WebGL acceptance flows pass.
 
 #### P3.4 Structured alerts
 

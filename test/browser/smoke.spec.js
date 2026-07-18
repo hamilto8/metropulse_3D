@@ -254,19 +254,30 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   expect(failed.phase).toBe('RESULT');
   expect(failed.run.resolution.outcome).toBe('FAILURE');
   expect(failed.run.receipt.transactionId).toContain('attempt-1:FAILURE');
-  await expect(page.locator('#btn-retry-mission')).toBeVisible();
+  await expect(page.locator('#mission-result-screen')).toBeVisible();
+  await expect(page.locator('#mission-result-badge')).toHaveText('Mission failed');
+  await expect(page.locator('#mission-result-why-list')).toContainText('timer expired');
+  await expect(page.locator('#mission-result-sections [data-section="reward"]')).toBeVisible();
+  await expect(page.locator('#mission-result-sections [data-section="city"]')).toBeVisible();
+  await expect(page.locator('#mission-result-sections [data-section="faction"]')).toBeVisible();
+  await expect(page.locator('#mission-result-sections [data-section="progression"]')).toBeVisible();
+  await expect(page.locator('#btn-result-retry')).toBeVisible();
+  await expect(page.locator('#mission-result-announcement')).toContainText('Mission failed');
   expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryBefore);
 
   const retried = await page.evaluate(() => window.__METROPULSE_TEST__.retryMission());
   expect(retried.phase).toBe('ACTIVE');
   expect(retried.run.attempt).toBe(2);
-  await expect(page.locator('#btn-retry-mission')).toBeHidden();
+  await expect(page.locator('#mission-result-screen')).toBeHidden();
 
   const completed = await page.evaluate(() => window.__METROPULSE_TEST__.resolveMission('SUCCESS'));
   expect(completed.phase).toBe('RESULT');
   expect(completed.run.receipt.transactionId).toContain('attempt-2:SUCCESS');
   expect(completed.progress.completedMissionIds).toContain('mission_executive');
-  await expect(page.locator('#mission-hud-title')).toContainText('complete');
+  await expect(page.locator('#mission-result-screen')).toBeVisible();
+  await expect(page.locator('#mission-result-badge')).toHaveText('Success');
+  await expect(page.locator('[data-section="reward"]')).toContainText('Capital');
+  await expect(page.locator('[data-section="reward"]')).toContainText('Passenger satisfaction');
   const treasuryAfterCompletion = await page.evaluate(() => window.app.economySystem.treasury);
   expect(treasuryAfterCompletion).toBeGreaterThan(treasuryBefore);
 
@@ -283,7 +294,15 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
   expect(await page.evaluate(() => window.__METROPULSE_TEST__.missionLifecycle().phase)).toBe('RESULT');
   expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryAfterCompletion);
-  await expect(page.locator('#mission-hud-title')).toContainText('complete');
+  await expect(page.locator('#mission-result-screen')).toBeVisible();
+  await expect(page.locator('#mission-result-title')).toContainText('complete');
+  await page.locator('#btn-result-history').click();
+  await expect(page.locator('#mission-result-history')).toBeVisible();
+  await expect(page.locator('.mission-result-log-entry')).toHaveCount(2);
+  await expect(page.locator('.mission-result-log-entry').first()).toContainText('Success');
+  await expect(page.locator('.mission-result-log-entry').nth(1)).toContainText('Mission failed');
+  await page.locator('#btn-result-history-close').click();
+  await expect(page.locator('#mission-result-current')).toBeVisible();
 
   const recovered = await page.evaluate(() => window.__METROPULSE_TEST__.acknowledgeMissionResult());
   expect(recovered.phase).toBe('IDLE');

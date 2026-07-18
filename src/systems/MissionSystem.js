@@ -763,7 +763,10 @@ export class MissionSystem {
       this.disposeBeacon(this.destinationBeacon);
       this.destinationBeacon = null;
     }
-    if (this.hudEl) this.hudEl.classList.remove('hidden');
+    // The P3.3 debrief owns committed result presentation. Keep the compact
+    // mission HUD only as a compatibility fallback for isolated adapters that
+    // do not compose the result screen.
+    if (this.hudEl) this.hudEl.classList.toggle('hidden', Boolean(this.app?.resultScreen));
     if (this.hudTitleEl) {
       this.hudTitleEl.textContent = success
         ? `${this.activeMission.title} complete${satisfaction == null ? '' : ` · ${satisfaction}% satisfaction`}`

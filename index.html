@@ -198,6 +198,10 @@
               <div class="alert-list" id="alert-feed-list">
                 <div class="alert-item alert-info"><span class="alert-time">08:00</span> <span class="alert-msg">Simulation initialized. City grid active.</span></div>
               </div>
+              <button id="btn-outcome-log" class="outcome-log-button" type="button" disabled aria-label="Review outcome log, 0 recorded results">
+                <span>Outcome log</span>
+                <span id="outcome-log-count" class="outcome-log-count" aria-hidden="true">0</span>
+              </button>
             </div>
           </div>
 
@@ -496,6 +500,59 @@
           <div class="dialogue-choices" id="dialogue-choices"></div>
         </div>
       </div>
+
+      <section id="mission-result-screen" class="mission-result-screen hidden" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mission-result-title" aria-describedby="mission-result-description">
+        <div id="mission-result-card" class="mission-result-card" tabindex="-1">
+          <div id="mission-result-current">
+            <header class="mission-result-header">
+              <div class="mission-result-heading">
+                <span class="mission-result-kicker">MISSION DEBRIEF</span>
+                <span id="mission-result-badge" class="mission-result-badge">Result committed</span>
+              </div>
+              <h2 id="mission-result-title">Mission result</h2>
+              <p id="mission-result-description">The mission outcome and its city consequences were committed.</p>
+            </header>
+
+            <section class="mission-result-why" aria-labelledby="mission-result-why-title">
+              <div>
+                <span class="mission-result-eyebrow">CAUSE</span>
+                <h3 id="mission-result-why-title">Why it happened</h3>
+              </div>
+              <ul id="mission-result-why-list" class="mission-result-why-list"></ul>
+            </section>
+
+            <div id="mission-result-sections" class="mission-result-sections" aria-label="Committed result changes"></div>
+
+            <section class="mission-result-next" aria-labelledby="mission-result-next-title">
+              <span class="mission-result-eyebrow">NEXT MOVE</span>
+              <h3 id="mission-result-next-title">Review the changed city</h3>
+              <p id="mission-result-next-description">Return to Management to inspect the committed consequences.</p>
+            </section>
+
+            <footer class="mission-result-actions">
+              <button id="btn-result-history" class="mission-result-secondary" type="button">Review outcome log</button>
+              <div class="mission-result-primary-actions">
+                <button id="btn-result-retry" class="mission-result-secondary" type="button" hidden>Retry mission</button>
+                <button id="btn-result-continue" class="mission-result-primary" type="button">Return to Management</button>
+              </div>
+            </footer>
+          </div>
+
+          <section id="mission-result-history" class="mission-result-history" aria-labelledby="mission-result-history-title" hidden>
+            <header class="mission-result-history-header">
+              <div>
+                <span class="mission-result-kicker">PERSISTENT RECORD</span>
+                <h2 id="mission-result-history-title">Outcome log</h2>
+                <p>Committed explanations are preserved exactly as they were applied, even after the city changes again.</p>
+              </div>
+              <button id="btn-result-history-close" class="mission-result-icon-button" type="button" aria-label="Close outcome log">←</button>
+            </header>
+            <p id="mission-result-history-empty" class="mission-result-history-empty">No committed outcomes yet.</p>
+            <div id="mission-result-history-list" class="mission-result-history-list"></div>
+          </section>
+        </div>
+        <p id="mission-result-announcement" class="sr-only" role="status" aria-live="assertive" aria-atomic="true"></p>
+      </section>
 
       <section id="pause-menu" class="pause-menu hidden" role="dialog" aria-modal="true" aria-labelledby="pause-menu-title" aria-describedby="pause-menu-description">
         <div class="pause-menu-card" tabindex="-1">

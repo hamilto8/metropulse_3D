@@ -25,6 +25,7 @@ import { MissionSystem } from './systems/MissionSystem.js';
 import { CityEditorSystem } from './world/CityEditorSystem.js';
 import { CityEditorUI } from './ui/CityEditorUI.js';
 import { MinimapHUD } from './ui/MinimapHUD.js';
+import { MissionResultScreen } from './ui/MissionResultScreen.js';
 import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
 import { EconomySystem } from './systems/EconomySystem.js';
@@ -246,6 +247,13 @@ export class MetroPulseApp {
       missionId: runtimeConfig.test?.missionId || null,
       missionIds: runtimeConfig.test ? null : MVP_MISSION_IDS,
       includeMayhem: this.features.isEnabled(FEATURE_IDS.TEMPORARY_MAYHEM)
+    });
+    this.resultScreen = new MissionResultScreen({
+      lifecycle: this.missionSystem.lifecycle,
+      outcomeService: this.missionOutcomeService,
+      missions: this.missionSystem.missions,
+      onRetry: () => this.missionSystem.retryMission(),
+      onContinue: () => this.missionSystem.acknowledgeResult()
     });
     this.interactionService = createMetroPulseInteractionService(this);
     this.interactionPrompt = new InteractionPrompt({
