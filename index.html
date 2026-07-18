@@ -107,7 +107,7 @@
                 <div class="pulse-row"><span>Happiness</span> <strong id="pulse-happiness">72%</strong></div>
                 <div class="pulse-row"><span>Employment</span> <strong id="pulse-employment">—</strong></div>
                 <div class="pulse-row"><span>Net Cash Flow</span> <strong id="pulse-cashflow">—</strong></div>
-                <div class="pulse-row"><span>R/C/I Demand</span> <strong id="pulse-demand">—</strong></div>
+                <div class="pulse-row"><span>R/C/O Demand</span> <strong id="pulse-demand">—</strong></div>
                 <div class="pulse-row"><span>Land Value</span> <strong id="pulse-land-value">100</strong></div>
                 <div class="pulse-row"><span>Reputation</span> <strong id="pulse-reputation">0</strong></div>
                 <div class="pulse-row pulse-services-row"><span>Services</span> <strong id="pulse-services">P 90% · W 80% · F 65%</strong></div>
@@ -142,9 +142,9 @@
                 <span class="zone-icon">🏬</span>
                 <span class="zone-label">Com</span>
               </button>
-              <button class="zoning-card ind-card" data-zone="ind" title="Industrial Zone">
+              <button class="zoning-card ind-card" data-zone="ind" title="Operations Zone">
                 <span class="zone-icon">🏭</span>
-                <span class="zone-label">Ind</span>
+                <span class="zone-label">Ops</span>
               </button>
               <button class="zoning-card office-card" data-zone="office" title="Office Tower">
                 <span class="zone-icon">🏢</span>
@@ -200,14 +200,14 @@
             <div class="view-atmo-content">
               <div class="sub-label">CAMERA PRESETS</div>
               <div class="camera-presets-grid">
-                <button class="cam-pill" data-camera="rocket" title="Rocket Launchpad" aria-label="Camera: Rocket Launchpad">🚀</button>
+                <button class="cam-pill" data-feature="rocketLaunch" data-camera="rocket" title="Rocket Launchpad" aria-label="Camera: Rocket Launchpad">🚀</button>
                 <button class="cam-pill" data-camera="ground" title="Ground Level" aria-label="Camera: Ground Level">🛣️</button>
                 <button class="cam-pill" data-camera="street" title="Street Level" aria-label="Camera: Street Level">🏙️</button>
                 <button class="cam-pill active" data-camera="birdseye" title="Bird's Eye" aria-label="Camera: Bird's Eye" aria-pressed="true">🚁</button>
                 <button class="cam-pill" data-camera="park" title="Central Park" aria-label="Camera: Central Park">🌳</button>
                 <button class="cam-pill" data-camera="downtown" title="Downtown" aria-label="Camera: Downtown">🚦</button>
                 <button class="cam-pill" data-camera="bridge" title="Suspension Bridge" aria-label="Camera: Suspension Bridge">🌉</button>
-                <button class="cam-pill" data-camera="airfield" title="Northwind Municipal Airfield" aria-label="Camera: Northwind Municipal Airfield">🛩️</button>
+                <button class="cam-pill" data-feature="aircraft" data-camera="airfield" title="Northwind Municipal Airfield" aria-label="Camera: Northwind Municipal Airfield">🛩️</button>
                 <button class="cam-pill" data-camera="free" title="Orbit" aria-label="Camera: Free Orbit">🌐</button>
               </div>
 
@@ -244,9 +244,9 @@
               <div class="sub-label mt-2">SIMULATION MODES</div>
               <div class="simulation-mode-actions">
                 <button id="btn-expand-city" class="sidebar-action-btn expand-city-btn" type="button"><span id="expand-city-label">🏗️ Expand City Mode [F]</span></button>
-                <button id="btn-fun-mode" class="sidebar-action-btn fun-mode-btn" type="button"><span id="fun-mode-label">☄️ Fun Mode: OFF</span></button>
-                <button id="btn-launch-rocket" class="sidebar-action-btn launch-rocket-btn" type="button"><span id="launch-rocket-label">🚀 Launch Rocket (T-5:00)</span></button>
-                <button id="btn-unlock-east" class="sidebar-action-btn" type="button">🏙️ Unlock East District ($500k)</button>
+                <button id="btn-fun-mode" data-feature="temporaryMayhem" class="sidebar-action-btn fun-mode-btn" type="button"><span id="fun-mode-label">☄️ Mayhem Sandbox: OFF</span></button>
+                <button id="btn-launch-rocket" data-feature="rocketLaunch" class="sidebar-action-btn launch-rocket-btn" type="button"><span id="launch-rocket-label">🚀 Launch Rocket (T-5:00)</span></button>
+                <button id="btn-unlock-east" data-feature="eastSideDevelopment" class="sidebar-action-btn" type="button">🏙️ Unlock East District ($500k)</button>
                 <button id="btn-bridge-priority" class="sidebar-action-btn" type="button">🌉 Toggle Bridge Priority</button>
                 <button id="btn-save-city" class="sidebar-action-btn" type="button">💾 Save City</button>
                 <button id="btn-new-city" class="sidebar-action-btn danger-subtle" type="button">↺ Start New City</button>

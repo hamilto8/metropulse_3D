@@ -53,7 +53,7 @@ export class CityEditorUI {
           <button class="tray-tab-pill active" data-category="ALL">All</button>
           <button class="tray-tab-pill" data-category="RESIDENTIAL">Residential</button>
           <button class="tray-tab-pill" data-category="COMMERCIAL">Commercial</button>
-          <button class="tray-tab-pill" data-category="INDUSTRIAL">Industrial</button>
+          <button class="tray-tab-pill" data-category="INDUSTRIAL">Operations</button>
           <button class="tray-tab-pill" data-category="CIVIC">Civic</button>
           <button class="tray-tab-pill" data-category="UTILITIES">Utilities</button>
           <button class="tray-tab-pill" data-category="INFRASTRUCTURE">Infrastructure</button>

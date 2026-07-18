@@ -24,6 +24,10 @@
   --radius-lg: 20px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 /* Aircraft instruments are a dedicated, fixed-size action HUD. Numeric cells
    use tabular figures so changing telemetry never causes layout movement. */
 .flight-hud {
@@ -4592,4 +4596,21 @@ body[data-inspector="open"] .status-hud-stack {
     grid-template-columns: 40px minmax(0, 1fr);
     inline-size: 100%;
   }
+}
+/* Development-only runtime diagnostics. Created only by an explicit dev/test URL. */
+.development-diagnostics {
+  position: fixed;
+  z-index: 10000;
+  right: 12px;
+  bottom: 12px;
+  width: min(460px, calc(100vw - 24px));
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  border-radius: 8px;
+  background: rgba(3, 8, 18, 0.92);
+  color: #baf7ff;
+  font: 11px/1.45 "JetBrains Mono", monospace;
+  pointer-events: none;
+  white-space: pre-wrap;
 }

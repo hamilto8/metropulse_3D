@@ -47,14 +47,14 @@ class TrafficNode {
 }
 
 export class TrafficSystem {
-  constructor(app) {
+  constructor(app, { targetMovingVehicleCount = 48 } = {}) {
     this.app = app;
     this.vehicles = [];
     this.nodes = new Map();
     this.roadCoordsX = [-100, -50, 0, 50, 100, 210, 260, 310, 450, 550, 650, 750];
     this.roadCoordsZ = [-100, -50, 0, 50, 100];
     this.laneOffset = 3.5; // Right-hand traffic lane center
-    this.targetMovingVehicleCount = 48;
+    this.targetMovingVehicleCount = Math.max(0, Math.min(48, Math.trunc(targetMovingVehicleCount)));
     this.chainReactionRadius = 10;
     this.chainReactionDelay = 4;
     this.destroyedVehicleLifetime = 30;

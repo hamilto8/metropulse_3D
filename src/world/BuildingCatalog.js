@@ -1,7 +1,7 @@
 export const BUILDING_CATEGORIES = {
   COMMERCIAL: 'Commercial & Skyscraper',
   RESIDENTIAL: 'Residential & Housing',
-  INDUSTRIAL: 'Industrial & Logistics',
+  INDUSTRIAL: 'Operations & Logistics',
   CIVIC: 'Civic & Medical Services',
   INFRASTRUCTURE: 'Roads & Transit',
   UTILITIES: 'Power, Water & Emergency Services'

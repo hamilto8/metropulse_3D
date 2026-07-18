@@ -1,5 +1,13 @@
 # 🏙️ MetroPulse 3D | Cyber-Modern Metropolis Simulation
 
+> **Production status:** Pre-alpha under the GDD v3 completion roadmap. The MVP
+> is scope-locked to West Core, Central Park, and the primary bridge. Aircraft,
+> rocket launch, East-side development, countryside expansion, and unsafe
+> Mayhem variants are retained behind default-off feature flags; their presence
+> in source is not a release-completion claim. See
+> [`docs/MVP_SCOPE.md`](docs/MVP_SCOPE.md) and
+> [`docs/REQUIREMENT_TRACEABILITY.md`](docs/REQUIREMENT_TRACEABILITY.md).
+
 [![Built with Three.js](https://img.shields.io/badge/Three.js-r185-black?style=for-the-badge&logo=three.js)](https://threejs.org/)
 [![Built with Vite](https://img.shields.io/badge/Vite-8.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-00f0ff?style=for-the-badge)](https://opensource.org/licenses/MIT)

@@ -32,7 +32,7 @@ class SidewalkNode {
 }
 
 export class PedestrianSystem {
-  constructor(app) {
+  constructor(app, { targetPedestrianCount = 60 } = {}) {
     this.app = app;
     this.pedestrians = [];
     this.nodes = new Map();
@@ -41,7 +41,7 @@ export class PedestrianSystem {
     this.talkingBubbleTimer = 0;
     this.sidewalkCoordsX = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109, 201, 219, 251, 269, 301, 319, 441, 459, 541, 559, 641, 659, 741, 759];
     this.sidewalkCoordsZ = [-109, -91, -59, -41, -9, 9, 41, 59, 91, 109];
-    this.targetPedestrianCount = 60;
+    this.targetPedestrianCount = Math.max(0, Math.min(60, Math.trunc(targetPedestrianCount)));
     this.nextPedestrianSerial = 0;
     this.populationCheckTimer = 2.0;
     this.random = Math.random;

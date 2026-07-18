@@ -573,7 +573,19 @@ export class SceneManager {
   }
 
   render() {
+    const rendererInfo = this.renderer.info;
+    const autoReset = rendererInfo.autoReset;
+    rendererInfo.autoReset = false;
+    rendererInfo.reset();
     if (this.bloomEnabled) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
+    const render = rendererInfo.render;
+    this.lastRenderStats = Object.freeze({
+      calls: render.calls,
+      triangles: render.triangles,
+      lines: render.lines,
+      points: render.points
+    });
+    rendererInfo.autoReset = autoReset;
   }
 }

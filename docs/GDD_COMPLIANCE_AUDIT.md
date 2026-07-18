@@ -1,5 +1,10 @@
 # MetroPulse 3D GDD Compliance Audit
 
+> **HISTORICAL — GDD v2.1 ONLY.** This document is retained as implementation
+> history and must not be used as evidence of GDD v3 or MVP completion. Current
+> authority and status live in `METROPULSE_3D_COMPLETION_ROADMAP.md` and
+> `REQUIREMENT_TRACEABILITY.md`.
+
 > **2026-07-15 follow-up:** The city simulation has since gained a canonical
 > building-economy adapter, explicit operating upkeep, fiscal states,
 > housing/jobs/employment and R/C/I demand, an explainable happiness breakdown,

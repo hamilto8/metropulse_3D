@@ -20,6 +20,8 @@ export class PersistenceSystem {
     this.restoring = false;
     this.lastError = null;
     this.lastRestoreReport = null;
+    this.status = this.storage ? 'IDLE' : 'UNAVAILABLE';
+    this.lastSavedAt = null;
 
     this.unsubscribeEconomy = app.economySystem?.subscribe?.(() => this.scheduleSave()) || null;
     this.unsubscribeGame = app.gameManager?.subscribe?.(() => this.scheduleSave()) || null;
@@ -48,7 +50,9 @@ export class PersistenceSystem {
         timePlaying: this.app.timeManager?.isPlaying,
         timeSpeed: this.app.timeManager?.speed,
         weather: this.app.environment?.weatherMode,
-        mayhem: Boolean(this.app.funMode),
+        mayhem: this.app.features?.isEnabled?.('persistentMayhem')
+          ? Boolean(this.app.funMode)
+          : false,
         heatmap: Boolean(this.app.trafficHeatmapEnabled)
       }
     };
@@ -57,6 +61,7 @@ export class PersistenceSystem {
   scheduleSave() {
     if (this.restoring || !this.storage) return false;
     if (this.timer) return true;
+    this.status = 'SCHEDULED';
     this.timer = setTimeout(() => this.saveNow(), this.debounceMs);
     return true;
   }
@@ -65,12 +70,16 @@ export class PersistenceSystem {
     if (this.restoring || !this.storage) return false;
     clearTimeout(this.timer);
     this.timer = null;
+    this.status = 'SAVING';
     try {
       this.storage.setItem(SAVE_KEY, JSON.stringify(this.createSnapshot()));
       this.lastError = null;
+      this.lastSavedAt = new Date().toISOString();
+      this.status = 'SAVED';
       return true;
     } catch (error) {
       this.lastError = error;
+      this.status = 'ERROR';
       console.warn('MetroPulse could not save the city session.', error);
       return false;
     }
@@ -78,14 +87,19 @@ export class PersistenceSystem {
 
   restore() {
     if (!this.storage) return false;
+    this.status = 'LOADING';
     let parsed;
     try {
       const raw = this.storage.getItem(SAVE_KEY);
-      if (!raw) return false;
+      if (!raw) {
+        this.status = 'IDLE';
+        return false;
+      }
       parsed = JSON.parse(raw);
       if (!parsed || parsed.version !== 1) throw new Error('Unsupported city save version');
     } catch (error) {
       this.lastError = error;
+      this.status = 'ERROR';
       console.warn('MetroPulse ignored an invalid saved city session.', error);
       return false;
     }
@@ -97,10 +111,12 @@ export class PersistenceSystem {
       this.restoreMission(parsed.mission);
       this.restoreSettings(parsed.settings);
       this.lastError = null;
+      this.status = 'IDLE';
       this.app.uiManager?.addAlert?.('💾 Saved city session restored.', 'success');
       return true;
     } catch (error) {
       this.lastError = error;
+      this.status = 'ERROR';
       console.warn('MetroPulse could not restore the saved city session.', error);
       return false;
     } finally {
@@ -206,7 +222,10 @@ export class PersistenceSystem {
     // Dynamic weather is a session default, not a persisted preference. Older
     // saves may contain `dynamicWeather: false`; startup intentionally ignores it.
     this.app.environment?.setDynamicWeather?.(true);
-    if (typeof settings.mayhem === 'boolean') {
+    if (
+      this.app.features?.isEnabled?.('persistentMayhem')
+      && typeof settings.mayhem === 'boolean'
+    ) {
       this.app.funMode = settings.mayhem;
       this.app.gameManager?.setMayhem?.(settings.mayhem, 'persistence');
       this.app.uiManager?.renderMayhemState?.(settings.mayhem);
@@ -221,11 +240,25 @@ export class PersistenceSystem {
   clear() {
     try {
       this.storage?.removeItem?.(SAVE_KEY);
+      this.status = 'IDLE';
+      this.lastSavedAt = null;
       return true;
     } catch (error) {
       this.lastError = error;
+      this.status = 'ERROR';
       return false;
     }
+  }
+
+  getStatus() {
+    return Object.freeze({
+      status: this.status,
+      available: Boolean(this.storage),
+      pending: Boolean(this.timer),
+      restoring: this.restoring,
+      lastSavedAt: this.lastSavedAt,
+      error: this.lastError?.message || null
+    });
   }
 
   destroy() {

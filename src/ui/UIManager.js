@@ -275,6 +275,7 @@ export class UIManager {
 
     if (this.btnLaunchRocket) {
       this.btnLaunchRocket.addEventListener('click', () => {
+        if (!this.app.features?.isEnabled?.('rocketLaunch')) return;
         if (this.app.rocketLaunched) {
           this.app.rocketLaunched = false;
           this.app.rocketCountdown = 300.0;
@@ -513,6 +514,7 @@ export class UIManager {
 
     if (this.btnUnlockEast) {
       this.btnUnlockEast.addEventListener('click', () => {
+        if (!this.app.features?.isEnabled?.('eastSideDevelopment')) return;
         const result = this.app.economySystem?.unlockDistrict?.('EAST_CYBER_METROPOLIS');
         if (result?.success || result === true) {
           this.addAlert('🏙️ East Cyber-Metropolis unlocked for development.', 'success');
@@ -777,7 +779,7 @@ export class UIManager {
     const demand = state.demand || {};
     if (this.pulseDemand) {
       this.pulseDemand.textContent = `${Math.round(demand.residential ?? 0)}/${Math.round(demand.commercial ?? 0)}/${Math.round(demand.industrial ?? 0)}`;
-      this.pulseDemand.title = 'Residential / Commercial / Industrial development demand';
+      this.pulseDemand.title = 'Residential / Commercial / Operations development demand';
     }
     const happinessBreakdown = state.happinessBreakdown;
     if (this.pulseHappiness && happinessBreakdown) {

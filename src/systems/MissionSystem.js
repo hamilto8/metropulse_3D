@@ -66,7 +66,11 @@ export function validateMissionData(missions) {
  *   Any state → IDLE (via cancelMission or clearActiveMission)
  */
 export class MissionSystem {
-  constructor(app, dialogueOverlay) {
+  constructor(app, dialogueOverlay, {
+    missionId = null,
+    missionIds = null,
+    includeMayhem = true
+  } = {}) {
     this.app = app;
     this.scene = app.sceneManager.scene;
     this.dialogueOverlay = dialogueOverlay;
@@ -75,7 +79,19 @@ export class MissionSystem {
     this.state = 'IDLE';
 
     validateMissionData(missionsData);
-    this.missions = missionsData;
+    const allowedIds = missionId
+      ? new Set([missionId])
+      : Array.isArray(missionIds)
+        ? new Set(missionIds)
+        : null;
+    const selectedMissions = missionsData.filter(mission => (
+      (!allowedIds || allowedIds.has(mission.id))
+      && (includeMayhem || !mission.requiresMayhem)
+    ));
+    if (selectedMissions.length === 0) {
+      throw new RangeError(`Unknown deterministic mission fixture: ${missionId}`);
+    }
+    this.missions = selectedMissions;
     this.availableMissions = [...this.missions];
     this.activeMission = null;
     this.timeRemaining = 0;

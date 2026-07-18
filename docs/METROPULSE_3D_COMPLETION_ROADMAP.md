@@ -231,43 +231,43 @@ impressive but disconnected systems.
 
 #### P0.1 Requirement traceability
 
-- [ ] Convert GDD v3 acceptance requirements into stable IDs grouped by game
+- [x] Convert GDD v3 acceptance requirements into stable IDs grouped by game
   loop, city, street, mission, narrative, UX, accessibility, persistence,
   performance, and release.
-- [ ] Create a traceability table linking each requirement to its responsible
+- [x] Create a traceability table linking each requirement to its responsible
   system, test level, and current state: `Not Started`, `In Progress`,
   `Implemented`, `Verified`, or `Deferred`.
-- [ ] Mark the old v2.1 audit as historical at its top to prevent future agents
+- [x] Mark the old v2.1 audit as historical at its top to prevent future agents
   from using its completion claims as current truth.
-- [ ] Record unresolved product decisions in a design-decision log with an
+- [x] Record unresolved product decisions in a design-decision log with an
   owner and deadline.
 
 #### P0.2 MVP scope controls
 
-- [ ] Define feature flags for aircraft, rocket launch, East-side development,
+- [x] Define feature flags for aircraft, rocket launch, East-side development,
   Mayhem variants, and other post-MVP breadth.
-- [ ] Decide which existing non-MVP systems are hidden, retained as optional
+- [x] Decide which existing non-MVP systems are hidden, retained as optional
   extras, or deferred from release testing.
-- [ ] Freeze the target mission count at 8–12 and activity-template count at
+- [x] Freeze the target mission count at 8–12 and activity-template count at
   5–7.
-- [ ] Freeze the MVP world footprint at West Core, Central Park, and the primary
+- [x] Freeze the MVP world footprint at West Core, Central Park, and the primary
   bridge unless a written GDD amendment says otherwise.
-- [ ] Replace Industrial with Operations in the MVP product vocabulary, or
+- [x] Replace Industrial with Operations in the MVP product vocabulary, or
   record a deliberate design amendment if Industrial remains.
 
 #### P0.3 Test and diagnostics foundation
 
-- [ ] Add a browser integration test framework suitable for WebGL startup,
+- [x] Add a browser integration test framework suitable for WebGL startup,
   DOM interaction, local IndexedDB, keyboard input, and deterministic test
   hooks.
-- [ ] Add a deterministic test mode that can seed traffic, pedestrians,
+- [x] Add a deterministic test mode that can seed traffic, pedestrians,
   weather, mission data, and time without changing production defaults.
-- [ ] Add development diagnostics for current state, active transition,
+- [x] Add development diagnostics for current state, active transition,
   scheduler pause, controlled entity, active mission, save status, entity
   counts, renderer statistics, and memory/resource counters where available.
-- [ ] Capture a reproducible baseline for load time, FPS, frame time, draw
+- [x] Capture a reproducible baseline for load time, FPS, frame time, draw
   calls, triangles, active physics bodies, and core bundle sizes.
-- [ ] Add a smoke test that boots a clean profile and asserts no uncaught
+- [x] Add a smoke test that boots a clean profile and asserts no uncaught
   errors, rejected promises, or invalid UI states.
 
 ### Exit gate
@@ -277,6 +277,18 @@ impressive but disconnected systems.
 - A clean browser session can be booted and smoke-tested automatically.
 - Baseline performance and bundle measurements are recorded.
 - Existing Node tests and production build remain green.
+
+### Phase 0 completion record — 2026-07-17
+
+- Requirements and verification ownership: `REQUIREMENT_TRACEABILITY.md`.
+- Executable and documented scope: `MVP_SCOPE.md`, `src/config/MvpScope.js`,
+  and `src/config/FeatureFlags.js`.
+- Open and accepted decisions: `DESIGN_DECISIONS.md`.
+- Deterministic browser/diagnostics contract: `TESTING_AND_DIAGNOSTICS.md`.
+- Measured baseline, including the over-budget draw-call risk:
+  `PERFORMANCE_BASELINE_2026-07-17.md`.
+- Automated evidence: Node unit/integration suite, Playwright clean-profile
+  WebGL smoke, production build, and CI gates.
 
 ## 8. Phase 1 — Authoritative game kernel and safe transitions
 

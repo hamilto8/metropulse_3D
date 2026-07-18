@@ -30,10 +30,24 @@ import { GameManager } from './core/GameManager.js';
 import { PerformanceSystem } from './systems/PerformanceSystem.js';
 import { PersistenceSystem } from './systems/PersistenceSystem.js';
 import { createBuildingEconomyRecord } from './systems/BuildingEconomyAdapter.js';
+import { FEATURE_IDS, applyFeatureVisibility } from './config/FeatureFlags.js';
+import {
+  createRuntimeConfig,
+  installDeterministicRandom
+} from './app/RuntimeConfig.js';
+import { DiagnosticsService } from './debug/DiagnosticsService.js';
+import { installBrowserTestBridge } from './testing/BrowserTestBridge.js';
+import { MVP_MISSION_IDS } from './config/MvpScope.js';
+
+const bootStartedAtMs = performance.now();
 
 class MetroPulseApp {
-  constructor() {
+  constructor(runtimeConfig) {
     const container = document.getElementById('canvas-container');
+    this.runtimeConfig = runtimeConfig;
+    this.bootStartedAtMs = bootStartedAtMs;
+    this.features = runtimeConfig.featureFlags;
+    applyFeatureVisibility(document, this.features);
 
     // Canonical state stores are renderer-agnostic and shared by both loops.
     this.gameManager = new GameManager();
@@ -145,13 +159,21 @@ class MetroPulseApp {
     // Input is created before gameplay systems so there is exactly one
     // keyboard/gamepad state owner from their first frame onward.
     this.inputManager = new InputManager(this);
-    this.trafficSystem = new TrafficSystem(this);
+    this.trafficSystem = new TrafficSystem(this, {
+      targetMovingVehicleCount: runtimeConfig.test?.trafficCount ?? 48
+    });
 
     // 10. Pedestrian Simulation
-    this.pedestrianSystem = new PedestrianSystem(this);
-    this.aircraftSystem = new AircraftSystem(this);
+    this.pedestrianSystem = new PedestrianSystem(this, {
+      targetPedestrianCount: runtimeConfig.test?.pedestrianCount ?? 60
+    });
+    this.aircraftSystem = this.features.isEnabled(FEATURE_IDS.AIRCRAFT)
+      ? new AircraftSystem(this)
+      : null;
     this.performanceSystem = new PerformanceSystem(this);
     this.physicsWorld.terrainSystem = this.cityBuilder;
+    // Retained scenery remains collision-safe even while its gameplay/content
+    // flag is off. A scope flag must never turn an existing road into a void.
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
     this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
 
@@ -164,9 +186,19 @@ class MetroPulseApp {
 
     // 11.5 Phase 3 Mission Logic & Branching Dialogue Overlay
     this.dialogueOverlay = new DialogueOverlay();
-    this.missionSystem = new MissionSystem(this, this.dialogueOverlay);
+    this.missionSystem = new MissionSystem(this, this.dialogueOverlay, {
+      missionId: runtimeConfig.test?.missionId || null,
+      missionIds: runtimeConfig.test ? null : MVP_MISSION_IDS,
+      includeMayhem: this.features.isEnabled(FEATURE_IDS.TEMPORARY_MAYHEM)
+    });
     this.persistenceSystem = new PersistenceSystem(this);
     this.persistenceSystem.restore();
+
+    if (runtimeConfig.test) {
+      this.timeManager.setTime(runtimeConfig.test.time);
+      this.environment.setDynamicWeather(false);
+      this.environment.setWeather(runtimeConfig.test.weather);
+    }
 
     // 12. Animation Loop Setup
     this.timer = new THREE.Timer();
@@ -186,6 +218,13 @@ class MetroPulseApp {
     );
 
     this.minimapHud = new MinimapHUD(this);
+
+    this.diagnostics = new DiagnosticsService(this, {
+      enabled: runtimeConfig.diagnosticsEnabled
+    });
+    installBrowserTestBridge(this, this.diagnostics, runtimeErrorMonitor);
+    this.interactiveAtMs = performance.now();
+    document.body.dataset.appState = 'ready';
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
@@ -217,6 +256,7 @@ class MetroPulseApp {
   }
 
   triggerRocketLaunch() {
+    if (!this.features.isEnabled(FEATURE_IDS.ROCKET_LAUNCH)) return false;
     this.rocketLaunched = true;
     this.rocketCountdown = 0;
     if (this.audioSystem) {
@@ -225,6 +265,7 @@ class MetroPulseApp {
     if (this.billboardCanvas) {
       this.billboardCanvas.forceRedrawAll();
     }
+    return true;
   }
 
   animate(timestamp) {
@@ -257,7 +298,7 @@ class MetroPulseApp {
     this.timeManager.update(delta);
     this.trafficSystem.update(delta);
     this.pedestrianSystem.update(delta);
-    this.aircraftSystem.update(delta);
+    this.aircraftSystem?.update(delta);
     this.explosionManager.update(delta);
     this.cometManager.update(delta);
     this.trafficHeatmapSystem.update(delta);
@@ -372,9 +413,27 @@ function showFatalError(title, error) {
 }
 
 // Start application when DOM is ready
+const runtimeErrorMonitor = {
+  uncaught: [],
+  rejected: []
+};
+
+window.addEventListener('error', event => {
+  runtimeErrorMonitor.uncaught.push(event.error?.message || event.message || 'Unknown error');
+});
+
 window.addEventListener('DOMContentLoaded', () => {
   try {
-    window.app = new MetroPulseApp();
+    const runtimeConfig = createRuntimeConfig({
+      search: window.location.search,
+      allowTestMode: import.meta.env.DEV || import.meta.env.VITE_ENABLE_TEST_MODE === 'true',
+      allowFeatureOverrides: import.meta.env.DEV
+    });
+    if (runtimeConfig.test?.cleanProfile) {
+      window.localStorage?.clear?.();
+    }
+    installDeterministicRandom(runtimeConfig.test);
+    window.app = new MetroPulseApp(runtimeConfig);
   } catch (error) {
     console.error('MetroPulse failed to initialize.', error);
     showFatalError('Unable to start the city simulation', error);
@@ -382,6 +441,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('unhandledrejection', event => {
+  runtimeErrorMonitor.rejected.push(event.reason?.message || String(event.reason));
   console.error('MetroPulse encountered an unhandled operation.', event.reason);
   if (window.app) window.app.fatalError = true;
   window.app?.persistenceSystem?.saveNow?.();
