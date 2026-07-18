@@ -4098,6 +4098,52 @@ input[type="range"]:focus-visible {
   background: rgba(7, 18, 31, 0.72);
 }
 
+.mobility-card {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 0.65rem;
+  background: linear-gradient(145deg, rgba(7, 18, 31, 0.78), rgba(15, 23, 42, 0.68));
+}
+
+.mobility-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.32rem 0.65rem;
+  align-items: baseline;
+}
+
+.mobility-grid span,
+.mobility-policy span {
+  color: #7f91a8;
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mobility-grid strong,
+.mobility-policy strong {
+  color: #e0f2fe;
+  font: 700 0.68rem var(--font-mono);
+  text-align: right;
+}
+
+.mobility-policy {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(125, 211, 252, 0.12);
+}
+
+.mobility-tradeoff {
+  margin: 0;
+  color: #a5b4c7;
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
 .service-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

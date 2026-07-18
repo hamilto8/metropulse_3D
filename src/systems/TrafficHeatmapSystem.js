@@ -46,21 +46,38 @@ export class TrafficHeatmapSystem {
 
   rebuild() {
     const bins = new Map();
-    const vehicles = this.app.trafficSystem?.vehicles || [];
-
-    for (const vehicle of vehicles) {
-      if (!vehicle?.mesh || vehicle.isParked) continue;
-      const xIndex = Math.round(vehicle.mesh.position.x / this.cellSize);
-      const zIndex = Math.round(vehicle.mesh.position.z / this.cellSize);
-      const key = `${xIndex},${zIndex}`;
-      const bin = bins.get(key) || { key, xIndex, zIndex, vehicles: 0, weight: 0, crashed: 0 };
-      const speed = Math.abs(vehicle.speed || 0);
-      const stoppedWeight = speed < 0.8 ? 1.25 : speed < 4 ? 0.75 : 0.25;
-      const crashWeight = vehicle.crashed || vehicle.onFire ? 2.75 : 0;
-      bin.vehicles += 1;
-      bin.crashed += crashWeight > 0 ? 1 : 0;
-      bin.weight += stoppedWeight + crashWeight;
-      bins.set(key, bin);
+    const aggregate = this.app.trafficProductivityModel?.snapshot?.();
+    if (aggregate) {
+      for (const hotspot of aggregate.network.hotspots || []) {
+        const xIndex = Math.round(hotspot.x / this.cellSize);
+        const zIndex = Math.round(hotspot.z / this.cellSize);
+        const key = `${xIndex},${zIndex}`;
+        bins.set(key, {
+          key,
+          xIndex,
+          zIndex,
+          vehicles: 0,
+          weight: Math.max(0.5, hotspot.intensity * 6),
+          crashed: 0,
+          cause: hotspot.cause,
+          sourceId: hotspot.id
+        });
+      }
+    } else {
+      for (const vehicle of this.app.trafficSystem?.vehicles || []) {
+        if (!vehicle?.mesh || vehicle.isParked) continue;
+        const xIndex = Math.round(vehicle.mesh.position.x / this.cellSize);
+        const zIndex = Math.round(vehicle.mesh.position.z / this.cellSize);
+        const key = `${xIndex},${zIndex}`;
+        const bin = bins.get(key) || { key, xIndex, zIndex, vehicles: 0, weight: 0, crashed: 0 };
+        const speed = Math.abs(vehicle.speed || 0);
+        const stoppedWeight = speed < 0.8 ? 1.25 : speed < 4 ? 0.75 : 0.25;
+        const crashWeight = vehicle.crashed || vehicle.onFire ? 2.75 : 0;
+        bin.vehicles += 1;
+        bin.crashed += crashWeight > 0 ? 1 : 0;
+        bin.weight += stoppedWeight + crashWeight;
+        bins.set(key, bin);
+      }
     }
 
     const seen = new Set();
@@ -96,7 +113,15 @@ export class TrafficHeatmapSystem {
       mesh.material.color.setHSL((1 - intensity) * 0.34, 0.95, 0.5);
       mesh.material.opacity = 0.1 + intensity * 0.42;
       mesh.visible = true;
-      this.hotspots.push({ x, z, intensity, vehicles: bin.vehicles, crashed: bin.crashed });
+      this.hotspots.push({
+        x,
+        z,
+        intensity,
+        vehicles: bin.vehicles,
+        crashed: bin.crashed,
+        cause: bin.cause || null,
+        sourceId: bin.sourceId || null
+      });
     }
 
     for (const [key, mesh] of this.cells) {

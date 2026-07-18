@@ -28,6 +28,8 @@ import { MinimapHUD } from './ui/MinimapHUD.js';
 import { MissionResultScreen } from './ui/MissionResultScreen.js';
 import { InputManager } from './systems/InputManager.js';
 import { TrafficHeatmapSystem } from './systems/TrafficHeatmapSystem.js';
+import { TrafficProductivityModel } from './systems/TrafficProductivityModel.js';
+import { TrafficAlertAdapter } from './systems/TrafficAlertAdapter.js';
 import { EconomySystem } from './systems/EconomySystem.js';
 import { CONTROL_KINDS, GAME_STATES, GameManager } from './core/GameManager.js';
 import { TransitionCoordinator } from './core/TransitionCoordinator.js';
@@ -63,6 +65,8 @@ import { IncidentResponseService } from './systems/IncidentResponseService.js';
 import { ServiceWorkInteractionProvider } from './systems/ServiceWorkInteractionProvider.js';
 import { ServiceTaskMarkerSystem } from './world/ServiceTaskMarkerSystem.js';
 import { CityServicesPanel } from './ui/CityServicesPanel.js';
+import { TrafficProductivityPanel } from './ui/TrafficProductivityPanel.js';
+import { MobilityStreetFeedbackSystem } from './world/MobilityStreetFeedbackSystem.js';
 import {
   ALERT_DURATION_KINDS,
   ALERT_FOCUS_ACTIONS,
@@ -237,6 +241,18 @@ export class MetroPulseApp {
     // flag is off. A scope flag must never turn an existing road into a void.
     this.physicsWorld.initCountrysideTerrain(this.cityBuilder);
     this.trafficHeatmapSystem = new TrafficHeatmapSystem(this);
+    this.trafficProductivityModel = new TrafficProductivityModel({
+      economySystem: this.economySystem,
+      outcomeService: this.missionOutcomeService,
+      roadProvider: this.trafficSystem,
+      presentationVehicleCap: runtimeConfig.test?.trafficCount ?? 48
+    });
+    this.mobilityStreetFeedbackSystem = new MobilityStreetFeedbackSystem({
+      scene: this.sceneManager.scene,
+      model: this.trafficProductivityModel,
+      roadProvider: this.trafficSystem,
+      groundHeight: (x, z) => this.cityBuilder.getHillHeight(x, z)
+    });
     this.cityConditionService = new CityConditionService({
       economySystem: this.economySystem,
       outcomeService: this.missionOutcomeService,
@@ -253,6 +269,10 @@ export class MetroPulseApp {
     });
 
     this.alertService = new AlertService();
+    this.trafficAlertAdapter = new TrafficAlertAdapter({
+      model: this.trafficProductivityModel,
+      alertService: this.alertService
+    });
     this.alertService.publish({
       dedupeKey: 'system:city-grid-online',
       type: ALERT_TYPES.SYSTEM,
@@ -288,6 +308,13 @@ export class MetroPulseApp {
       cityServiceModel: this.cityServiceModel,
       incidentResponseService: this.incidentResponseService,
       root: document.getElementById('city-services-panel'),
+      onFeedback: message => this.uiManager.showToast(message)
+    });
+    this.trafficProductivityPanel = new TrafficProductivityPanel({
+      model: this.trafficProductivityModel,
+      root: document.getElementById('traffic-productivity-panel'),
+      policyButton: document.getElementById('btn-bridge-priority'),
+      onPolicyChange: enabled => this.trafficSystem.toggleBridgePriority(enabled),
       onFeedback: message => this.uiManager.showToast(message)
     });
     this.settingsRuntime = new SettingsRuntime({ store: this.settingsStore, app: this });

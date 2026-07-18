@@ -12,6 +12,7 @@ import {
 } from '../missions/MissionOutcomeService.js';
 import { validateMissionLifecycleState } from '../missions/MissionLifecycleController.js';
 import { validateAlertState } from '../alerts/AlertService.js';
+import { validateTrafficProductivityState } from '../systems/TrafficProductivityModel.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -194,7 +195,8 @@ export function captureGameState(app) {
     },
     settings: { version: 1, values: app.settingsStore?.getSettings?.() || structuredClone(app.settings || {}), heatmap: Boolean(app.trafficHeatmapEnabled) },
     bindings: { version: 1, overrides: app.settingsStore?.getBindingOverrides?.() || {} },
-    alerts: serializeAlerts(app)
+    alerts: serializeAlerts(app),
+    mobility: app.trafficProductivityModel?.serialize?.() ?? null
   };
 }
 
@@ -419,6 +421,13 @@ export function validateGameState(data, {
   } catch (error) {
     throw new SaveValidationError(error.message, { path: 'save.data.alerts' });
   }
+  if (data.mobility != null) {
+    try {
+      validateTrafficProductivityState(data.mobility);
+    } catch (error) {
+      throw new SaveValidationError(error.message, { path: 'save.data.mobility' });
+    }
+  }
   return true;
 }
 
@@ -560,6 +569,8 @@ export function restoreStaticGameState(app, data) {
     progression: data.progression.values
   }));
   const worldReport = restoreWorld(app, data.world);
+  if (data.mobility) app.trafficProductivityModel?.restore?.(data.mobility);
+  else app.trafficProductivityModel?.setBridgePolicy?.('BALANCED');
   app.timeManager?.setTime?.(data.timeWeather.time);
   app.timeManager?.setPlaying?.(data.timeWeather.playing);
   app.timeManager?.setSpeed?.(data.timeWeather.speed);

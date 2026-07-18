@@ -559,14 +559,6 @@ export class UIManager {
       });
     }
 
-    if (this.btnBridgePriority) {
-      this.btnBridgePriority.addEventListener('click', () => {
-        const enabled = this.app.trafficSystem?.toggleBridgePriority?.();
-        this.btnBridgePriority.classList.toggle('active', !!enabled);
-        this.addAlert(enabled ? '🌉 Bridge priority lanes opened; cross-river flow boosted.' : '🌉 Bridge priority returned to normal routing.', 'info');
-      });
-    }
-
     this.btnSaveCity?.addEventListener('click', async () => {
       const saved = await this.app.saveService?.saveNow?.({ reason: 'manual' });
       this.showToast(saved ? '💾 City saved locally.' : '⚠️ City could not be saved; your previous save is still safe.');
@@ -810,10 +802,12 @@ export class UIManager {
     if (this.pulseEnergy) this.pulseEnergy.textContent = `${energy}%`;
     if (this.pulseHappiness) this.pulseHappiness.textContent = `${happiness}%`;
     const demographics = state.demographics || pulse.demographics || {};
-    const employment = Math.round(Number(demographics.employmentRate ?? 1) * 100);
+    const employment = Math.round(Number(
+      demographics.accessibleEmploymentRate ?? demographics.employmentRate ?? 1
+    ) * 100);
     if (this.pulseEmployment) {
       this.pulseEmployment.textContent = `${employment}%`;
-      this.pulseEmployment.title = `${Number(demographics.employed ?? 0).toLocaleString()} employed · ${Number(demographics.availableJobs ?? 0).toLocaleString()} open jobs`;
+      this.pulseEmployment.title = `${Number(demographics.accessibleEmployed ?? demographics.employed ?? 0).toLocaleString()} jobs reachable · ${Number(demographics.employed ?? 0).toLocaleString()} filled before traffic access · ${Number(demographics.availableJobs ?? 0).toLocaleString()} open jobs`;
     }
     const budget = state.budgetBreakdown || pulse.budgetBreakdown || {};
     const netRate = Number(budget.netRate ?? state.passiveIncomeRate ?? 0);
@@ -821,7 +815,7 @@ export class UIManager {
       const sign = netRate >= 0 ? '+' : '−';
       this.pulseCashflow.textContent = `${sign}$${Math.abs(netRate * 60).toLocaleString('en-US', { maximumFractionDigits: 0 })}/min`;
       this.pulseCashflow.style.color = netRate >= 0 ? '#00ff88' : '#f87171';
-      this.pulseCashflow.title = `Revenue $${Number(budget.adjustedRevenueRate ?? 0) * 60}/min · Upkeep $${Number(budget.operatingCostRate ?? 0) * 60}/min`;
+      this.pulseCashflow.title = `Revenue $${Number(budget.adjustedRevenueRate ?? 0) * 60}/min · Upkeep $${Number(budget.operatingCostRate ?? 0) * 60}/min · Traffic policy $${Number(budget.managementCostRate ?? 0) * 60}/min`;
     }
     const demand = state.demand || {};
     if (this.pulseDemand) {
@@ -836,6 +830,7 @@ export class UIManager {
         `Zoning ${happinessBreakdown.zoning >= 0 ? '+' : ''}${happinessBreakdown.zoning.toFixed(1)}`,
         `Services ${happinessBreakdown.services.toFixed(1)}`,
         `Jobs ${happinessBreakdown.employment.toFixed(1)}`,
+        `Traffic ${Number(happinessBreakdown.traffic ?? 0).toFixed(1)}`,
         `Incidents ${happinessBreakdown.incidents.toFixed(1)}`
       ].join(' · ');
     }
@@ -1560,30 +1555,6 @@ export class UIManager {
 
     const service = this.app.alertService;
     if (!service) return;
-    const congestion = this.app.trafficSystem?.getCongestionMetrics?.();
-    if ((congestion?.index || 0) >= 0.65) {
-      const hotspot = congestion.hotspots?.[0];
-      const position = Number.isFinite(hotspot?.x) && Number.isFinite(hotspot?.z)
-        ? { x: hotspot.x, y: 0, z: hotspot.z }
-        : null;
-      service.publish({
-        dedupeKey: 'traffic:network-congestion',
-        type: ALERT_TYPES.TRAFFIC,
-        severity: congestion.index >= 0.85 ? ALERT_SEVERITIES.CRITICAL : ALERT_SEVERITIES.WARNING,
-        title: 'Network congestion is disrupting travel',
-        cause: `${Math.round(congestion.index * 100)}% of sampled traffic capacity is blocked or stopped.`,
-        location: { label: position ? 'Primary traffic hotspot' : 'City road network', position },
-        duration: { kind: ALERT_DURATION_KINDS.UNTIL_RESOLVED },
-        recommendation: 'Inspect the hotspot, clear incidents, or change bridge and road priorities.',
-        relatedEntityIds: [],
-        focusAction: position
-          ? { type: ALERT_FOCUS_ACTIONS.MANAGEMENT_CAMERA, position }
-          : { type: ALERT_FOCUS_ACTIONS.NONE }
-      });
-    } else {
-      service.resolve('traffic:network-congestion', 'Traffic returned below the congestion threshold');
-    }
-
     if (this.currentReValue < 2_000_000_000) {
       service.publish({
         dedupeKey: 'economy:valuation-low',

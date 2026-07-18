@@ -598,9 +598,11 @@ export class TrafficSystem {
   }
 
   toggleBridgePriority(forceEnabled = null) {
-    this.bridgePriorityEnabled = forceEnabled == null
-      ? !this.bridgePriorityEnabled
-      : Boolean(forceEnabled);
+    this.bridgePriorityEnabled = this.app?.trafficProductivityModel?.toggleBridgePriority
+      ? this.app.trafficProductivityModel.toggleBridgePriority(forceEnabled)
+      : forceEnabled == null
+        ? !this.bridgePriorityEnabled
+        : Boolean(forceEnabled);
 
     for (const vehicle of this.vehicles) {
       if (!this.isOnPrimaryBridge(vehicle) || !vehicle.info || vehicle.userControlled) continue;
@@ -613,6 +615,41 @@ export class TrafficSystem {
   }
 
   getCongestionMetrics() {
+    const aggregate = this.app?.trafficProductivityModel?.snapshot?.();
+    const visibleSample = this.getVisibleTrafficSample();
+    if (aggregate) {
+      return {
+        revision: aggregate.revision,
+        authoritative: true,
+        includesAuthoredPolicies: true,
+        index: aggregate.network.congestion,
+        activeVehicles: visibleSample.activeVehicles,
+        stoppedVehicles: visibleSample.stoppedVehicles,
+        crashedVehicles: visibleSample.crashedVehicles,
+        bridge: {
+          index: aggregate.bridge.congestion,
+          vehicles: visibleSample.bridge.vehicles,
+          stoppedVehicles: visibleSample.bridge.stoppedVehicles,
+          access: aggregate.bridge.access,
+          outageActive: aggregate.bridge.outageActive
+        },
+        hotspots: aggregate.network.hotspots,
+        jobs: aggregate.jobs,
+        deliveries: aggregate.deliveries,
+        productivity: aggregate.productivity,
+        policy: aggregate.policy,
+        presentation: aggregate.presentation,
+        visibleSample
+      };
+    }
+    return {
+      ...visibleSample,
+      hotspots: (this.app?.trafficHeatmapSystem?.hotspots || []).slice(0, 5)
+    };
+  }
+
+  /** Diagnostic sample only; aggregate gameplay never reads this value. */
+  getVisibleTrafficSample() {
     const activeVehicles = this.vehicles.filter(vehicle => !vehicle.isParked);
     if (activeVehicles.length === 0) {
       return {
@@ -621,7 +658,7 @@ export class TrafficSystem {
         stoppedVehicles: 0,
         crashedVehicles: 0,
         bridge: { index: 0, vehicles: 0, stoppedVehicles: 0 },
-        hotspots: []
+        sampleKind: 'PRESENTATION_ONLY'
       };
     }
 
@@ -652,7 +689,21 @@ export class TrafficSystem {
         vehicles: bridgeVehicles,
         stoppedVehicles: bridgeStoppedVehicles
       },
-      hotspots: (this.app?.trafficHeatmapSystem?.hotspots || []).slice(0, 5)
+      sampleKind: 'PRESENTATION_ONLY'
+    };
+  }
+
+  getRoadNetworkSnapshot() {
+    return {
+      baseNodeCount: [...this.nodes.keys()].filter(id => !id.startsWith('USER_ROAD:')).length,
+      nodeCount: this.nodes.size,
+      segments: [...this.placedRoadSegments.values()].map(record => ({
+        id: record.id,
+        connected: record.connected,
+        position: record.building?.plot
+          ? { x: record.building.plot.x, z: record.building.plot.z }
+          : null
+      }))
     };
   }
 
@@ -1542,8 +1593,26 @@ export class TrafficSystem {
 
   ensurePopulationFloor() {
     const movingCount = this.vehicles.reduce((count, vehicle) => count + (!vehicle.isParked ? 1 : 0), 0);
-    if (movingCount < this.targetMovingVehicleCount) {
-      this.spawnVehicles(this.targetMovingVehicleCount - movingCount);
+    const aggregateTarget = this.app?.trafficProductivityModel?.snapshot?.().presentation?.targetMovingVehicles;
+    const target = Math.max(0, Math.min(
+      this.targetMovingVehicleCount,
+      Number.isFinite(aggregateTarget) ? Math.round(aggregateTarget) : this.targetMovingVehicleCount
+    ));
+    if (movingCount < target) {
+      // Add at most four proxies per population pass to keep presentation
+      // changes smooth and avoid one-frame physics/renderer spikes.
+      this.spawnVehicles(Math.min(4, target - movingCount));
+    } else if (movingCount > target) {
+      const removable = this.vehicles.find(vehicle => (
+        !vehicle.isParked
+        && !vehicle.userControlled
+        && !vehicle.crashed
+        && !vehicle.onFire
+        && !vehicle.emergencyTarget
+        && !vehicle.pursuitTarget
+        && vehicle !== this.app?.missionSystem?.activeVehicle
+      ));
+      if (removable) this.removeDestroyedVehicle(removable);
     }
   }
 
@@ -1820,8 +1889,16 @@ export class TrafficSystem {
           if (isBlocked) {
             v.targetSpeed = 0;
           } else {
-            const bridgeBoost = this.bridgePriorityEnabled && this.isOnPrimaryBridge(v) ? 1.25 : 1;
-            const cruiseSpeed = v.maxSpeed * bridgeBoost;
+            const directive = this.app?.trafficProductivityModel?.getStreetDirective?.({
+              x: v.mesh.position.x,
+              z: v.mesh.position.z
+            });
+            const presentationMultiplier = directive?.speedMultiplier ?? 1;
+            const bridgeBoost = directive?.priorityActive ? 1.08 : 1;
+            const cruiseSpeed = directive?.access === 'CLOSED'
+              ? 0
+              : v.maxSpeed * bridgeBoost * presentationMultiplier;
+            if (v.info && directive?.onBridge) v.info.Status = directive.label;
             v.targetSpeed = Math.min(
               cruiseSpeed,
               getNavigationSpeedLimit(v, this.navigationConfig)

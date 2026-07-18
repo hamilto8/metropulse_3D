@@ -90,11 +90,19 @@ Direct action systems retain their real-time deltas.
 - Add lifecycle transitions as economy commands/events, keeping placement,
   demolition, destruction, and restore idempotent.
 
-Future depth should prioritize localized service networks, gradual occupancy
-and migration, traffic/productivity feedback, a fixed-point transaction ledger,
-and save migrations before adding further scalar bonuses.
+Future depth should prioritize gradual occupancy and migration, a fixed-point
+transaction ledger, and save migrations before adding further scalar bonuses.
 
 P4.3 implements the first localized layer without changing economy ownership.
 `CityServiceModel` combines these aggregate readings with facility reach and
 outcome-owned spatial outages. `SERVICE_AND_INCIDENT_MODEL.md` is the extension
 contract for service reach, response funding, cleanup, repair, and street work.
+
+P4.4 implements traffic/productivity feedback through the renderer-independent
+`TrafficProductivityModel`. It supplies a validated mobility feedback record to
+the economy rather than mutating City Pulse fields directly. Utility and
+mobility productivity multiply, management-policy cost remains itemized, and
+filled versus traffic-accessible employment remain separate explainable facts.
+`TRAFFIC_AND_PRODUCTIVITY_FEEDBACK.md` is the extension contract for aggregate
+congestion, road capacity, bridge policy, missions, sampled agents, alerts, and
+street presentation.

@@ -208,7 +208,11 @@ export class CityConditionService {
     const enforcement = policies.reduce((value, policy) => Math.max(value, policy.enforcement), 0);
     const hazardLevel = policies.reduce((value, policy) => Math.max(value, policy.hazardLevel), 0);
     const baseIndex = scopeId.toLowerCase().includes('bridge') ? metrics.bridge?.index ?? metrics.index : metrics.index;
-    const effectiveIndex = clamp(baseIndex * densityMultiplier + hazardLevel * 0.15, 0, 1);
+    // TrafficProductivityModel already consumes authored traffic outcomes.
+    // Legacy/live providers still receive the compatibility composition here.
+    const effectiveIndex = metrics.includesAuthoredPolicies
+      ? clamp(baseIndex, 0, 1)
+      : clamp(baseIndex * densityMultiplier + hazardLevel * 0.15, 0, 1);
     return condition(CITY_CONDITION_TYPES.TRAFFIC, scopeId, {
       congestion: effectiveIndex,
       baseCongestion: baseIndex,

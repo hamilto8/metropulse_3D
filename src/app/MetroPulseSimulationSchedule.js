@@ -131,11 +131,18 @@ export function createMetroPulseSimulationScheduler(app) {
       delta,
       context.clocks[SIMULATION_CLOCKS.GAMEPLAY].elapsed
     ));
+  register(scheduler, 'world.mobility-feedback', SIMULATION_STAGES.GAMEPLAY, 930,
+    (delta, context) => app.mobilityStreetFeedbackSystem?.update?.(
+      delta,
+      context.clocks[SIMULATION_CLOCKS.GAMEPLAY].elapsed
+    ));
 
   // Time-of-day advances before economy so every city tick observes the same
   // authoritative logical instant. Both receive exactly one logical second.
   register(scheduler, 'city.time-of-day', SIMULATION_STAGES.CITY, 100,
     delta => app.timeManager?.advance?.(delta, 1));
+  register(scheduler, 'city.traffic-productivity', SIMULATION_STAGES.CITY, 150,
+    delta => app.trafficProductivityModel?.update?.(delta));
   register(scheduler, 'city.economy', SIMULATION_STAGES.CITY, 200,
     delta => app.economySystem?.update?.(delta));
 

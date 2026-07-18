@@ -434,6 +434,76 @@ test('local service incident becomes a funded, persistent cleanup and repair str
   expect(pageErrors).toEqual([]);
 });
 
+test('aggregate traffic drives productivity, missions, alerts, policy tradeoffs, and street feedback', async ({ page }) => {
+  test.setTimeout(90_000);
+  const pageErrors = [];
+  page.on('pageerror', error => pageErrors.push(error.message));
+  await page.goto(
+    '/?testMode=1&profile=clean&seed=p4-4-traffic&traffic=12&pedestrians=8&quality=low&mission=mission_scientist',
+    { waitUntil: 'domcontentloaded' }
+  );
+  await page.locator('#btn-boot-new-game').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+
+  await expect(page.locator('#traffic-productivity-panel')).toBeVisible();
+  await expect(page.locator('[data-mobility="congestion"]')).not.toHaveText('—');
+  await expect(page.locator('[data-mobility="productivity"]')).toContainText('%');
+  await expect(page.locator('[data-mobility="deliveries"]')).toContainText('on time');
+  const initial = await page.evaluate(() => ({
+    mobility: window.__METROPULSE_TEST__.mobilitySnapshot(),
+    economy: window.app.economySystem.snapshot(),
+    presentation: window.__METROPULSE_TEST__.mobilityPresentation()
+  }));
+  expect(initial.mobility.network.congestion).toBeGreaterThan(0);
+  expect(initial.economy.mobility.congestion).toBe(initial.mobility.network.congestion);
+  expect(initial.presentation.metrics.authoritative).toBe(true);
+  expect(initial.presentation.metrics.visibleSample.sampleKind).toBe('PRESENTATION_ONLY');
+
+  await page.locator('#btn-bridge-priority').click();
+  await expect(page.locator('#btn-bridge-priority')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-mobility="policy"]')).toHaveText('Freight priority');
+  await expect(page.locator('[data-mobility="tradeoff"]')).toContainText('$120/min');
+  const priority = await page.evaluate(() => ({
+    mobility: window.__METROPULSE_TEST__.mobilitySnapshot(),
+    economy: window.app.economySystem.snapshot(),
+    presentation: window.__METROPULSE_TEST__.mobilityPresentation()
+  }));
+  expect(priority.mobility.bridge.capacity).toBeGreaterThan(initial.mobility.bridge.capacity);
+  expect(priority.mobility.deliveries.reliability).toBeGreaterThan(initial.mobility.deliveries.reliability);
+  expect(priority.economy.budgetBreakdown.managementCostRate).toBe(2);
+  expect(priority.presentation.priorityMarkers).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    window.__METROPULSE_TEST__.reportServiceIncident();
+    window.__METROPULSE_TEST__.refreshMobility();
+  });
+  await expect.poll(() => page.evaluate(() => (
+    window.__METROPULSE_TEST__.mobilitySnapshot().bridge.outageActive
+  ))).toBe(true);
+  const disrupted = await page.evaluate(() => ({
+    mobility: window.__METROPULSE_TEST__.mobilitySnapshot(),
+    impact: window.__METROPULSE_TEST__.missionTrafficImpact('mission_scientist'),
+    presentation: window.__METROPULSE_TEST__.mobilityPresentation(),
+    alerts: window.__METROPULSE_TEST__.alerts().active
+  }));
+  expect(disrupted.mobility.bridge.streetStatus).toContain('outage');
+  expect(disrupted.impact.crossesBridge).toBe(true);
+  expect(disrupted.impact.difficulty).not.toBe('NORMAL');
+  expect(disrupted.impact.rewardMultiplier).toBeGreaterThan(1);
+  expect(disrupted.presentation.disruptionMarkers).toBeGreaterThan(0);
+  expect(disrupted.alerts.some(alert => alert.dedupeKey === 'traffic:bridge-disruption')).toBe(true);
+
+  expect(await page.evaluate(() => window.app.saveService.saveNow({ reason: 'manual' }))).toBe(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#btn-boot-continue')).toBeVisible();
+  await page.locator('#btn-boot-continue').click();
+  await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
+  await expect(page.locator('[data-mobility="policy"]')).toHaveText('Freight priority');
+  expect(await page.evaluate(() => window.__METROPULSE_TEST__.mobilitySnapshot().bridge.outageActive)).toBe(true);
+  expect(await page.evaluate(() => window.app.economySystem.snapshot().budgetBreakdown.managementCostRate)).toBe(2);
+  expect(pageErrors).toEqual([]);
+});
+
 test('mission failure, retry, outcome commit, result save, and recovery form one guarded lifecycle', async ({ page }) => {
   test.setTimeout(90_000);
   const pageErrors = [];

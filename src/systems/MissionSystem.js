@@ -213,7 +213,8 @@ export class MissionSystem {
     const scale = Number.isFinite(mission?.rewardScale) ? mission.rewardScale : 100;
     const base = Number.isFinite(mission?.baseReward) ? mission.baseReward : 400;
     const bonus = Number.isFinite(choiceNode?.rushBonus) ? choiceNode.rushBonus : 0;
-    return Math.round((base + bonus) * scale);
+    const trafficImpact = this.app?.trafficProductivityModel?.getMissionImpact?.(mission);
+    return Math.round((base + bonus) * scale * (trafficImpact?.rewardMultiplier ?? 1));
   }
 
   getControlledVehicle() {
@@ -229,6 +230,10 @@ export class MissionSystem {
       const availability = this.lifecycle.evaluateAvailability(mission);
       if (!availability.available) reason = availability.reasons[0] || 'Mission is unavailable.';
     }
+    const trafficImpact = mission
+      ? this.app?.trafficProductivityModel?.getMissionImpact?.(mission)
+      : null;
+    if (!reason && trafficImpact && !trafficImpact.available) reason = trafficImpact.reason;
     if (!reason) {
       if (!vehicle) reason = 'Take direct control of a vehicle first.';
       else if (vehicle.vType !== mission.vehicleType) reason = `Requires a ${mission.vehicleType} vehicle.`;
@@ -238,7 +243,12 @@ export class MissionSystem {
     }
 
     if (reason && notify && this.app?.uiManager) this.app.uiManager.showToast(`⚠️ ${reason}`);
-    return { allowed: !reason, vehicle, reason };
+    return {
+      allowed: !reason,
+      vehicle,
+      reason,
+      ...(trafficImpact ? { trafficImpact } : {})
+    };
   }
 
   recordDialogueChoice(mission, nodeId, choice) {
@@ -380,7 +390,10 @@ export class MissionSystem {
     this.activeVehicle = eligibility.vehicle;
 
     // Determine time limit and reward
-    const baseTimeLimit = choiceNode?.timeLimitOverride || mission.timeLimit || 60;
+    const trafficImpact = eligibility.trafficImpact
+      || this.app?.trafficProductivityModel?.getMissionImpact?.(mission);
+    const baseTimeLimit = (choiceNode?.timeLimitOverride || mission.timeLimit || 60)
+      * (trafficImpact?.timeLimitMultiplier ?? 1);
     const timerLeniency = this.app?.settingsStore?.get?.('timerLeniency', 1) ?? 1;
     const baseReward = this.getBasePayout(mission, choiceNode);
     try {
@@ -461,6 +474,8 @@ export class MissionSystem {
     }
     if (run.weather.disposition === 'ADAPTED') {
       this.app?.uiManager?.showToast?.(`🌦️ ${run.weather.reason}`);
+    } else if (trafficImpact && trafficImpact.difficulty !== 'NORMAL') {
+      this.app?.uiManager?.showToast?.(`🚦 ${trafficImpact.summary}`);
     }
     return true;
   }

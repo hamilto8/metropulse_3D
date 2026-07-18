@@ -34,6 +34,7 @@ export const ECONOMY_EVENTS = Object.freeze({
   INCIDENT_RESOLVED: 'INCIDENT_RESOLVED',
   REPUTATION_CHANGED: 'REPUTATION_CHANGED',
   SERVICE_CHANGED: 'SERVICE_CHANGED',
+  MOBILITY_FEEDBACK_CHANGED: 'MOBILITY_FEEDBACK_CHANGED',
   CITY_PULSE_CHANGED: 'CITY_PULSE_CHANGED',
   ZONE_CHANGED: 'ZONE_CHANGED',
   DISTRICT_UNLOCKED: 'DISTRICT_UNLOCKED',
@@ -42,6 +43,18 @@ export const ECONOMY_EVENTS = Object.freeze({
 });
 
 const SERVICE_NAMES = Object.freeze(Object.values(SERVICE_TYPES));
+
+const DEFAULT_MOBILITY_FEEDBACK = Object.freeze({
+  revision: 0,
+  productivityMultiplier: 1,
+  jobAccessMultiplier: 1,
+  satisfactionModifier: 0,
+  deliveryReliability: 1,
+  congestion: 0,
+  bridgeCongestion: 0,
+  managementCostRate: 0,
+  explanation: Object.freeze([])
+});
 
 function assertRecord(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -84,6 +97,29 @@ function assertPercentage(value, label) {
     throw new RangeError(`${label} must be between 0 and 100`);
   }
   return value;
+}
+
+function normalizeMobilityFeedback(feedback = DEFAULT_MOBILITY_FEEDBACK) {
+  assertRecord(feedback, 'mobility feedback');
+  const unitInterval = (value, label) => {
+    assertFiniteNumber(value, label);
+    if (value < 0 || value > 1) throw new RangeError(`${label} must be between zero and one`);
+    return value;
+  };
+  if (!Array.isArray(feedback.explanation ?? [])) {
+    throw new TypeError('mobility feedback explanation must be an array');
+  }
+  return deepFreeze({
+    revision: assertNonNegativeInteger(feedback.revision ?? 0, 'mobility feedback revision'),
+    productivityMultiplier: unitInterval(feedback.productivityMultiplier ?? 1, 'mobility productivityMultiplier'),
+    jobAccessMultiplier: unitInterval(feedback.jobAccessMultiplier ?? 1, 'mobility jobAccessMultiplier'),
+    satisfactionModifier: assertFiniteNumber(feedback.satisfactionModifier ?? 0, 'mobility satisfactionModifier'),
+    deliveryReliability: unitInterval(feedback.deliveryReliability ?? 1, 'mobility deliveryReliability'),
+    congestion: unitInterval(feedback.congestion ?? 0, 'mobility congestion'),
+    bridgeCongestion: unitInterval(feedback.bridgeCongestion ?? 0, 'mobility bridgeCongestion'),
+    managementCostRate: assertNonNegative(feedback.managementCostRate ?? 0, 'mobility managementCostRate'),
+    explanation: (feedback.explanation ?? []).map(item => String(item))
+  });
 }
 
 function assertId(value, label = 'id') {
@@ -364,6 +400,7 @@ export class EconomySystem {
   #incidents = new Map();
   #zones = new Map();
   #districts = new Map();
+  #mobilityFeedback = DEFAULT_MOBILITY_FEEDBACK;
   #listeners = new Set();
   #revision = 0;
 
@@ -539,19 +576,38 @@ export class EconomySystem {
       services.power.coverage,
       services.water.coverage
     );
-    const productivityMultiplier = 0.4 + criticalCoverage * 0.6;
+    const utilityProductivityMultiplier = 0.4 + criticalCoverage * 0.6;
+    const mobilityProductivityMultiplier = this.#mobilityFeedback.productivityMultiplier;
+    const productivityMultiplier = utilityProductivityMultiplier * mobilityProductivityMultiplier;
     const grossRevenueRate = this.#basePassiveIncomeRate + buildingRevenueRate;
     const adjustedRevenueRate = grossRevenueRate * productivityMultiplier;
+    const managementCostRate = this.#mobilityFeedback.managementCostRate;
 
     return deepFreeze({
       baseRevenueRate: this.#basePassiveIncomeRate,
       buildingRevenueRate,
       grossRevenueRate,
+      utilityProductivityMultiplier,
+      mobilityProductivityMultiplier,
       productivityMultiplier,
       adjustedRevenueRate,
       operatingCostRate,
-      netRate: adjustedRevenueRate - operatingCostRate
+      managementCostRate,
+      netRate: adjustedRevenueRate - operatingCostRate - managementCostRate
     });
+  }
+
+  setMobilityFeedback(feedback) {
+    const normalized = normalizeMobilityFeedback(feedback);
+    const unchanged = JSON.stringify(normalized) === JSON.stringify(this.#mobilityFeedback);
+    if (unchanged) return this.snapshot();
+    return this.#commit(
+      ECONOMY_EVENTS.MOBILITY_FEEDBACK_CHANGED,
+      { mobilityRevision: normalized.revision },
+      () => {
+        this.#mobilityFeedback = normalized;
+      }
+    );
   }
 
   canAfford(amount) {
@@ -1072,6 +1128,9 @@ export class EconomySystem {
       this.#incidents = incidents;
       this.#zones = zones;
       this.#districts = districts;
+      // Mobility is a derived input owned and restored by
+      // TrafficProductivityModel after the economy domain is restored.
+      this.#mobilityFeedback = DEFAULT_MOBILITY_FEEDBACK;
     });
     return this.snapshot();
   }
@@ -1131,6 +1190,8 @@ export class EconomySystem {
     const unemploymentRate = workforce === 0 ? 0 : (workforce - employed) / workforce;
     const employmentPenalty = laborMarketEnabled ? -(unemploymentRate * 15) : 0;
     happiness += employmentPenalty;
+    const mobilitySatisfaction = this.#mobilityFeedback.satisfactionModifier;
+    happiness += mobilitySatisfaction;
     landValue *= 0.75 + serviceHealth * 0.25;
 
     const happinessBreakdown = {
@@ -1140,18 +1201,22 @@ export class EconomySystem {
       incidents: incidentHappiness,
       services: servicePenalty,
       employment: employmentPenalty,
+      traffic: mobilitySatisfaction,
       total: clamp(happiness, 0, 100)
     };
+    const accessibleEmployed = Math.round(employed * this.#mobilityFeedback.jobAccessMultiplier);
     const demographics = {
       population,
       housingCapacity,
       housingOccupancy: housingCapacity === 0 ? 0 : Math.min(1, population / housingCapacity),
       workforce,
       employed,
+      accessibleEmployed,
       jobCapacity,
       availableJobs: Math.max(0, jobCapacity - employed),
       unemploymentRate,
-      employmentRate: workforce === 0 ? 1 : employed / workforce
+      employmentRate: workforce === 0 ? 1 : employed / workforce,
+      accessibleEmploymentRate: workforce === 0 ? 1 : accessibleEmployed / workforce
     };
     const residentialDemand = clamp(Math.round(
       50
@@ -1200,10 +1265,14 @@ export class EconomySystem {
       employees,
       totalBuildingValue,
       employment: demographics.employmentRate * 100,
+      accessibleEmployment: demographics.accessibleEmploymentRate * 100,
       unemployment: demographics.unemploymentRate * 100,
       housingOccupancy: demographics.housingOccupancy * 100,
       netIncomeRate: budget.netRate,
-      fiscalStatus
+      fiscalStatus,
+      productivity: this.#mobilityFeedback.productivityMultiplier * 100,
+      deliveryReliability: this.#mobilityFeedback.deliveryReliability * 100,
+      trafficCongestion: this.#mobilityFeedback.congestion * 100
     };
 
     return deepFreeze({
@@ -1221,6 +1290,7 @@ export class EconomySystem {
       demographics,
       demand,
       happinessBreakdown,
+      mobility: { ...this.#mobilityFeedback },
       fiscalStatus,
       reputation: this.#reputation,
       narrativeProgress: this.#narrativeProgress,

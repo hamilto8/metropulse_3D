@@ -49,10 +49,10 @@ the responsible system owns implementation.
 | CITY-004 | Placement requires valid road access and always supports cancel before confirmation. | City editor domain | Unit + Browser | Gameplay Lead | Verified |
 | CITY-005 | Capital is one shared account with itemized recurring and burst sources/sinks. | EconomySystem | Unit + Scenario | Systems Designer | Implemented |
 | CITY-006 | Passive income supports a healthy city without trivially funding every expansion. | Economy balance data | Simulation + Playtest | Systems Designer | Not Started |
-| CITY-007 | Population/jobs use aggregate capacity and expose demand, employment, and top satisfaction causes. | EconomySystem / UI | Unit + Browser | Systems Designer | In Progress |
+| CITY-007 | Population/jobs use aggregate capacity and expose demand, employment, and top satisfaction causes. | EconomySystem / TrafficProductivityModel / UI | Unit + Browser | Systems Designer | Verified |
 | CITY-008 | MVP energy shortages visibly affect productivity and selected Street lights/traffic systems. | Energy / consequence adapter | Scenario + Browser | Gameplay Lead | Not Started |
 | CITY-009 | Simplified safety/repair clears blockers and damage within bounded time. | Incident / repair service | Scenario | Systems Designer | In Progress |
-| CITY-010 | One road graph supplies aggregate congestion, AI routing, missions, overlays, and bridge routing. | Traffic graph | Integration + Scenario | AI Lead | In Progress |
+| CITY-010 | One road graph supplies aggregate congestion, AI routing, missions, overlays, and bridge routing. | TrafficSystem / TrafficProductivityModel | Integration + Scenario + Browser | AI Lead | Verified |
 | CITY-011 | Local player damage creates temporary graph blockers and cannot permanently gridlock traffic. | Damage / traffic adapter | Integration + Soak | AI Lead | In Progress |
 | CITY-012 | Land value reads access, amenities, energy, employment, congestion, damage, and district modifiers and lists causes. | EconomySystem / inspector | Unit + Browser | Systems Designer | In Progress |
 | CITY-013 | Alerts contain severity, location, cause, duration, and remedy; duplicate low alerts collapse. | AlertService / AlertActionController / UI | Unit + Browser | UX Lead | Verified |

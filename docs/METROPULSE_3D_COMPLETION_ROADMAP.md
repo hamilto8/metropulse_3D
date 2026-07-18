@@ -1036,12 +1036,53 @@ P4.3 completion evidence (2026-07-18):
 
 #### P4.4 Traffic and productivity feedback
 
-- [ ] Connect aggregate traffic and bridge congestion to jobs, deliveries,
+- [x] Connect aggregate traffic and bridge congestion to jobs, deliveries,
   mission availability/difficulty, satisfaction, and city alerts.
-- [ ] Ensure visible traffic is a sampled presentation of the authoritative
+- [x] Ensure visible traffic is a sampled presentation of the authoritative
   aggregate model rather than an unrelated number.
-- [ ] Add management levers only when each produces a legible tradeoff.
-- [ ] Make bridge priority, road changes, and outages visible in Street Mode.
+- [x] Add management levers only when each produces a legible tradeoff.
+- [x] Make bridge priority, road changes, and outages visible in Street Mode.
+
+Implementation contract: `TRAFFIC_AND_PRODUCTIVITY_FEEDBACK.md`.
+
+P4.4 completion evidence (2026-07-18):
+
+- `TrafficProductivityModel` is the renderer-independent authority for network
+  and primary-bridge congestion. It combines workforce/job and freight demand,
+  the live road graph, connected/disconnected player roads, authored access and
+  hazard policies, service outages, and the active bridge policy into one
+  deeply immutable snapshot. `TrafficSystem.getCongestionMetrics()` exposes
+  this aggregate and nests rendered-car measurements only as an explicitly
+  `PRESENTATION_ONLY` diagnostic sample.
+- Economy feedback now itemizes mobility productivity, reachable versus filled
+  jobs, delivery reliability, traffic satisfaction, and traffic-policy cost.
+  Utility and mobility productivity compose rather than overwrite each other.
+  The Traffic & Productivity panel exposes congestion, bridge access,
+  productivity, reachable jobs, on-time deliveries, satisfaction, and causes.
+- Mission acceptance consumes one traffic-impact contract. Bridge-dependent
+  routes fail closed during closure, disruption raises a named difficulty and
+  time allowance, and freight/delivery work receives a transparent backlog
+  premium. Accepted values persist through the existing lifecycle state.
+- Freight priority is the sole P4.4 management lever: +28% bridge capacity and
+  +10 delivery-reliability points in exchange for $120/min and −2 satisfaction.
+  Its button, tooltip, live panel copy, budget line, street markings, and save
+  state all report the same tradeoff.
+- Ambient vehicle count and speed converge to aggregate presentation targets.
+  Aggregate hotspots drive the heat-map; bridge priority draws cyan lane
+  chevrons, restrictions/outages draw warning beacons, and player road changes
+  draw connected/disconnected street rings. Critical, player, mission,
+  emergency, pursuit, and damaged vehicles are protected from density culling.
+- `TrafficAlertAdapter` publishes structured, deduplicated network-productivity,
+  bridge-disruption, and delivery-backlog alerts with causes, remedies,
+  locations, related IDs, and management-camera actions. It replaces the old
+  UI timer that described congestion from visible-car counts.
+- Focused tests cover model immutability, economy feedback, road capacity,
+  disconnected-road explanation, policy tradeoff, persistence, closures,
+  outages, mission availability/difficulty, street directives, aggregate/sample
+  ownership, and structured alerts. Chrome acceptance covers the complete live
+  panel → policy → economy/street → outage → mission/alert → save/reload loop.
+- Verification at completion: 375 Node tests, the production build, and all
+  eight Chrome WebGL acceptance flows pass.
 
 #### P4.5 Economy recovery and balance
 

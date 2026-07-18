@@ -218,6 +218,24 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
     setMayhem: enabled => app.uiManager?.setMayhem?.(Boolean(enabled), 'BrowserTestBridge'),
     alerts: () => app.alertService?.snapshot?.() || null,
     serviceSnapshot: () => app.cityServiceModel?.snapshot?.() || null,
+    mobilitySnapshot: () => app.trafficProductivityModel?.snapshot?.() || null,
+    setBridgePriority: enabled => {
+      app.trafficSystem?.toggleBridgePriority?.(Boolean(enabled));
+      app.trafficProductivityModel?.update?.(0, { force: true, reason: 'BROWSER_TEST_POLICY' });
+      return app.trafficProductivityModel?.snapshot?.() || null;
+    },
+    refreshMobility: () => app.trafficProductivityModel?.update?.(1, { force: true, reason: 'BROWSER_TEST_REFRESH' }),
+    mobilityPresentation: () => Object.freeze({
+      metrics: app.trafficSystem?.getCongestionMetrics?.() || null,
+      streetStatus: app.mobilityStreetFeedbackSystem?.group?.userData?.streetStatus || null,
+      priorityMarkers: app.mobilityStreetFeedbackSystem?.priorityMarkers?.filter(marker => marker.visible).length || 0,
+      disruptionMarkers: app.mobilityStreetFeedbackSystem?.disruptionMarkers?.filter(marker => marker.visible).length || 0
+    }),
+    missionTrafficImpact: missionId => {
+      const mission = app.missionSystem?.missions?.find(candidate => candidate.id === missionId);
+      if (!mission) throw new RangeError(`Unknown mission: ${missionId}`);
+      return app.trafficProductivityModel?.getMissionImpact?.(mission) || null;
+    },
     reportServiceIncident: () => app.incidentResponseService?.reportIncident?.({
       id: 'browser-service-relay',
       type: 'ENERGY_RELAY_DAMAGE',
