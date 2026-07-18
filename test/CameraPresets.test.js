@@ -122,6 +122,26 @@ test('camera surface sampling follows hills but treats river beds as water level
   assert.equal(manager.getCameraSurfaceHeight(10, 0), 6.5);
 });
 
+test('structured alert focus creates a safe management camera destination', () => {
+  const manager = Object.create(SceneManager.prototype);
+  let prepared = 0;
+  Object.assign(manager, {
+    activePreset: 'birdseye',
+    targetCameraPos: null,
+    targetLookAt: null,
+    releaseDirectControlForCamera: () => true,
+    preparePresetOrbit: () => { prepared += 1; },
+    getCameraSurfaceHeight: () => 5
+  });
+
+  assert.equal(manager.focusWorldPosition({ x: 160, y: 2, z: -20 }), true);
+  assert.equal(prepared, 1);
+  assert.equal(manager.activePreset, null);
+  assert.deepEqual(manager.targetLookAt.toArray(), [160, 5, -20]);
+  assert.ok(manager.targetCameraPos.y > manager.targetLookAt.y);
+  assert.equal(manager.focusWorldPosition({ x: Number.NaN, z: 0 }), false);
+});
+
 test('downtown preset uses an elevated unobstructed road corridor', () => {
   const { downtown } = createCameraPresets();
   assert.ok(downtown.pos.y >= 45);

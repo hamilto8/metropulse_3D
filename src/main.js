@@ -58,6 +58,14 @@ import { BootScreen } from './ui/BootScreen.js';
 import { DISTRICT_DEFINITIONS } from './data/ContentDefinitions.js';
 import { MissionOutcomeService } from './missions/MissionOutcomeService.js';
 import { CityConditionService } from './missions/CityConditionService.js';
+import {
+  ALERT_DURATION_KINDS,
+  ALERT_FOCUS_ACTIONS,
+  ALERT_SEVERITIES,
+  ALERT_TYPES,
+  AlertService
+} from './alerts/AlertService.js';
+import { AlertActionController } from './alerts/AlertActionController.js';
 import bootHeroUrl from './assets/hero.png?url';
 
 const bootStartedAtMs = performance.now();
@@ -231,6 +239,26 @@ export class MetroPulseApp {
         safety: 1
       }),
       weatherProvider: () => ({ mode: this.environment.weatherMode })
+    });
+
+    this.alertService = new AlertService();
+    this.alertService.publish({
+      dedupeKey: 'system:city-grid-online',
+      type: ALERT_TYPES.SYSTEM,
+      severity: ALERT_SEVERITIES.SUCCESS,
+      title: 'City grid online',
+      cause: 'Simulation initialized and authoritative city services are responding.',
+      location: 'Citywide',
+      duration: { kind: ALERT_DURATION_KINDS.TIMED, seconds: 120 },
+      recommendation: 'No action required. Review City Tools when you are ready to make a management decision.',
+      relatedEntityIds: [],
+      focusAction: { type: ALERT_FOCUS_ACTIONS.NONE }
+    });
+    this.alertActionController = new AlertActionController({
+      alertService: this.alertService,
+      sceneManager: this.sceneManager,
+      getGameState: () => this.gameManager?.state,
+      onFeedback: message => this.uiManager?.showToast?.(message)
     });
 
     // 11. UI Controls Manager

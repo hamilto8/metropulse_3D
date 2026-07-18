@@ -209,9 +209,7 @@ export class MinimapHUD {
 
   drawMissionMarkers(ctx, centerPosition, cx, cy) {
     const missionSystem = this.app?.missionSystem;
-    if (!missionSystem) return;
-
-    for (const pickup of missionSystem.pickupRings || []) {
+    for (const pickup of missionSystem?.pickupRings || []) {
       if (!pickup?.group?.visible) continue;
       const point = this.worldToCanvas(pickup.group.position, centerPosition, cx, cy);
       if (!this.isInsideRadar(point, cx, cy, 6)) continue;
@@ -230,15 +228,20 @@ export class MinimapHUD {
       ctx.fillText('!', point.x, point.y + 0.5);
     }
 
-    const activeMission = missionSystem.activeMission;
+    const activeMission = missionSystem?.activeMission;
     const objective = activeMission?.missionType || activeMission?.objectiveType;
-    const dropoff = missionSystem.getNavigationTarget?.() || activeMission?.dropoff;
+    const dropoff = missionSystem?.getNavigationTarget?.() || activeMission?.dropoff;
     if (dropoff && objective !== 'SURVIVAL') {
       this.drawWaypointMarker(ctx, dropoff, centerPosition, cx, cy);
     }
+
+    const alertWaypoint = this.app?.alertActionController?.getWaypoint?.();
+    if (alertWaypoint?.position) {
+      this.drawWaypointMarker(ctx, alertWaypoint.position, centerPosition, cx, cy, '#ffb020');
+    }
   }
 
-  drawWaypointMarker(ctx, waypoint, centerPosition, cx, cy) {
+  drawWaypointMarker(ctx, waypoint, centerPosition, cx, cy, color = '#44ff88') {
     const rawPoint = this.worldToCanvas(waypoint, centerPosition, cx, cy);
     const offsetX = rawPoint.x - cx;
     const offsetY = rawPoint.y - cy;
@@ -247,7 +250,7 @@ export class MinimapHUD {
     const scale = distance > maxDistance ? maxDistance / Math.max(distance, 0.001) : 1;
     const point = { x: cx + offsetX * scale, y: cy + offsetY * scale };
 
-    ctx.strokeStyle = 'rgba(68, 255, 136, 0.48)';
+    ctx.strokeStyle = color === '#44ff88' ? 'rgba(68, 255, 136, 0.48)' : 'rgba(255, 176, 32, 0.58)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
@@ -257,7 +260,7 @@ export class MinimapHUD {
     ctx.save();
     ctx.translate(point.x, point.y);
     ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = '#44ff88';
+    ctx.fillStyle = color;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.2;
     ctx.fillRect(-4.5, -4.5, 9, 9);

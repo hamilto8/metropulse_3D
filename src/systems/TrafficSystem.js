@@ -35,6 +35,11 @@ import { TrafficControlSystem } from './TrafficControlSystem.js';
 import { createDriverRuleProfile } from './TrafficRules.js';
 import { captureAiHandoffPose, completeAiHandoff } from './AiControlHandoff.js';
 import { INTERACTION_PRIORITIES } from './InteractionService.js';
+import {
+  ALERT_DURATION_KINDS,
+  ALERT_FOCUS_ACTIONS,
+  ALERT_TYPES
+} from '../alerts/AlertService.js';
 
 /** Shared forward-axis vector — never mutated, avoids per-frame allocation in hot loops */
 const FORWARD_AXIS = Object.freeze(new THREE.Vector3(0, 0, 1));
@@ -1331,7 +1336,25 @@ export class TrafficSystem {
     const message = responders.length > 0
       ? `🚨 HIT-AND-RUN: ${responders.length} nearby police unit${responders.length === 1 ? '' : 's'} pursuing the vehicle!`
       : '⚠️ HIT-AND-RUN: vehicle fleeing; no nearby police unit available.';
-    this.app.uiManager?.addAlert?.(message, responders.length > 0 ? 'danger' : 'warn');
+    const offenderId = offender.persistenceId || offender.interactionId || offender.vType || 'traffic-vehicle';
+    const position = offender.mesh?.position
+      ? { x: offender.mesh.position.x, y: offender.mesh.position.y || 0, z: offender.mesh.position.z }
+      : null;
+    this.app.uiManager?.addAlert?.(message, responders.length > 0 ? 'danger' : 'warn', {
+      dedupeKey: `traffic:hit-and-run:${offenderId}`,
+      type: ALERT_TYPES.TRAFFIC,
+      title: 'Hit-and-run pursuit active',
+      cause: responders.length > 0
+        ? `${responders.length} nearby police unit${responders.length === 1 ? ' is' : 's are'} pursuing the fleeing vehicle.`
+        : 'A fleeing vehicle was reported, but no nearby police unit is available.',
+      location: { label: 'Pursuit area', position },
+      duration: { kind: ALERT_DURATION_KINDS.UNTIL_RESOLVED },
+      recommendation: 'Avoid the pursuit corridor and use the waypoint to track the incident.',
+      relatedEntityIds: [String(offenderId)],
+      focusAction: position
+        ? { type: ALERT_FOCUS_ACTIONS.STREET_WAYPOINT, position }
+        : { type: ALERT_FOCUS_ACTIONS.NONE }
+    });
     return true;
   }
 
@@ -1356,6 +1379,8 @@ export class TrafficSystem {
       police.sirenTimer = 0;
       if (police.info) police.info.Status = 'Cruising';
     }
+    const offenderId = offender.persistenceId || offender.interactionId || offender.vType || 'traffic-vehicle';
+    this.app.alertService?.resolve?.(`traffic:hit-and-run:${offenderId}`, 'Hit-and-run pursuit ended');
     return true;
   }
 

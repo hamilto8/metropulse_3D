@@ -216,6 +216,31 @@ export function installBrowserTestBridge(app, diagnostics, errorMonitor) {
       return pauseProbe();
     },
     setMayhem: enabled => app.uiManager?.setMayhem?.(Boolean(enabled), 'BrowserTestBridge'),
+    alerts: () => app.alertService?.snapshot?.() || null,
+    publishAlertFixture: (actionType = 'STREET_WAYPOINT') => app.alertService?.publish?.({
+      dedupeKey: `browser-fixture:${actionType}`,
+      type: 'SYSTEM',
+      severity: 'WARNING',
+      title: 'Browser acceptance incident',
+      cause: 'A deterministic test incident requires player attention.',
+      location: { label: 'Acceptance sector', position: { x: 160, y: 0, z: 24 } },
+      duration: { kind: 'UNTIL_RESOLVED' },
+      recommendation: 'Use the supplied alert action and verify the destination.',
+      relatedEntityIds: ['browser-acceptance-incident'],
+      focusAction: { type: actionType, position: { x: 160, y: 0, z: 24 } }
+    }),
+    resolveAlert: id => app.alertService?.resolve?.(id, 'Browser acceptance incident resolved'),
+    alertActionProbe: () => Object.freeze({
+      waypoint: app.alertActionController?.getWaypoint?.() || null,
+      cameraTarget: app.sceneManager?.controls?.target
+        ? Object.freeze({
+            x: app.sceneManager.controls.target.x,
+            y: app.sceneManager.controls.target.y,
+            z: app.sceneManager.controls.target.z
+          })
+        : null,
+      state: app.gameManager?.state || null
+    }),
     pauseProbe,
     runTransitionSoak: (cycles = 50) => {
       const cycleCount = Math.max(1, Math.min(100, Math.trunc(Number(cycles) || 0)));

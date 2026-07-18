@@ -867,12 +867,44 @@ P3.3 completion evidence (2026-07-18):
 
 #### P3.4 Structured alerts
 
-- [ ] Replace generic ephemeral feed entries with alert records containing
+- [x] Replace generic ephemeral feed entries with alert records containing
   type, severity, cause, location, start time, duration/state, recommendation,
   related entity IDs, and focus action.
-- [ ] Allow relevant alerts to focus the management camera or create a street
+- [x] Allow relevant alerts to focus the management camera or create a street
   waypoint.
-- [ ] Resolve or supersede alerts rather than allowing unbounded duplicates.
+- [x] Resolve or supersede alerts rather than allowing unbounded duplicates.
+
+P3.4 completion evidence (2026-07-18):
+
+- `src/alerts/AlertService.js` is the renderer-free alert authority. Its deeply
+  immutable records carry type, severity, plain-language cause, structured
+  location, first/latest observation time, duration and lifecycle state,
+  recommendation, stable related IDs, occurrence count, and an explicit focus
+  action. The legacy `UIManager.addAlert()` entry point is now only a complete-
+  record compatibility adapter; save capture no longer scrapes DOM rows.
+- One semantic dedupe key updates an active condition in place. Producers can
+  resolve it or supersede it with a linked replacement, timed records expire
+  after their latest observation, and bounded resolved history is pruned
+  without discarding active alerts. Crime response, hit-and-run pursuit,
+  aggregate congestion, low valuation, and mission results use those lifecycle
+  contracts.
+- `AlertActionController` validates action context, delegates world-position
+  framing to `SceneManager`, owns one alert street waypoint for `MinimapHUD`,
+  and clears that waypoint when its alert resolves or is superseded. The
+  accessible Recent Activity projection shows severity, state, location,
+  remedy, collapsed-report count, and labelled action controls.
+- The version-2 alerts save domain validates structured records and active-key
+  uniqueness, round-trips without DOM ownership, and migrates the version-1
+  message feed. Mission attempt alerts derive from committed idempotent outcome
+  receipts, supersede the prior attempt, and survive Result save/reload.
+- Focused coverage exercises record completeness, immutability, invalid input,
+  duplicate collapse, resolution, supersession, expiry, history bounds,
+  legacy migration, save/restore, camera guards, and waypoint cleanup. The
+  Chrome WebGL lifecycle flow verifies failure/success alerts, supersession,
+  Result reload, management-camera focus, street-waypoint creation, and cleanup.
+  The operational contract is documented in `STRUCTURED_ALERTS.md`.
+- Verification at completion: 350 Node tests, the production build, and all six
+  Chrome WebGL acceptance flows pass.
 
 ### Required tests
 

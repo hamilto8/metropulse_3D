@@ -50,7 +50,9 @@ enabled:
   their Phase 6 authorities exist);
 - Heat, escape progress, and active incident ID;
 - settings snapshot and binding overrides;
-- the recent player-facing alert feed.
+- structured alert records, lifecycle state, dedupe identity, remedies, related
+  entity IDs, and replayable focus actions (version-1 message feeds migrate to
+  the version-2 alert domain on restore).
 
 ## Intentionally transient state
 

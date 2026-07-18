@@ -263,6 +263,16 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   await expect(page.locator('#mission-result-sections [data-section="progression"]')).toBeVisible();
   await expect(page.locator('#btn-result-retry')).toBeVisible();
   await expect(page.locator('#mission-result-announcement')).toContainText('Mission failed');
+  const failureAlerts = await page.evaluate(() => window.__METROPULSE_TEST__.alerts());
+  const failureAlert = failureAlerts.active.find(alert => alert.relatedEntityIds.includes('mission_executive'));
+  expect(failureAlert).toMatchObject({
+    type: 'MISSION',
+    severity: 'WARNING',
+    state: 'ACTIVE',
+    recommendation: expect.any(String),
+    focusAction: { type: 'MANAGEMENT_CAMERA' }
+  });
+  expect(failureAlert.location.position).not.toBeNull();
   expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryBefore);
 
   const retried = await page.evaluate(() => window.__METROPULSE_TEST__.retryMission());
@@ -278,6 +288,11 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   await expect(page.locator('#mission-result-badge')).toHaveText('Success');
   await expect(page.locator('[data-section="reward"]')).toContainText('Capital');
   await expect(page.locator('[data-section="reward"]')).toContainText('Passenger satisfaction');
+  const completionAlerts = await page.evaluate(() => window.__METROPULSE_TEST__.alerts());
+  const activeMissionAlerts = completionAlerts.active.filter(alert => alert.relatedEntityIds.includes('mission_executive'));
+  expect(activeMissionAlerts).toHaveLength(1);
+  expect(activeMissionAlerts[0].severity).toBe('SUCCESS');
+  expect(completionAlerts.items.find(alert => alert.id === failureAlert.id)?.state).toBe('SUPERSEDED');
   const treasuryAfterCompletion = await page.evaluate(() => window.app.economySystem.treasury);
   expect(treasuryAfterCompletion).toBeGreaterThan(treasuryBefore);
 
@@ -294,6 +309,9 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   await expect(page.locator('body')).toHaveAttribute('data-app-state', 'ready', { timeout: 60_000 });
   expect(await page.evaluate(() => window.__METROPULSE_TEST__.missionLifecycle().phase)).toBe('RESULT');
   expect(await page.evaluate(() => window.app.economySystem.treasury)).toBe(treasuryAfterCompletion);
+  const restoredAlerts = await page.evaluate(() => window.__METROPULSE_TEST__.alerts());
+  expect(restoredAlerts.version).toBe(2);
+  expect(restoredAlerts.active.filter(alert => alert.relatedEntityIds.includes('mission_executive'))).toHaveLength(1);
   await expect(page.locator('#mission-result-screen')).toBeVisible();
   await expect(page.locator('#mission-result-title')).toContainText('complete');
   await page.locator('#btn-result-history').click();
@@ -308,6 +326,22 @@ test('mission failure, retry, outcome commit, result save, and recovery form one
   expect(recovered.phase).toBe('IDLE');
   await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.snapshot().state.mode)).toBe('MANAGEMENT');
   await expect(page.locator('#mission-hud')).toBeHidden();
+
+  const missionAction = page.locator('.alert-item[data-alert-state="active"] .alert-action').first();
+  await missionAction.evaluate(element => element.click());
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.alertActionProbe().cameraTarget.x)).toBeCloseTo(100, 0);
+  await expect.poll(() => page.evaluate(() => window.__METROPULSE_TEST__.alertActionProbe().cameraTarget.z)).toBeCloseTo(-80, 0);
+
+  await page.evaluate(() => window.__METROPULSE_TEST__.enterState('STREET_VEHICLE'));
+  const waypointFixture = await page.evaluate(() => window.__METROPULSE_TEST__.publishAlertFixture('STREET_WAYPOINT'));
+  await page.locator(`[data-alert-id="${waypointFixture.id}"] .alert-action`).evaluate(element => element.click());
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.alertActionProbe())).waypoint).toMatchObject({
+    alertId: waypointFixture.id,
+    label: 'Acceptance sector',
+    position: { x: 160, y: 0, z: 24 }
+  });
+  await page.evaluate(id => window.__METROPULSE_TEST__.resolveAlert(id), waypointFixture.id);
+  expect((await page.evaluate(() => window.__METROPULSE_TEST__.alertActionProbe())).waypoint).toBeNull();
   expect(pageErrors).toEqual([]);
 });
 

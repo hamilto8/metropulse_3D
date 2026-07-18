@@ -11,6 +11,7 @@ import {
   validateMissionOutcomeState
 } from '../missions/MissionOutcomeService.js';
 import { validateMissionLifecycleState } from '../missions/MissionLifecycleController.js';
+import { validateAlertState } from '../alerts/AlertService.js';
 
 const STABLE_STATES = new Set([
   GAME_STATES.MANAGEMENT,
@@ -150,6 +151,7 @@ function serializeMission(app) {
 }
 
 function serializeAlerts(app) {
+  if (app.alertService?.serialize) return app.alertService.serialize();
   const nodes = app.uiManager?.alertFeedList?.querySelectorAll?.('.alert-item') || [];
   return {
     version: 1,
@@ -373,7 +375,7 @@ export function validateGameState(data, {
       });
     }
   }
-  for (const name of ['factions', 'progression', 'heat', 'settings', 'bindings', 'alerts']) version1(data[name], `save.data.${name}`);
+  for (const name of ['factions', 'progression', 'heat', 'settings', 'bindings']) version1(data[name], `save.data.${name}`);
   record(data.factions.values, 'save.data.factions.values');
   for (const [factionId, reputation] of Object.entries(data.factions.values)) {
     knownContent(contentRegistry, CONTENT_TYPES.FACTION, factionId, `save.data.factions.values.${factionId}`);
@@ -412,12 +414,10 @@ export function validateGameState(data, {
   } catch (error) {
     throw new SaveValidationError(error.message, { path: 'save.data.settings.values' });
   }
-  if (!Array.isArray(data.alerts.items)) throw new SaveValidationError('must be an array.', { path: 'save.data.alerts.items' });
-  for (const [index, item] of data.alerts.items.entries()) {
-    record(item, `save.data.alerts.items[${index}]`);
-    if (typeof item.message !== 'string' || typeof item.type !== 'string') {
-      throw new SaveValidationError('requires message and type strings.', { path: `save.data.alerts.items[${index}]` });
-    }
+  try {
+    validateAlertState(data.alerts, { allowLegacy: true });
+  } catch (error) {
+    throw new SaveValidationError(error.message, { path: 'save.data.alerts' });
   }
   return true;
 }
@@ -674,6 +674,10 @@ function restoreActiveMission(app, saved) {
 }
 
 function restoreAlerts(app, alerts) {
+  if (app.alertService?.restore) {
+    app.alertService.restore(alerts);
+    return;
+  }
   for (const item of [...alerts.items].reverse().slice(-7)) {
     app.uiManager?.addAlert?.(item.message, item.type);
   }

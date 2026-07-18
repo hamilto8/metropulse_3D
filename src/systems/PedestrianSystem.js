@@ -13,6 +13,11 @@ import {
 } from './PedestrianImpact.js';
 import { movePedestrianWithCollisions } from './PedestrianCollision.js';
 import {
+  ALERT_DURATION_KINDS,
+  ALERT_FOCUS_ACTIONS,
+  ALERT_TYPES
+} from '../alerts/AlertService.js';
+import {
   advanceTouristBehavior,
   beginAggression,
   createNpcBehaviorState,
@@ -391,9 +396,6 @@ export class PedestrianSystem {
     if (this.app.trafficSystem && position) {
       this.app.trafficSystem.dispatchPolice(position.clone ? position.clone() : new THREE.Vector3(position.x, position.y || 0, position.z));
     }
-    if (newlyWanted && showAlert && this.app.uiManager && this.app.uiManager.addAlert) {
-      this.app.uiManager.addAlert(`🚨 POLICE DISPATCHED: ${reason}`, 'danger');
-    }
     if (newlyWanted && this.app.economySystem?.recordIncident) {
       const incidentId = `player-crime-${++this.crimeSequence}`;
       const incidentPosition = Number.isFinite(position?.x) && Number.isFinite(position?.z)
@@ -401,7 +403,7 @@ export class PedestrianSystem {
         : null;
       this.app.economySystem.recordIncident({
         id: incidentId,
-        type: 'CRIME',
+        type: ALERT_TYPES.CRIME,
         severity: 2,
         reputationDelta: -1,
         happinessModifier: -2,
@@ -413,9 +415,28 @@ export class PedestrianSystem {
       });
       this.activeCrimeIncidentId = incidentId;
     }
+    if (newlyWanted && showAlert && this.app.uiManager?.addAlert) {
+      const alertPosition = Number.isFinite(position?.x) && Number.isFinite(position?.z)
+        ? { x: position.x, y: position.y || 0, z: position.z }
+        : null;
+      this.app.uiManager.addAlert(`🚨 POLICE DISPATCHED: ${reason}`, 'danger', {
+        dedupeKey: 'crime:player-wanted',
+        type: 'CRIME',
+        title: 'Police response active',
+        cause: reason,
+        location: { label: alertPosition ? 'Reported incident' : 'Current city sector', position: alertPosition },
+        duration: { kind: ALERT_DURATION_KINDS.UNTIL_RESOLVED },
+        recommendation: 'Leave the response area, avoid further incidents, or prepare for arrest.',
+        relatedEntityIds: this.activeCrimeIncidentId ? [this.activeCrimeIncidentId] : [],
+        focusAction: alertPosition
+          ? { type: ALERT_FOCUS_ACTIONS.STREET_WAYPOINT, position: alertPosition }
+          : { type: ALERT_FOCUS_ACTIONS.NONE }
+      });
+    }
   }
 
   resolveCrimeIncident() {
+    this.app.alertService?.resolve?.('crime:player-wanted', 'Police response ended');
     if (!this.activeCrimeIncidentId) return;
     this.app.economySystem?.resolveIncident?.(this.activeCrimeIncidentId);
     this.activeCrimeIncidentId = null;

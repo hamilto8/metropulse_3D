@@ -55,7 +55,7 @@ the responsible system owns implementation.
 | CITY-010 | One road graph supplies aggregate congestion, AI routing, missions, overlays, and bridge routing. | Traffic graph | Integration + Scenario | AI Lead | In Progress |
 | CITY-011 | Local player damage creates temporary graph blockers and cannot permanently gridlock traffic. | Damage / traffic adapter | Integration + Soak | AI Lead | In Progress |
 | CITY-012 | Land value reads access, amenities, energy, employment, congestion, damage, and district modifiers and lists causes. | EconomySystem / inspector | Unit + Browser | Systems Designer | In Progress |
-| CITY-013 | Alerts contain severity, location, cause, duration, and remedy; duplicate low alerts collapse. | Alert domain / UI | Unit + Browser | UX Lead | Not Started |
+| CITY-013 | Alerts contain severity, location, cause, duration, and remedy; duplicate low alerts collapse. | AlertService / AlertActionController / UI | Unit + Browser | UX Lead | Verified |
 | CITY-014 | Day/night and four authored weather states affect density, availability, ambience, visibility, and accessible grip without invalidating critical missions. | Time / weather / missions | Scenario + Browser | Gameplay Lead | In Progress |
 | CITY-015 | Visible agents are seeded proxies of aggregate city conditions, with persistent exceptions only for named characters. | Spawn director / city model | Scenario | Tech Lead | Not Started |
 

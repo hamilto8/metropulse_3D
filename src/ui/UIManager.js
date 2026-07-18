@@ -2,6 +2,27 @@ import { createTextElement } from './dom.js';
 import { getWeatherDefinition } from '../systems/Weather.js';
 import { GAME_STATES, isStreetState } from '../core/GameManager.js';
 import { INTERACTION_PRIORITIES } from '../systems/InteractionService.js';
+import {
+  ALERT_DURATION_KINDS,
+  ALERT_FOCUS_ACTIONS,
+  ALERT_SEVERITIES,
+  ALERT_STATES,
+  ALERT_TYPES
+} from '../alerts/AlertService.js';
+
+const ALERT_SEVERITY_CLASSES = Object.freeze({
+  [ALERT_SEVERITIES.INFO]: 'info',
+  [ALERT_SEVERITIES.SUCCESS]: 'success',
+  [ALERT_SEVERITIES.WARNING]: 'warn',
+  [ALERT_SEVERITIES.CRITICAL]: 'danger'
+});
+
+const ALERT_SEVERITY_LABELS = Object.freeze({
+  [ALERT_SEVERITIES.INFO]: 'Info',
+  [ALERT_SEVERITIES.SUCCESS]: 'Positive',
+  [ALERT_SEVERITIES.WARNING]: 'Warning',
+  [ALERT_SEVERITIES.CRITICAL]: 'Critical'
+});
 
 export class UIManager {
   constructor(app) {
@@ -139,6 +160,7 @@ export class UIManager {
     document.body.dataset.inputMethod = this.app.inputManager?.activeInterface?.toLowerCase?.() || 'keyboard';
     this.updateControlDeviceBadge(this.app.inputManager?.activeInterface || 'KEYBOARD');
     this.updateAdaptiveControls(true);
+    this.bindAlertService(this.app.alertService);
   }
 
   initEventListeners() {
@@ -1371,7 +1393,12 @@ export class UIManager {
     return isActive;
   }
 
-  addAlert(message, type = 'info') {
+  addAlert(message, type = 'info', context = {}) {
+    if (this.app?.alertService) {
+      return typeof message === 'object' && message !== null
+        ? this.app.alertService.publish(message)
+        : this.app.alertService.publishLegacy(message, type, context);
+    }
     if (!this.alertFeedList) {
       this.alertFeedList = document.getElementById('alert-feed-list');
     }
@@ -1399,6 +1426,81 @@ export class UIManager {
     while (this.alertFeedList.children.length > 7) {
       this.alertFeedList.removeChild(this.alertFeedList.lastChild);
     }
+    return item;
+  }
+
+  bindAlertService(service) {
+    this.unsubscribeAlerts?.();
+    if (!service?.subscribe) return false;
+    if (!this.alertFeedList) this.alertFeedList = document.getElementById('alert-feed-list');
+    if (this._alertClickHandler) this.alertFeedList?.removeEventListener?.('click', this._alertClickHandler);
+    this._alertClickHandler = event => {
+      const button = event.target?.closest?.('[data-alert-action]');
+      if (!button) return;
+      this.app.alertActionController?.execute?.(button.dataset.alertAction);
+    };
+    this.alertFeedList?.addEventListener?.('click', this._alertClickHandler);
+    this.unsubscribeAlerts = service.subscribe(event => this.renderAlerts(event?.current || event), { emitCurrent: true });
+    return true;
+  }
+
+  formatAlertTime(value) {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime())
+      ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+      : 'LIVE';
+  }
+
+  renderAlerts(snapshot) {
+    if (!this.alertFeedList || !Array.isArray(snapshot?.items)) return false;
+    const records = snapshot.items.slice(0, 7);
+    const nodes = records.map(alert => {
+      const severityClass = ALERT_SEVERITY_CLASSES[alert.severity] || 'info';
+      const item = document.createElement('article');
+      item.className = `alert-item alert-${severityClass}`;
+      item.dataset.alertId = alert.id;
+      item.dataset.alertState = alert.state.toLowerCase();
+
+      const header = createTextElement('div', 'alert-header');
+      header.append(
+        createTextElement('span', 'alert-time', this.formatAlertTime(alert.startTime)),
+        createTextElement('span', 'alert-severity', ALERT_SEVERITY_LABELS[alert.severity] || alert.severity),
+        createTextElement('span', 'alert-state', alert.state === ALERT_STATES.ACTIVE ? 'Active' : alert.state === ALERT_STATES.RESOLVED ? 'Resolved' : 'Superseded')
+      );
+      const title = createTextElement('strong', 'alert-title', alert.title);
+      const cause = createTextElement('span', 'alert-msg', alert.cause);
+      const context = createTextElement('span', 'alert-context');
+      context.append(
+        createTextElement('span', 'alert-location', `⌖ ${alert.location.label}`),
+        createTextElement('span', 'alert-recommendation', alert.recommendation)
+      );
+      item.append(header, title, cause, context);
+
+      if (alert.occurrences > 1) {
+        item.appendChild(createTextElement('span', 'alert-occurrences', `Collapsed ${alert.occurrences} reports`));
+      }
+      if (alert.state === ALERT_STATES.ACTIVE && alert.focusAction.type !== ALERT_FOCUS_ACTIONS.NONE) {
+        const button = createTextElement('button', 'alert-action', alert.focusAction.label);
+        button.type = 'button';
+        button.dataset.alertAction = alert.id;
+        button.setAttribute('aria-label', `${alert.focusAction.label}: ${alert.title} at ${alert.location.label}`);
+        item.appendChild(button);
+      }
+      return item;
+    });
+    if (nodes.length === 0) {
+      nodes.push(createTextElement('p', 'alert-empty', 'No active or recent city alerts.'));
+    }
+    this.alertFeedList.replaceChildren(...nodes);
+
+    const priority = snapshot.active?.[0] || records[0] || null;
+    if (this.topAlertSummary) {
+      this.topAlertSummary.textContent = priority ? priority.title.slice(0, 34).toUpperCase() : 'NO ACTIVE ALERTS';
+      this.topAlertSummary.title = priority
+        ? `${priority.title}: ${priority.cause}`
+        : 'No active city alerts';
+    }
+    return true;
   }
 
   bindSaveService(service) {
@@ -1425,33 +1527,52 @@ export class UIManager {
 
   updateAlertFeed(delta) {
     if (!this.app) return;
+    this.app.alertService?.expire?.();
     this.alertTimer += delta;
     if (this.alertTimer < 14.0) return;
     this.alertTimer = 0;
 
-    const events = [];
-    const trafficCount = (this.app.trafficSystem && this.app.trafficSystem.vehicles) ? this.app.trafficSystem.vehicles.length : 0;
-    const pedCount = (this.app.pedestrianSystem && this.app.pedestrianSystem.pedestrians) ? this.app.pedestrianSystem.pedestrians.length : 0;
-    const wanted = this.app.pedestrianSystem && this.app.pedestrianSystem.isWanted;
-    const reValue = this.currentReValue;
-
-    if (wanted) {
-      events.push({ msg: '🚨 HIGH ALERT: Police security dispatch actively patrolling city sector.', type: 'danger' });
-    } else if (trafficCount > 20) {
-      events.push({ msg: `🚗 MetroPulse traffic grid optimal (${trafficCount} active autonomous units).`, type: 'info' });
-    } else if (pedCount > 15) {
-      events.push({ msg: `🚶 Pedestrian satisfaction index nominal across city sidewalks.`, type: 'success' });
-    }
-
-    if (reValue < 2000000000) {
-      events.push({ msg: `📉 Real Estate market valuation drop detected ($${Math.round(reValue/1e6)}M).`, type: 'warn' });
+    const service = this.app.alertService;
+    if (!service) return;
+    const congestion = this.app.trafficSystem?.getCongestionMetrics?.();
+    if ((congestion?.index || 0) >= 0.65) {
+      const hotspot = congestion.hotspots?.[0];
+      const position = Number.isFinite(hotspot?.x) && Number.isFinite(hotspot?.z)
+        ? { x: hotspot.x, y: 0, z: hotspot.z }
+        : null;
+      service.publish({
+        dedupeKey: 'traffic:network-congestion',
+        type: ALERT_TYPES.TRAFFIC,
+        severity: congestion.index >= 0.85 ? ALERT_SEVERITIES.CRITICAL : ALERT_SEVERITIES.WARNING,
+        title: 'Network congestion is disrupting travel',
+        cause: `${Math.round(congestion.index * 100)}% of sampled traffic capacity is blocked or stopped.`,
+        location: { label: position ? 'Primary traffic hotspot' : 'City road network', position },
+        duration: { kind: ALERT_DURATION_KINDS.UNTIL_RESOLVED },
+        recommendation: 'Inspect the hotspot, clear incidents, or change bridge and road priorities.',
+        relatedEntityIds: [],
+        focusAction: position
+          ? { type: ALERT_FOCUS_ACTIONS.MANAGEMENT_CAMERA, position }
+          : { type: ALERT_FOCUS_ACTIONS.NONE }
+      });
     } else {
-      events.push({ msg: `⚡ Energy & infrastructure grids operating at 94% efficiency.`, type: 'success' });
+      service.resolve('traffic:network-congestion', 'Traffic returned below the congestion threshold');
     }
 
-    if (events.length > 0) {
-      const chosen = events[Math.floor(Math.random() * events.length)];
-      this.addAlert(chosen.msg, chosen.type);
+    if (this.currentReValue < 2_000_000_000) {
+      service.publish({
+        dedupeKey: 'economy:valuation-low',
+        type: ALERT_TYPES.ECONOMY,
+        severity: ALERT_SEVERITIES.WARNING,
+        title: 'Property valuation is under pressure',
+        cause: `Aggregate real-estate valuation fell to $${Math.round(this.currentReValue / 1e6)}M.`,
+        location: 'Citywide',
+        duration: { kind: ALERT_DURATION_KINDS.UNTIL_RESOLVED },
+        recommendation: 'Review services, safety, congestion, and nearby amenities before expanding.',
+        relatedEntityIds: [],
+        focusAction: { type: ALERT_FOCUS_ACTIONS.NONE }
+      });
+    } else {
+      service.resolve('economy:valuation-low', 'Property valuation recovered above the alert threshold');
     }
   }
 

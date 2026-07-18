@@ -1,4 +1,10 @@
 import * as THREE from 'three';
+import {
+  ALERT_DURATION_KINDS,
+  ALERT_FOCUS_ACTIONS,
+  ALERT_SEVERITIES,
+  ALERT_TYPES
+} from '../alerts/AlertService.js';
 import { GAME_STATES } from '../core/GameManager.js';
 import missionsData from '../data/missions.json' with { type: 'json' };
 import { validateMissionData } from '../data/MissionDataValidator.js';
@@ -748,6 +754,7 @@ export class MissionSystem {
             effects: []
           };
       this.lifecycle.commitCleanup(receipt);
+      this.publishMissionResultAlert(receipt, outcome, reason);
       this.app?.saveService?.scheduleSave?.('mission-progress');
       return true;
     } catch (error) {
@@ -756,6 +763,43 @@ export class MissionSystem {
       console.error('Mission cleanup transaction failed.', error);
       return false;
     }
+  }
+
+  publishMissionResultAlert(receipt, outcome, reason = null) {
+    const service = this.app?.alertService;
+    const mission = this.activeMission;
+    if (!service || !receipt?.transactionId || !mission?.id) return null;
+    const position = mission.dropoff && Number.isFinite(mission.dropoff.x) && Number.isFinite(mission.dropoff.z)
+      ? { x: mission.dropoff.x, y: mission.dropoff.y || 0, z: mission.dropoff.z }
+      : null;
+    const priorMissionAlerts = service.snapshot().active
+      .filter(alert => alert.type === ALERT_TYPES.MISSION && alert.relatedEntityIds.includes(mission.id))
+      .map(alert => alert.id);
+    const successful = outcome === 'SUCCESS';
+    const subjectIds = (receipt.effects || []).map(effect => effect.subjectId).filter(Boolean);
+    return service.publish({
+      dedupeKey: `mission-outcome:${receipt.transactionId}`,
+      supersedes: priorMissionAlerts,
+      type: ALERT_TYPES.MISSION,
+      severity: successful ? ALERT_SEVERITIES.SUCCESS : ALERT_SEVERITIES.WARNING,
+      title: receipt.summary?.title || `${mission.title} ${successful ? 'complete' : 'failed'}`,
+      cause: receipt.summary?.description || (successful
+        ? `${mission.title} completed and its city consequences were committed.`
+        : `${mission.title} ended because ${String(reason || 'the objective failed').replaceAll('_', ' ')}.`),
+      location: {
+        label: mission.dropoff?.district || mission.dropoff?.districtId || mission.districtId || mission.district || 'Mission area',
+        districtId: mission.dropoff?.districtId || mission.districtId || null,
+        position
+      },
+      duration: { kind: ALERT_DURATION_KINDS.PERSISTENT },
+      recommendation: successful
+        ? 'Return to Management, review the committed changes, and choose the next district action.'
+        : 'Review the debrief, retry from the available checkpoint, or return to Management to recover.',
+      relatedEntityIds: [mission.id, receipt.transactionId, ...subjectIds],
+      focusAction: position
+        ? { type: ALERT_FOCUS_ACTIONS.MANAGEMENT_CAMERA, position }
+        : { type: ALERT_FOCUS_ACTIONS.NONE }
+    });
   }
 
   presentMissionResult({ success, satisfaction = null, transition = true }) {

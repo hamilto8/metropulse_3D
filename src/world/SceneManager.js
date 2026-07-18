@@ -392,6 +392,24 @@ export class SceneManager {
     return true;
   }
 
+  focusWorldPosition(position, { distance = 92, height = 68 } = {}) {
+    if (!Number.isFinite(position?.x) || !Number.isFinite(position?.z)) return false;
+    if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(height) || height <= 0) return false;
+    if (!this.releaseDirectControlForCamera()) return false;
+    this.preparePresetOrbit();
+    this.activePreset = null;
+    const surfaceY = this.getCameraSurfaceHeight(position.x, position.z);
+    const targetY = Number.isFinite(position.y) ? Math.max(surfaceY, position.y) : surfaceY;
+    const target = new THREE.Vector3(position.x, targetY, position.z);
+    this.targetLookAt = target;
+    this.targetCameraPos = new THREE.Vector3(
+      position.x + distance * 0.72,
+      targetY + height,
+      position.z + distance * 0.72
+    );
+    return true;
+  }
+
   toggleFollowTarget(entity) {
     if (this.followTarget === entity) {
       this.stopFollowTarget();
