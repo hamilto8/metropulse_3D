@@ -45,8 +45,8 @@ the responsible system owns implementation.
 |---|---|---|---|---|---|
 | CITY-001 | MVP world is West Core, Central Park, and the primary bridge corridor. | MVP scope config / world | Unit + Browser | Product Lead | Verified |
 | CITY-002 | Residential, Commercial, and Operations are the three player-facing zones. | City editor / catalog | Unit + Browser | Systems Designer | Verified |
-| CITY-003 | Placement previews cost, maintenance, projected effect, prerequisites, and blockers before commit. | City editor UI/domain | Integration + Browser | UX Lead | In Progress |
-| CITY-004 | Placement requires valid road access and always supports cancel before confirmation. | City editor domain | Unit + Browser | Gameplay Lead | In Progress |
+| CITY-003 | Placement previews cost, maintenance, projected effect, prerequisites, and blockers before commit. | City editor UI/domain | Integration + Browser | UX Lead | Verified |
+| CITY-004 | Placement requires valid road access and always supports cancel before confirmation. | City editor domain | Unit + Browser | Gameplay Lead | Verified |
 | CITY-005 | Capital is one shared account with itemized recurring and burst sources/sinks. | EconomySystem | Unit + Scenario | Systems Designer | Implemented |
 | CITY-006 | Passive income supports a healthy city without trivially funding every expansion. | Economy balance data | Simulation + Playtest | Systems Designer | Not Started |
 | CITY-007 | Population/jobs use aggregate capacity and expose demand, employment, and top satisfaction causes. | EconomySystem / UI | Unit + Browser | Systems Designer | In Progress |

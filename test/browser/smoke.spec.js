@@ -112,6 +112,104 @@ test('boots a deterministic clean profile without runtime or UI errors', async (
   });
   await page.evaluate(() => window.app.cityEditorSystem.clearZoningMode());
 
+  // P4.2 acceptance: one structured decision drives both the player-facing
+  // forecast and the commit-time world mutation.
+  const placementProbe = await page.evaluate(() => {
+    const editor = window.app.cityEditorSystem;
+    editor.selectBuilding('CYBERCAFE');
+    const spec = editor.selectedSpec;
+    let candidate = null;
+    const blockers = {};
+    for (let x = -170; x <= 790 && !candidate; x += 10) {
+      for (let z = -370; z <= 370; z += 10) {
+        const y = window.app.cityBuilder.getHillHeight(x, z);
+        const validation = editor.getPlacementValidation({ spec, rotationY: 0, x, y, z });
+        if (validation.valid) {
+          candidate = { x, y, z, validation };
+          break;
+        }
+        const code = validation.primaryBlocker?.code || 'UNKNOWN';
+        blockers[code] = (blockers[code] || 0) + 1;
+      }
+    }
+    const roadless = editor.getPlacementValidation({
+      spec,
+      rotationY: 0,
+      x: -150,
+      y: 0,
+      z: 200,
+      allowCountrysideReplacement: true,
+      ignorePlayer: true
+    });
+    const locked = editor.getPlacementValidation({
+      spec: {
+        ...spec,
+        id: 'LOCKED_TEST_TOWER',
+        name: 'Locked Test Tower',
+        progressionTier: 'MAGNATE'
+      },
+      rotationY: 0,
+      x: -150,
+      y: 0,
+      z: 130,
+      allowCountrysideReplacement: true,
+      ignorePlayer: true
+    });
+    if (!candidate) return { candidate: null, roadless, locked, blockers };
+
+    editor.currentHit = { ...candidate, valid: true };
+    editor.publishPlacementValidation(candidate.validation);
+    return { candidate, roadless, locked };
+  });
+  expect(placementProbe.candidate, JSON.stringify(placementProbe.blockers || {})).not.toBeNull();
+  expect(placementProbe.candidate.validation.blockers).toEqual([]);
+  expect(placementProbe.roadless.primaryBlocker.code).toBe('ROAD_ACCESS');
+  expect(placementProbe.roadless.primaryBlocker.remedy).toContain('connected road');
+  expect(placementProbe.locked.primaryBlocker.code).toBe('CONTENT_LOCKED');
+  await expect(page.locator('#placement-decision-title')).toHaveText('Ready to construct');
+  await expect(page.locator('#placement-operating')).toContainText('/min');
+  await expect(page.locator('#placement-cashflow')).toContainText('/min');
+  await expect(page.locator('#placement-payback')).not.toHaveText('—');
+  await expect(page.locator('#placement-capacity')).toContainText('jobs');
+  await expect(page.locator('#placement-demand')).toContainText('Commercial demand');
+  await expect(page.locator('#placement-services')).toContainText('power');
+  await expect(page.locator('#placement-community')).toContainText('Happiness');
+  await expect(page.locator('#placement-risk')).not.toHaveText('—');
+
+  const placementCommit = await page.evaluate(async () => {
+    const editor = window.app.cityEditorSystem;
+    const before = {
+      treasury: window.app.economySystem.treasury,
+      buildings: window.app.buildingFactory.buildings.length,
+      colliders: window.app.physicsWorld.staticBodies.length
+    };
+    const placed = editor.placeSelectedBuilding();
+    const latest = window.app.buildingFactory.buildings.at(-1);
+    const serialized = editor.serializeWorldEdits().buildings.some(
+      record => record.economyId === latest.economyId
+    );
+    const treasuryAfterCommit = window.app.economySystem.treasury;
+    const persisted = await window.app.saveService.saveNow({ reason: 'p4.2-browser-acceptance' });
+    return {
+      before,
+      placed,
+      treasury: treasuryAfterCommit,
+      buildings: window.app.buildingFactory.buildings.length,
+      colliders: window.app.physicsWorld.staticBodies.length,
+      serialized,
+      persisted,
+      economyRegistered: Boolean(window.app.economySystem.getBuilding(latest.economyId))
+    };
+  });
+  expect(placementCommit.placed).toBe(true);
+  expect(placementCommit.treasury).toBe(placementCommit.before.treasury - 200_000);
+  expect(placementCommit.buildings).toBe(placementCommit.before.buildings + 1);
+  expect(placementCommit.colliders).toBe(placementCommit.before.colliders + 1);
+  expect(placementCommit.serialized).toBe(true);
+  expect(placementCommit.persisted).toBe(true);
+  expect(placementCommit.economyRegistered).toBe(true);
+  await expect(page.locator('#placement-decision-title')).toContainText('Blocked');
+
   await page.evaluate(() => window.__METROPULSE_TEST__.setTime(18.5));
   await page.evaluate(() => window.__METROPULSE_TEST__.setWeather('mist'));
   const mission = await page.evaluate(() => (

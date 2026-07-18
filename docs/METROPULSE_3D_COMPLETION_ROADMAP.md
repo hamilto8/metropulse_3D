@@ -948,16 +948,44 @@ Implementation contract: `CONSTRUCTION_VOCABULARY.md`.
 
 #### P4.2 Placement intelligence
 
-- [ ] Return structured placement validation results rather than booleans.
-- [ ] Explain the highest-priority blocker and a possible remedy.
-- [ ] Require ordinary development to have valid road access.
-- [ ] Validate service requirements, district restrictions, slope, water,
+- [x] Return structured placement validation results rather than booleans.
+- [x] Explain the highest-priority blocker and a possible remedy.
+- [x] Require ordinary development to have valid road access.
+- [x] Validate service requirements, district restrictions, slope, water,
   collisions, protected landmarks, funds, and content unlocks.
-- [ ] Preview cost, operating cost, net cashflow, payback category, capacity,
+- [x] Preview cost, operating cost, net cashflow, payback category, capacity,
   demand effect, service effect, jobs/residents, happiness, land value, and
   risk where relevant.
-- [ ] Keep placement, movement, rotation, demolition, economy, physics, traffic,
+- [x] Keep placement, movement, rotation, demolition, economy, physics, traffic,
   save state, and rollback atomic.
+
+Implementation contract: `PLACEMENT_INTELLIGENCE.md`.
+
+P4.2 completion evidence (2026-07-18):
+
+- `PlacementIntelligence` returns one deeply immutable result with stable
+  prioritized blocker codes, concrete remedies, and the full financial,
+  capacity, demand, service, community, land-value, payback, and risk forecast.
+  `CityEditorSystem.isPlacementValid()` remains only a compatibility projection
+  for save restoration; preview and commit-time validation consume the complete
+  result.
+- Ordinary development requires an authored or connected editor road within
+  the access threshold. Oriented world bounds, zoning, district ownership,
+  terrain slope, water, protected landmarks, scenery/building/player collision,
+  projected power/water requirements, progression access, and current treasury
+  are checked together and fail closed.
+- The accessible construction panel shows the complete forecast plus the
+  highest-priority blocker and remedy live. A green ghost cannot commit stale
+  state because placement re-evaluates the same contract immediately before
+  charging Capital.
+- `WorldEditTransaction` now owns LIFO compensation for placement, movement,
+  rotation, and demolition across scene/list/inspector state, economy, physics,
+  traffic, optional city/game integrations, salvage, and save-facing records.
+  Physics collider removal also updates its authoritative static-body registry.
+- Verification at completion: 359 Node tests, production build, and all 6
+  Chrome Playwright browser flows. Browser acceptance commits a production
+  building and verifies treasury, render list, physics, economy registration,
+  and serialized world state change together.
 
 #### P4.3 Services and incidents
 

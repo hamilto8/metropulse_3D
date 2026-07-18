@@ -10,6 +10,11 @@ import {
   isMvpDevelopmentZone,
   normalizeZoneId
 } from './ConstructionVocabulary.js';
+import {
+  evaluatePlacement,
+  isOrdinaryDevelopment
+} from './PlacementIntelligence.js';
+import { runWorldEditTransaction } from './WorldEditTransaction.js';
 
 const CORE_LANDMARKS = Object.freeze([
   { name: 'Central Park', minX: -96, maxX: -54, minZ: -96, maxZ: -54 },
@@ -24,9 +29,21 @@ const EXISTING_ROAD_Z = Object.freeze([-100, -50, 0, 50, 100]);
 const ROAD_HALF_WIDTH_WITH_CLEARANCE = 9;
 const ZONE_PARCEL_SIZE = 30;
 const ZONING_COST = 2_500;
+const ROAD_ACCESS_DISTANCE = 12;
 
 function rectsOverlap(a, b) {
   return a.maxX > b.minX && a.minX < b.maxX && a.maxZ > b.minZ && a.minZ < b.maxZ;
+}
+
+function rectDistance(a, b) {
+  const dx = Math.max(a.minX - b.maxX, b.minX - a.maxX, 0);
+  const dz = Math.max(a.minZ - b.maxZ, b.minZ - a.maxZ, 0);
+  return Math.hypot(dx, dz);
+}
+
+function finiteTerrainHeight(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function callOptional(target, methodNames, args = []) {
@@ -37,6 +54,12 @@ function callOptional(target, methodNames, args = []) {
     }
   }
   return { called: false, value: undefined };
+}
+
+function findOptionalMethod(target, methodNames) {
+  if (!target) return null;
+  const name = methodNames.find(methodName => typeof target[methodName] === 'function');
+  return name ? target[name].bind(target) : null;
 }
 
 export class CityEditorSystem {
@@ -70,7 +93,8 @@ export class CityEditorSystem {
     this.ghostGroup = null;
     this.structurePreview = null;
     this.shadowFootprint = null;
-    this.currentHit = { x: 0, y: 0, z: 0, valid: false };
+    this.currentHit = { x: 0, y: 0, z: 0, valid: false, validation: null };
+    this.placementListeners = new Set();
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2(0, 0);
@@ -86,6 +110,24 @@ export class CityEditorSystem {
     const visible = Boolean(this.isActive && this.zoningMode);
     this.zoneOverlayGroup.visible = visible;
     return visible;
+  }
+
+  subscribePlacementValidation(listener, { emitCurrent = false } = {}) {
+    if (typeof listener !== 'function') throw new TypeError('placement listener must be a function');
+    this.placementListeners.add(listener);
+    if (emitCurrent) listener(this.currentHit.validation);
+    return () => this.placementListeners.delete(listener);
+  }
+
+  publishPlacementValidation(validation) {
+    for (const listener of [...(this.placementListeners || [])]) {
+      try {
+        listener(validation);
+      } catch (error) {
+        console.error('City editor placement listener failed.', error);
+      }
+    }
+    return validation;
   }
 
   createZoneOverlayMesh(x, z, definition) {
@@ -159,6 +201,8 @@ export class CityEditorSystem {
     this.disposeGhostGroup();
     this.clearStructureSelection();
     this.currentHit.valid = false;
+    this.currentHit.validation = null;
+    this.publishPlacementValidation(null);
     this.syncZoneOverlayVisibility();
     return true;
   }
@@ -178,6 +222,7 @@ export class CityEditorSystem {
     this.isDeleteMode = false;
     this.syncZoneOverlayVisibility();
     this.updateGhostMesh();
+    this.refreshCurrentPlacementValidation();
     return true;
   }
 
@@ -191,6 +236,8 @@ export class CityEditorSystem {
     this.clearStructureSelection();
     this.isDeleteMode = false;
     this.disposeGhostGroup();
+    this.currentHit.validation = null;
+    this.publishPlacementValidation(null);
     this.syncZoneOverlayVisibility();
     this.app.uiManager?.showToast(`🗺️ Zoning tool active: ${definition.label}`);
     return true;
@@ -201,6 +248,7 @@ export class CityEditorSystem {
     this.zoningMode = null;
     this.syncZoneOverlayVisibility();
     this.updateGhostMesh();
+    this.refreshCurrentPlacementValidation();
     return true;
   }
 
@@ -217,8 +265,11 @@ export class CityEditorSystem {
     if (this.isDeleteMode) {
       this.clearStructureSelection();
       this.disposeGhostGroup();
+      this.currentHit.validation = null;
+      this.publishPlacementValidation(null);
     } else {
       this.updateGhostMesh();
+      this.refreshCurrentPlacementValidation();
     }
     return this.isDeleteMode;
   }
@@ -233,8 +284,11 @@ export class CityEditorSystem {
     if (normalized === 'PLACE') {
       this.clearStructureSelection();
       this.updateGhostMesh();
+      this.refreshCurrentPlacementValidation();
     } else {
       this.disposeGhostGroup();
+      this.currentHit.validation = null;
+      this.publishPlacementValidation(null);
       if (normalized === 'DELETE') this.clearStructureSelection();
     }
     return true;
@@ -264,6 +318,7 @@ export class CityEditorSystem {
       this.selectionHelper = new THREE.BoxHelper(building.group, 0x00f0ff);
       this.selectionHelper.name = 'SelectedCityStructure';
       this.scene.add(this.selectionHelper);
+      this.refreshCurrentPlacementValidation();
       this.app.uiManager?.showToast(`✥ Selected ${building.name}. Click a valid destination to move it.`);
       return building;
     }
@@ -276,7 +331,7 @@ export class CityEditorSystem {
     if (this.selectedStructure && (this.toolMode === 'MOVE' || this.toolMode === 'ROTATE')) {
       const building = this.selectedStructure;
       const nextRotation = (building.group.rotation.y + Math.PI / 2) % (Math.PI * 2);
-      if (!this.isPlacementValid({
+      const validation = this.getPlacementValidation({
         spec: building.spec,
         rotationY: nextRotation,
         x: building.plot.x,
@@ -285,36 +340,86 @@ export class CityEditorSystem {
         ignoreBuilding: building,
         allowCountrysideReplacement: true,
         ignorePlayer: true
-      })) {
-        this.app.uiManager?.showToast(`⚠️ ${building.name} cannot rotate here`);
+      });
+      if (!validation.valid) {
+        this.publishPlacementValidation(validation);
+        this.app.uiManager?.showToast(`⚠️ ${validation.primaryBlocker.message} ${validation.primaryBlocker.remedy}`);
         return false;
       }
       const isRoad = building.spec?.generatorType === 'ROAD_SEGMENT';
-      if (isRoad) this.app.trafficSystem?.unregisterRoadSegment?.(building, building.spec);
-      building.group.rotation.y = nextRotation;
-      this.rotationY = building.group.rotation.y;
-      const quarterTurns = Math.round(this.rotationY / (Math.PI / 2)) % 2;
+      const previousRotation = building.group.rotation.y;
+      const previousPlot = { ...building.plot };
+      const colliderShape = building.physicsBody?.shapes?.[0];
+      const previousHalfExtents = colliderShape?.halfExtents
+        ? {
+            x: colliderShape.halfExtents.x,
+            y: colliderShape.halfExtents.y,
+            z: colliderShape.halfExtents.z
+          }
+        : null;
       const width = building.spec?.footprint?.width || building.plot.width;
       const depth = building.spec?.footprint?.depth || building.plot.depth;
-      building.plot.width = quarterTurns === 0 ? width : depth;
-      building.plot.depth = quarterTurns === 0 ? depth : width;
-      const colliderShape = building.physicsBody?.shapes?.[0];
-      if (colliderShape?.halfExtents) {
-        const height = building.spec?.height || 30;
-        colliderShape.halfExtents.set(
-          Math.max(1, building.plot.width - 2) * 0.5,
-          height * 0.5,
-          Math.max(1, building.plot.depth - 2) * 0.5
-        );
-        colliderShape.updateConvexPolyhedronRepresentation?.();
-        building.physicsBody.updateBoundingRadius?.();
-        building.physicsBody.quaternion.set(0, 0, 0, 1);
-        building.physicsBody.aabbNeedsUpdate = true;
+      try {
+        runWorldEditTransaction('rotate-structure', transaction => {
+          if (isRoad) {
+            this.addOptionalParticipantStep(transaction, {
+              label: 'detach road before rotation',
+              participant: this.app.trafficSystem,
+              applyMethods: ['unregisterRoadSegment'],
+              compensateMethods: ['registerRoadSegment'],
+              applyArgs: [building, building.spec],
+              compensateArgs: [building, building.spec]
+            });
+          }
+          transaction.step('rotate world and physics footprint', () => {
+            building.group.rotation.y = nextRotation;
+            const nextQuarterTurns = Math.abs(Math.round(nextRotation / (Math.PI / 2))) % 2;
+            building.plot.width = nextQuarterTurns === 0 ? width : depth;
+            building.plot.depth = nextQuarterTurns === 0 ? depth : width;
+            if (colliderShape?.halfExtents) {
+              const height = building.spec?.height || 30;
+              colliderShape.halfExtents.set(
+                Math.max(1, building.plot.width - 2) * 0.5,
+                height * 0.5,
+                Math.max(1, building.plot.depth - 2) * 0.5
+              );
+              colliderShape.updateConvexPolyhedronRepresentation?.();
+              building.physicsBody.updateBoundingRadius?.();
+              building.physicsBody.quaternion.set(0, 0, 0, 1);
+              building.physicsBody.aabbNeedsUpdate = true;
+            }
+            return true;
+          }, () => {
+            building.group.rotation.y = previousRotation;
+            Object.assign(building.plot, previousPlot);
+            if (previousHalfExtents && colliderShape?.halfExtents) {
+              colliderShape.halfExtents.set(previousHalfExtents.x, previousHalfExtents.y, previousHalfExtents.z);
+              colliderShape.updateConvexPolyhedronRepresentation?.();
+              building.physicsBody.updateBoundingRadius?.();
+              building.physicsBody.aabbNeedsUpdate = true;
+            }
+          });
+          if (isRoad) {
+            this.addOptionalParticipantStep(transaction, {
+              label: 'attach rotated road',
+              participant: this.app.trafficSystem,
+              applyMethods: ['registerRoadSegment'],
+              compensateMethods: ['unregisterRoadSegment'],
+              applyArgs: [building, building.spec],
+              compensateArgs: [building, building.spec]
+            });
+          }
+        });
+      } catch (error) {
+        console.error('City editor rotation failed; restoring the previous orientation.', error);
+        this.app.uiManager?.showToast('⚠️ Rotation failed; the structure was restored safely.');
+        return false;
       }
-      if (isRoad) this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
+      this.rotationY = building.group.rotation.y;
       this.selectionHelper?.update?.();
       this.app.uiManager?.showToast(`↻ Rotated ${building.name} 90°.`);
       this.app.saveService?.scheduleSave?.('world-edit');
+      this.refreshCurrentPlacementValidation();
       return this.rotationY;
     }
     this.rotationY = (this.rotationY + Math.PI / 2) % (Math.PI * 2);
@@ -322,11 +427,17 @@ export class CityEditorSystem {
       this.ghostGroup.rotation.y = this.rotationY;
     }
     if (this.currentHit) {
-      this.currentHit.valid = this.checkPlacementValidity(
-        this.currentHit.x,
-        this.currentHit.z,
-        this.currentHit.y
-      );
+      const validation = this.getPlacementValidation({
+        spec: this.selectedSpec,
+        rotationY: this.rotationY,
+        x: this.currentHit.x,
+        y: this.currentHit.y,
+        z: this.currentHit.z,
+        ignoreBuilding: this.toolMode === 'MOVE' ? this.selectedStructure : null
+      });
+      this.currentHit.validation = validation;
+      this.currentHit.valid = validation.valid;
+      this.publishPlacementValidation(validation);
       this.updateGhostValidityAppearance(this.currentHit.valid);
     }
     return this.rotationY;
@@ -455,6 +566,8 @@ export class CityEditorSystem {
     this.raycaster.setFromCamera(this.mouse, this.camera);
     if (!this.raycaster.ray.intersectPlane(this.groundPlane, this.intersectPoint)) {
       this.currentHit.valid = false;
+      this.currentHit.validation = null;
+      this.publishPlacementValidation(null);
       this.updateGhostValidityAppearance(false);
       return false;
     }
@@ -469,15 +582,21 @@ export class CityEditorSystem {
     const terrainY = typeof this.app.cityBuilder?.getHillHeight === 'function'
       ? this.app.cityBuilder.getHillHeight(targetX, targetZ)
       : 0;
+    const validation = this.zoningMode
+      ? null
+      : this.getPlacementValidation({
+        spec: this.selectedSpec,
+        rotationY: this.rotationY,
+        x: targetX,
+        z: targetZ,
+        y: terrainY,
+        ignoreBuilding: this.toolMode === 'MOVE' ? this.selectedStructure : null
+      });
     const valid = this.zoningMode
       ? this.checkZoningValidity(targetX, targetZ, terrainY)
-      : this.checkPlacementValidity(
-        targetX,
-        targetZ,
-        terrainY,
-        this.toolMode === 'MOVE' ? this.selectedStructure : null
-      );
-    this.currentHit = { x: targetX, y: terrainY, z: targetZ, valid };
+      : validation.valid;
+    this.currentHit = { x: targetX, y: terrainY, z: targetZ, valid, validation };
+    this.publishPlacementValidation(validation);
 
     if (this.ghostGroup) {
       this.ghostGroup.position.set(targetX, terrainY, targetZ);
@@ -488,17 +607,33 @@ export class CityEditorSystem {
   }
 
   checkPlacementValidity(x, z, y = 0, ignoreBuilding = null) {
-    return this.isPlacementValid({
+    return this.getPlacementValidation({
       spec: this.selectedSpec,
       rotationY: this.rotationY,
       x,
       z,
       y,
       ignoreBuilding
-    });
+    }).valid;
   }
 
-  isPlacementValid({
+  refreshCurrentPlacementValidation() {
+    if (!this.currentHit || this.zoningMode || !this.selectedSpec) return null;
+    const validation = this.getPlacementValidation({
+      spec: this.selectedSpec,
+      rotationY: this.rotationY,
+      x: this.currentHit.x,
+      y: this.currentHit.y,
+      z: this.currentHit.z,
+      ignoreBuilding: this.toolMode === 'MOVE' ? this.selectedStructure : null
+    });
+    this.currentHit.validation = validation;
+    this.currentHit.valid = validation.valid;
+    this.updateGhostValidityAppearance(validation.valid);
+    return this.publishPlacementValidation(validation);
+  }
+
+  getPlacementValidation({
     spec,
     rotationY = 0,
     x,
@@ -508,35 +643,36 @@ export class CityEditorSystem {
     allowCountrysideReplacement = false,
     ignorePlayer = false
   } = {}) {
-    if (!spec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return false;
-
+    if (!spec || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      return evaluatePlacement({ spec, position: { x, y, z } });
+    }
     const zone = this.getZoneAt(x, z);
-    if (zone && !this.isSpecCompatibleWithZone(spec, zone.zoneType)) return false;
-
-    // Road sockets are authored edge-to-edge. Generic building clearance would
-    // force a visual gap even though the traffic graph connected the nodes.
-    const clearance = spec.generatorType === 'ROAD_SEGMENT' ? 0 : 2;
+    const clearance = spec?.generatorType === 'ROAD_SEGMENT' ? 0 : 2;
     const placementRect = this.getPlacementRect(x, z, clearance, spec, rotationY);
-    if (
+    const footprintRect = this.getPlacementRect(x, z, 0, spec, rotationY);
+    const inBounds = Boolean(spec) && (
+      Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
+    ) && !(
       placementRect.minX < WORLD_BOUNDS.minX ||
       placementRect.maxX > WORLD_BOUNDS.maxX ||
       placementRect.minZ < WORLD_BOUNDS.minZ ||
       placementRect.maxZ > WORLD_BOUNDS.maxZ
-    ) {
-      return false;
-    }
-
-    if (CORE_LANDMARKS.some(landmark => rectsOverlap(placementRect, landmark))) return false;
-    if (this.overlapsExistingRoad(placementRect)) return false;
-    const overlapsWater = this.overlapsWater(placementRect, y);
-    const isBridgeSegment = spec.roadType === 'BRIDGE';
-    if (overlapsWater && !isBridgeSegment) return false;
+    );
+    const protectedLandmark = CORE_LANDMARKS.find(landmark => rectsOverlap(placementRect, landmark)) || null;
+    const authoredRoads = this.getAuthoredRoadRects();
+    const roadOverlap = authoredRoads.some(road => rectsOverlap(placementRect, road));
+    let collision = null;
     if (!allowCountrysideReplacement) {
       const cityBuilder = this.app.cityBuilder;
       const overlapsCountryside = typeof cityBuilder?.hasCountrysideOccupancyOverlap === 'function'
         ? cityBuilder.hasCountrysideOccupancyOverlap(placementRect)
         : (cityBuilder?.countrysideOccupancy || []).some(envelope => rectsOverlap(placementRect, envelope));
-      if (overlapsCountryside) return false;
+      if (overlapsCountryside) collision = {
+        kind: 'SCENERY',
+        name: 'protected countryside scenery',
+        message: 'The footprint collides with protected countryside scenery.',
+        remedy: 'Choose a cleared parcel; restored construction may replace scenery only through the save migration path.'
+      };
     }
 
     const buildings = this.app.buildingFactory?.buildings || [];
@@ -551,21 +687,65 @@ export class CityEditorSystem {
         minZ: building.plot.z - depth / 2,
         maxZ: building.plot.z + depth / 2
       };
-      if (rectsOverlap(placementRect, buildingRect)) return false;
+      if (rectsOverlap(placementRect, buildingRect)) {
+        collision = {
+          kind: 'BUILDING',
+          id: building.economyId || building.id || null,
+          name: building.name || 'another structure'
+        };
+        break;
+      }
     }
 
     const playerPosition = ignorePlayer ? null : this.getControlledPlayerPosition();
-    if (
+    const playerOccupied = Boolean(
       playerPosition &&
       playerPosition.x > placementRect.minX - 4 &&
       playerPosition.x < placementRect.maxX + 4 &&
       playerPosition.z > placementRect.minZ - 4 &&
       playerPosition.z < placementRect.maxZ + 4
-    ) {
-      return false;
+    );
+    const roadAccessRects = [
+      ...authoredRoads,
+      ...this.getConnectedPlacedRoadRects(ignoreBuilding)
+    ];
+    const hasRoadAccess = !isOrdinaryDevelopment(spec)
+      || roadAccessRects.some(road => rectDistance(footprintRect, road) <= ROAD_ACCESS_DISTANCE);
+    const economy = this.getEconomyController();
+    let economySnapshot = {};
+    try {
+      economySnapshot = economy?.snapshot?.() || {};
+    } catch (error) {
+      console.warn('City editor economy preview failed; service-dependent placement will fail closed.', error);
     }
+    const maxSlopeDegrees = Number.isFinite(Number(spec?.maxSlopeDegrees))
+      ? Number(spec.maxSlopeDegrees)
+      : spec?.generatorType === 'ROAD_SEGMENT' ? 12 : 8;
 
-    return this.isDistrictUnlocked(x, z, spec);
+    return evaluatePlacement({
+      spec,
+      position: { x, y, z },
+      access: spec ? this.getBuildingAccess(spec) : { unlocked: false },
+      district: this.getDistrictAccess(x, z, spec),
+      inBounds,
+      protectedLandmark: protectedLandmark?.name || null,
+      water: this.overlapsWater(footprintRect, y),
+      slopeDegrees: this.getTerrainSlopeDegrees(footprintRect),
+      maxSlopeDegrees,
+      playerOccupied,
+      roadOverlap,
+      collision,
+      zone: zone ? { ...zone, label: getZoneDefinition(zone.zoneType)?.label || zone.zoneType } : null,
+      zoneCompatible: !zone || this.isSpecCompatibleWithZone(spec, zone.zoneType),
+      requiresRoadAccess: isOrdinaryDevelopment(spec),
+      hasRoadAccess,
+      economySnapshot,
+      availableCredits: this.getAvailableCredits()
+    });
+  }
+
+  isPlacementValid(options = {}) {
+    return this.getPlacementValidation(options).valid;
   }
 
   getZoneAt(x, z) {
@@ -628,31 +808,67 @@ export class CityEditorSystem {
     return this.isDistrictUnlocked(parcelX, parcelZ, { id: `ZONE_${this.zoningMode}`, category: this.zoningMode });
   }
 
-  overlapsExistingRoad(rect) {
+  getAuthoredRoadRects() {
+    const roads = [];
     const horizontalRange = { minX: -160, maxX: 810 };
     for (const roadZ of EXISTING_ROAD_Z) {
-      const roadRect = {
+      roads.push({
         minX: horizontalRange.minX,
         maxX: horizontalRange.maxX,
         minZ: roadZ - ROAD_HALF_WIDTH_WITH_CLEARANCE,
         maxZ: roadZ + ROAD_HALF_WIDTH_WITH_CLEARANCE
-      };
-      if (rectsOverlap(rect, roadRect)) return true;
+      });
     }
 
     for (const roadX of EXISTING_ROAD_X) {
-      const roadRect = {
+      roads.push({
         minX: roadX - ROAD_HALF_WIDTH_WITH_CLEARANCE,
         maxX: roadX + ROAD_HALF_WIDTH_WITH_CLEARANCE,
         minZ: -110,
         maxZ: 110
-      };
-      if (rectsOverlap(rect, roadRect)) return true;
+      });
     }
+    roads.push(
+      { minX: 691, maxX: 709, minZ: -290, maxZ: -91 },
+      { minX: 691, maxX: 760, minZ: -253, maxZ: -237 }
+    );
+    return roads;
+  }
 
-    const accessRoad = { minX: 691, maxX: 709, minZ: -290, maxZ: -91 };
-    const missionControlSpur = { minX: 691, maxX: 760, minZ: -253, maxZ: -237 };
-    return rectsOverlap(rect, accessRoad) || rectsOverlap(rect, missionControlSpur);
+  getConnectedPlacedRoadRects(ignoreBuilding = null) {
+    const trafficRoads = this.app.trafficSystem?.placedRoadSegments;
+    return (this.app.buildingFactory?.buildings || [])
+      .filter(building => {
+        if (!building || building === ignoreBuilding || building.isDestroyed || !building.plot) return false;
+        if (building.spec?.generatorType !== 'ROAD_SEGMENT') return false;
+        if (!trafficRoads?.get) return true;
+        const id = String(building.trafficRoadId || building.economyId || building.id || '');
+        return trafficRoads.get(id)?.connected === true;
+      })
+      .map(building => ({
+        minX: building.plot.x - (building.plot.width || 30) / 2,
+        maxX: building.plot.x + (building.plot.width || 30) / 2,
+        minZ: building.plot.z - (building.plot.depth || 30) / 2,
+        maxZ: building.plot.z + (building.plot.depth || 30) / 2
+      }));
+  }
+
+  overlapsExistingRoad(rect) {
+    return this.getAuthoredRoadRects().some(road => rectsOverlap(rect, road));
+  }
+
+  getTerrainSlopeDegrees(rect) {
+    const getHeight = this.app.cityBuilder?.getHillHeight;
+    if (typeof getHeight !== 'function') return 0;
+    const width = Math.max(1, rect.maxX - rect.minX);
+    const depth = Math.max(1, rect.maxZ - rect.minZ);
+    const northWest = finiteTerrainHeight(getHeight.call(this.app.cityBuilder, rect.minX, rect.minZ));
+    const northEast = finiteTerrainHeight(getHeight.call(this.app.cityBuilder, rect.maxX, rect.minZ));
+    const southWest = finiteTerrainHeight(getHeight.call(this.app.cityBuilder, rect.minX, rect.maxZ));
+    const southEast = finiteTerrainHeight(getHeight.call(this.app.cityBuilder, rect.maxX, rect.maxZ));
+    const gradientX = (((northEast + southEast) - (northWest + southWest)) * 0.5) / width;
+    const gradientZ = (((southWest + southEast) - (northWest + northEast)) * 0.5) / depth;
+    return Math.atan(Math.hypot(gradientX, gradientZ)) * 180 / Math.PI;
   }
 
   overlapsWater(rect, y) {
@@ -681,7 +897,7 @@ export class CityEditorSystem {
     return null;
   }
 
-  isDistrictUnlocked(x, z, spec = this.selectedSpec) {
+  getDistrictAccess(x, z, spec = this.selectedSpec) {
     const context = { x, z, spec, editor: this };
 
     // The economy model exposes district state by stable ID rather than world
@@ -689,10 +905,19 @@ export class CityEditorSystem {
     const economy = this.getEconomyController();
     if (x >= 185 && x <= 420 && typeof economy?.isDistrictUnlocked === 'function') {
       try {
-        if (!economy.isDistrictUnlocked('EAST_CYBER_METROPOLIS')) return false;
+        if (!economy.isDistrictUnlocked('EAST_CYBER_METROPOLIS')) return {
+          allowed: false,
+          id: 'EAST_CYBER_METROPOLIS',
+          reason: 'East Cyber-Metropolis is locked.',
+          remedy: 'Unlock East Cyber-Metropolis from City Tools or choose a West Core parcel.'
+        };
       } catch (error) {
         console.warn('City editor economy district check failed; placement blocked for safety.', error);
-        return false;
+        return {
+          allowed: false,
+          reason: 'District access could not be verified.',
+          remedy: 'Choose a known unlocked parcel and retry.'
+        };
       }
     }
 
@@ -704,13 +929,25 @@ export class CityEditorSystem {
           ['canBuildAt', 'isDistrictUnlockedAt', 'canPlaceBuilding'],
           [x, z, spec, context]
         );
-        if (result.called && result.value === false) return false;
+        if (result.called && result.value === false) return {
+          allowed: false,
+          reason: 'The city plan restricts development on this parcel.',
+          remedy: 'Choose an unlocked district or complete its prerequisite objective.'
+        };
       } catch (error) {
         console.warn('City editor district check failed; placement blocked for safety.', error);
-        return false;
+        return {
+          allowed: false,
+          reason: 'District access could not be verified.',
+          remedy: 'Choose a known unlocked parcel and retry.'
+        };
       }
     }
-    return true;
+    return { allowed: true, id: null, reason: null, remedy: null };
+  }
+
+  isDistrictUnlocked(x, z, spec = this.selectedSpec) {
+    return this.getDistrictAccess(x, z, spec).allowed;
   }
 
   getPlacementCost(spec = this.selectedSpec) {
@@ -751,40 +988,183 @@ export class CityEditorSystem {
     return availableCredits == null || availableCredits >= cost;
   }
 
-  chargeForPlacement(spec) {
-    const cost = this.getPlacementCost(spec);
-    if (cost <= 0) return true;
-    const context = {
-      source: 'building-placement',
-      referenceId: spec?.id || null,
-      reason: 'building-placement',
-      spec,
-      editor: this
-    };
-    const controllers = [this.getEconomyController(), this.app.gameManager].filter(Boolean);
-    for (const controller of controllers) {
-      const result = callOptional(controller, ['spendCredits', 'spend', 'debit'], [cost, context]);
-      if (result.called) return result.value !== false;
-    }
-    return true;
-  }
-
-  refundPlacement(spec, building, amount = this.getPlacementCost(spec)) {
+  addEconomyAdjustmentStep(transaction, {
+    direction,
+    amount,
+    spec,
+    building = null,
+    source
+  }) {
     if (amount <= 0) return false;
+    const controller = [this.getEconomyController(), this.app.gameManager]
+      .find(candidate => candidate && (
+        findOptionalMethod(candidate, direction === 'DEBIT'
+          ? ['spendCredits', 'spend', 'debit']
+          : ['refundCredits', 'refund', 'credit', 'earn'])
+      ));
+    if (!controller) return false;
+    const debit = findOptionalMethod(controller, ['spendCredits', 'spend', 'debit']);
+    const credit = findOptionalMethod(controller, ['refundCredits', 'refund', 'credit', 'earn']);
+    if (!debit || !credit) throw new Error('Economy controller does not support reversible world edits');
     const context = {
-      source: 'building-refund',
+      source,
       referenceId: building?.economyId || building?.id || spec?.id || null,
-      reason: 'building-refund',
+      reason: source,
       spec,
       building,
       editor: this
     };
-    const controllers = [this.getEconomyController(), this.app.gameManager].filter(Boolean);
-    for (const controller of controllers) {
-      const result = callOptional(controller, ['refundCredits', 'refund', 'credit', 'earn'], [amount, context]);
-      if (result.called) return result.value !== false;
+    let adjusted = false;
+    return direction === 'DEBIT'
+      ? transaction.step('debit treasury', () => {
+        const result = debit(amount, context);
+        adjusted = result !== false;
+        return result;
+      }, () => {
+        if (adjusted) credit(amount, { ...context, source: `${source}-rollback` });
+      })
+      : transaction.step('credit treasury', () => {
+        const result = credit(amount, context);
+        adjusted = result !== false;
+        return result;
+      }, () => {
+        if (!adjusted) return;
+        if (debit(amount, { ...context, source: `${source}-rollback` }) === false) {
+          throw new Error('Treasury rejected refund rollback');
+        }
+      });
+  }
+
+  addOptionalParticipantStep(transaction, {
+    label,
+    participant,
+    applyMethods,
+    compensateMethods,
+    applyArgs,
+    compensateArgs
+  }) {
+    const apply = findOptionalMethod(participant, applyMethods);
+    if (!apply) return false;
+    const compensate = findOptionalMethod(participant, compensateMethods);
+    if (!compensate) throw new Error(`${label} participant does not expose a rollback operation`);
+    transaction.step(label, () => apply(...applyArgs), () => compensate(...compensateArgs));
+    return true;
+  }
+
+  registerStructureInTransaction(transaction, building, spec, reason = 'building-placement') {
+    const economy = this.getEconomyController();
+    if (typeof economy?.registerBuilding === 'function') {
+      const record = this.createEconomyBuildingRecord(building, spec);
+      let registered = false;
+      building.economyRecord = transaction.step(
+        'register economy building',
+        () => {
+          const result = economy.registerBuilding(record);
+          registered = true;
+          return result;
+        },
+        () => {
+          if (registered) economy.removeBuilding?.(record.id);
+        }
+      );
     }
-    return false;
+    const context = { reason, building, spec, editor: this };
+    this.addOptionalParticipantStep(transaction, {
+      label: 'register game structure',
+      participant: this.app.gameManager,
+      applyMethods: ['registerPlacedStructure'],
+      compensateMethods: ['removePlacedStructure'],
+      applyArgs: [building, spec, context],
+      compensateArgs: [building, spec, context]
+    });
+    this.addOptionalParticipantStep(transaction, {
+      label: 'register city simulation structure',
+      participant: this.app.citySimulation,
+      applyMethods: ['registerPlacedStructure', 'registerBuilding'],
+      compensateMethods: ['removePlacedStructure', 'unregisterBuilding'],
+      applyArgs: [building, spec, context],
+      compensateArgs: [building, spec, context]
+    });
+    if (spec.generatorType === 'ROAD_SEGMENT') {
+      this.addOptionalParticipantStep(transaction, {
+        label: 'register traffic road',
+        participant: this.app.trafficSystem,
+        applyMethods: ['registerRoadSegment'],
+        compensateMethods: ['unregisterRoadSegment'],
+        applyArgs: [building, spec, context],
+        compensateArgs: [building, spec, context]
+      });
+    }
+  }
+
+  unregisterStructureInTransaction(transaction, building, spec, reason = 'building-demolition') {
+    const context = { reason, building, spec, editor: this };
+    if (spec?.generatorType === 'ROAD_SEGMENT') {
+      this.addOptionalParticipantStep(transaction, {
+        label: 'unregister traffic road',
+        participant: this.app.trafficSystem,
+        applyMethods: ['unregisterRoadSegment'],
+        compensateMethods: ['registerRoadSegment'],
+        applyArgs: [building, spec, context],
+        compensateArgs: [building, spec, context]
+      });
+    }
+    this.addOptionalParticipantStep(transaction, {
+      label: 'unregister city simulation structure',
+      participant: this.app.citySimulation,
+      applyMethods: ['removePlacedStructure', 'unregisterBuilding'],
+      compensateMethods: ['registerPlacedStructure', 'registerBuilding'],
+      applyArgs: [building, spec, context],
+      compensateArgs: [building, spec, context]
+    });
+    this.addOptionalParticipantStep(transaction, {
+      label: 'unregister game structure',
+      participant: this.app.gameManager,
+      applyMethods: ['removePlacedStructure'],
+      compensateMethods: ['registerPlacedStructure'],
+      applyArgs: [building, spec, context],
+      compensateArgs: [building, spec, context]
+    });
+    const economy = this.getEconomyController();
+    const economyId = building.economyId || building.id;
+    if (economyId && typeof economy?.removeBuilding === 'function') {
+      let previousRecord = null;
+      transaction.step(
+        'unregister economy building',
+        () => {
+          previousRecord = economy.removeBuilding(economyId);
+          return previousRecord || true;
+        },
+        () => {
+          if (previousRecord && !economy.getBuilding?.(economyId)) {
+            building.economyRecord = economy.registerBuilding(previousRecord);
+          }
+        }
+      );
+    }
+  }
+
+  detachBuilding(building, { dispose = false } = {}) {
+    if (!building) return false;
+    this.scene.remove(building.group);
+    const buildings = this.app.buildingFactory?.buildings || [];
+    const index = buildings.indexOf(building);
+    if (index >= 0) buildings.splice(index, 1);
+    if (building.baseBox) this.app.inspectorHud?.unregisterObject(building.baseBox);
+    if (dispose) this.disposeBuildingResources(building);
+    return true;
+  }
+
+  disposeBuildingResources(building) {
+    const geometries = new Set();
+    const materials = new Set();
+    building?.group?.traverse?.(child => {
+      if (child.geometry) geometries.add(child.geometry);
+      const childMaterials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of childMaterials) if (material) materials.add(material);
+    });
+    for (const geometry of geometries) geometry.dispose?.();
+    for (const material of materials) material.dispose?.();
   }
 
   createEconomyBuildingRecord(building, spec) {
@@ -802,37 +1182,6 @@ export class CityEditorSystem {
       Number(match[1]) + 1
     );
     return this.nextUserBuildingId;
-  }
-
-  notifyStructureRegistered(building, spec) {
-    const context = { reason: 'building-placement', building, spec, editor: this };
-    const economy = this.getEconomyController();
-    if (typeof economy?.registerBuilding === 'function') {
-      building.economyRecord = economy.registerBuilding(this.createEconomyBuildingRecord(building, spec));
-    }
-
-    callOptional(this.app.gameManager, ['registerPlacedStructure'], [building, spec, context]);
-    callOptional(this.app.citySimulation, ['registerPlacedStructure', 'registerBuilding'], [building, spec, context]);
-    if (spec.generatorType === 'ROAD_SEGMENT') {
-      callOptional(this.app.trafficSystem, ['registerRoadSegment'], [building, spec, context]);
-    }
-    return true;
-  }
-
-  notifyStructureRemoved(building, spec) {
-    const context = { reason: 'building-demolition', building, spec, editor: this };
-    const economy = this.getEconomyController();
-    const economyId = building.economyId || building.id;
-    if (economyId && typeof economy?.removeBuilding === 'function') {
-      economy.removeBuilding(economyId);
-    }
-
-    callOptional(this.app.gameManager, ['removePlacedStructure'], [building, spec, context]);
-    callOptional(this.app.citySimulation, ['removePlacedStructure', 'unregisterBuilding'], [building, spec, context]);
-    if (spec?.generatorType === 'ROAD_SEGMENT') {
-      callOptional(this.app.trafficSystem, ['unregisterRoadSegment'], [building, spec, context]);
-    }
-    return true;
   }
 
   onPointerDown(event) {
@@ -864,59 +1213,100 @@ export class CityEditorSystem {
 
   moveSelectedStructureToCurrentHit() {
     const building = this.selectedStructure;
-    if (!building || !this.currentHit.valid) {
-      this.app.uiManager?.showToast('⚠️ Choose a valid, unoccupied destination.');
+    if (!building) {
+      this.app.uiManager?.showToast('⚠️ Select a user-built structure first.');
       return false;
     }
-    if (!this.checkPlacementValidity(this.currentHit.x, this.currentHit.z, this.currentHit.y, building)) {
-      this.app.uiManager?.showToast('⚠️ That destination is blocked or outside the unlocked city.');
+    const validation = this.getPlacementValidation({
+      spec: building.spec,
+      rotationY: building.group.rotation?.y || 0,
+      x: this.currentHit.x,
+      y: this.currentHit.y,
+      z: this.currentHit.z,
+      ignoreBuilding: building
+    });
+    if (!validation.valid) {
+      this.currentHit.validation = validation;
+      this.currentHit.valid = false;
+      this.publishPlacementValidation(validation);
+      this.app.uiManager?.showToast(`⚠️ ${validation.primaryBlocker.message} ${validation.primaryBlocker.remedy}`);
       return false;
     }
 
-    if (building.spec?.generatorType === 'ROAD_SEGMENT') {
-      this.app.trafficSystem?.unregisterRoadSegment?.(building, building.spec);
-    }
     const economy = this.getEconomyController();
     const previousPlot = { ...building.plot };
     const previousEconomyRecord = building.economyId && economy?.getBuilding
       ? economy.getBuilding(building.economyId)
       : building.economyRecord;
     try {
-      if (building.economyId && economy?.removeBuilding) economy.removeBuilding(building.economyId);
-      building.group.position.set(this.currentHit.x, this.currentHit.y, this.currentHit.z);
-      building.plot.x = this.currentHit.x;
-      building.plot.y = this.currentHit.y;
-      building.plot.z = this.currentHit.z;
-      if (building.physicsBody?.position) {
-        const height = building.spec?.height || building.height || 30;
-        building.physicsBody.position.set(this.currentHit.x, this.currentHit.y + height * 0.5, this.currentHit.z);
-      }
-      if (economy?.registerBuilding) {
-        building.economyRecord = economy.registerBuilding(this.createEconomyBuildingRecord(building, building.spec));
-      }
-      if (building.spec?.generatorType === 'ROAD_SEGMENT') {
-        this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
-      }
+      runWorldEditTransaction('move-structure', transaction => {
+        if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+          this.addOptionalParticipantStep(transaction, {
+            label: 'detach old traffic road',
+            participant: this.app.trafficSystem,
+            applyMethods: ['unregisterRoadSegment'],
+            compensateMethods: ['registerRoadSegment'],
+            applyArgs: [building, building.spec],
+            compensateArgs: [building, building.spec]
+          });
+        }
+        if (building.economyId && economy?.removeBuilding) {
+          transaction.step(
+            'detach old economy record',
+            () => economy.removeBuilding(building.economyId) || true,
+            () => {
+              if (previousEconomyRecord && !economy.getBuilding?.(building.economyId)) {
+                building.economyRecord = economy.registerBuilding(previousEconomyRecord);
+              }
+            }
+          );
+        }
+        transaction.step('move world and physics transforms', () => {
+          building.group.position.set(this.currentHit.x, this.currentHit.y, this.currentHit.z);
+          building.plot.x = this.currentHit.x;
+          building.plot.y = this.currentHit.y;
+          building.plot.z = this.currentHit.z;
+          if (building.physicsBody?.position) {
+            const height = building.spec?.height || building.height || 30;
+            building.physicsBody.position.set(this.currentHit.x, this.currentHit.y + height * 0.5, this.currentHit.z);
+            building.physicsBody.aabbNeedsUpdate = true;
+          }
+          return true;
+        }, () => {
+          building.group.position.set(previousPlot.x, previousPlot.y, previousPlot.z);
+          Object.assign(building.plot, previousPlot);
+          if (building.physicsBody?.position) {
+            const height = building.spec?.height || building.height || 30;
+            building.physicsBody.position.set(previousPlot.x, previousPlot.y + height * 0.5, previousPlot.z);
+            building.physicsBody.aabbNeedsUpdate = true;
+          }
+        });
+        if (economy?.registerBuilding) {
+          transaction.step('attach moved economy record', () => {
+            building.economyRecord = economy.registerBuilding(this.createEconomyBuildingRecord(building, building.spec));
+            return building.economyRecord;
+          }, () => economy.removeBuilding?.(building.economyId));
+        }
+        if (building.spec?.generatorType === 'ROAD_SEGMENT') {
+          this.addOptionalParticipantStep(transaction, {
+            label: 'attach moved traffic road',
+            participant: this.app.trafficSystem,
+            applyMethods: ['registerRoadSegment'],
+            compensateMethods: ['unregisterRoadSegment'],
+            applyArgs: [building, building.spec],
+            compensateArgs: [building, building.spec]
+          });
+        }
+      });
     } catch (error) {
       console.error('City editor move failed; restoring the previous structure state.', error);
-      building.group.position.set(previousPlot.x, previousPlot.y, previousPlot.z);
-      Object.assign(building.plot, previousPlot);
-      if (building.physicsBody?.position) {
-        const height = building.spec?.height || building.height || 30;
-        building.physicsBody.position.set(previousPlot.x, previousPlot.y + height * 0.5, previousPlot.z);
-      }
-      if (previousEconomyRecord && economy?.registerBuilding && !economy.getBuilding?.(previousEconomyRecord.id)) {
-        building.economyRecord = economy.registerBuilding(previousEconomyRecord);
-      }
-      if (building.spec?.generatorType === 'ROAD_SEGMENT') {
-        this.app.trafficSystem?.registerRoadSegment?.(building, building.spec);
-      }
       this.app.uiManager?.showToast('⚠️ Move failed; the structure was restored safely.');
       return false;
     }
     this.selectionHelper?.update?.();
     this.app.uiManager?.addAlert?.(`✥ Moved ${building.name} to ${Math.round(building.plot.x)}, ${Math.round(building.plot.z)}.`, 'success');
     this.app.saveService?.scheduleSave?.('world-edit');
+    this.refreshCurrentPlacementValidation();
     return true;
   }
 
@@ -1103,40 +1493,62 @@ export class CityEditorSystem {
         return false;
       }
 
-      try {
-        this.notifyStructureRemoved(building, building.spec);
-      } catch (error) {
-        console.error('City editor could not unregister the structure.', error);
-        this.app.uiManager?.showToast('⚠️ Demolition cancelled: city simulation rejected the change');
-        return false;
-      }
-
-      this.scene.remove(building.group);
-      building.isDestroyed = true;
-      if (building.physicsBody && this.app.physicsWorld) {
-        this.app.physicsWorld.world.removeBody(building.physicsBody);
-        const staticIndex = this.app.physicsWorld.staticBodies?.indexOf(building.physicsBody) ?? -1;
-        if (staticIndex >= 0) this.app.physicsWorld.staticBodies.splice(staticIndex, 1);
-      }
-      if (building.baseBox) this.app.inspectorHud?.unregisterObject(building.baseBox);
-
-      buildings.splice(index, 1);
-
       const refundRate = Number.isFinite(Number(building.spec?.refundRate))
         ? Math.max(0, Math.min(1, Number(building.spec.refundRate)))
         : 0.5;
       const refundAmount = Math.round(this.getPlacementCost(building.spec) * refundRate);
-      const refundApplied = this.refundPlacement(building.spec, building, refundAmount);
-
-      building.group.traverse(child => {
-        if (!child.isMesh) return;
-        child.geometry?.dispose();
-        if (Array.isArray(child.material)) child.material.forEach(material => material.dispose());
-        else child.material?.dispose();
-      });
+      const originalIndex = index;
+      const previousDestroyed = building.isDestroyed;
+      try {
+        runWorldEditTransaction('demolish-structure', transaction => {
+          this.unregisterStructureInTransaction(transaction, building, building.spec);
+          if (building.physicsBody && this.app.physicsWorld) {
+            transaction.step(
+              'remove physics collider',
+              () => {
+                this.app.physicsWorld.removeStaticCollider(building.physicsBody);
+                return true;
+              },
+              () => this.app.physicsWorld.restoreStaticCollider(building.physicsBody)
+            );
+          }
+          if (building.baseBox && this.app.inspectorHud) {
+            transaction.step(
+              'unregister inspector target',
+              () => {
+                this.app.inspectorHud.unregisterObject(building.baseBox);
+                return true;
+              },
+              () => this.app.inspectorHud.registerObject(building.baseBox, building)
+            );
+          }
+          transaction.step('remove rendered structure', () => {
+            this.scene.remove(building.group);
+            buildings.splice(originalIndex, 1);
+            building.isDestroyed = true;
+            return true;
+          }, () => {
+            building.isDestroyed = previousDestroyed;
+            if (!buildings.includes(building)) buildings.splice(Math.min(originalIndex, buildings.length), 0, building);
+            this.scene.add(building.group);
+          });
+          this.addEconomyAdjustmentStep(transaction, {
+            direction: 'CREDIT',
+            amount: refundAmount,
+            spec: building.spec,
+            building,
+            source: 'building-salvage'
+          });
+        });
+      } catch (error) {
+        console.error('City editor demolition failed; restoring the structure.', error);
+        this.app.uiManager?.showToast('⚠️ Demolition failed; the structure was restored safely.');
+        return false;
+      }
+      this.disposeBuildingResources(building);
 
       this.app.uiManager?.showToast(
-        `🗑️ Demolished: ${building.name}${refundApplied ? ` (+$${refundAmount.toLocaleString()} salvage)` : ''}`
+        `🗑️ Demolished: ${building.name}${refundAmount > 0 ? ` (+$${refundAmount.toLocaleString()} salvage)` : ''}`
       );
       this.clearStructureSelection();
       this.app.saveService?.scheduleSave?.('world-edit');
@@ -1146,31 +1558,24 @@ export class CityEditorSystem {
   }
 
   placeSelectedBuilding() {
-    if (!this.selectedSpec || !this.currentHit.valid || !this.app.buildingFactory?.placeUserBuilding) {
-      this.app.uiManager?.showToast('⚠️ Cannot place structure here: blocked, underwater, locked, or out of bounds');
+    if (!this.selectedSpec || !this.app.buildingFactory?.placeUserBuilding) {
+      this.app.uiManager?.showToast('⚠️ Select an available construction blueprint first.');
       return false;
     }
 
-    const access = this.getBuildingAccess(this.selectedSpec);
-    if (!access.unlocked) {
-      this.app.uiManager?.showToast(`🔒 ${this.selectedSpec.name}: ${access.reason}`);
-      return false;
-    }
-
-    const validNow = this.checkPlacementValidity(this.currentHit.x, this.currentHit.z, this.currentHit.y);
-    if (!validNow) {
+    const validation = this.getPlacementValidation({
+      spec: this.selectedSpec,
+      rotationY: this.rotationY,
+      x: this.currentHit.x,
+      y: this.currentHit.y,
+      z: this.currentHit.z
+    });
+    this.currentHit.validation = validation;
+    this.publishPlacementValidation(validation);
+    if (!validation.valid) {
       this.currentHit.valid = false;
       this.updateGhostValidityAppearance(false);
-      this.app.uiManager?.showToast('⚠️ Placement is no longer valid');
-      return false;
-    }
-
-    if (!this.canAfford(this.selectedSpec)) {
-      this.app.uiManager?.showToast(`💳 Insufficient credits for ${this.selectedSpec.name}`);
-      return false;
-    }
-    if (!this.chargeForPlacement(this.selectedSpec)) {
-      this.app.uiManager?.showToast('💳 The city treasury rejected this purchase');
+      this.app.uiManager?.showToast(`⚠️ ${validation.primaryBlocker.message} ${validation.primaryBlocker.remedy}`);
       return false;
     }
 
@@ -1185,41 +1590,39 @@ export class CityEditorSystem {
 
     let building = null;
     try {
-      building = this.app.buildingFactory.placeUserBuilding(plot, this.selectedSpec, this.rotationY);
-      if (!building) throw new Error('Building factory returned no structure');
-      building.plot.width = footprint.width;
-      building.plot.depth = footprint.depth;
+      runWorldEditTransaction('place-structure', transaction => {
+        this.addEconomyAdjustmentStep(transaction, {
+          direction: 'DEBIT',
+          amount: validation.preview.cost,
+          spec: this.selectedSpec,
+          source: 'building-placement'
+        });
+        building = transaction.step('create rendered structure', () => {
+          const created = this.app.buildingFactory.placeUserBuilding(plot, this.selectedSpec, this.rotationY);
+          if (!created) throw new Error('Building factory returned no structure');
+          building = created;
+          created.plot.width = footprint.width;
+          created.plot.depth = footprint.depth;
+          return created;
+        }, created => this.detachBuilding(created || building, { dispose: true }));
 
-      const generatorType = this.selectedSpec.generatorType;
-      if (this.app.physicsWorld && generatorType !== 'ROAD_SEGMENT' && generatorType !== 'PARK_PLAZA') {
-        const height = this.selectedSpec.height || 30;
-        building.physicsBody = this.app.physicsWorld.addStaticBoxCollider(
-          new THREE.Vector3(plot.x, plot.y + height * 0.5, plot.z),
-          new THREE.Vector3(Math.max(1, plot.width - 2), height, Math.max(1, plot.depth - 2))
-        );
-      }
-
-      this.notifyStructureRegistered(building, this.selectedSpec);
+        const generatorType = this.selectedSpec.generatorType;
+        if (this.app.physicsWorld && generatorType !== 'ROAD_SEGMENT' && generatorType !== 'PARK_PLAZA') {
+          const height = this.selectedSpec.height || 30;
+          building.physicsBody = transaction.step(
+            'create physics collider',
+            () => this.app.physicsWorld.addStaticBoxCollider(
+              new THREE.Vector3(plot.x, plot.y + height * 0.5, plot.z),
+              new THREE.Vector3(Math.max(1, plot.width - 2), height, Math.max(1, plot.depth - 2))
+            ),
+            body => this.app.physicsWorld.removeStaticCollider(body || building?.physicsBody)
+          );
+        }
+        this.registerStructureInTransaction(transaction, building, this.selectedSpec);
+      });
     } catch (error) {
       console.error('City editor placement failed.', error);
-      if (building) {
-        try {
-          this.notifyStructureRemoved(building, this.selectedSpec);
-        } catch (rollbackError) {
-          console.error('City editor economy rollback failed.', rollbackError);
-        }
-        if (building.physicsBody && this.app.physicsWorld) {
-          this.app.physicsWorld.world.removeBody(building.physicsBody);
-          const staticIndex = this.app.physicsWorld.staticBodies?.indexOf(building.physicsBody) ?? -1;
-          if (staticIndex >= 0) this.app.physicsWorld.staticBodies.splice(staticIndex, 1);
-        }
-        const buildingIndex = this.app.buildingFactory.buildings?.indexOf(building) ?? -1;
-        if (buildingIndex >= 0) this.app.buildingFactory.buildings.splice(buildingIndex, 1);
-        if (building.baseBox) this.app.inspectorHud?.unregisterObject(building.baseBox);
-      }
-      this.refundPlacement(this.selectedSpec, building, this.getPlacementCost(this.selectedSpec));
-      if (building?.group) this.scene.remove(building.group);
-      this.app.uiManager?.showToast('⚠️ Construction failed; purchase was refunded');
+      this.app.uiManager?.showToast('⚠️ Construction failed; the world edit was rolled back safely.');
       return false;
     }
 
@@ -1231,8 +1634,7 @@ export class CityEditorSystem {
     this.app.uiManager?.addAlert?.(`🏗️ New structure registered: ${this.selectedSpec.name}`, 'success');
     this.app.saveService?.scheduleSave?.('world-edit');
 
-    this.currentHit.valid = this.checkPlacementValidity(plot.x, plot.z, plot.y);
-    this.updateGhostValidityAppearance(this.currentHit.valid);
+    this.refreshCurrentPlacementValidation();
     return true;
   }
 

@@ -2976,7 +2976,7 @@ input:checked + .slider.round:before {
   bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 960px;
+  width: 1120px;
   max-width: calc(100vw - 360px);
   background: rgba(11, 16, 32, 0.92);
   border: 1px solid rgba(0, 240, 255, 0.25);
@@ -3293,7 +3293,7 @@ input:checked + .slider.round:before {
 
 /* Right Side Blueprint Preview Card */
 .blueprint-preview-panel {
-  width: 210px;
+  width: 300px;
   flex-shrink: 0;
   background: rgba(14, 21, 40, 0.9);
   border: 1px solid rgba(0, 240, 255, 0.25);
@@ -3348,6 +3348,73 @@ input:checked + .slider.round:before {
   color: #b6c8dc;
   font: 600 0.68rem/1.35 'JetBrains Mono', monospace;
   text-align: center;
+}
+
+.placement-forecast {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font: 600 0.64rem/1.3 'JetBrains Mono', monospace;
+}
+
+.placement-forecast > div {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.placement-forecast dt {
+  color: #8293aa;
+}
+
+.placement-forecast dd {
+  margin: 0;
+  color: #e2e8f0;
+  overflow-wrap: anywhere;
+}
+
+.placement-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 9px;
+  background: rgba(30, 41, 59, 0.55);
+  color: #cbd5e1;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.placement-decision strong {
+  color: #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.placement-decision.is-valid {
+  border-color: rgba(0, 255, 136, 0.55);
+  background: rgba(0, 90, 55, 0.3);
+}
+
+.placement-decision.is-valid strong,
+.placement-decision.is-valid .placement-remedy {
+  color: #6ee7b7;
+}
+
+.placement-decision.is-blocked {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: rgba(127, 29, 29, 0.3);
+}
+
+.placement-decision.is-blocked strong {
+  color: #fca5a5;
+}
+
+.placement-remedy {
+  color: #fcd34d;
 }
 
 .place-building-btn {
@@ -3769,6 +3836,10 @@ input[type="range"]:focus-visible {
 
   .tray-body-grid {
     flex-direction: column;
+  }
+
+  .blueprint-preview-panel {
+    width: auto;
   }
 
   .tray-cards-container {

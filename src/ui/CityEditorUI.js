@@ -5,6 +5,7 @@ import {
   getDefaultBuildingSpec
 } from '../world/BuildingCatalog.js';
 import { GAME_STATES } from '../core/GameManager.js';
+import { createPlacementPreview } from '../world/PlacementIntelligence.js';
 import { createTextElement } from './dom.js';
 
 export class CityEditorUI {
@@ -23,11 +24,16 @@ export class CityEditorUI {
     this.affordabilityRefreshTimer = null;
 
     this.initDOM();
+    this.unsubscribePlacement = this.app.cityEditorSystem?.subscribePlacementValidation?.(
+      validation => this.updatePlacementDecision(validation),
+      { emitCurrent: true }
+    ) || null;
     this.unsubscribeEconomy = this.app.economySystem?.subscribe?.(() => {
       if (!this.isVisible || this.affordabilityRefreshTimer) return;
       this.affordabilityRefreshTimer = setTimeout(() => {
         this.affordabilityRefreshTimer = null;
         if (!this.isVisible) return;
+        this.app.cityEditorSystem?.refreshCurrentPlacementValidation?.();
         this.renderCatalog();
         this.refreshAffordability();
       }, 250);
@@ -93,6 +99,21 @@ export class CityEditorUI {
               <div class="blueprint-hologram-label" id="blueprint-name">NeoTech Quantum Tower</div>
               <div class="blueprint-hologram-label" id="blueprint-price" aria-live="polite"></div>
               <div class="blueprint-impact" id="blueprint-impact"></div>
+            </div>
+            <dl class="placement-forecast" aria-label="Placement forecast">
+              <div><dt>Operating</dt><dd id="placement-operating">—</dd></div>
+              <div><dt>Net cashflow</dt><dd id="placement-cashflow">—</dd></div>
+              <div><dt>Payback</dt><dd id="placement-payback">—</dd></div>
+              <div><dt>Capacity</dt><dd id="placement-capacity">—</dd></div>
+              <div><dt>Demand</dt><dd id="placement-demand">—</dd></div>
+              <div><dt>Services</dt><dd id="placement-services">—</dd></div>
+              <div><dt>Community</dt><dd id="placement-community">—</dd></div>
+              <div><dt>Risk</dt><dd id="placement-risk">—</dd></div>
+            </dl>
+            <div class="placement-decision is-pending" id="placement-decision" role="status" aria-live="polite">
+              <strong id="placement-decision-title">Move over the map</strong>
+              <span id="placement-decision-message">Choose a parcel to validate access and construction requirements.</span>
+              <span class="placement-remedy" id="placement-decision-remedy"></span>
             </div>
             <button class="place-building-btn" id="btn-place-building">
               <span>📦</span>
@@ -425,7 +446,73 @@ export class CityEditorUI {
       impacts.push(`${cashflow >= 0 ? '📈 +' : '📉 −'}$${Math.abs(cashflow).toLocaleString()}/min`);
       impactEl.textContent = impacts.join(' · ');
     }
+    const economySnapshot = this.app.economySystem?.snapshot?.() || {};
+    const preview = createPlacementPreview(spec, economySnapshot, {
+      availableCredits: this.app.cityEditorSystem?.getAvailableCredits?.() ?? null
+    });
+    this.updatePlacementForecast(preview);
+    const currentValidation = this.app.cityEditorSystem?.currentHit?.validation;
+    this.updatePlacementDecision(currentValidation?.preview?.specId === spec.id ? currentValidation : null);
     this.refreshAffordability(spec);
+  }
+
+  updatePlacementForecast(preview) {
+    if (!preview || !this.container) return;
+    const signedMoney = value => `${value >= 0 ? '+' : '−'}$${Math.abs(value).toLocaleString('en-US')}/min`;
+    const capacity = [
+      preview.capacity.residents ? `${preview.capacity.residents.toLocaleString('en-US')} residents` : null,
+      preview.capacity.jobs ? `${preview.capacity.jobs.toLocaleString('en-US')} jobs` : null,
+      preview.capacity.traffic ? `${preview.capacity.traffic.toLocaleString('en-US')} traffic` : null
+    ].filter(Boolean).join(' · ') || 'No direct capacity';
+    const services = Object.entries(preview.serviceEffect)
+      .filter(([, state]) => state.capacityDelta || state.demandDelta)
+      .map(([service, state]) => {
+        const delta = state.capacityDelta - state.demandDelta;
+        return `${service} ${delta >= 0 ? '+' : '−'}${Math.abs(delta)}`;
+      }).join(' · ') || 'No service load';
+    const community = `Happiness ${preview.happiness >= 0 ? '+' : ''}${preview.happiness} · Land ${preview.landValue >= 0 ? '+' : ''}${preview.landValue.toFixed(1)}`;
+    const values = {
+      '#placement-operating': `$${preview.operatingCost.toLocaleString('en-US')}/min`,
+      '#placement-cashflow': signedMoney(preview.netCashflow),
+      '#placement-payback': preview.payback.label,
+      '#placement-capacity': capacity,
+      '#placement-demand': preview.demandEffect.label,
+      '#placement-services': services,
+      '#placement-community': community,
+      '#placement-risk': preview.risks.map(risk => `${risk.level}: ${risk.label}`).join(' · ')
+    };
+    for (const [selector, text] of Object.entries(values)) {
+      const element = this.container.querySelector(selector);
+      if (element) element.textContent = text;
+    }
+  }
+
+  updatePlacementDecision(validation) {
+    if (!this.container) return;
+    if (validation?.preview) this.updatePlacementForecast(validation.preview);
+    const decision = this.container.querySelector('#placement-decision');
+    const title = this.container.querySelector('#placement-decision-title');
+    const message = this.container.querySelector('#placement-decision-message');
+    const remedy = this.container.querySelector('#placement-decision-remedy');
+    if (!decision || !title || !message || !remedy) return;
+    decision.classList.toggle('is-valid', Boolean(validation?.valid));
+    decision.classList.toggle('is-blocked', Boolean(validation && !validation.valid));
+    decision.classList.toggle('is-pending', !validation);
+    if (!validation) {
+      title.textContent = 'Move over the map';
+      message.textContent = 'Choose a parcel to validate access and construction requirements.';
+      remedy.textContent = '';
+      return;
+    }
+    if (validation.valid) {
+      title.textContent = 'Ready to construct';
+      message.textContent = `All placement checks pass at ${Math.round(validation.position.x)}, ${Math.round(validation.position.z)}.`;
+      remedy.textContent = 'Click the highlighted footprint to commit this world edit.';
+      return;
+    }
+    title.textContent = `Blocked · ${validation.primaryBlocker.code.replaceAll('_', ' ')}`;
+    message.textContent = validation.primaryBlocker.message;
+    remedy.textContent = validation.primaryBlocker.remedy;
   }
 
   refreshAffordability(spec = getBuildingSpec(this.selectedSpecId)) {
@@ -584,6 +671,7 @@ export class CityEditorUI {
     if (this.affordabilityRefreshTimer) clearTimeout(this.affordabilityRefreshTimer);
     this.unsubscribeEconomy?.();
     this.unsubscribeProgression?.();
+    this.unsubscribePlacement?.();
     this.container?.remove();
     this.container = null;
   }

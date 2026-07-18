@@ -180,20 +180,24 @@ export class PhysicsWorld {
   }
 
   removeStaticCollider(body) {
-    if (!body) return;
+    if (!body) return false;
     if (this.world.bodies.includes(body)) {
       this.world.removeBody(body);
     }
+    const index = this.staticBodies.indexOf(body);
+    if (index >= 0) this.staticBodies.splice(index, 1);
+    return true;
   }
 
   restoreStaticCollider(body) {
-    if (!body) return;
+    if (!body) return false;
     if (!this.world.bodies.includes(body)) {
       this.world.addBody(body);
     }
     if (!this.staticBodies.includes(body)) {
       this.staticBodies.push(body);
     }
+    return true;
   }
 
   addKinematicBoxCollider(position, size) {
