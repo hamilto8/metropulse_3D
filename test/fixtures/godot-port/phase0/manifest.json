@@ -1,0 +1,103 @@
+{
+  "comparisonPolicy": {
+    "doubles": "Use the per-fixture epsilon; default absolute epsilon is 1e-9.",
+    "exact": "IDs, counts, serialized names, phases, transactions, and task order must match exactly.",
+    "physics": "Compare scenario envelopes rather than frame-by-frame identity.",
+    "positions": "Default absolute position tolerance is 0.01 meters.",
+    "screenshots": "Compare semantic landmarks, layout, color, and readability rather than pixels."
+  },
+  "files": [
+    {
+      "bytes": 46773,
+      "path": "game-state.json",
+      "sha256": "5b86f75d1290fc94e8d7349af85832799405fb5f67fed628f3dd28e4f35344ce"
+    },
+    {
+      "bytes": 18611,
+      "path": "simulation-scheduler.json",
+      "sha256": "c496f735d291435845a61fc9f8c7f4c903314c8dbb39390a52cf537cf56e74de"
+    },
+    {
+      "bytes": 48022,
+      "path": "economy.json",
+      "sha256": "ce9d234c1f49e6beafb4b59cdd9e402f3299ff3f97f53751ce3e2f86dcf70bae"
+    },
+    {
+      "bytes": 52809,
+      "path": "content-registry.json",
+      "sha256": "8f30a2487a3485c55e1e9f447381124f4ac561730fb2276ff5c1559c65de00f4"
+    },
+    {
+      "bytes": 25693,
+      "path": "missions.json",
+      "sha256": "e9a2a7984b1121505e4ed3192969b85b022d392b681a81cb7f39e81ccde21914"
+    },
+    {
+      "bytes": 12243,
+      "path": "settings-bindings-alerts.json",
+      "sha256": "82f122ad5394bedd558b7db498996340605b479aa66216aef8e072934cf55528"
+    },
+    {
+      "bytes": 191324,
+      "path": "world-landmarks.json",
+      "sha256": "a3f7f9efbe463721c161bcc0bdd6d5f0a7adefe493e0e26eb173a2c1e86a1af8"
+    },
+    {
+      "bytes": 16529,
+      "path": "seeded-agents-navigation.json",
+      "sha256": "5366343d98a6e26a9790de6ba1f7fe7403067be7a30954a20192570842578c79"
+    },
+    {
+      "bytes": 4390,
+      "path": "save-valid.json",
+      "sha256": "d00c1838c953f6314251a6e6c577ff9fd6e0f96c0391018eed5b70895b280666"
+    },
+    {
+      "bytes": 4400,
+      "path": "save-recovery.json",
+      "sha256": "e4fa782fb37f298b59f68c2ed40efe3b4b28c628e43a11594f4b043bb060eb79"
+    },
+    {
+      "bytes": 4837,
+      "path": "save-controlled-entity.json",
+      "sha256": "1374905d2ce057fc34f8e6df643f6901e7b27821463fb5f18f27eceee1129223"
+    },
+    {
+      "bytes": 6441,
+      "path": "save-mid-mission.json",
+      "sha256": "e2c20b2754648e943f1709e680faf6e66d609e51370d289ec74da6350cde7370"
+    },
+    {
+      "bytes": 6942,
+      "path": "save-result.json",
+      "sha256": "4952d42195c146f087b5176ffd884366dcb53be65d1e9fbd56d9de7307c212c6"
+    },
+    {
+      "bytes": 4393,
+      "path": "save-schema-0.json",
+      "sha256": "c9a74a6f26e4d74fcee8f2bae50f591fa9e18fec4cddba03405c91b8b4cc7b35"
+    },
+    {
+      "bytes": 4393,
+      "path": "save-schema-1.json",
+      "sha256": "a390d21d416ca70c6bef6739ba351041a3194b8f072466718297c1da9777ef8a"
+    },
+    {
+      "bytes": 4392,
+      "path": "save-future.json",
+      "sha256": "e8b9f04c865951417df58286c0f550c3db44a62541288f27f2ff1f438e70234f"
+    },
+    {
+      "bytes": 3251,
+      "path": "save-corrupt.json",
+      "sha256": "48b3499f99f2858263997ad9caf92d2fa62298381e32786446cad85a292a7919"
+    },
+    {
+      "bytes": 51852,
+      "path": "save-inspection-migrations.json",
+      "sha256": "c4ae4f0d4a07a074c91bd5cc15ff4a60045e52ce2d6dc088aff0f338067834ac"
+    }
+  ],
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "schemaVersion": 1
+}

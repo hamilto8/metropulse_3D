@@ -1,0 +1,1655 @@
+{
+  "comparison": {
+    "epsilon": 1e-9,
+    "mode": "absolute"
+  },
+  "data": {
+    "initial": {
+      "budget": 650000,
+      "budgetBreakdown": {
+        "adjustedRevenueRate": 8,
+        "baseRevenueRate": 8,
+        "buildingRevenueRate": 0,
+        "grossRevenueRate": 8,
+        "managementCostRate": 0,
+        "mobilityProductivityMultiplier": 1,
+        "netRate": 8,
+        "operatingCostRate": 0,
+        "productivityMultiplier": 1,
+        "utilityProductivityMultiplier": 1
+      },
+      "buildings": [],
+      "cash": 650000,
+      "cityPulse": {
+        "accessibleEmployment": 100,
+        "budget": 650000,
+        "cash": 650000,
+        "deliveryReliability": 100,
+        "employees": 0,
+        "employment": 100,
+        "energy": 100,
+        "energySurplus": 0,
+        "fiscalStatus": "STABLE",
+        "happiness": 70,
+        "housingOccupancy": 100,
+        "landValue": 100,
+        "netIncomeRate": 8,
+        "population": 1200,
+        "productivity": 100,
+        "serviceHealth": 100,
+        "totalBuildingValue": 0,
+        "trafficCongestion": 0,
+        "unemployment": 0
+      },
+      "completedMissions": [],
+      "demand": {
+        "commercial": 29,
+        "operations": 0,
+        "residential": 57,
+        "services": 0
+      },
+      "demographics": {
+        "accessibleEmployed": 744,
+        "accessibleEmploymentRate": 1,
+        "availableJobs": 0,
+        "employed": 744,
+        "employmentRate": 1,
+        "housingCapacity": 1200,
+        "housingOccupancy": 1,
+        "jobCapacity": 0,
+        "population": 1200,
+        "unemploymentRate": 0,
+        "workforce": 744
+      },
+      "districts": {
+        "EAST_CYBER_METROPOLIS": {
+          "id": "EAST_CYBER_METROPOLIS",
+          "name": "East Cyber-Metropolis",
+          "unlockCost": 1000000,
+          "unlocked": false
+        }
+      },
+      "energy": 100,
+      "fiscal": {
+        "actions": [
+          "Keep a reserve before adding new recurring costs."
+        ],
+        "active": false,
+        "assistanceClaims": 0,
+        "assistanceEligible": false,
+        "completedAtRevision": null,
+        "completedRecoveries": 0,
+        "emergencyGrant": 100000,
+        "explanation": "Recurring revenue covers upkeep and policy costs.",
+        "label": "Stable",
+        "lastAssistanceRevision": null,
+        "reserveFloor": 25000,
+        "restrictions": [],
+        "restrictionsActive": false,
+        "runwayMinutes": null,
+        "startedAtRevision": null,
+        "status": "STABLE",
+        "totalAssistance": 0,
+        "warningRunwayMinutes": 10
+      },
+      "fiscalStatus": "STABLE",
+      "happiness": 70,
+      "happinessBreakdown": {
+        "baseline": 70,
+        "buildings": 0,
+        "employment": 0,
+        "incidents": 0,
+        "services": 0,
+        "total": 70,
+        "traffic": 0,
+        "zoning": 0
+      },
+      "incidents": [],
+      "landValue": 100,
+      "mobility": {
+        "bridgeCongestion": 0,
+        "congestion": 0,
+        "deliveryReliability": 1,
+        "explanation": [],
+        "jobAccessMultiplier": 1,
+        "managementCostRate": 0,
+        "productivityMultiplier": 1,
+        "revision": 0,
+        "satisfactionModifier": 0
+      },
+      "narrativeProgress": 0,
+      "operatingCostRate": 0,
+      "passiveIncomeRate": 8,
+      "population": 1200,
+      "reputation": 0,
+      "revision": 0,
+      "services": {
+        "fire": {
+          "adequate": true,
+          "capacity": 0,
+          "coverage": 1,
+          "demand": 0,
+          "surplus": 0
+        },
+        "power": {
+          "adequate": true,
+          "capacity": 0,
+          "coverage": 1,
+          "demand": 0,
+          "surplus": 0
+        },
+        "water": {
+          "adequate": true,
+          "capacity": 0,
+          "coverage": 1,
+          "demand": 0,
+          "surplus": 0
+        }
+      },
+      "treasury": 650000,
+      "unlockedDistricts": [],
+      "zones": []
+    },
+    "landValueQueries": [
+      {
+        "amenityModifier": 20,
+        "baseLandValue": 200,
+        "globalModifier": 0,
+        "landValue": 154.375,
+        "mayhemModifier": -30,
+        "serviceMultiplier": 0.8125,
+        "x": 0,
+        "z": 0
+      },
+      {
+        "amenityModifier": 15,
+        "baseLandValue": 200,
+        "globalModifier": 0,
+        "landValue": 162.5,
+        "mayhemModifier": -15,
+        "serviceMultiplier": 0.8125,
+        "x": 25,
+        "z": 0
+      },
+      {
+        "amenityModifier": 5,
+        "baseLandValue": 200,
+        "globalModifier": 0,
+        "landValue": 166.5625,
+        "mayhemModifier": 0,
+        "serviceMultiplier": 0.8125,
+        "x": 75,
+        "z": 0
+      },
+      {
+        "amenityModifier": 0,
+        "baseLandValue": 200,
+        "globalModifier": 0,
+        "landValue": 162.5,
+        "mayhemModifier": 0,
+        "serviceMultiplier": 0.8125,
+        "x": 100,
+        "z": 0
+      }
+    ],
+    "scenarios": {
+      "15": {
+        "assetCount": 1,
+        "durationMinutes": 15,
+        "missionCount": 1,
+        "snapshot": {
+          "budget": 526200,
+          "budgetBreakdown": {
+            "adjustedRevenueRate": 48,
+            "baseRevenueRate": 8,
+            "buildingRevenueRate": 40,
+            "grossRevenueRate": 48,
+            "managementCostRate": 0,
+            "mobilityProductivityMultiplier": 1,
+            "netRate": 48,
+            "operatingCostRate": 0,
+            "productivityMultiplier": 1,
+            "utilityProductivityMultiplier": 1
+          },
+          "buildings": [
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 40,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:CYBERCAFE",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:CYBERCAFE",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            }
+          ],
+          "cash": 526200,
+          "cityPulse": {
+            "accessibleEmployment": 100,
+            "budget": 526200,
+            "cash": 526200,
+            "deliveryReliability": 100,
+            "employees": 0,
+            "employment": 100,
+            "energy": 100,
+            "energySurplus": 0,
+            "fiscalStatus": "STABLE",
+            "happiness": 50,
+            "housingOccupancy": 0,
+            "landValue": 100,
+            "netIncomeRate": 48,
+            "population": 0,
+            "productivity": 100,
+            "serviceHealth": 100,
+            "totalBuildingValue": 0,
+            "trafficCongestion": 0,
+            "unemployment": 0
+          },
+          "completedMissions": [
+            {
+              "completedAtRevision": 5,
+              "id": "session-contract-1",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 45000,
+              "satisfaction": null
+            }
+          ],
+          "demand": {
+            "commercial": 5,
+            "operations": 0,
+            "residential": 10,
+            "services": 0
+          },
+          "demographics": {
+            "accessibleEmployed": 0,
+            "accessibleEmploymentRate": 1,
+            "availableJobs": 0,
+            "employed": 0,
+            "employmentRate": 1,
+            "housingCapacity": 0,
+            "housingOccupancy": 0,
+            "jobCapacity": 0,
+            "population": 0,
+            "unemploymentRate": 0,
+            "workforce": 0
+          },
+          "districts": {
+            "EAST_CYBER_METROPOLIS": {
+              "id": "EAST_CYBER_METROPOLIS",
+              "name": "East Cyber-Metropolis",
+              "unlockCost": 1000000,
+              "unlocked": false
+            }
+          },
+          "energy": 100,
+          "fiscal": {
+            "actions": [
+              "Keep a reserve before adding new recurring costs."
+            ],
+            "active": false,
+            "assistanceClaims": 0,
+            "assistanceEligible": false,
+            "completedAtRevision": null,
+            "completedRecoveries": 0,
+            "emergencyGrant": 100000,
+            "explanation": "Recurring revenue covers upkeep and policy costs.",
+            "label": "Stable",
+            "lastAssistanceRevision": null,
+            "reserveFloor": 25000,
+            "restrictions": [],
+            "restrictionsActive": false,
+            "runwayMinutes": null,
+            "startedAtRevision": null,
+            "status": "STABLE",
+            "totalAssistance": 0,
+            "warningRunwayMinutes": 10
+          },
+          "fiscalStatus": "STABLE",
+          "happiness": 50,
+          "happinessBreakdown": {
+            "baseline": 50,
+            "buildings": 0,
+            "employment": 0,
+            "incidents": 0,
+            "services": 0,
+            "total": 50,
+            "traffic": 0,
+            "zoning": 0
+          },
+          "incidents": [],
+          "landValue": 100,
+          "mobility": {
+            "bridgeCongestion": 0,
+            "congestion": 0,
+            "deliveryReliability": 1,
+            "explanation": [],
+            "jobAccessMultiplier": 1,
+            "managementCostRate": 0,
+            "productivityMultiplier": 1,
+            "revision": 0,
+            "satisfactionModifier": 0
+          },
+          "narrativeProgress": 1,
+          "operatingCostRate": 0,
+          "passiveIncomeRate": 48,
+          "population": 0,
+          "reputation": 0,
+          "revision": 6,
+          "services": {
+            "fire": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "power": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "water": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            }
+          },
+          "treasury": 526200,
+          "unlockedDistricts": [],
+          "zones": []
+        },
+        "transactions": [
+          {
+            "fiscalStatus": "STABLE",
+            "id": "CYBERCAFE",
+            "minute": 5,
+            "treasury": 452400,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-1",
+            "minute": 10,
+            "treasury": 511800,
+            "type": "MISSION"
+          }
+        ]
+      },
+      "30": {
+        "assetCount": 2,
+        "durationMinutes": 30,
+        "missionCount": 2,
+        "snapshot": {
+          "budget": 280900,
+          "budgetBreakdown": {
+            "adjustedRevenueRate": 79.66666666666667,
+            "baseRevenueRate": 8,
+            "buildingRevenueRate": 71.66666666666667,
+            "grossRevenueRate": 79.66666666666667,
+            "managementCostRate": 0,
+            "mobilityProductivityMultiplier": 1,
+            "netRate": 79.66666666666667,
+            "operatingCostRate": 0,
+            "productivityMultiplier": 1,
+            "utilityProductivityMultiplier": 1
+          },
+          "buildings": [
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 40,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:CYBERCAFE",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:CYBERCAFE",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            },
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 31.666666666666668,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:METRO_LOFTS",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:METRO_LOFTS",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            }
+          ],
+          "cash": 280900,
+          "cityPulse": {
+            "accessibleEmployment": 100,
+            "budget": 280900,
+            "cash": 280900,
+            "deliveryReliability": 100,
+            "employees": 0,
+            "employment": 100,
+            "energy": 100,
+            "energySurplus": 0,
+            "fiscalStatus": "STABLE",
+            "happiness": 50,
+            "housingOccupancy": 0,
+            "landValue": 100,
+            "netIncomeRate": 79.66666666666667,
+            "population": 0,
+            "productivity": 100,
+            "serviceHealth": 100,
+            "totalBuildingValue": 0,
+            "trafficCongestion": 0,
+            "unemployment": 0
+          },
+          "completedMissions": [
+            {
+              "completedAtRevision": 5,
+              "id": "session-contract-1",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 45000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 10,
+              "id": "session-contract-2",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 52000,
+              "satisfaction": null
+            }
+          ],
+          "demand": {
+            "commercial": 5,
+            "operations": 0,
+            "residential": 10,
+            "services": 0
+          },
+          "demographics": {
+            "accessibleEmployed": 0,
+            "accessibleEmploymentRate": 1,
+            "availableJobs": 0,
+            "employed": 0,
+            "employmentRate": 1,
+            "housingCapacity": 0,
+            "housingOccupancy": 0,
+            "jobCapacity": 0,
+            "population": 0,
+            "unemploymentRate": 0,
+            "workforce": 0
+          },
+          "districts": {
+            "EAST_CYBER_METROPOLIS": {
+              "id": "EAST_CYBER_METROPOLIS",
+              "name": "East Cyber-Metropolis",
+              "unlockCost": 1000000,
+              "unlocked": false
+            }
+          },
+          "energy": 100,
+          "fiscal": {
+            "actions": [
+              "Keep a reserve before adding new recurring costs."
+            ],
+            "active": false,
+            "assistanceClaims": 0,
+            "assistanceEligible": false,
+            "completedAtRevision": null,
+            "completedRecoveries": 0,
+            "emergencyGrant": 100000,
+            "explanation": "Recurring revenue covers upkeep and policy costs.",
+            "label": "Stable",
+            "lastAssistanceRevision": null,
+            "reserveFloor": 25000,
+            "restrictions": [],
+            "restrictionsActive": false,
+            "runwayMinutes": null,
+            "startedAtRevision": null,
+            "status": "STABLE",
+            "totalAssistance": 0,
+            "warningRunwayMinutes": 10
+          },
+          "fiscalStatus": "STABLE",
+          "happiness": 50,
+          "happinessBreakdown": {
+            "baseline": 50,
+            "buildings": 0,
+            "employment": 0,
+            "incidents": 0,
+            "services": 0,
+            "total": 50,
+            "traffic": 0,
+            "zoning": 0
+          },
+          "incidents": [],
+          "landValue": 100,
+          "mobility": {
+            "bridgeCongestion": 0,
+            "congestion": 0,
+            "deliveryReliability": 1,
+            "explanation": [],
+            "jobAccessMultiplier": 1,
+            "managementCostRate": 0,
+            "productivityMultiplier": 1,
+            "revision": 0,
+            "satisfactionModifier": 0
+          },
+          "narrativeProgress": 2,
+          "operatingCostRate": 0,
+          "passiveIncomeRate": 79.66666666666667,
+          "population": 0,
+          "reputation": 0,
+          "revision": 10,
+          "services": {
+            "fire": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "power": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "water": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            }
+          },
+          "treasury": 280900,
+          "unlockedDistricts": [],
+          "zones": []
+        },
+        "transactions": [
+          {
+            "fiscalStatus": "STABLE",
+            "id": "CYBERCAFE",
+            "minute": 5,
+            "treasury": 452400,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-1",
+            "minute": 10,
+            "treasury": 511800,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "METRO_LOFTS",
+            "minute": 25,
+            "treasury": 205000,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-2",
+            "minute": 30,
+            "treasury": 280900,
+            "type": "MISSION"
+          }
+        ]
+      },
+      "60": {
+        "assetCount": 2,
+        "durationMinutes": 60,
+        "missionCount": 3,
+        "snapshot": {
+          "budget": 486300,
+          "budgetBreakdown": {
+            "adjustedRevenueRate": 79.66666666666667,
+            "baseRevenueRate": 8,
+            "buildingRevenueRate": 71.66666666666667,
+            "grossRevenueRate": 79.66666666666667,
+            "managementCostRate": 0,
+            "mobilityProductivityMultiplier": 1,
+            "netRate": 79.66666666666667,
+            "operatingCostRate": 0,
+            "productivityMultiplier": 1,
+            "utilityProductivityMultiplier": 1
+          },
+          "buildings": [
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 40,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:CYBERCAFE",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:CYBERCAFE",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            },
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 31.666666666666668,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:METRO_LOFTS",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:METRO_LOFTS",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            }
+          ],
+          "cash": 486300,
+          "cityPulse": {
+            "accessibleEmployment": 100,
+            "budget": 486300,
+            "cash": 486300,
+            "deliveryReliability": 100,
+            "employees": 0,
+            "employment": 100,
+            "energy": 100,
+            "energySurplus": 0,
+            "fiscalStatus": "STABLE",
+            "happiness": 50,
+            "housingOccupancy": 0,
+            "landValue": 100,
+            "netIncomeRate": 79.66666666666667,
+            "population": 0,
+            "productivity": 100,
+            "serviceHealth": 100,
+            "totalBuildingValue": 0,
+            "trafficCongestion": 0,
+            "unemployment": 0
+          },
+          "completedMissions": [
+            {
+              "completedAtRevision": 5,
+              "id": "session-contract-1",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 45000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 10,
+              "id": "session-contract-2",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 52000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 14,
+              "id": "session-contract-3",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 68000,
+              "satisfaction": null
+            }
+          ],
+          "demand": {
+            "commercial": 5,
+            "operations": 0,
+            "residential": 10,
+            "services": 0
+          },
+          "demographics": {
+            "accessibleEmployed": 0,
+            "accessibleEmploymentRate": 1,
+            "availableJobs": 0,
+            "employed": 0,
+            "employmentRate": 1,
+            "housingCapacity": 0,
+            "housingOccupancy": 0,
+            "jobCapacity": 0,
+            "population": 0,
+            "unemploymentRate": 0,
+            "workforce": 0
+          },
+          "districts": {
+            "EAST_CYBER_METROPOLIS": {
+              "id": "EAST_CYBER_METROPOLIS",
+              "name": "East Cyber-Metropolis",
+              "unlockCost": 1000000,
+              "unlocked": false
+            }
+          },
+          "energy": 100,
+          "fiscal": {
+            "actions": [
+              "Keep a reserve before adding new recurring costs."
+            ],
+            "active": false,
+            "assistanceClaims": 0,
+            "assistanceEligible": false,
+            "completedAtRevision": null,
+            "completedRecoveries": 0,
+            "emergencyGrant": 100000,
+            "explanation": "Recurring revenue covers upkeep and policy costs.",
+            "label": "Stable",
+            "lastAssistanceRevision": null,
+            "reserveFloor": 25000,
+            "restrictions": [],
+            "restrictionsActive": false,
+            "runwayMinutes": null,
+            "startedAtRevision": null,
+            "status": "STABLE",
+            "totalAssistance": 0,
+            "warningRunwayMinutes": 10
+          },
+          "fiscalStatus": "STABLE",
+          "happiness": 50,
+          "happinessBreakdown": {
+            "baseline": 50,
+            "buildings": 0,
+            "employment": 0,
+            "incidents": 0,
+            "services": 0,
+            "total": 50,
+            "traffic": 0,
+            "zoning": 0
+          },
+          "incidents": [],
+          "landValue": 100,
+          "mobility": {
+            "bridgeCongestion": 0,
+            "congestion": 0,
+            "deliveryReliability": 1,
+            "explanation": [],
+            "jobAccessMultiplier": 1,
+            "managementCostRate": 0,
+            "productivityMultiplier": 1,
+            "revision": 0,
+            "satisfactionModifier": 0
+          },
+          "narrativeProgress": 3,
+          "operatingCostRate": 0,
+          "passiveIncomeRate": 79.66666666666667,
+          "population": 0,
+          "reputation": 0,
+          "revision": 15,
+          "services": {
+            "fire": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "power": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "water": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            }
+          },
+          "treasury": 486300,
+          "unlockedDistricts": [],
+          "zones": []
+        },
+        "transactions": [
+          {
+            "fiscalStatus": "STABLE",
+            "id": "CYBERCAFE",
+            "minute": 5,
+            "treasury": 452400,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-1",
+            "minute": 10,
+            "treasury": 511800,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "METRO_LOFTS",
+            "minute": 25,
+            "treasury": 205000,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-2",
+            "minute": 30,
+            "treasury": 280900,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "incident-response-1",
+            "minute": 45,
+            "treasury": 346600,
+            "type": "SPEND"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-3",
+            "minute": 50,
+            "treasury": 438500,
+            "type": "MISSION"
+          }
+        ]
+      },
+      "120": {
+        "assetCount": 4,
+        "durationMinutes": 120,
+        "missionCount": 5,
+        "snapshot": {
+          "budget": 277600,
+          "budgetBreakdown": {
+            "adjustedRevenueRate": 183,
+            "baseRevenueRate": 8,
+            "buildingRevenueRate": 175,
+            "grossRevenueRate": 183,
+            "managementCostRate": 0,
+            "mobilityProductivityMultiplier": 1,
+            "netRate": 175.5,
+            "operatingCostRate": 7.5,
+            "productivityMultiplier": 1,
+            "utilityProductivityMultiplier": 1
+          },
+          "buildings": [
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 40,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:CYBERCAFE",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:CYBERCAFE",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            },
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 31.666666666666668,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:METRO_LOFTS",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:METRO_LOFTS",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            },
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 0,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:SOLAR_GRID",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:SOLAR_GRID",
+              "operatingCostRate": 7.5,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            },
+            {
+              "amenityRadius": 0,
+              "employees": 0,
+              "grossIncomeRate": 103.33333333333333,
+              "happinessModifier": 0,
+              "housingCapacity": 0,
+              "id": "scenario:CYBER_FAB",
+              "jobCapacity": 0,
+              "kind": null,
+              "landValueModifier": 0,
+              "name": "scenario:CYBER_FAB",
+              "operatingCostRate": 0,
+              "operational": true,
+              "passiveIncomeRate": 0,
+              "population": 0,
+              "position": null,
+              "services": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0,
+                  "reach": 0
+                }
+              },
+              "status": "ACTIVE",
+              "value": 0
+            }
+          ],
+          "cash": 277600,
+          "cityPulse": {
+            "accessibleEmployment": 100,
+            "budget": 277600,
+            "cash": 277600,
+            "deliveryReliability": 100,
+            "employees": 0,
+            "employment": 100,
+            "energy": 100,
+            "energySurplus": 0,
+            "fiscalStatus": "STABLE",
+            "happiness": 50,
+            "housingOccupancy": 0,
+            "landValue": 100,
+            "netIncomeRate": 175.5,
+            "population": 0,
+            "productivity": 100,
+            "serviceHealth": 100,
+            "totalBuildingValue": 0,
+            "trafficCongestion": 0,
+            "unemployment": 0
+          },
+          "completedMissions": [
+            {
+              "completedAtRevision": 5,
+              "id": "session-contract-1",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 45000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 10,
+              "id": "session-contract-2",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 52000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 14,
+              "id": "session-contract-3",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 68000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 19,
+              "id": "session-contract-4",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 75000,
+              "satisfaction": null
+            },
+            {
+              "completedAtRevision": 21,
+              "id": "session-contract-5",
+              "narrativeProgressDelta": 1,
+              "reputationDelta": 0,
+              "reward": 85000,
+              "satisfaction": null
+            }
+          ],
+          "demand": {
+            "commercial": 5,
+            "operations": 0,
+            "residential": 10,
+            "services": 0
+          },
+          "demographics": {
+            "accessibleEmployed": 0,
+            "accessibleEmploymentRate": 1,
+            "availableJobs": 0,
+            "employed": 0,
+            "employmentRate": 1,
+            "housingCapacity": 0,
+            "housingOccupancy": 0,
+            "jobCapacity": 0,
+            "population": 0,
+            "unemploymentRate": 0,
+            "workforce": 0
+          },
+          "districts": {
+            "EAST_CYBER_METROPOLIS": {
+              "id": "EAST_CYBER_METROPOLIS",
+              "name": "East Cyber-Metropolis",
+              "unlockCost": 1000000,
+              "unlocked": false
+            }
+          },
+          "energy": 100,
+          "fiscal": {
+            "actions": [
+              "Keep a reserve before adding new recurring costs."
+            ],
+            "active": false,
+            "assistanceClaims": 0,
+            "assistanceEligible": false,
+            "completedAtRevision": null,
+            "completedRecoveries": 0,
+            "emergencyGrant": 100000,
+            "explanation": "Recurring revenue covers upkeep and policy costs.",
+            "label": "Stable",
+            "lastAssistanceRevision": null,
+            "reserveFloor": 25000,
+            "restrictions": [],
+            "restrictionsActive": false,
+            "runwayMinutes": null,
+            "startedAtRevision": null,
+            "status": "STABLE",
+            "totalAssistance": 0,
+            "warningRunwayMinutes": 10
+          },
+          "fiscalStatus": "STABLE",
+          "happiness": 50,
+          "happinessBreakdown": {
+            "baseline": 50,
+            "buildings": 0,
+            "employment": 0,
+            "incidents": 0,
+            "services": 0,
+            "total": 50,
+            "traffic": 0,
+            "zoning": 0
+          },
+          "incidents": [],
+          "landValue": 100,
+          "mobility": {
+            "bridgeCongestion": 0,
+            "congestion": 0,
+            "deliveryReliability": 1,
+            "explanation": [],
+            "jobAccessMultiplier": 1,
+            "managementCostRate": 0,
+            "productivityMultiplier": 1,
+            "revision": 0,
+            "satisfactionModifier": 0
+          },
+          "narrativeProgress": 5,
+          "operatingCostRate": 7.5,
+          "passiveIncomeRate": 175.5,
+          "population": 0,
+          "reputation": 0,
+          "revision": 27,
+          "services": {
+            "fire": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "power": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            },
+            "water": {
+              "adequate": true,
+              "capacity": 0,
+              "coverage": 1,
+              "demand": 0,
+              "surplus": 0
+            }
+          },
+          "treasury": 277600,
+          "unlockedDistricts": [],
+          "zones": []
+        },
+        "transactions": [
+          {
+            "fiscalStatus": "STABLE",
+            "id": "CYBERCAFE",
+            "minute": 5,
+            "treasury": 452400,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-1",
+            "minute": 10,
+            "treasury": 511800,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "METRO_LOFTS",
+            "minute": 25,
+            "treasury": 205000,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-2",
+            "minute": 30,
+            "treasury": 280900,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "incident-response-1",
+            "minute": 45,
+            "treasury": 346600,
+            "type": "SPEND"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-3",
+            "minute": 50,
+            "treasury": 438500,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "SOLAR_GRID",
+            "minute": 70,
+            "treasury": 254100,
+            "type": "BUILD"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-4",
+            "minute": 75,
+            "treasury": 350750,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-contract-5",
+            "minute": 90,
+            "treasury": 500700,
+            "type": "MISSION"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "session-fine-1",
+            "minute": 105,
+            "treasury": 540650,
+            "type": "FINE"
+          },
+          {
+            "fiscalStatus": "STABLE",
+            "id": "CYBER_FAB",
+            "minute": 110,
+            "treasury": 172300,
+            "type": "BUILD"
+          }
+        ]
+      }
+    },
+    "serviceShortage": {
+      "budget": 100000,
+      "budgetBreakdown": {
+        "adjustedRevenueRate": 55.00000000000001,
+        "baseRevenueRate": 100,
+        "buildingRevenueRate": 0,
+        "grossRevenueRate": 100,
+        "managementCostRate": 0,
+        "mobilityProductivityMultiplier": 1,
+        "netRate": 55.00000000000001,
+        "operatingCostRate": 0,
+        "productivityMultiplier": 0.55,
+        "utilityProductivityMultiplier": 0.55
+      },
+      "buildings": [
+        {
+          "amenityRadius": 100,
+          "employees": 0,
+          "grossIncomeRate": 0,
+          "happinessModifier": 0,
+          "housingCapacity": 0,
+          "id": "baseline-amenity",
+          "jobCapacity": 0,
+          "kind": null,
+          "landValueModifier": 20,
+          "name": "baseline-amenity",
+          "operatingCostRate": 0,
+          "operational": true,
+          "passiveIncomeRate": 0,
+          "population": 0,
+          "position": {
+            "x": 0,
+            "z": 0
+          },
+          "services": {
+            "fire": {
+              "capacity": 0,
+              "demand": 0,
+              "reach": 0
+            },
+            "power": {
+              "capacity": 0,
+              "demand": 0,
+              "reach": 0
+            },
+            "water": {
+              "capacity": 0,
+              "demand": 0,
+              "reach": 0
+            }
+          },
+          "status": "ACTIVE",
+          "value": 0
+        }
+      ],
+      "cash": 100000,
+      "cityPulse": {
+        "accessibleEmployment": 100,
+        "budget": 100000,
+        "cash": 100000,
+        "deliveryReliability": 100,
+        "employees": 0,
+        "employment": 100,
+        "energy": 50,
+        "energySurplus": -50,
+        "fiscalStatus": "STABLE",
+        "happiness": 58.75,
+        "housingOccupancy": 0,
+        "landValue": 154.375,
+        "netIncomeRate": 55.00000000000001,
+        "population": 0,
+        "productivity": 100,
+        "serviceHealth": 25,
+        "totalBuildingValue": 0,
+        "trafficCongestion": 0,
+        "unemployment": 0
+      },
+      "completedMissions": [],
+      "demand": {
+        "commercial": 7,
+        "operations": 0,
+        "residential": 13,
+        "services": 75
+      },
+      "demographics": {
+        "accessibleEmployed": 0,
+        "accessibleEmploymentRate": 1,
+        "availableJobs": 0,
+        "employed": 0,
+        "employmentRate": 1,
+        "housingCapacity": 0,
+        "housingOccupancy": 0,
+        "jobCapacity": 0,
+        "population": 0,
+        "unemploymentRate": 0,
+        "workforce": 0
+      },
+      "districts": {
+        "EAST_CYBER_METROPOLIS": {
+          "id": "EAST_CYBER_METROPOLIS",
+          "name": "East Cyber-Metropolis",
+          "unlockCost": 1000000,
+          "unlocked": false
+        }
+      },
+      "energy": 50,
+      "fiscal": {
+        "actions": [
+          "Keep a reserve before adding new recurring costs."
+        ],
+        "active": false,
+        "assistanceClaims": 0,
+        "assistanceEligible": false,
+        "completedAtRevision": null,
+        "completedRecoveries": 0,
+        "emergencyGrant": 100000,
+        "explanation": "Recurring revenue covers upkeep and policy costs.",
+        "label": "Stable",
+        "lastAssistanceRevision": null,
+        "reserveFloor": 25000,
+        "restrictions": [],
+        "restrictionsActive": false,
+        "runwayMinutes": null,
+        "startedAtRevision": null,
+        "status": "STABLE",
+        "totalAssistance": 0,
+        "warningRunwayMinutes": 10
+      },
+      "fiscalStatus": "STABLE",
+      "happiness": 58.75,
+      "happinessBreakdown": {
+        "baseline": 80,
+        "buildings": 0,
+        "employment": 0,
+        "incidents": 0,
+        "services": -21.25,
+        "total": 58.75,
+        "traffic": 0,
+        "zoning": 0
+      },
+      "incidents": [
+        {
+          "active": true,
+          "happinessModifier": 0,
+          "id": "baseline-incident",
+          "influenceRadius": 50,
+          "landValueModifier": -30,
+          "position": {
+            "x": 0,
+            "z": 0
+          },
+          "recordedAtRevision": 2,
+          "reputationDelta": 0,
+          "resolvedAtRevision": null,
+          "severity": 1,
+          "type": "GENERAL"
+        }
+      ],
+      "landValue": 154.375,
+      "mobility": {
+        "bridgeCongestion": 0,
+        "congestion": 0,
+        "deliveryReliability": 1,
+        "explanation": [],
+        "jobAccessMultiplier": 1,
+        "managementCostRate": 0,
+        "productivityMultiplier": 1,
+        "revision": 0,
+        "satisfactionModifier": 0
+      },
+      "narrativeProgress": 0,
+      "operatingCostRate": 0,
+      "passiveIncomeRate": 55.00000000000001,
+      "population": 0,
+      "reputation": 0,
+      "revision": 2,
+      "services": {
+        "fire": {
+          "adequate": false,
+          "capacity": 0,
+          "coverage": 0,
+          "demand": 100,
+          "surplus": -100
+        },
+        "power": {
+          "adequate": false,
+          "capacity": 50,
+          "coverage": 0.5,
+          "demand": 100,
+          "surplus": -50
+        },
+        "water": {
+          "adequate": false,
+          "capacity": 25,
+          "coverage": 0.25,
+          "demand": 100,
+          "surplus": -75
+        }
+      },
+      "treasury": 100000,
+      "unlockedDistricts": [],
+      "zones": []
+    },
+    "spendingDecisions": {
+      "affordableEssential": {
+        "allowed": true,
+        "amount": 6000,
+        "category": "ESSENTIAL",
+        "code": "ALLOWED",
+        "projectedNetRate": 0,
+        "reason": "Capital is available and the purchase preserves a recovery path.",
+        "recoveryInvestment": false,
+        "remainingTreasury": 24000,
+        "remedy": null,
+        "runwayMinutes": null,
+        "state": "STABLE",
+        "warning": null
+      },
+      "insufficientCapital": {
+        "allowed": false,
+        "amount": 40000,
+        "category": "DISCRETIONARY",
+        "code": "INSUFFICIENT_FUNDS",
+        "projectedNetRate": 0,
+        "reason": "This action requires $40,000, but only $30,000 is available.",
+        "recoveryInvestment": false,
+        "remainingTreasury": -10000,
+        "remedy": "Complete a contract, salvage an optional asset, or claim emergency assistance when insolvent.",
+        "runwayMinutes": null,
+        "state": "STABLE",
+        "warning": null
+      },
+      "reserveAtRisk": {
+        "allowed": false,
+        "amount": 10000,
+        "category": "DISCRETIONARY",
+        "code": "RESERVE_AT_RISK",
+        "projectedNetRate": -2,
+        "reason": "This action would leave $20,000 while the city continues losing Capital.",
+        "recoveryInvestment": false,
+        "remainingTreasury": 20000,
+        "remedy": "Keep at least $25,000 in reserve or choose a cash-positive investment.",
+        "runwayMinutes": 166.66666666666666,
+        "state": "STABLE",
+        "warning": null
+      }
+    }
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "economy",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

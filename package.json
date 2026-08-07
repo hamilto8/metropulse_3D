@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "baseline:capture": "node Tools/BaselineCapture/capture.mjs",
+    "baseline:capture:browser": "playwright test --config Tools/BaselineCapture/playwright.capture.config.js",
+    "baseline:capture:environment": "node Tools/BaselineCapture/capture-environment.mjs",
+    "baseline:matrix": "node Tools/BaselineCapture/generate-parity-matrix.mjs",
+    "baseline:verify:reference": "node Tools/BaselineCapture/verify-reference.mjs",
+    "baseline:check": "node Tools/BaselineCapture/capture.mjs --check",
     "test": "node --test test/*.test.js",
     "test:unit": "node --test test/*.test.js",
     "test:browser": "playwright test",

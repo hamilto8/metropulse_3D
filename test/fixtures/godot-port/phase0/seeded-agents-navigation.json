@@ -1,0 +1,698 @@
+{
+  "comparison": {
+    "epsilon": 0.000001,
+    "mode": "absolute",
+    "positionToleranceMeters": 0.01
+  },
+  "data": {
+    "navigationSteps": [
+      {
+        "before": {
+          "deviation": 7,
+          "progress": 0.5,
+          "x": 0,
+          "z": 10
+        },
+        "corrected": true,
+        "input": {
+          "x": 7,
+          "z": 10
+        },
+        "output": [
+          1.5,
+          0,
+          10
+        ],
+        "reached": false,
+        "speedLimit": null
+      },
+      {
+        "before": {
+          "deviation": 4,
+          "progress": 0.7,
+          "x": 0,
+          "z": 14
+        },
+        "corrected": true,
+        "input": {
+          "x": 4,
+          "z": 14
+        },
+        "output": [
+          1.5,
+          0,
+          14
+        ],
+        "reached": false,
+        "speedLimit": 17.754201045131765
+      },
+      {
+        "before": {
+          "deviation": 1,
+          "progress": 0.95,
+          "x": 0,
+          "z": 19
+        },
+        "corrected": false,
+        "input": {
+          "x": 1,
+          "z": 19
+        },
+        "output": [
+          1,
+          0,
+          19
+        ],
+        "reached": true,
+        "speedLimit": 12.8
+      },
+      {
+        "before": {
+          "deviation": 4.031128874149275,
+          "progress": 1,
+          "x": 0,
+          "z": 20
+        },
+        "corrected": true,
+        "input": {
+          "x": 0.5,
+          "z": 24
+        },
+        "output": [
+          0.1860521018838127,
+          0,
+          21.4884168150705
+        ],
+        "reached": true,
+        "speedLimit": 5.6000000000000005
+      }
+    ],
+    "pedestrianArchetypeSequence": [
+      "CASUAL",
+      "BUSINESS",
+      "JOGGER",
+      "CASUAL",
+      "TOURIST",
+      "BUSINESS",
+      "CAFE_READER",
+      "CASUAL",
+      "CRIMINAL",
+      "JOGGER",
+      "TOURIST",
+      "CASUAL",
+      "BUSINESS",
+      "CAFE_READER",
+      "CASUAL",
+      "JOGGER",
+      "TOURIST",
+      "BUSINESS",
+      "CRIMINAL",
+      "CASUAL"
+    ],
+    "pedestrians": [
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": null,
+            "hairColor": 7029795,
+            "hairStyle": "BALD",
+            "heightScale": 0.8904850846994669,
+            "pantsColor": 4144966,
+            "skinTone": 9262372
+          },
+          "archetype": "CASUAL",
+          "color": 8141549,
+          "profile": {
+            "accessory": null,
+            "activity": "Strolling Downtown",
+            "colors": [
+              14362487,
+              14251782,
+              561586,
+              1483594,
+              8141549
+            ],
+            "hair": [
+              "SHORT",
+              "CURLY",
+              "PONYTAIL",
+              "BALD"
+            ],
+            "label": "Resident",
+            "maxSpeed": 2.8,
+            "mood": "Relaxed"
+          }
+        },
+        "serial": 0
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "BRIEFCASE",
+            "hairColor": 4466451,
+            "hairStyle": "PARTED",
+            "heightScale": 0.9427556820586324,
+            "pantsColor": 4144966,
+            "skinTone": 9262372
+          },
+          "archetype": "BUSINESS",
+          "color": 3359061,
+          "profile": {
+            "accessory": "BRIEFCASE",
+            "activity": "Commuting to Office",
+            "colors": [
+              1920728,
+              3359061,
+              4988309,
+              1013358
+            ],
+            "hair": [
+              "SHORT",
+              "PARTED"
+            ],
+            "label": "Professional",
+            "maxSpeed": 3.5,
+            "mood": "Focused"
+          }
+        },
+        "serial": 1
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "HEADBAND",
+            "hairColor": 11889453,
+            "hairStyle": "SHORT",
+            "heightScale": 0.8963852854585275,
+            "pantsColor": 2696484,
+            "skinTone": 16767916
+          },
+          "archetype": "JOGGER",
+          "color": 1483594,
+          "profile": {
+            "accessory": "HEADBAND",
+            "activity": "Running the City Loop",
+            "colors": [
+              1483594,
+              15680580,
+              959977,
+              16347926
+            ],
+            "hair": [
+              "SHORT",
+              "PONYTAIL"
+            ],
+            "label": "Jogger",
+            "maxSpeed": 5.5,
+            "mood": "Energized"
+          }
+        },
+        "serial": 2
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": null,
+            "hairColor": 14074789,
+            "hairStyle": "PONYTAIL",
+            "heightScale": 0.9156279286975041,
+            "pantsColor": 4144966,
+            "skinTone": 13010498
+          },
+          "archetype": "CASUAL",
+          "color": 1483594,
+          "profile": {
+            "accessory": null,
+            "activity": "Strolling Downtown",
+            "colors": [
+              14362487,
+              14251782,
+              561586,
+              1483594,
+              8141549
+            ],
+            "hair": [
+              "SHORT",
+              "CURLY",
+              "PONYTAIL",
+              "BALD"
+            ],
+            "label": "Resident",
+            "maxSpeed": 2.8,
+            "mood": "Relaxed"
+          }
+        },
+        "serial": 3
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "PHONE",
+            "hairColor": 1511951,
+            "hairStyle": "CAP",
+            "heightScale": 0.8625578069500625,
+            "pantsColor": 1120295,
+            "skinTone": 14724201
+          },
+          "archetype": "TOURIST",
+          "color": 15381256,
+          "profile": {
+            "accessory": "PHONE",
+            "activity": "Exploring Landmarks",
+            "colors": [
+              15381256,
+              165063,
+              14427686,
+              366185
+            ],
+            "hair": [
+              "CAP",
+              "SHORT",
+              "CURLY"
+            ],
+            "label": "Tourist",
+            "maxSpeed": 2.5,
+            "mood": "Curious"
+          }
+        },
+        "serial": 4
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "BRIEFCASE",
+            "hairColor": 1511951,
+            "hairStyle": "PARTED",
+            "heightScale": 0.8916961655393243,
+            "pantsColor": 2696484,
+            "skinTone": 16767916
+          },
+          "archetype": "BUSINESS",
+          "color": 1920728,
+          "profile": {
+            "accessory": "BRIEFCASE",
+            "activity": "Commuting to Office",
+            "colors": [
+              1920728,
+              3359061,
+              4988309,
+              1013358
+            ],
+            "hair": [
+              "SHORT",
+              "PARTED"
+            ],
+            "label": "Professional",
+            "maxSpeed": 3.5,
+            "mood": "Focused"
+          }
+        },
+        "serial": 5
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "BOOK",
+            "hairColor": 3875862,
+            "hairStyle": "PONYTAIL",
+            "heightScale": 0.884148921133019,
+            "pantsColor": 4144966,
+            "skinTone": 13010498
+          },
+          "archetype": "CAFE_READER",
+          "color": 12458077,
+          "profile": {
+            "accessory": "BOOK",
+            "activity": "Reading at Sidewalk Café",
+            "colors": [
+              8141549,
+              12458077,
+              223649,
+              5078031
+            ],
+            "hair": [
+              "SHORT",
+              "CURLY",
+              "PONYTAIL"
+            ],
+            "label": "Café Patron",
+            "maxSpeed": 2.6,
+            "mood": "Absorbed"
+          }
+        },
+        "serial": 6
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": null,
+            "hairColor": 11889453,
+            "hairStyle": "PONYTAIL",
+            "heightScale": 0.9258458771649748,
+            "pantsColor": 1120295,
+            "skinTone": 9262372
+          },
+          "archetype": "CASUAL",
+          "color": 561586,
+          "profile": {
+            "accessory": null,
+            "activity": "Strolling Downtown",
+            "colors": [
+              14362487,
+              14251782,
+              561586,
+              1483594,
+              8141549
+            ],
+            "hair": [
+              "SHORT",
+              "CURLY",
+              "PONYTAIL",
+              "BALD"
+            ],
+            "label": "Resident",
+            "maxSpeed": 2.8,
+            "mood": "Relaxed"
+          }
+        },
+        "serial": 7
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": null,
+            "hairColor": 7029795,
+            "hairStyle": "BUZZ",
+            "heightScale": 0.87814230105374,
+            "pantsColor": 1981023,
+            "skinTone": 9262372
+          },
+          "archetype": "CRIMINAL",
+          "color": 1976635,
+          "profile": {
+            "accessory": null,
+            "activity": "Loitering Suspiciously",
+            "colors": [
+              2565930,
+              4144966,
+              8330525,
+              1976635
+            ],
+            "hair": [
+              "BEANIE",
+              "BUZZ"
+            ],
+            "label": "Troublemaker",
+            "maxSpeed": 4.2,
+            "mood": "Hostile"
+          }
+        },
+        "serial": 8
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "HEADBAND",
+            "hairColor": 11889453,
+            "hairStyle": "SHORT",
+            "heightScale": 0.8675494854943827,
+            "pantsColor": 1120295,
+            "skinTone": 16767916
+          },
+          "archetype": "JOGGER",
+          "color": 16347926,
+          "profile": {
+            "accessory": "HEADBAND",
+            "activity": "Running the City Loop",
+            "colors": [
+              1483594,
+              15680580,
+              959977,
+              16347926
+            ],
+            "hair": [
+              "SHORT",
+              "PONYTAIL"
+            ],
+            "label": "Jogger",
+            "maxSpeed": 5.5,
+            "mood": "Energized"
+          }
+        },
+        "serial": 9
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": "PHONE",
+            "hairColor": 1511951,
+            "hairStyle": "CAP",
+            "heightScale": 0.9131629733741283,
+            "pantsColor": 4144966,
+            "skinTone": 14724201
+          },
+          "archetype": "TOURIST",
+          "color": 15381256,
+          "profile": {
+            "accessory": "PHONE",
+            "activity": "Exploring Landmarks",
+            "colors": [
+              15381256,
+              165063,
+              14427686,
+              366185
+            ],
+            "hair": [
+              "CAP",
+              "SHORT",
+              "CURLY"
+            ],
+            "label": "Tourist",
+            "maxSpeed": 2.5,
+            "mood": "Curious"
+          }
+        },
+        "serial": 10
+      },
+      {
+        "descriptor": {
+          "appearance": {
+            "accessory": null,
+            "hairColor": 11889453,
+            "hairStyle": "BALD",
+            "heightScale": 0.8888115637842565,
+            "pantsColor": 4144966,
+            "skinTone": 9262372
+          },
+          "archetype": "CASUAL",
+          "color": 561586,
+          "profile": {
+            "accessory": null,
+            "activity": "Strolling Downtown",
+            "colors": [
+              14362487,
+              14251782,
+              561586,
+              1483594,
+              8141549
+            ],
+            "hair": [
+              "SHORT",
+              "CURLY",
+              "PONYTAIL",
+              "BALD"
+            ],
+            "label": "Resident",
+            "maxSpeed": 2.8,
+            "mood": "Relaxed"
+          }
+        },
+        "serial": 11
+      }
+    ],
+    "vehicleContentIds": [
+      "SEDAN",
+      "SPORTS",
+      "SPORTS_CAR",
+      "BUS",
+      "TRUCK",
+      "TAXI",
+      "POLICE",
+      "AMBULANCE",
+      "ICECREAM",
+      "DUMP_TRUCK",
+      "MOTORBIKE"
+    ],
+    "vehicles": [
+      {
+        "color": null,
+        "currentNode": "EB_OUT:-100,-100",
+        "driverRuleProfile": {
+          "compliant": false,
+          "style": "RECKLESS"
+        },
+        "name": "Cyber Cruiser 2099 #10",
+        "position": [
+          -90,
+          0,
+          -96.5
+        ],
+        "rotationY": 1.5707963267948963,
+        "serial": 0,
+        "speed": 0,
+        "targetNode": "EB_IN:-50,-100",
+        "type": "SEDAN"
+      },
+      {
+        "color": null,
+        "currentNode": "WB_OUT:-100,-100",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "Apex GT Turbo #11",
+        "position": [
+          -110,
+          0,
+          -103.5
+        ],
+        "rotationY": 0,
+        "serial": 1,
+        "speed": 0,
+        "targetNode": "EB_IN:-100,-100",
+        "type": "SPORTS"
+      },
+      {
+        "color": null,
+        "currentNode": "SB_OUT:-100,-100",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "Metro Transit Bus #42 #12",
+        "position": [
+          -103.5,
+          0,
+          -90
+        ],
+        "rotationY": 0,
+        "serial": 2,
+        "speed": 0,
+        "targetNode": "SB_IN:-100,-50",
+        "type": "BUS"
+      },
+      {
+        "color": null,
+        "currentNode": "NB_OUT:-100,-100",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "Express Freight Truck #13",
+        "position": [
+          -96.5,
+          0,
+          -110
+        ],
+        "rotationY": -1.5707963267948963,
+        "serial": 3,
+        "speed": 0,
+        "targetNode": "SB_IN:-100,-100",
+        "type": "TRUCK"
+      },
+      {
+        "color": null,
+        "currentNode": "EB_OUT:-100,-50",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "City Yellow Cab #88 #14",
+        "position": [
+          -90,
+          0,
+          -46.5
+        ],
+        "rotationY": 1.5707963267948963,
+        "serial": 4,
+        "speed": 0,
+        "targetNode": "EB_IN:-50,-50",
+        "type": "TAXI"
+      },
+      {
+        "color": null,
+        "currentNode": "WB_OUT:-100,-50",
+        "driverRuleProfile": {
+          "compliant": false,
+          "style": "RECKLESS"
+        },
+        "name": "Metro Police Interceptor #01 #15",
+        "position": [
+          -110,
+          0,
+          -53.5
+        ],
+        "rotationY": 0,
+        "serial": 5,
+        "speed": 0,
+        "targetNode": "EB_IN:-100,-50",
+        "type": "POLICE"
+      },
+      {
+        "color": null,
+        "currentNode": "SB_OUT:-100,-50",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "Metro EMS Rescue Ambulance #16",
+        "position": [
+          -103.5,
+          0,
+          -40
+        ],
+        "rotationY": 0,
+        "serial": 6,
+        "speed": 0,
+        "targetNode": "SB_IN:-100,0",
+        "type": "AMBULANCE"
+      },
+      {
+        "color": null,
+        "currentNode": "NB_OUT:-100,-50",
+        "driverRuleProfile": {
+          "compliant": true,
+          "style": "RULE_FOLLOWER"
+        },
+        "name": "Sweet Treats Ice Cream Van #17",
+        "position": [
+          -96.5,
+          0,
+          -60
+        ],
+        "rotationY": 3.141592653589793,
+        "serial": 7,
+        "speed": 0,
+        "targetNode": "NB_IN:-100,-100",
+        "type": "ICECREAM"
+      }
+    ]
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "seeded-agents-navigation",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

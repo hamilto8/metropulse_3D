@@ -1,0 +1,184 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "data": {
+      "alerts": {
+        "items": [],
+        "sequence": 0,
+        "version": 2
+      },
+      "bindings": {
+        "overrides": {},
+        "version": 1
+      },
+      "economy": {
+        "baseHappiness": 50,
+        "baseLandValue": 100,
+        "basePassiveIncomeRate": 8,
+        "basePopulation": 0,
+        "baseServices": {
+          "fire": {
+            "capacity": 0,
+            "demand": 0
+          },
+          "power": {
+            "capacity": 0,
+            "demand": 0
+          },
+          "water": {
+            "capacity": 0,
+            "demand": 0
+          }
+        },
+        "buildings": [],
+        "completedMissions": [],
+        "districts": [
+          {
+            "id": "EAST_CYBER_METROPOLIS",
+            "name": "East Cyber-Metropolis",
+            "unlockCost": 1000000,
+            "unlocked": false
+          }
+        ],
+        "incidents": [],
+        "narrativeProgress": 0,
+        "recovery": {
+          "active": false,
+          "assistanceClaims": 0,
+          "completedAtRevision": null,
+          "completedRecoveries": 0,
+          "lastAssistanceRevision": null,
+          "startedAtRevision": null,
+          "totalAssistance": 0
+        },
+        "reputation": 0,
+        "treasury": 650000,
+        "version": 1,
+        "zones": []
+      },
+      "factions": {
+        "values": {},
+        "version": 1
+      },
+      "game": {
+        "mayhemEnabled": false,
+        "resumeState": null,
+        "state": "MANAGEMENT",
+        "version": 1
+      },
+      "heat": {
+        "activeIncidentId": null,
+        "escapeTimer": 0,
+        "version": 1,
+        "wanted": false
+      },
+      "missions": {
+        "active": null,
+        "chronologyStep": 0,
+        "completedMissionIds": [],
+        "contracts": null,
+        "dialogueChoices": [],
+        "lifecycle": null,
+        "runCounts": [],
+        "version": 1
+      },
+      "mobility": null,
+      "player": {
+        "controlled": null,
+        "version": 1
+      },
+      "progression": {
+        "values": {},
+        "version": 1
+      },
+      "settings": {
+        "heatmap": false,
+        "values": {
+          "audio": {
+            "ambience": 0.8,
+            "dialogue": 1,
+            "effects": 1,
+            "master": 0.5,
+            "music": 0.7
+          },
+          "cameraSensitivity": {
+            "onFoot": 1,
+            "orbit": 1,
+            "vehicle": 1
+          },
+          "colorSafePatterns": true,
+          "contrastMode": "STANDARD",
+          "difficulty": "STANDARD",
+          "drivingAssists": {
+            "autoRecovery": true,
+            "brakingAssist": false,
+            "steering": "STANDARD"
+          },
+          "motion": {
+            "bloom": "FULL",
+            "cameraShake": 1,
+            "flashIntensity": "FULL",
+            "reducedMotion": "SYSTEM"
+          },
+          "mouseSensitivity": 1,
+          "subtitles": {
+            "closedCaptions": true,
+            "enabled": true,
+            "speakerLabels": true
+          },
+          "textScale": 1,
+          "timerLeniency": 1,
+          "toggleHold": {
+            "braking": "HOLD",
+            "repeatedActions": "HOLD",
+            "sprint": "HOLD"
+          }
+        },
+        "version": 1
+      },
+      "timeWeather": {
+        "playing": true,
+        "speed": 1,
+        "time": 9.25,
+        "version": 1,
+        "weather": "clear"
+      },
+      "world": {
+        "buildings": [],
+        "version": 1,
+        "zones": []
+      }
+    },
+    "featureVersion": 2,
+    "format": "METROPULSE_3D_SAVE",
+    "metadata": {
+      "checkpoint": null,
+      "reason": "recovery-reference",
+      "reasons": [
+        "recovery-reference"
+      ],
+      "savedAt": "2026-08-07T12:00:00.000Z",
+      "saveId": "phase0-recovery"
+    },
+    "schemaVersion": 2
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "save-recovery",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

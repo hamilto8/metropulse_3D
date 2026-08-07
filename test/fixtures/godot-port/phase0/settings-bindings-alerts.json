@@ -1,0 +1,438 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "alerts": {
+      "active": {
+        "active": [
+          {
+            "cause": "Two reports confirm the same obstruction.",
+            "dedupeKey": "baseline:bridge",
+            "duration": {
+              "kind": "UNTIL_RESOLVED",
+              "seconds": null
+            },
+            "focusAction": {
+              "label": "Focus camera",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              },
+              "type": "MANAGEMENT_CAMERA"
+            },
+            "id": "baseline-alert-1",
+            "lastObservedAt": "2026-08-07T12:00:01.000Z",
+            "location": {
+              "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+              "label": "Primary bridge",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              }
+            },
+            "occurrences": 2,
+            "recommendation": "Clear the vehicle or enable bridge priority.",
+            "relatedEntityIds": [
+              "baseline-disabled-vehicle"
+            ],
+            "resolutionReason": null,
+            "resolvedAt": null,
+            "severity": "WARNING",
+            "startTime": "2026-08-07T12:00:00.000Z",
+            "state": "ACTIVE",
+            "supersededBy": null,
+            "title": "Bridge lane obstructed",
+            "type": "INFRASTRUCTURE",
+            "version": 1
+          }
+        ],
+        "items": [
+          {
+            "cause": "Two reports confirm the same obstruction.",
+            "dedupeKey": "baseline:bridge",
+            "duration": {
+              "kind": "UNTIL_RESOLVED",
+              "seconds": null
+            },
+            "focusAction": {
+              "label": "Focus camera",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              },
+              "type": "MANAGEMENT_CAMERA"
+            },
+            "id": "baseline-alert-1",
+            "lastObservedAt": "2026-08-07T12:00:01.000Z",
+            "location": {
+              "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+              "label": "Primary bridge",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              }
+            },
+            "occurrences": 2,
+            "recommendation": "Clear the vehicle or enable bridge priority.",
+            "relatedEntityIds": [
+              "baseline-disabled-vehicle"
+            ],
+            "resolutionReason": null,
+            "resolvedAt": null,
+            "severity": "WARNING",
+            "startTime": "2026-08-07T12:00:00.000Z",
+            "state": "ACTIVE",
+            "supersededBy": null,
+            "title": "Bridge lane obstructed",
+            "type": "INFRASTRUCTURE",
+            "version": 1
+          }
+        ],
+        "revision": 2,
+        "version": 2
+      },
+      "duplicate": {
+        "cause": "Two reports confirm the same obstruction.",
+        "dedupeKey": "baseline:bridge",
+        "duration": {
+          "kind": "UNTIL_RESOLVED",
+          "seconds": null
+        },
+        "focusAction": {
+          "label": "Focus camera",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          },
+          "type": "MANAGEMENT_CAMERA"
+        },
+        "id": "baseline-alert-1",
+        "lastObservedAt": "2026-08-07T12:00:01.000Z",
+        "location": {
+          "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+          "label": "Primary bridge",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "occurrences": 2,
+        "recommendation": "Clear the vehicle or enable bridge priority.",
+        "relatedEntityIds": [
+          "baseline-disabled-vehicle"
+        ],
+        "resolutionReason": null,
+        "resolvedAt": null,
+        "severity": "WARNING",
+        "startTime": "2026-08-07T12:00:00.000Z",
+        "state": "ACTIVE",
+        "supersededBy": null,
+        "title": "Bridge lane obstructed",
+        "type": "INFRASTRUCTURE",
+        "version": 1
+      },
+      "first": {
+        "cause": "A disabled vehicle blocks one lane.",
+        "dedupeKey": "baseline:bridge",
+        "duration": {
+          "kind": "UNTIL_RESOLVED",
+          "seconds": null
+        },
+        "focusAction": {
+          "label": "Focus camera",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          },
+          "type": "MANAGEMENT_CAMERA"
+        },
+        "id": "baseline-alert-1",
+        "lastObservedAt": "2026-08-07T12:00:00.000Z",
+        "location": {
+          "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+          "label": "Primary bridge",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "occurrences": 1,
+        "recommendation": "Clear the vehicle or enable bridge priority.",
+        "relatedEntityIds": [
+          "baseline-disabled-vehicle"
+        ],
+        "resolutionReason": null,
+        "resolvedAt": null,
+        "severity": "WARNING",
+        "startTime": "2026-08-07T12:00:00.000Z",
+        "state": "ACTIVE",
+        "supersededBy": null,
+        "title": "Bridge lane obstructed",
+        "type": "INFRASTRUCTURE",
+        "version": 1
+      },
+      "resolved": {
+        "cause": "Two reports confirm the same obstruction.",
+        "dedupeKey": "baseline:bridge",
+        "duration": {
+          "kind": "UNTIL_RESOLVED",
+          "seconds": null
+        },
+        "focusAction": {
+          "label": "Focus camera",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          },
+          "type": "MANAGEMENT_CAMERA"
+        },
+        "id": "baseline-alert-1",
+        "lastObservedAt": "2026-08-07T12:00:01.000Z",
+        "location": {
+          "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+          "label": "Primary bridge",
+          "position": {
+            "x": 160,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "occurrences": 2,
+        "recommendation": "Clear the vehicle or enable bridge priority.",
+        "relatedEntityIds": [
+          "baseline-disabled-vehicle"
+        ],
+        "resolutionReason": "The disabled vehicle was cleared.",
+        "resolvedAt": "2026-08-07T12:00:02.000Z",
+        "severity": "WARNING",
+        "startTime": "2026-08-07T12:00:00.000Z",
+        "state": "RESOLVED",
+        "supersededBy": null,
+        "title": "Bridge lane obstructed",
+        "type": "INFRASTRUCTURE",
+        "version": 1
+      },
+      "serialized": {
+        "items": [
+          {
+            "cause": "Two reports confirm the same obstruction.",
+            "dedupeKey": "baseline:bridge",
+            "duration": {
+              "kind": "UNTIL_RESOLVED",
+              "seconds": null
+            },
+            "focusAction": {
+              "label": "Focus camera",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              },
+              "type": "MANAGEMENT_CAMERA"
+            },
+            "id": "baseline-alert-1",
+            "lastObservedAt": "2026-08-07T12:00:01.000Z",
+            "location": {
+              "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+              "label": "Primary bridge",
+              "position": {
+                "x": 160,
+                "y": 0,
+                "z": 0
+              }
+            },
+            "occurrences": 2,
+            "recommendation": "Clear the vehicle or enable bridge priority.",
+            "relatedEntityIds": [
+              "baseline-disabled-vehicle"
+            ],
+            "resolutionReason": "The disabled vehicle was cleared.",
+            "resolvedAt": "2026-08-07T12:00:02.000Z",
+            "severity": "WARNING",
+            "startTime": "2026-08-07T12:00:00.000Z",
+            "state": "RESOLVED",
+            "supersededBy": null,
+            "title": "Bridge lane obstructed",
+            "type": "INFRASTRUCTURE",
+            "version": 1
+          }
+        ],
+        "sequence": 3,
+        "version": 2
+      }
+    },
+    "customized": {
+      "bindings": {
+        "VEHICLE": {
+          "INTERACT": [
+            "KeyG"
+          ]
+        }
+      },
+      "settings": {
+        "audio": {
+          "ambience": 0.8,
+          "dialogue": 1,
+          "effects": 1,
+          "master": 0.5,
+          "music": 0.7
+        },
+        "cameraSensitivity": {
+          "onFoot": 1,
+          "orbit": 1,
+          "vehicle": 1.4
+        },
+        "colorSafePatterns": true,
+        "contrastMode": "STANDARD",
+        "difficulty": "STANDARD",
+        "drivingAssists": {
+          "autoRecovery": true,
+          "brakingAssist": false,
+          "steering": "STANDARD"
+        },
+        "motion": {
+          "bloom": "FULL",
+          "cameraShake": 1,
+          "flashIntensity": "FULL",
+          "reducedMotion": "SYSTEM"
+        },
+        "mouseSensitivity": 1,
+        "subtitles": {
+          "closedCaptions": true,
+          "enabled": true,
+          "speakerLabels": true
+        },
+        "textScale": 1.25,
+        "timerLeniency": 1,
+        "toggleHold": {
+          "braking": "HOLD",
+          "repeatedActions": "HOLD",
+          "sprint": "HOLD"
+        }
+      },
+      "version": 2
+    },
+    "defaultDocument": {
+      "bindings": {},
+      "settings": {
+        "audio": {
+          "ambience": 0.8,
+          "dialogue": 1,
+          "effects": 1,
+          "master": 0.5,
+          "music": 0.7
+        },
+        "cameraSensitivity": {
+          "onFoot": 1,
+          "orbit": 1,
+          "vehicle": 1
+        },
+        "colorSafePatterns": true,
+        "contrastMode": "STANDARD",
+        "difficulty": "STANDARD",
+        "drivingAssists": {
+          "autoRecovery": true,
+          "brakingAssist": false,
+          "steering": "STANDARD"
+        },
+        "motion": {
+          "bloom": "FULL",
+          "cameraShake": 1,
+          "flashIntensity": "FULL",
+          "reducedMotion": "SYSTEM"
+        },
+        "mouseSensitivity": 1,
+        "subtitles": {
+          "closedCaptions": true,
+          "enabled": true,
+          "speakerLabels": true
+        },
+        "textScale": 1,
+        "timerLeniency": 1,
+        "toggleHold": {
+          "braking": "HOLD",
+          "repeatedActions": "HOLD",
+          "sprint": "HOLD"
+        }
+      },
+      "version": 2
+    },
+    "defaults": {
+      "bindings": {},
+      "settings": {
+        "audio": {
+          "ambience": 0.8,
+          "dialogue": 1,
+          "effects": 1,
+          "master": 0.5,
+          "music": 0.7
+        },
+        "cameraSensitivity": {
+          "onFoot": 1,
+          "orbit": 1,
+          "vehicle": 1
+        },
+        "colorSafePatterns": true,
+        "contrastMode": "STANDARD",
+        "difficulty": "STANDARD",
+        "drivingAssists": {
+          "autoRecovery": true,
+          "brakingAssist": false,
+          "steering": "STANDARD"
+        },
+        "motion": {
+          "bloom": "FULL",
+          "cameraShake": 1,
+          "flashIntensity": "FULL",
+          "reducedMotion": "SYSTEM"
+        },
+        "mouseSensitivity": 1,
+        "subtitles": {
+          "closedCaptions": true,
+          "enabled": true,
+          "speakerLabels": true
+        },
+        "textScale": 1,
+        "timerLeniency": 1,
+        "toggleHold": {
+          "braking": "HOLD",
+          "repeatedActions": "HOLD",
+          "sprint": "HOLD"
+        }
+      },
+      "version": 2
+    },
+    "reservedBindingError": {
+      "message": "F5 is reserved by the browser.",
+      "name": "RangeError"
+    },
+    "vehicleInteractLabel": "G"
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "settings-bindings-alerts",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

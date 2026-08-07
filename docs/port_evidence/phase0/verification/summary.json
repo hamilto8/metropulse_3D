@@ -1,0 +1,53 @@
+{
+  "capturedOn": "2026-08-07",
+  "checks": [
+    {
+      "artifact": "baseline-fixtures.json",
+      "command": [
+        "npm",
+        "run",
+        "baseline:check"
+      ],
+      "durationMs": 277,
+      "exitCode": 0,
+      "id": "baseline-fixtures"
+    },
+    {
+      "artifact": "unit.json",
+      "command": [
+        "npm",
+        "test"
+      ],
+      "durationMs": 3577,
+      "exitCode": 0,
+      "id": "unit"
+    },
+    {
+      "artifact": "build.json",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "durationMs": 456,
+      "exitCode": 0,
+      "id": "build"
+    },
+    {
+      "artifact": "browser.json",
+      "command": [
+        "npm",
+        "run",
+        "test:browser",
+        "--",
+        "--reporter=json"
+      ],
+      "durationMs": 36202,
+      "exitCode": 0,
+      "id": "browser"
+    }
+  ],
+  "passed": true,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "schemaVersion": 1
+}

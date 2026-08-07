@@ -1,0 +1,1752 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "inspection": {
+      "controlled": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "STREET_VEHICLE",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": null,
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": null,
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": {
+                "contentId": "baseline-controlled-vehicle",
+                "inventory": {
+                  "baseballBat": false
+                },
+                "kind": "VEHICLE",
+                "position": [
+                  12,
+                  0.5,
+                  -8
+                ],
+                "rotation": [
+                  0,
+                  0.7853981633974483,
+                  0
+                ],
+                "speed": 12.5,
+                "typeId": "SEDAN"
+              },
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "reason": "controlled-entity-reference",
+            "reasons": [
+              "controlled-entity-reference"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-controlled-entity"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "corrupt": {
+        "document": null,
+        "present": true,
+        "reason": "This city save was not applied because save.data.economy must be an object.",
+        "savedAt": null,
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": false
+      },
+      "future": {
+        "document": null,
+        "present": true,
+        "reason": "This city was saved by a newer MetroPulse version and cannot be opened safely here.",
+        "savedAt": null,
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": false
+      },
+      "midMission": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "STREET_VEHICLE",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": {
+                "basePayout": 500,
+                "contentId": "mission_executive",
+                "initialTimeLimit": 60,
+                "payout": 500,
+                "raceElapsed": 0,
+                "routeIndex": 0,
+                "sabotageActive": false,
+                "sabotageProgress": 0,
+                "state": "IN_PROGRESS",
+                "timeRemaining": 42
+              },
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": {
+                "phase": "ACTIVE",
+                "progress": {
+                  "chronologyStep": 0,
+                  "completedMissionIds": [],
+                  "dialogueChoices": [],
+                  "runCounts": [
+                    [
+                      "mission_executive",
+                      1
+                    ]
+                  ]
+                },
+                "revision": 4,
+                "run": {
+                  "attempt": 1,
+                  "baseReward": 500,
+                  "checkpoint": null,
+                  "choice": null,
+                  "cleanupError": null,
+                  "initialTimeLimit": 60,
+                  "missionId": "mission_executive",
+                  "objective": "TAXI",
+                  "receipt": null,
+                  "resolution": null,
+                  "retryPolicy": {
+                    "maxAttempts": 3,
+                    "strategy": "RESTART"
+                  },
+                  "runId": "mission_executive:run-1",
+                  "runNumber": 1,
+                  "transactionId": null,
+                  "weather": {
+                    "allowed": true,
+                    "delayed": false,
+                    "disposition": "ALLOWED",
+                    "mode": "clear",
+                    "reason": "Executive Pickup allows clear conditions.",
+                    "rewardMultiplier": 1,
+                    "timeLimitMultiplier": 1
+                  }
+                },
+                "selectedMissionId": "mission_executive",
+                "version": 1
+              },
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": {
+                "contentId": "baseline-controlled-vehicle",
+                "inventory": {
+                  "baseballBat": false
+                },
+                "kind": "VEHICLE",
+                "position": [
+                  12,
+                  0.5,
+                  -8
+                ],
+                "rotation": [
+                  0,
+                  0.7853981633974483,
+                  0
+                ],
+                "speed": 12.5,
+                "typeId": "SEDAN"
+              },
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "reason": "mission-checkpoint",
+            "reasons": [
+              "mission-checkpoint"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-mid-mission"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "recovery": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "MANAGEMENT",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": null,
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": null,
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": null,
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "reason": "recovery-reference",
+            "reasons": [
+              "recovery-reference"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-recovery"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "recovery",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "result": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "RESULT",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": {
+                "basePayout": 500,
+                "contentId": "mission_executive",
+                "initialTimeLimit": 60,
+                "payout": 500,
+                "raceElapsed": 0,
+                "routeIndex": 0,
+                "sabotageActive": false,
+                "sabotageProgress": 0,
+                "state": "IN_PROGRESS",
+                "timeRemaining": 42
+              },
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": {
+                "phase": "RESULT",
+                "progress": {
+                  "chronologyStep": 1,
+                  "completedMissionIds": [
+                    "mission_executive"
+                  ],
+                  "dialogueChoices": [],
+                  "runCounts": [
+                    [
+                      "mission_executive",
+                      1
+                    ]
+                  ]
+                },
+                "revision": 7,
+                "run": {
+                  "attempt": 1,
+                  "baseReward": 500,
+                  "checkpoint": null,
+                  "choice": null,
+                  "cleanupError": null,
+                  "initialTimeLimit": 60,
+                  "missionId": "mission_executive",
+                  "objective": "TAXI",
+                  "receipt": {
+                    "duplicate": false,
+                    "effects": [],
+                    "summary": {
+                      "description": "Passenger delivered.",
+                      "title": "Executive Pickup complete"
+                    },
+                    "transactionId": "mission:mission_executive:run-1:attempt-1:SUCCESS"
+                  },
+                  "resolution": {
+                    "outcome": "SUCCESS",
+                    "payout": 500,
+                    "summary": "Passenger delivered."
+                  },
+                  "retryPolicy": {
+                    "maxAttempts": 3,
+                    "strategy": "RESTART"
+                  },
+                  "runId": "mission_executive:run-1",
+                  "runNumber": 1,
+                  "transactionId": "mission:mission_executive:run-1:attempt-1:SUCCESS",
+                  "weather": {
+                    "allowed": true,
+                    "delayed": false,
+                    "disposition": "ALLOWED",
+                    "mode": "clear",
+                    "reason": "Executive Pickup allows clear conditions.",
+                    "rewardMultiplier": 1,
+                    "timeLimitMultiplier": 1
+                  }
+                },
+                "selectedMissionId": "mission_executive",
+                "version": 1
+              },
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": {
+                "contentId": "baseline-controlled-vehicle",
+                "inventory": {
+                  "baseballBat": false
+                },
+                "kind": "VEHICLE",
+                "position": [
+                  12,
+                  0.5,
+                  -8
+                ],
+                "rotation": [
+                  0,
+                  0.7853981633974483,
+                  0
+                ],
+                "speed": 12.5,
+                "typeId": "SEDAN"
+              },
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "reason": "mission-result",
+            "reasons": [
+              "mission-result"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-result"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "schema0": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "MANAGEMENT",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": null,
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": null,
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": null,
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "migratedFromSchema": 0,
+            "migrationHistory": [
+              "P4.1_ZONE_VOCABULARY"
+            ],
+            "reason": "phase0-reference",
+            "reasons": [
+              "phase0-reference"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-valid"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "schema1": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "MANAGEMENT",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": null,
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": null,
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": null,
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "migrationHistory": [
+              "P4.1_ZONE_VOCABULARY"
+            ],
+            "reason": "phase0-reference",
+            "reasons": [
+              "phase0-reference"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-valid"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      },
+      "valid": {
+        "document": {
+          "data": {
+            "alerts": {
+              "items": [],
+              "sequence": 0,
+              "version": 2
+            },
+            "bindings": {
+              "overrides": {},
+              "version": 1
+            },
+            "economy": {
+              "baseHappiness": 50,
+              "baseLandValue": 100,
+              "basePassiveIncomeRate": 8,
+              "basePopulation": 0,
+              "baseServices": {
+                "fire": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "power": {
+                  "capacity": 0,
+                  "demand": 0
+                },
+                "water": {
+                  "capacity": 0,
+                  "demand": 0
+                }
+              },
+              "buildings": [],
+              "completedMissions": [],
+              "districts": [
+                {
+                  "id": "EAST_CYBER_METROPOLIS",
+                  "name": "East Cyber-Metropolis",
+                  "unlockCost": 1000000,
+                  "unlocked": false
+                }
+              ],
+              "incidents": [],
+              "narrativeProgress": 0,
+              "recovery": {
+                "active": false,
+                "assistanceClaims": 0,
+                "completedAtRevision": null,
+                "completedRecoveries": 0,
+                "lastAssistanceRevision": null,
+                "startedAtRevision": null,
+                "totalAssistance": 0
+              },
+              "reputation": 0,
+              "treasury": 650000,
+              "version": 1,
+              "zones": []
+            },
+            "factions": {
+              "values": {},
+              "version": 1
+            },
+            "game": {
+              "mayhemEnabled": false,
+              "resumeState": null,
+              "state": "MANAGEMENT",
+              "version": 1
+            },
+            "heat": {
+              "activeIncidentId": null,
+              "escapeTimer": 0,
+              "version": 1,
+              "wanted": false
+            },
+            "missions": {
+              "active": null,
+              "chronologyStep": 0,
+              "completedMissionIds": [],
+              "contracts": null,
+              "dialogueChoices": [],
+              "lifecycle": null,
+              "runCounts": [],
+              "version": 1
+            },
+            "mobility": null,
+            "player": {
+              "controlled": null,
+              "version": 1
+            },
+            "progression": {
+              "values": {},
+              "version": 1
+            },
+            "settings": {
+              "heatmap": false,
+              "values": {
+                "audio": {
+                  "ambience": 0.8,
+                  "dialogue": 1,
+                  "effects": 1,
+                  "master": 0.5,
+                  "music": 0.7
+                },
+                "cameraSensitivity": {
+                  "onFoot": 1,
+                  "orbit": 1,
+                  "vehicle": 1
+                },
+                "colorSafePatterns": true,
+                "contrastMode": "STANDARD",
+                "difficulty": "STANDARD",
+                "drivingAssists": {
+                  "autoRecovery": true,
+                  "brakingAssist": false,
+                  "steering": "STANDARD"
+                },
+                "motion": {
+                  "bloom": "FULL",
+                  "cameraShake": 1,
+                  "flashIntensity": "FULL",
+                  "reducedMotion": "SYSTEM"
+                },
+                "mouseSensitivity": 1,
+                "subtitles": {
+                  "closedCaptions": true,
+                  "enabled": true,
+                  "speakerLabels": true
+                },
+                "textScale": 1,
+                "timerLeniency": 1,
+                "toggleHold": {
+                  "braking": "HOLD",
+                  "repeatedActions": "HOLD",
+                  "sprint": "HOLD"
+                }
+              },
+              "version": 1
+            },
+            "timeWeather": {
+              "playing": true,
+              "speed": 1,
+              "time": 9.25,
+              "version": 1,
+              "weather": "clear"
+            },
+            "world": {
+              "buildings": [],
+              "version": 1,
+              "zones": []
+            }
+          },
+          "featureVersion": 2,
+          "format": "METROPULSE_3D_SAVE",
+          "metadata": {
+            "checkpoint": null,
+            "reason": "phase0-reference",
+            "reasons": [
+              "phase0-reference"
+            ],
+            "savedAt": "2026-08-07T12:00:00.000Z",
+            "saveId": "phase0-valid"
+          },
+          "schemaVersion": 2
+        },
+        "present": true,
+        "reason": null,
+        "savedAt": "2026-08-07T12:00:00.000Z",
+        "slot": "current",
+        "source": "indexedDB",
+        "valid": true
+      }
+    },
+    "migrations": {
+      "schema0ToCurrent": {
+        "data": {
+          "alerts": {
+            "items": [],
+            "sequence": 0,
+            "version": 2
+          },
+          "bindings": {
+            "overrides": {},
+            "version": 1
+          },
+          "economy": {
+            "baseHappiness": 50,
+            "baseLandValue": 100,
+            "basePassiveIncomeRate": 8,
+            "basePopulation": 0,
+            "baseServices": {
+              "fire": {
+                "capacity": 0,
+                "demand": 0
+              },
+              "power": {
+                "capacity": 0,
+                "demand": 0
+              },
+              "water": {
+                "capacity": 0,
+                "demand": 0
+              }
+            },
+            "buildings": [],
+            "completedMissions": [],
+            "districts": [
+              {
+                "id": "EAST_CYBER_METROPOLIS",
+                "name": "East Cyber-Metropolis",
+                "unlockCost": 1000000,
+                "unlocked": false
+              }
+            ],
+            "incidents": [],
+            "narrativeProgress": 0,
+            "recovery": {
+              "active": false,
+              "assistanceClaims": 0,
+              "completedAtRevision": null,
+              "completedRecoveries": 0,
+              "lastAssistanceRevision": null,
+              "startedAtRevision": null,
+              "totalAssistance": 0
+            },
+            "reputation": 0,
+            "treasury": 650000,
+            "version": 1,
+            "zones": []
+          },
+          "factions": {
+            "values": {},
+            "version": 1
+          },
+          "game": {
+            "mayhemEnabled": false,
+            "resumeState": null,
+            "state": "MANAGEMENT",
+            "version": 1
+          },
+          "heat": {
+            "activeIncidentId": null,
+            "escapeTimer": 0,
+            "version": 1,
+            "wanted": false
+          },
+          "missions": {
+            "active": null,
+            "chronologyStep": 0,
+            "completedMissionIds": [],
+            "contracts": null,
+            "dialogueChoices": [],
+            "lifecycle": null,
+            "runCounts": [],
+            "version": 1
+          },
+          "mobility": null,
+          "player": {
+            "controlled": null,
+            "version": 1
+          },
+          "progression": {
+            "values": {},
+            "version": 1
+          },
+          "settings": {
+            "heatmap": false,
+            "values": {
+              "audio": {
+                "ambience": 0.8,
+                "dialogue": 1,
+                "effects": 1,
+                "master": 0.5,
+                "music": 0.7
+              },
+              "cameraSensitivity": {
+                "onFoot": 1,
+                "orbit": 1,
+                "vehicle": 1
+              },
+              "colorSafePatterns": true,
+              "contrastMode": "STANDARD",
+              "difficulty": "STANDARD",
+              "drivingAssists": {
+                "autoRecovery": true,
+                "brakingAssist": false,
+                "steering": "STANDARD"
+              },
+              "motion": {
+                "bloom": "FULL",
+                "cameraShake": 1,
+                "flashIntensity": "FULL",
+                "reducedMotion": "SYSTEM"
+              },
+              "mouseSensitivity": 1,
+              "subtitles": {
+                "closedCaptions": true,
+                "enabled": true,
+                "speakerLabels": true
+              },
+              "textScale": 1,
+              "timerLeniency": 1,
+              "toggleHold": {
+                "braking": "HOLD",
+                "repeatedActions": "HOLD",
+                "sprint": "HOLD"
+              }
+            },
+            "version": 1
+          },
+          "timeWeather": {
+            "playing": true,
+            "speed": 1,
+            "time": 9.25,
+            "version": 1,
+            "weather": "clear"
+          },
+          "world": {
+            "buildings": [],
+            "version": 1,
+            "zones": []
+          }
+        },
+        "featureVersion": 2,
+        "format": "METROPULSE_3D_SAVE",
+        "metadata": {
+          "checkpoint": null,
+          "migratedFromSchema": 0,
+          "migrationHistory": [
+            "P4.1_ZONE_VOCABULARY"
+          ],
+          "reason": "phase0-reference",
+          "reasons": [
+            "phase0-reference"
+          ],
+          "savedAt": "2026-08-07T12:00:00.000Z",
+          "saveId": "phase0-valid"
+        },
+        "schemaVersion": 2
+      },
+      "schema1ToCurrent": {
+        "data": {
+          "alerts": {
+            "items": [],
+            "sequence": 0,
+            "version": 2
+          },
+          "bindings": {
+            "overrides": {},
+            "version": 1
+          },
+          "economy": {
+            "baseHappiness": 50,
+            "baseLandValue": 100,
+            "basePassiveIncomeRate": 8,
+            "basePopulation": 0,
+            "baseServices": {
+              "fire": {
+                "capacity": 0,
+                "demand": 0
+              },
+              "power": {
+                "capacity": 0,
+                "demand": 0
+              },
+              "water": {
+                "capacity": 0,
+                "demand": 0
+              }
+            },
+            "buildings": [],
+            "completedMissions": [],
+            "districts": [
+              {
+                "id": "EAST_CYBER_METROPOLIS",
+                "name": "East Cyber-Metropolis",
+                "unlockCost": 1000000,
+                "unlocked": false
+              }
+            ],
+            "incidents": [],
+            "narrativeProgress": 0,
+            "recovery": {
+              "active": false,
+              "assistanceClaims": 0,
+              "completedAtRevision": null,
+              "completedRecoveries": 0,
+              "lastAssistanceRevision": null,
+              "startedAtRevision": null,
+              "totalAssistance": 0
+            },
+            "reputation": 0,
+            "treasury": 650000,
+            "version": 1,
+            "zones": []
+          },
+          "factions": {
+            "values": {},
+            "version": 1
+          },
+          "game": {
+            "mayhemEnabled": false,
+            "resumeState": null,
+            "state": "MANAGEMENT",
+            "version": 1
+          },
+          "heat": {
+            "activeIncidentId": null,
+            "escapeTimer": 0,
+            "version": 1,
+            "wanted": false
+          },
+          "missions": {
+            "active": null,
+            "chronologyStep": 0,
+            "completedMissionIds": [],
+            "contracts": null,
+            "dialogueChoices": [],
+            "lifecycle": null,
+            "runCounts": [],
+            "version": 1
+          },
+          "mobility": null,
+          "player": {
+            "controlled": null,
+            "version": 1
+          },
+          "progression": {
+            "values": {},
+            "version": 1
+          },
+          "settings": {
+            "heatmap": false,
+            "values": {
+              "audio": {
+                "ambience": 0.8,
+                "dialogue": 1,
+                "effects": 1,
+                "master": 0.5,
+                "music": 0.7
+              },
+              "cameraSensitivity": {
+                "onFoot": 1,
+                "orbit": 1,
+                "vehicle": 1
+              },
+              "colorSafePatterns": true,
+              "contrastMode": "STANDARD",
+              "difficulty": "STANDARD",
+              "drivingAssists": {
+                "autoRecovery": true,
+                "brakingAssist": false,
+                "steering": "STANDARD"
+              },
+              "motion": {
+                "bloom": "FULL",
+                "cameraShake": 1,
+                "flashIntensity": "FULL",
+                "reducedMotion": "SYSTEM"
+              },
+              "mouseSensitivity": 1,
+              "subtitles": {
+                "closedCaptions": true,
+                "enabled": true,
+                "speakerLabels": true
+              },
+              "textScale": 1,
+              "timerLeniency": 1,
+              "toggleHold": {
+                "braking": "HOLD",
+                "repeatedActions": "HOLD",
+                "sprint": "HOLD"
+              }
+            },
+            "version": 1
+          },
+          "timeWeather": {
+            "playing": true,
+            "speed": 1,
+            "time": 9.25,
+            "version": 1,
+            "weather": "clear"
+          },
+          "world": {
+            "buildings": [],
+            "version": 1,
+            "zones": []
+          }
+        },
+        "featureVersion": 2,
+        "format": "METROPULSE_3D_SAVE",
+        "metadata": {
+          "checkpoint": null,
+          "migrationHistory": [
+            "P4.1_ZONE_VOCABULARY"
+          ],
+          "reason": "phase0-reference",
+          "reasons": [
+            "phase0-reference"
+          ],
+          "savedAt": "2026-08-07T12:00:00.000Z",
+          "saveId": "phase0-valid"
+        },
+        "schemaVersion": 2
+      }
+    }
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "save-inspection-migrations",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

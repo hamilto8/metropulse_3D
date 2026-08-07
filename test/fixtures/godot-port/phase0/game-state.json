@@ -1,0 +1,1881 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "policies": {
+      "BOOT": {
+        "camera": "NONE",
+        "clock": "STOPPED",
+        "control": "REQUIRE_NONE",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "REQUIRE_NONE"
+      },
+      "BUILDER": {
+        "camera": "BUILDER",
+        "clock": "BUILDER",
+        "control": "REQUIRE_NONE",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "REQUIRE_RESOLVED"
+      },
+      "LOAD": {
+        "camera": "LOADING",
+        "clock": "STOPPED",
+        "control": "REQUIRE_NONE",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "REQUIRE_NONE"
+      },
+      "MANAGEMENT": {
+        "camera": "MANAGEMENT",
+        "clock": "CITY",
+        "control": "REQUIRE_NONE",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "REQUIRE_RESOLVED"
+      },
+      "MENU": {
+        "camera": "MENU",
+        "clock": "MENU",
+        "control": "SUSPEND",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "SUSPEND"
+      },
+      "PAUSED": {
+        "camera": "PRESERVE",
+        "clock": "PAUSED",
+        "control": "SUSPEND",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "SUSPEND"
+      },
+      "RESULT": {
+        "camera": "RESULT",
+        "clock": "RESULT",
+        "control": "REQUIRE_NONE",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "PRESERVE_UNTIL_RESULT_COMMIT"
+      },
+      "STREET_ON_FOOT": {
+        "camera": "STREET_ON_FOOT",
+        "clock": "STREET",
+        "control": "REQUIRE_PEDESTRIAN",
+        "heat": "PRESERVE_RUNNING",
+        "mission": "PRESERVE"
+      },
+      "STREET_VEHICLE": {
+        "camera": "STREET_VEHICLE",
+        "clock": "STREET",
+        "control": "REQUIRE_VEHICLE",
+        "heat": "PRESERVE_RUNNING",
+        "mission": "PRESERVE"
+      },
+      "TRANSITION": {
+        "camera": "HANDOFF",
+        "clock": "HANDOFF",
+        "control": "HANDOFF",
+        "heat": "PRESERVE_FROZEN",
+        "mission": "PRESERVE"
+      }
+    },
+    "requestedTransitions": {
+      "BOOT": [
+        "LOAD",
+        "MENU"
+      ],
+      "BUILDER": [
+        "MANAGEMENT",
+        "PAUSED",
+        "MENU"
+      ],
+      "LOAD": [
+        "MANAGEMENT",
+        "MENU"
+      ],
+      "MANAGEMENT": [
+        "BUILDER",
+        "STREET_ON_FOOT",
+        "STREET_VEHICLE",
+        "PAUSED",
+        "MENU"
+      ],
+      "MENU": [
+        "LOAD",
+        "MANAGEMENT"
+      ],
+      "PAUSED": [
+        "MENU"
+      ],
+      "RESULT": [
+        "MANAGEMENT",
+        "STREET_ON_FOOT",
+        "STREET_VEHICLE",
+        "PAUSED",
+        "MENU"
+      ],
+      "STREET_ON_FOOT": [
+        "STREET_VEHICLE",
+        "MANAGEMENT",
+        "RESULT",
+        "PAUSED",
+        "MENU"
+      ],
+      "STREET_VEHICLE": [
+        "STREET_ON_FOOT",
+        "MANAGEMENT",
+        "RESULT",
+        "PAUSED",
+        "MENU"
+      ],
+      "TRANSITION": []
+    },
+    "states": [
+      "BOOT",
+      "LOAD",
+      "MANAGEMENT",
+      "BUILDER",
+      "TRANSITION",
+      "STREET_ON_FOOT",
+      "STREET_VEHICLE",
+      "RESULT",
+      "PAUSED",
+      "MENU"
+    ],
+    "transitionMatrix": [
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "BOOT is already active."
+        },
+        "from": "BOOT",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "NONE",
+            "to": "LOADING"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "simulationClock": {
+            "from": "STOPPED",
+            "to": "STOPPED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "BOOT",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> MANAGEMENT"
+        },
+        "from": "BOOT",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> BUILDER"
+        },
+        "from": "BOOT",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "BOOT",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> STREET_ON_FOOT"
+        },
+        "from": "BOOT",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> STREET_VEHICLE"
+        },
+        "from": "BOOT",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> RESULT"
+        },
+        "from": "BOOT",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BOOT -> PAUSED"
+        },
+        "from": "BOOT",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "NONE",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STOPPED",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "BOOT",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> BOOT"
+        },
+        "from": "LOAD",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "LOAD is already active."
+        },
+        "from": "LOAD",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "LOADING",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "STOPPED",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "LOAD",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> BUILDER"
+        },
+        "from": "LOAD",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "LOAD",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> STREET_ON_FOOT"
+        },
+        "from": "LOAD",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> STREET_VEHICLE"
+        },
+        "from": "LOAD",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> RESULT"
+        },
+        "from": "LOAD",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: LOAD -> PAUSED"
+        },
+        "from": "LOAD",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "LOADING",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STOPPED",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "LOAD",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MANAGEMENT -> BOOT"
+        },
+        "from": "MANAGEMENT",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MANAGEMENT -> LOAD"
+        },
+        "from": "MANAGEMENT",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "MANAGEMENT is already active."
+        },
+        "from": "MANAGEMENT",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MANAGEMENT",
+            "to": "BUILDER"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "CITY",
+            "to": "BUILDER"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MANAGEMENT",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "MANAGEMENT",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MANAGEMENT",
+            "to": "STREET_ON_FOOT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_PEDESTRIAN"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "CITY",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MANAGEMENT",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MANAGEMENT",
+            "to": "STREET_VEHICLE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_VEHICLE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "CITY",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MANAGEMENT",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MANAGEMENT -> RESULT"
+        },
+        "from": "MANAGEMENT",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MANAGEMENT",
+            "to": "PRESERVE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "CITY",
+            "to": "PAUSED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MANAGEMENT",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MANAGEMENT",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "CITY",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MANAGEMENT",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BUILDER -> BOOT"
+        },
+        "from": "BUILDER",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BUILDER -> LOAD"
+        },
+        "from": "BUILDER",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "BUILDER",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "BUILDER",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "BUILDER",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "BUILDER is already active."
+        },
+        "from": "BUILDER",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "BUILDER",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BUILDER -> STREET_ON_FOOT"
+        },
+        "from": "BUILDER",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BUILDER -> STREET_VEHICLE"
+        },
+        "from": "BUILDER",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: BUILDER -> RESULT"
+        },
+        "from": "BUILDER",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "BUILDER",
+            "to": "PRESERVE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "BUILDER",
+            "to": "PAUSED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "BUILDER",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "BUILDER",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "REQUIRE_RESOLVED",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "BUILDER",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "BUILDER",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "TRANSITION_IN_PROGRESS"
+        },
+        "from": "TRANSITION",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_ON_FOOT -> BOOT"
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_ON_FOOT -> LOAD"
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_ON_FOOT",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_PEDESTRIAN",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_ON_FOOT -> BUILDER"
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "STREET_ON_FOOT is already active."
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_ON_FOOT",
+            "to": "STREET_VEHICLE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_PEDESTRIAN",
+            "to": "REQUIRE_VEHICLE"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_ON_FOOT",
+            "to": "RESULT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_PEDESTRIAN",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "PRESERVE_UNTIL_RESULT_COMMIT"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "RESULT"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_ON_FOOT",
+            "to": "PRESERVE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_PEDESTRIAN",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "PAUSED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_ON_FOOT",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_PEDESTRIAN",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_ON_FOOT",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_VEHICLE -> BOOT"
+        },
+        "from": "STREET_VEHICLE",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_VEHICLE -> LOAD"
+        },
+        "from": "STREET_VEHICLE",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_VEHICLE",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_VEHICLE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_VEHICLE",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: STREET_VEHICLE -> BUILDER"
+        },
+        "from": "STREET_VEHICLE",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "STREET_VEHICLE",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_VEHICLE",
+            "to": "STREET_ON_FOOT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_VEHICLE",
+            "to": "REQUIRE_PEDESTRIAN"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_VEHICLE",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "STREET_VEHICLE is already active."
+        },
+        "from": "STREET_VEHICLE",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_VEHICLE",
+            "to": "RESULT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_VEHICLE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "PRESERVE_UNTIL_RESULT_COMMIT"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "RESULT"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_VEHICLE",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_VEHICLE",
+            "to": "PRESERVE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_VEHICLE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "PAUSED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_VEHICLE",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "STREET_VEHICLE",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_VEHICLE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_RUNNING",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "STREET",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "STREET_VEHICLE",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: RESULT -> BOOT"
+        },
+        "from": "RESULT",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: RESULT -> LOAD"
+        },
+        "from": "RESULT",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "RESULT",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "RESULT",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "RESULT",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: RESULT -> BUILDER"
+        },
+        "from": "RESULT",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "RESULT",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "RESULT",
+            "to": "STREET_ON_FOOT"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_PEDESTRIAN"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "RESULT",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "RESULT",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "RESULT",
+            "to": "STREET_VEHICLE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "REQUIRE_VEHICLE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_RUNNING"
+          },
+          "mission": {
+            "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+            "to": "PRESERVE"
+          },
+          "simulationClock": {
+            "from": "RESULT",
+            "to": "STREET"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "RESULT",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "RESULT is already active."
+        },
+        "from": "RESULT",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "RESULT",
+            "to": "PRESERVE"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "RESULT",
+            "to": "PAUSED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "RESULT",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "RESULT",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "REQUIRE_NONE",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "RESULT",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "RESULT",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> BOOT"
+        },
+        "from": "PAUSED",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> LOAD"
+        },
+        "from": "PAUSED",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> MANAGEMENT"
+        },
+        "from": "PAUSED",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> BUILDER"
+        },
+        "from": "PAUSED",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "PAUSED",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> STREET_ON_FOOT"
+        },
+        "from": "PAUSED",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> STREET_VEHICLE"
+        },
+        "from": "PAUSED",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "INVALID_RESUME_TARGET",
+          "reason": "Illegal game-state transition: PAUSED -> RESULT"
+        },
+        "from": "PAUSED",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "PAUSED is already active."
+        },
+        "from": "PAUSED",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "PRESERVE",
+            "to": "MENU"
+          },
+          "controlledEntity": {
+            "from": "SUSPEND",
+            "to": "SUSPEND"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "SUSPEND",
+            "to": "SUSPEND"
+          },
+          "simulationClock": {
+            "from": "PAUSED",
+            "to": "MENU"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "PAUSED",
+        "to": "MENU"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> BOOT"
+        },
+        "from": "MENU",
+        "to": "BOOT"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MENU",
+            "to": "LOADING"
+          },
+          "controlledEntity": {
+            "from": "SUSPEND",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "SUSPEND",
+            "to": "REQUIRE_NONE"
+          },
+          "simulationClock": {
+            "from": "MENU",
+            "to": "STOPPED"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MENU",
+        "to": "LOAD"
+      },
+      {
+        "declaredLegal": true,
+        "effects": {
+          "camera": {
+            "from": "MENU",
+            "to": "MANAGEMENT"
+          },
+          "controlledEntity": {
+            "from": "SUSPEND",
+            "to": "REQUIRE_NONE"
+          },
+          "heat": {
+            "from": "PRESERVE_FROZEN",
+            "to": "PRESERVE_FROZEN"
+          },
+          "mission": {
+            "from": "SUSPEND",
+            "to": "REQUIRE_RESOLVED"
+          },
+          "simulationClock": {
+            "from": "MENU",
+            "to": "CITY"
+          }
+        },
+        "evaluation": {
+          "allowed": true,
+          "code": null,
+          "reason": null
+        },
+        "from": "MENU",
+        "to": "MANAGEMENT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> BUILDER"
+        },
+        "from": "MENU",
+        "to": "BUILDER"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "TRANSITION is owned by GameManager and cannot be requested directly."
+        },
+        "from": "MENU",
+        "to": "TRANSITION"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> STREET_ON_FOOT"
+        },
+        "from": "MENU",
+        "to": "STREET_ON_FOOT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> STREET_VEHICLE"
+        },
+        "from": "MENU",
+        "to": "STREET_VEHICLE"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> RESULT"
+        },
+        "from": "MENU",
+        "to": "RESULT"
+      },
+      {
+        "declaredLegal": false,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "ILLEGAL_EDGE",
+          "reason": "Illegal game-state transition: MENU -> PAUSED"
+        },
+        "from": "MENU",
+        "to": "PAUSED"
+      },
+      {
+        "declaredLegal": true,
+        "effects": null,
+        "evaluation": {
+          "allowed": false,
+          "code": "SAME_STATE",
+          "reason": "MENU is already active."
+        },
+        "from": "MENU",
+        "to": "MENU"
+      }
+    ]
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "game-state",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

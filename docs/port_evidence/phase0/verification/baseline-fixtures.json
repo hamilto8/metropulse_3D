@@ -1,0 +1,17 @@
+{
+  "command": [
+    "npm",
+    "run",
+    "baseline:check"
+  ],
+  "durationMs": 277,
+  "exitCode": 0,
+  "id": "baseline-fixtures",
+  "parseError": null,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "report": null,
+  "schemaVersion": 1,
+  "signal": null,
+  "stderr": "",
+  "stdout": "\n> 3d_objects@0.0.0 baseline:check\n> node Tools/BaselineCapture/capture.mjs --check\n\n{\n  \"ok\": true,\n  \"mismatches\": [],\n  \"directory\": \"<workspace>/test/fixtures/godot-port/phase0\"\n}\n"
+}

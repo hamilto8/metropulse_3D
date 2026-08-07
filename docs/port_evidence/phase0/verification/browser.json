@@ -1,0 +1,408 @@
+{
+  "command": [
+    "npm",
+    "run",
+    "test:browser",
+    "--",
+    "--reporter=json"
+  ],
+  "durationMs": 36202,
+  "exitCode": 0,
+  "id": "browser",
+  "parseError": null,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "report": {
+    "config": {
+      "argv": [
+        "/usr/local/bin/node",
+        "<workspace>/node_modules/.bin/playwright",
+        "test",
+        "--reporter=json"
+      ],
+      "configFile": "<workspace>/playwright.config.js",
+      "failOnFlakyTests": false,
+      "forbidOnly": false,
+      "fullyParallel": false,
+      "globalSetup": null,
+      "globalTeardown": null,
+      "globalTimeout": 0,
+      "grep": {},
+      "grepInvert": null,
+      "maxFailures": 0,
+      "metadata": {
+        "actualWorkers": 1
+      },
+      "preserveOutput": "always",
+      "projects": [
+        {
+          "id": "",
+          "metadata": {
+            "actualWorkers": 1
+          },
+          "name": "",
+          "outputDir": "<workspace>/test-results",
+          "repeatEach": 1,
+          "retries": 0,
+          "testDir": "<workspace>/test/browser",
+          "testIgnore": [],
+          "testMatch": [
+            "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+          ],
+          "timeout": 30000
+        }
+      ],
+      "quiet": false,
+      "reporter": [
+        [
+          "json"
+        ]
+      ],
+      "reportSlowTests": {
+        "max": 5,
+        "threshold": 300000
+      },
+      "rootDir": "<workspace>/test/browser",
+      "shard": null,
+      "tags": [],
+      "updateSnapshots": "missing",
+      "updateSourceMethod": "patch",
+      "version": "1.61.1",
+      "webServer": {
+        "command": "npm run dev -- --host 127.0.0.1 --port 4173",
+        "reuseExistingServer": true,
+        "timeout": 120000,
+        "url": "http://127.0.0.1:4173"
+      },
+      "workers": 4
+    },
+    "errors": [],
+    "stats": {
+      "duration": 35753.399000000005,
+      "expected": 9,
+      "flaky": 0,
+      "skipped": 0,
+      "startTime": "2026-08-07T19:49:54.602Z",
+      "unexpected": 0
+    },
+    "suites": [
+      {
+        "column": 0,
+        "file": "smoke.spec.js",
+        "line": 0,
+        "specs": [
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-d02489f6f45422640331",
+            "line": 7,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 9583,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:49:55.302Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "boots a deterministic clean profile without runtime or UI errors"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-10c5b9025d5d31962b14",
+            "line": 364,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 3523,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:05.355Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "local service incident becomes a funded, persistent cleanup and repair street objective"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-c891262c89baded163c7",
+            "line": 437,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 3728,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:08.883Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "aggregate traffic drives productivity, missions, alerts, policy tradeoffs, and street feedback"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-6f25bf5d1f5d9819f6ad",
+            "line": 507,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 3703,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:12.617Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "economy insolvency exposes assistance, enforces recovery restrictions, and survives reload"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-bfa20240469ec6e2382e",
+            "line": 559,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 4633,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:16.326Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "mission failure, retry, outcome commit, result save, and recovery form one guarded lifecycle"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-1513047dc24465147a10",
+            "line": 672,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 1076,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:20.967Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 30000
+              }
+            ],
+            "title": "blocks startup with actionable compatibility guidance before world services exist"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-d0d4a928ee6938e3a4a0",
+            "line": 688,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 3938,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:22.052Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "settings and contextual bindings apply immediately and survive reload"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-2fa879cc11c465d21077",
+            "line": 750,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 2916,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:26.000Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 90000
+              }
+            ],
+            "title": "migrates legacy slots, preserves recovery, saves transactionally, and continues after reload"
+          },
+          {
+            "column": 1,
+            "file": "smoke.spec.js",
+            "id": "2c14808d47b386fba9eb-ca75ab00a513382c9db2",
+            "line": 836,
+            "ok": true,
+            "tags": [],
+            "tests": [
+              {
+                "annotations": [],
+                "expectedStatus": "passed",
+                "projectId": "",
+                "projectName": "",
+                "results": [
+                  {
+                    "annotations": [],
+                    "attachments": [],
+                    "duration": 1108,
+                    "errors": [],
+                    "parallelIndex": 0,
+                    "retry": 0,
+                    "startTime": "2026-08-07T19:50:28.923Z",
+                    "status": "passed",
+                    "stderr": [],
+                    "stdout": [],
+                    "workerIndex": 0
+                  }
+                ],
+                "status": "expected",
+                "timeout": 30000
+              }
+            ],
+            "title": "fails closed on a content-incompatible save before runtime composition"
+          }
+        ],
+        "title": "smoke.spec.js"
+      }
+    ]
+  },
+  "schemaVersion": 1,
+  "signal": null,
+  "stderr": "",
+  "stdout": null
+}

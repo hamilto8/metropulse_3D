@@ -1,0 +1,1660 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "counts": {
+      "buildings": 19,
+      "dialogue": 47,
+      "districts": 4,
+      "factions": 4,
+      "missions": 15,
+      "progression": 3,
+      "weather": 4,
+      "zones": 7
+    },
+    "records": {
+      "buildings": [
+        {
+          "accentColor": 61695,
+          "baseColor": 3886440,
+          "catalogStage": "ADVANCED",
+          "category": "COMMERCIAL",
+          "cost": 750000,
+          "description": "High-tech AI and robotics research tower with neon cyber accents and rooftop landing pad.",
+          "employees": 1420,
+          "footprint": {
+            "depth": 40,
+            "width": 40
+          },
+          "generatorType": "SKYSCRAPER",
+          "happiness": 2,
+          "height": 75,
+          "icon": "🏢",
+          "id": "NEOTECH_HQ",
+          "incomePerMinute": 9800,
+          "name": "NeoTech Quantum Tower",
+          "powerDemand": 18,
+          "progressionTier": "MAGNATE",
+          "specialty": "Quantum AI & Robotics",
+          "status": "Operational",
+          "value": 960000,
+          "waterDemand": 12
+        },
+        {
+          "accentColor": 16755200,
+          "baseColor": 4674921,
+          "catalogStage": "ADVANCED",
+          "category": "COMMERCIAL",
+          "cost": 650000,
+          "description": "Decentralized financial headquarters featuring golden architectural ribs and corporate beacon.",
+          "employees": 980,
+          "footprint": {
+            "depth": 44,
+            "width": 44
+          },
+          "generatorType": "SKYSCRAPER",
+          "happiness": 1,
+          "height": 85,
+          "icon": "🏦",
+          "id": "APEX_BANK",
+          "incomePerMinute": 8200,
+          "name": "Apex Financial Spire",
+          "powerDemand": 15,
+          "progressionTier": "MAGNATE",
+          "specialty": "Decentralized Crypto Banking",
+          "status": "Operational",
+          "value": 845000,
+          "waterDemand": 9
+        },
+        {
+          "accentColor": 16711935,
+          "baseColor": 5914227,
+          "catalogStage": "STARTER",
+          "category": "COMMERCIAL",
+          "cost": 200000,
+          "description": "Bustling cyber cafe with glowing magenta canopy and high-speed quantum network access.",
+          "employees": 35,
+          "footprint": {
+            "depth": 30,
+            "width": 30
+          },
+          "generatorType": "SHOP",
+          "happiness": 3,
+          "height": 25,
+          "icon": "☕",
+          "id": "CYBERCAFE",
+          "incomePerMinute": 2400,
+          "name": "CyberCafe 24/7",
+          "powerDemand": 5,
+          "progressionTier": "OPERATOR",
+          "signText": "☕ CYBERCAFE",
+          "specialty": "High-Speed Gaming & Coffee",
+          "status": "Operational",
+          "value": 265000,
+          "waterDemand": 4
+        },
+        {
+          "accentColor": 16758784,
+          "baseColor": 5193582,
+          "catalogStage": "ADVANCED",
+          "category": "COMMERCIAL",
+          "cost": 420000,
+          "description": "Futuristic multiplex displaying immersive 3D holographic movie experiences.",
+          "employees": 85,
+          "footprint": {
+            "depth": 36,
+            "width": 36
+          },
+          "generatorType": "SHOP",
+          "happiness": 6,
+          "height": 35,
+          "icon": "🎬",
+          "id": "GALAXY_CINEMA",
+          "incomePerMinute": 3900,
+          "name": "Galaxy Hologram Cinema",
+          "powerDemand": 9,
+          "progressionTier": "BROKER",
+          "signText": "🎬 GALAXY CINEMA",
+          "specialty": "Immerse-3D Hologram Movies",
+          "status": "Operational",
+          "value": 560000,
+          "waterDemand": 5
+        },
+        {
+          "accentColor": 4513194,
+          "baseColor": 4016732,
+          "catalogStage": "ADVANCED",
+          "category": "RESIDENTIAL",
+          "cost": 500000,
+          "description": "Multi-tiered residential skyscraper with wraparound panoramic glass balconies.",
+          "footprint": {
+            "depth": 36,
+            "width": 36
+          },
+          "generatorType": "RESIDENTIAL",
+          "happiness": 2,
+          "height": 55,
+          "icon": "🏙️",
+          "id": "SKYLINE_CONDOS",
+          "incomePerMinute": 3100,
+          "name": "Skyline Luxury Condos",
+          "powerDemand": 13,
+          "progressionTier": "BROKER",
+          "residents": 340,
+          "specialty": "Skyline Residential Living",
+          "status": "Occupied",
+          "value": 690000,
+          "waterDemand": 16
+        },
+        {
+          "accentColor": 6737151,
+          "baseColor": 5131864,
+          "catalogStage": "STARTER",
+          "category": "RESIDENTIAL",
+          "cost": 350000,
+          "description": "Contemporary urban residential lofts designed for metropolitan living.",
+          "footprint": {
+            "depth": 30,
+            "width": 30
+          },
+          "generatorType": "RESIDENTIAL",
+          "happiness": 1,
+          "height": 38,
+          "icon": "🏬",
+          "id": "METRO_LOFTS",
+          "incomePerMinute": 1900,
+          "name": "Metro Cyber Lofts",
+          "powerDemand": 8,
+          "progressionTier": "OPERATOR",
+          "residents": 180,
+          "specialty": "Urban Cyber Lofts",
+          "status": "Occupied",
+          "value": 470000,
+          "waterDemand": 10
+        },
+        {
+          "accentColor": 4521864,
+          "baseColor": 3037764,
+          "catalogStage": "ADVANCED",
+          "category": "RESIDENTIAL",
+          "cost": 480000,
+          "description": "Sustainable vertical garden complex with illuminated terrace gardens and clean energy systems.",
+          "footprint": {
+            "depth": 38,
+            "width": 38
+          },
+          "generatorType": "RESIDENTIAL",
+          "happiness": 7,
+          "height": 68,
+          "icon": "🌿",
+          "id": "GARDEN_TOWER",
+          "incomePerMinute": 4200,
+          "name": "Eco-Spire Garden Tower",
+          "powerDemand": 11,
+          "progressionTier": "BROKER",
+          "residents": 520,
+          "specialty": "Vertical Eco-Living",
+          "status": "Occupied",
+          "value": 670000,
+          "waterDemand": 14
+        },
+        {
+          "accentColor": 16724804,
+          "baseColor": 15658734,
+          "catalogStage": "ADVANCED",
+          "category": "FACILITIES",
+          "cost": 400000,
+          "description": "State-of-the-art cybernetic emergency medical hospital and trauma recovery center.",
+          "employees": 310,
+          "footprint": {
+            "depth": 42,
+            "width": 42
+          },
+          "generatorType": "CIVIC",
+          "happiness": 8,
+          "height": 45,
+          "icon": "🏥",
+          "id": "MED_CENTER",
+          "incomePerMinute": -1700,
+          "name": "Bio-Regen Medical Center",
+          "powerDemand": 12,
+          "progressionTier": "BROKER",
+          "signText": "🏥 BIO-REGEN MEDICAL",
+          "specialty": "Emergency Cyber Trauma Care",
+          "status": "Operational",
+          "value": 535000,
+          "waterDemand": 11
+        },
+        {
+          "accentColor": 3447003,
+          "baseColor": 2899536,
+          "catalogStage": "ADVANCED",
+          "category": "FACILITIES",
+          "cost": 320000,
+          "description": "Metropolitan police precinct equipped with drone launch bays and security command array.",
+          "employees": 140,
+          "fireCoverage": 5,
+          "footprint": {
+            "depth": 34,
+            "width": 34
+          },
+          "generatorType": "CIVIC",
+          "happiness": 3,
+          "height": 30,
+          "icon": "🚓",
+          "id": "CYBER_POLICE",
+          "incomePerMinute": -1250,
+          "name": "Metro Peacekeeping Precinct",
+          "powerDemand": 7,
+          "progressionTier": "BROKER",
+          "signText": "🚓 METRO PRECINCT",
+          "specialty": "City Peacekeeping & Drones",
+          "status": "Operational",
+          "value": 420000,
+          "waterDemand": 4
+        },
+        {
+          "accentColor": 65484,
+          "amenityRadius": 95,
+          "baseColor": 2245683,
+          "catalogStage": "ADVANCED",
+          "category": "FACILITIES",
+          "cost": 150000,
+          "description": "Public park and gathering plaza featuring glowing bio-trees and a illuminated water fountain.",
+          "footprint": {
+            "depth": 40,
+            "width": 40
+          },
+          "generatorType": "PARK_PLAZA",
+          "happiness": 12,
+          "height": 8,
+          "icon": "⛲",
+          "id": "SOLAR_PLAZA",
+          "incomePerMinute": -250,
+          "name": "Cyber Plaza & Fountain",
+          "powerDemand": 2,
+          "progressionTier": "OPERATOR",
+          "specialty": "Public Leisure & Recreation",
+          "status": "Open",
+          "value": 235000,
+          "waterDemand": 3
+        },
+        {
+          "accentColor": 16777130,
+          "baseColor": 2369324,
+          "catalogStage": "STARTER",
+          "category": "INFRASTRUCTURE",
+          "cost": 25000,
+          "description": "Standard 30m asphalt roadway with glowing lane dividers and sidewalk curbs.",
+          "footprint": {
+            "depth": 30,
+            "width": 30
+          },
+          "generatorType": "ROAD_SEGMENT",
+          "height": 1,
+          "icon": "🛣️",
+          "id": "ROAD_STRAIGHT",
+          "incomePerMinute": -80,
+          "name": "Asphalt Road Segment",
+          "progressionTier": "OPERATOR",
+          "roadType": "STRAIGHT",
+          "specialty": "Vehicle Road Network",
+          "status": "Open",
+          "value": 25000
+        },
+        {
+          "accentColor": 65535,
+          "baseColor": 2369324,
+          "catalogStage": "ADVANCED",
+          "category": "INFRASTRUCTURE",
+          "cost": 35000,
+          "description": "Four-way intersection junction connecting urban road blocks with crosswalks.",
+          "footprint": {
+            "depth": 30,
+            "width": 30
+          },
+          "generatorType": "ROAD_SEGMENT",
+          "height": 1,
+          "icon": "➕",
+          "id": "ROAD_INTERSECTION",
+          "incomePerMinute": -110,
+          "name": "4-Way Road Crossing",
+          "progressionTier": "OPERATOR",
+          "roadType": "INTERSECTION",
+          "specialty": "Traffic Junction",
+          "status": "Open",
+          "value": 35000
+        },
+        {
+          "accentColor": 65450,
+          "baseColor": 1715004,
+          "catalogStage": "STARTER",
+          "category": "FACILITIES",
+          "cost": 280000,
+          "description": "High-output solar and zero-point energy generation station powering the city.",
+          "footprint": {
+            "depth": 26,
+            "width": 26
+          },
+          "generatorType": "ENERGY_ARRAY",
+          "happiness": 2,
+          "height": 15,
+          "icon": "⚡",
+          "id": "SOLAR_GRID",
+          "incomePerMinute": -450,
+          "name": "Quantum Energy Array",
+          "powerReach": 220,
+          "powerSupply": 90,
+          "progressionTier": "OPERATOR",
+          "specialty": "Clean Power Grid",
+          "status": "Online",
+          "value": 360000,
+          "waterDemand": 2
+        },
+        {
+          "accentColor": 16742936,
+          "baseColor": 3883336,
+          "catalogStage": "STARTER",
+          "category": "OPERATIONS",
+          "cost": 390000,
+          "description": "Automated fabrication campus producing transit components and corporate-grade consumer optimism.",
+          "employees": 430,
+          "footprint": {
+            "depth": 44,
+            "width": 44
+          },
+          "generatorType": "INDUSTRIAL",
+          "happiness": -4,
+          "height": 32,
+          "icon": "🏭",
+          "id": "CYBER_FAB",
+          "incomePerMinute": 6200,
+          "name": "Titan Cyber-Fabrication Works",
+          "powerDemand": 22,
+          "progressionTier": "OPERATOR",
+          "specialty": "Autonomous Heavy Manufacturing",
+          "status": "Operational",
+          "value": 510000,
+          "waterDemand": 15
+        },
+        {
+          "accentColor": 3718648,
+          "baseColor": 3359061,
+          "catalogStage": "ADVANCED",
+          "category": "OPERATIONS",
+          "cost": 310000,
+          "description": "River-crossing freight exchange serving Orbital Systems and the east-bank corporate arcology.",
+          "employees": 260,
+          "footprint": {
+            "depth": 40,
+            "width": 40
+          },
+          "generatorType": "INDUSTRIAL",
+          "happiness": -1,
+          "height": 24,
+          "icon": "🚚",
+          "id": "ORBITAL_LOGISTICS",
+          "incomePerMinute": 4700,
+          "name": "Orbital Logistics Exchange",
+          "powerDemand": 14,
+          "progressionTier": "BROKER",
+          "specialty": "Cross-District Freight Routing",
+          "status": "Operational",
+          "value": 420000,
+          "waterDemand": 8
+        },
+        {
+          "accentColor": 2282478,
+          "baseColor": 1461859,
+          "catalogStage": "ADVANCED",
+          "category": "FACILITIES",
+          "cost": 260000,
+          "description": "Closed-loop municipal water treatment and distribution plant.",
+          "employees": 75,
+          "footprint": {
+            "depth": 34,
+            "width": 34
+          },
+          "generatorType": "UTILITY",
+          "happiness": 2,
+          "height": 18,
+          "icon": "💧",
+          "id": "WATER_RECLAMATION",
+          "incomePerMinute": -500,
+          "name": "AquaLoop Reclamation Hub",
+          "powerDemand": 9,
+          "progressionTier": "BROKER",
+          "specialty": "Water Purification & Distribution",
+          "status": "Online",
+          "value": 335000,
+          "waterReach": 190,
+          "waterSupply": 100
+        },
+        {
+          "accentColor": 16498468,
+          "baseColor": 8330525,
+          "catalogStage": "STARTER",
+          "category": "FACILITIES",
+          "cost": 295000,
+          "description": "Rapid-response fire service protecting buildings from infrastructure and Mayhem hazards.",
+          "employees": 95,
+          "fireCoverage": 45,
+          "fireReach": 175,
+          "footprint": {
+            "depth": 32,
+            "width": 32
+          },
+          "generatorType": "CIVIC",
+          "happiness": 7,
+          "height": 22,
+          "icon": "🚒",
+          "id": "FIRE_STATION",
+          "incomePerMinute": -900,
+          "name": "Phoenix Fire & Rescue",
+          "powerDemand": 5,
+          "progressionTier": "OPERATOR",
+          "signText": "🚒 PHOENIX FIRE",
+          "specialty": "Emergency Fire Response",
+          "status": "Ready",
+          "value": 380000,
+          "waterDemand": 5
+        },
+        {
+          "accentColor": 61695,
+          "baseColor": 3359061,
+          "catalogStage": "ADVANCED",
+          "category": "INFRASTRUCTURE",
+          "cost": 95000,
+          "description": "Reinforced smart-lane deck segment with adaptive congestion signage.",
+          "footprint": {
+            "depth": 30,
+            "width": 30
+          },
+          "generatorType": "ROAD_SEGMENT",
+          "height": 2,
+          "icon": "🌉",
+          "id": "BRIDGE_DECK",
+          "incomePerMinute": -180,
+          "name": "Smart Bridge Deck Segment",
+          "progressionTier": "MAGNATE",
+          "roadType": "BRIDGE",
+          "specialty": "Cross-River Traffic Capacity",
+          "status": "Open",
+          "trafficCapacity": 12,
+          "value": 105000
+        },
+        {
+          "accentColor": 15235577,
+          "amenityRadius": 120,
+          "baseColor": 3223169,
+          "catalogStage": "ADVANCED",
+          "category": "COMMERCIAL",
+          "cost": 980000,
+          "description": "Prestige landmark broadcasting that quarterly growth is a civic virtue.",
+          "employees": 1800,
+          "footprint": {
+            "depth": 46,
+            "width": 46
+          },
+          "generatorType": "SKYSCRAPER",
+          "happiness": 8,
+          "height": 110,
+          "icon": "🌆",
+          "id": "AETHER_LANDMARK",
+          "incomePerMinute": 14500,
+          "name": "Aether Prosperity Beacon",
+          "powerDemand": 25,
+          "progressionTier": "MAGNATE",
+          "specialty": "Corporate Landmark & District Prestige",
+          "status": "Operational",
+          "value": 1450000,
+          "waterDemand": 12
+        }
+      ],
+      "districts": [
+        {
+          "bounds": {
+            "maxX": 105,
+            "maxZ": 150,
+            "minX": -190,
+            "minZ": -150
+          },
+          "id": "WEST_CORE",
+          "label": "West Core",
+          "releaseScope": "MVP"
+        },
+        {
+          "bounds": {
+            "maxX": -45,
+            "maxZ": -45,
+            "minX": -105,
+            "minZ": -105
+          },
+          "id": "CENTRAL_PARK",
+          "label": "Central Park",
+          "releaseScope": "MVP"
+        },
+        {
+          "bounds": {
+            "maxX": 330,
+            "maxZ": 150,
+            "minX": 105,
+            "minZ": -150
+          },
+          "id": "PRIMARY_BRIDGE_CORRIDOR",
+          "label": "Primary Bridge Corridor",
+          "releaseScope": "MVP"
+        },
+        {
+          "bounds": {
+            "maxX": 810,
+            "maxZ": 390,
+            "minX": 330,
+            "minZ": -390
+          },
+          "id": "EAST_CYBER_METROPOLIS",
+          "label": "East Cyber Metropolis",
+          "releaseScope": "POST_MVP"
+        }
+      ],
+      "factions": [
+        {
+          "id": "QUANTUM_DYNAMICS",
+          "label": "Quantum Dynamics",
+          "maxReputation": 100,
+          "minReputation": -100
+        },
+        {
+          "id": "AETHER_SKYSPIRE",
+          "label": "Aether Skyspire",
+          "maxReputation": 100,
+          "minReputation": -100
+        },
+        {
+          "id": "RESIDENTS",
+          "label": "Residents",
+          "maxReputation": 100,
+          "minReputation": -100
+        },
+        {
+          "id": "OPERATIONS",
+          "label": "Operations",
+          "maxReputation": 100,
+          "minReputation": -100
+        }
+      ],
+      "missions": [
+        {
+          "avatar": "👔",
+          "baseReward": 450,
+          "chronologyChapter": 5,
+          "dialogueTree": {
+            "accept_rush": {
+              "action": "START_MISSION",
+              "rushBonus": 300,
+              "text": "That's what I like to hear! Get me there in under 45 seconds and I'll throw in a $300 hazard bonus!",
+              "timeLimitOverride": 45
+            },
+            "accept_standard": {
+              "action": "START_MISSION",
+              "rushBonus": 0,
+              "text": "Much appreciated. Let's head for Financial Plaza — please keep the ride steady!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Unbelievable! Good help is impossible to find in this metropolis..."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Buckle up, Marcus! We're taking the express route. (+Rush Bonus)",
+                  "next": "accept_rush"
+                },
+                {
+                  "label": "Hop in, I'll get you there safely and smoothly.",
+                  "next": "accept_standard"
+                },
+                {
+                  "label": "Sorry pal, I'm off duty right now.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Driver, thank goodness! I have a board meeting at the Financial Plaza in less than a minute. If I'm late, the merger falls apart!"
+            }
+          },
+          "dropoff": {
+            "district": "Financial Plaza Skyscraper",
+            "districtId": "WEST_CORE",
+            "x": 100,
+            "z": -80
+          },
+          "id": "mission_executive",
+          "missionType": "TAXI",
+          "passengerName": "Marcus Vance",
+          "passengerRole": "Venture Capital Executive",
+          "pickup": {
+            "district": "Downtown Financial Avenue",
+            "districtId": "WEST_CORE",
+            "x": 0,
+            "z": 30
+          },
+          "prerequisites": [],
+          "timeLimit": 55,
+          "title": "Boardroom Emergency",
+          "vehicleType": "TAXI",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "🎧",
+          "baseReward": 520,
+          "chronologyChapter": 4,
+          "dialogueTree": {
+            "accept_dj": {
+              "action": "START_MISSION",
+              "rushBonus": 150,
+              "text": "Legendary! Follow the glowing waypoint pillar. Let's make some noise!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Aww man, the crowd is gonna be waiting..."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Let's turn up the bass and blast across the city!",
+                  "next": "accept_dj"
+                },
+                {
+                  "label": "Can't take you right now, Lyra.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Yo driver! My headlining set at the Neon Club starts soon and I've got my custom synth deck in the trunk. Ready to roll?"
+            }
+          },
+          "dropoff": {
+            "district": "Neon Club Arena",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": -50
+          },
+          "id": "mission_cyberdj",
+          "missionType": "TAXI",
+          "passengerName": "Lyra Pulse",
+          "passengerRole": "Cyber-Synth DJ",
+          "pickup": {
+            "district": "Arts & Theater Promenade",
+            "districtId": "WEST_CORE",
+            "x": 50,
+            "z": 80
+          },
+          "prerequisites": [],
+          "timeLimit": 65,
+          "title": "Headlining Set at Neon Club",
+          "vehicleType": "TAXI",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "🔬",
+          "baseReward": 680,
+          "chronologyChapter": 3,
+          "dialogueTree": {
+            "accept_science": {
+              "action": "START_MISSION",
+              "rushBonus": 200,
+              "text": "Excellent. Keep your eyes on the road and let's get moving!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Very well. I will find another courier."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Understood, Doctor. Full throttle to the Tech Labs.",
+                  "next": "accept_science"
+                },
+                {
+                  "label": "Sounds too risky for me.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Keep your voice down... Quantum Dynamics stole Aether Skyspire's atmospheric-energy model. This drive proves it. We must cross the bridge to Advanced Tech Labs immediately."
+            }
+          },
+          "dropoff": {
+            "district": "Advanced Tech Labs",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 260,
+            "z": 50
+          },
+          "id": "mission_scientist",
+          "missionType": "COURIER",
+          "passengerName": "Dr. Aris Thorne",
+          "passengerRole": "Quantum Physicist",
+          "pickup": {
+            "district": "University Research Park",
+            "districtId": "WEST_CORE",
+            "x": -50,
+            "z": -80
+          },
+          "prerequisites": [],
+          "timeLimit": 75,
+          "title": "Classified Quantum Data",
+          "vehicleType": "TAXI",
+          "weatherPolicy": "EMERGENCY_RESPONSE"
+        },
+        {
+          "avatar": "📸",
+          "baseReward": 380,
+          "dialogueTree": {
+            "accept_tour": {
+              "action": "START_MISSION",
+              "rushBonus": 100,
+              "text": "Wonderful! Let's enjoy the view!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Oh, no worries at all. Have a nice day!"
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "With pleasure! Welcome to MetroPulse 3D.",
+                  "next": "accept_tour"
+                },
+                {
+                  "label": "Sorry, not taking fares right now.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Hello! I'm visiting MetroPulse to admire the skyscrapers. Could you take me to the Central Spire in the heart of downtown?"
+            }
+          },
+          "dropoff": {
+            "district": "MetroPulse Central Spire",
+            "districtId": "WEST_CORE",
+            "x": 50,
+            "z": -50
+          },
+          "id": "mission_tourist",
+          "missionType": "TAXI",
+          "passengerName": "Elena Rostova",
+          "passengerRole": "Architecture Enthusiast",
+          "pickup": {
+            "district": "Waterfront Harbor",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": 80
+          },
+          "prerequisites": [],
+          "timeLimit": 60,
+          "title": "Skyline Grand Tour",
+          "vehicleType": "TAXI",
+          "weatherPolicy": "SIGHTSEEING"
+        },
+        {
+          "avatar": "👮",
+          "baseReward": 750,
+          "dialogueTree": {
+            "accept_normal": {
+              "action": "START_MISSION",
+              "rushBonus": 0,
+              "text": "Understood. Safe travels, get on scene as soon as you can."
+            },
+            "accept_sirens": {
+              "action": "START_MISSION",
+              "rushBonus": 250,
+              "text": "Cruiser dispatched! Watch out for traffic. Intercept the suspects!",
+              "timeLimitOverride": 38
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Cruiser off-line. Dispatching backup unit..."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Sirens on! I am responding at high speed. (+Rush Bonus)",
+                  "next": "accept_sirens"
+                },
+                {
+                  "label": "Copy that, proceeding carefully to coordinates.",
+                  "next": "accept_normal"
+                },
+                {
+                  "label": "Unable to assist, dispatch. Other duty.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Officer, we have a Code 3! A bank heist is underway at the Apex Bank Plaza! Get there immediately to block the exit routes!"
+            }
+          },
+          "dropoff": {
+            "district": "Apex Bank Plaza",
+            "districtId": "WEST_CORE",
+            "x": -50,
+            "z": 50
+          },
+          "id": "mission_police_robbery",
+          "missionType": "SABOTAGE",
+          "passengerName": "Officer Sterling",
+          "passengerRole": "Police dispatcher",
+          "pickup": {
+            "district": "Police Precinct Central",
+            "districtId": "WEST_CORE",
+            "x": 0,
+            "z": 0
+          },
+          "prerequisites": [],
+          "sabotageAction": "Jam the getaway fleet's ignition network",
+          "sabotageDuration": 3,
+          "timeLimit": 45,
+          "title": "Bank Heist Response",
+          "vehicleType": "POLICE",
+          "weatherPolicy": "EMERGENCY_RESPONSE"
+        },
+        {
+          "avatar": "👮",
+          "baseReward": 500,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 100,
+              "text": "Copy. Secure the perimeter once on site."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Understood. Stand by for next assignment."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Acknowledged. Moving in to investigate the park area.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Negative, busy with traffic patrol.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Attention all units, reports of suspicious activity and disturbance near the Central Park North Gate. Investigate code two."
+            }
+          },
+          "dropoff": {
+            "district": "Central Park North Gate",
+            "districtId": "CENTRAL_PARK",
+            "x": -50,
+            "z": -100
+          },
+          "id": "mission_police_park",
+          "missionType": "DELIVERY",
+          "passengerName": "Dispatcher K.",
+          "passengerRole": "Precinct Operator",
+          "pickup": {
+            "district": "North-West Boulevard",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": -50
+          },
+          "prerequisites": [],
+          "timeLimit": 50,
+          "title": "Park Patrol Commotion",
+          "vehicleType": "POLICE",
+          "weatherPolicy": "EMERGENCY_RESPONSE"
+        },
+        {
+          "avatar": "🏎️",
+          "baseReward": 900,
+          "checkpoints": [
+            {
+              "district": "Neon Exchange",
+              "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+              "x": 260,
+              "z": 50
+            },
+            {
+              "district": "Financial Chicane",
+              "districtId": "WEST_CORE",
+              "x": 100,
+              "z": 50
+            },
+            {
+              "district": "Transit Loop",
+              "districtId": "WEST_CORE",
+              "x": 0,
+              "z": 100
+            }
+          ],
+          "dialogueTree": {
+            "accept_race": {
+              "action": "START_MISSION",
+              "rushBonus": 300,
+              "text": "Timer starts now! GO, GO, GO!",
+              "timeLimitOverride": 32
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Disappointing. We need faster drivers on this team."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Let's push this V6 to the limit! Let's go!",
+                  "next": "accept_race"
+                },
+                {
+                  "label": "Not racing today, my engine is cold.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Alright racer, the sponsors are watching. Beat this time trial to the Waterfront Harbor and show us what this sports machine can do!"
+            }
+          },
+          "dropoff": {
+            "district": "Waterfront Harbor",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": 100
+          },
+          "id": "mission_sports_trial",
+          "missionType": "RACE",
+          "passengerName": "Jax Racer",
+          "passengerRole": "Pro Circuit Sponsor",
+          "pickup": {
+            "district": "Apex Trackline",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 210,
+            "z": 0
+          },
+          "prerequisites": [],
+          "rivals": [
+            {
+              "finishTime": 35,
+              "name": "Nova Kade"
+            },
+            {
+              "finishTime": 38,
+              "name": "Rex Voltage"
+            }
+          ],
+          "timeLimit": 40,
+          "title": "Waterfront Time Trial",
+          "vehicleType": "SPORTS",
+          "weatherPolicy": "DRY_COMPETITION"
+        },
+        {
+          "avatar": "🕶️",
+          "baseReward": 850,
+          "chronologyChapter": 2,
+          "dialogueTree": {
+            "accept_smuggle": {
+              "action": "START_MISSION",
+              "rushBonus": 200,
+              "text": "Good. Dodge the patrols and make it fast."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Whatever. I will find a sports driver who isn't chicken."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Deal. Out of sight, top speed.",
+                  "next": "accept_smuggle"
+                },
+                {
+                  "label": "No way, too hot for me.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Yo. NeoTech intercepted an Orbital Systems data pad tying both firms to the comet-guidance conspiracy. Get it across the bridge to Boba Haven. No police sirens. Interested?"
+            }
+          },
+          "dropoff": {
+            "district": "Boba Haven Hideout",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 260,
+            "z": -100
+          },
+          "id": "mission_sports_smuggle",
+          "missionType": "COURIER",
+          "passengerName": "Kai Neon",
+          "passengerRole": "Underground Fixer",
+          "pickup": {
+            "district": "Downtown South",
+            "districtId": "WEST_CORE",
+            "x": 50,
+            "z": -50
+          },
+          "prerequisites": [],
+          "timeLimit": 60,
+          "title": "Contraband Courier",
+          "vehicleType": "SPORTS",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "🚌",
+          "baseReward": 400,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 100,
+              "text": "Drive safely, operator. Keep it on schedule."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Acknowledged. Standing by at depot."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Route accepted. Moving to pick up the passengers.",
+                  "next": "accept"
+                },
+                {
+                  "label": "End of shift. Heading to depot.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Operator, the shuttle schedule is running late! Please complete the Waterfront Route to pick up waiting commuters."
+            }
+          },
+          "dropoff": {
+            "district": "Waterfront Terminal",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 260,
+            "z": 100
+          },
+          "id": "mission_bus_loop",
+          "missionType": "DELIVERY",
+          "passengerName": "Transit Central",
+          "passengerRole": "Operations Dispatch",
+          "pickup": {
+            "district": "Transit Loop Start",
+            "districtId": "WEST_CORE",
+            "x": 0,
+            "z": 100
+          },
+          "prerequisites": [],
+          "timeLimit": 90,
+          "title": "Waterfront Transit Route",
+          "vehicleType": "BUS",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "🗺️",
+          "baseReward": 420,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 50,
+              "text": "Wonderful! Let's show them the skyline."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Oh, we will wait for the next scheduled route."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "All aboard! Let's begin the city tour.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Sorry, bus is full or out of service.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Welcome bus driver! The tourists are aboard. Please take us safely through the downtown commercial strip to the central hub."
+            }
+          },
+          "dropoff": {
+            "district": "Downtown Hub",
+            "districtId": "WEST_CORE",
+            "x": 50,
+            "z": 0
+          },
+          "id": "mission_bus_tour",
+          "missionType": "DELIVERY",
+          "passengerName": "Clara Tour",
+          "passengerRole": "Tourism Organizer",
+          "pickup": {
+            "district": "Arts Center Station",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": 0
+          },
+          "prerequisites": [],
+          "timeLimit": 80,
+          "title": "Downtown Sightseeing",
+          "vehicleType": "BUS",
+          "weatherPolicy": "SIGHTSEEING"
+        },
+        {
+          "avatar": "🚛",
+          "baseReward": 600,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 150,
+              "text": "Excellent. Keep the speed steady on turns and head to the construction yard."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Alright, looking for another freight operator."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Engage high gear, I'm on it.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Too heavy for my rig today.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Hey driver, this truck is loaded with heavy structural steel. We need it delivered to the Construction Yard ASAP. Keep the cargo secure!"
+            }
+          },
+          "dropoff": {
+            "district": "Construction Yard",
+            "districtId": "WEST_CORE",
+            "x": 100,
+            "z": -50
+          },
+          "id": "mission_truck_delivery",
+          "missionType": "COURIER",
+          "passengerName": "Logistics Bill",
+          "passengerRole": "Warehouse Coordinator",
+          "pickup": {
+            "district": "Harbor Warehouse",
+            "districtId": "WEST_CORE",
+            "x": -50,
+            "z": 100
+          },
+          "prerequisites": [],
+          "timeLimit": 80,
+          "title": "Steel Cargo Haul",
+          "vehicleType": "TRUCK",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "📦",
+          "baseReward": 550,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 120,
+              "text": "Awesome. Move quickly before the cooling system fails!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "No worries, I'll find another dispatcher."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Fast express delivery, let's roll.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Not hauling cold goods today.",
+                  "next": "decline"
+                }
+              ],
+              "text": "The cooling unit in this cargo truck is low on battery. Get these fresh food supplies to Mart 24/7 before they spoil!"
+            }
+          },
+          "dropoff": {
+            "district": "Mart 24/7 Supply",
+            "districtId": "WEST_CORE",
+            "x": 0,
+            "z": -100
+          },
+          "id": "mission_truck_goods",
+          "missionType": "COURIER",
+          "passengerName": "Supermarket Lead",
+          "passengerRole": "Supply chain Manager",
+          "pickup": {
+            "district": "Distribution Center",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 210,
+            "z": 50
+          },
+          "prerequisites": [],
+          "timeLimit": 70,
+          "title": "Chilled Market Supply",
+          "vehicleType": "TRUCK",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "👵",
+          "baseReward": 300,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 50,
+              "text": "You are such a sweet soul. Thank you, let's head home!"
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Oh, no problem. I'll ask one of the yellow taxis."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Of course, Aunt Sarah! Put them in the trunk, let's go.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Sorry, I am late for another appointment.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Oh, dear! I have so many heavy grocery bags from the market. Could you give me a lift back home to the West Residential Block?"
+            }
+          },
+          "dropoff": {
+            "district": "West Residential Block",
+            "districtId": "WEST_CORE",
+            "x": -50,
+            "z": -50
+          },
+          "id": "mission_sedan_grocery",
+          "missionType": "TAXI",
+          "passengerName": "Aunt Sarah",
+          "passengerRole": "Family Elder",
+          "pickup": {
+            "district": "Mart Plaza North",
+            "districtId": "WEST_CORE",
+            "x": 100,
+            "z": 0
+          },
+          "prerequisites": [],
+          "timeLimit": 70,
+          "title": "Aunt Sarah's Errand",
+          "vehicleType": "SEDAN",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "💻",
+          "baseReward": 350,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 80,
+              "text": "Telemetry log initiated. Safe drive to Nexus Plaza."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Diagnostic cancelled. Rescheduling update."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Ready to log system data.",
+                  "next": "accept"
+                },
+                {
+                  "label": "Calibration error. Not ready.",
+                  "next": "decline"
+                }
+              ],
+              "text": "Hello, we need a manual diagnostic test drive of this Sedan to Nexus Plaza to check the sensory nodes. Ready to proceed?"
+            }
+          },
+          "dropoff": {
+            "district": "Nexus Plaza Center",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 310,
+            "z": 50
+          },
+          "id": "mission_sedan_testing",
+          "missionType": "DELIVERY",
+          "passengerName": "NeoTech Support",
+          "passengerRole": "QA Engineer",
+          "pickup": {
+            "district": "NeoTech Corporate Annex",
+            "districtId": "WEST_CORE",
+            "x": 50,
+            "z": 50
+          },
+          "prerequisites": [],
+          "timeLimit": 65,
+          "title": "Autopilot Diagnostic Run",
+          "vehicleType": "SEDAN",
+          "weatherPolicy": "STANDARD_ROAD"
+        },
+        {
+          "avatar": "🌌",
+          "baseReward": 1500,
+          "chronologyChapter": 1,
+          "dialogueTree": {
+            "accept": {
+              "action": "START_MISSION",
+              "rushBonus": 500,
+              "text": "Comets inbound. Survive for forty-five seconds; every intact shareholder is a victory."
+            },
+            "decline": {
+              "action": "DECLINE",
+              "text": "Understood. Human resources will note your lack of extinction-event initiative."
+            },
+            "start": {
+              "choices": [
+                {
+                  "label": "Start the Mayhem prologue. The quarterly report survives with us.",
+                  "next": "accept"
+                },
+                {
+                  "label": "The apocalypse is outside my compensation band.",
+                  "next": "decline"
+                }
+              ],
+              "text": "This is the climax, driver. Quantum Dynamics turned the comet-deflection grid into a hostile takeover instrument. Keep this prototype alive until Aether uploads the shutdown key."
+            }
+          },
+          "dropoff": {
+            "district": "West-Bank Shelter",
+            "districtId": "WEST_CORE",
+            "x": -100,
+            "z": 0
+          },
+          "id": "mission_mayhem_escape",
+          "missionType": "SURVIVAL",
+          "passengerName": "Director Vale",
+          "passengerRole": "Aether Skyspire Crisis Director",
+          "pickup": {
+            "district": "Aether Evacuation Lane",
+            "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+            "x": 210,
+            "z": -50
+          },
+          "prerequisites": [],
+          "requiresMayhem": true,
+          "timeLimit": 45,
+          "title": "The Last Profitable Quarter",
+          "vehicleType": "SPORTS",
+          "weatherPolicy": "ALL_WEATHER"
+        }
+      ],
+      "progression": [
+        {
+          "id": "OPERATOR",
+          "label": "Operator",
+          "prerequisiteIds": [],
+          "rank": 1
+        },
+        {
+          "id": "BROKER",
+          "label": "Broker",
+          "prerequisiteIds": [
+            "OPERATOR"
+          ],
+          "rank": 2
+        },
+        {
+          "id": "MAGNATE",
+          "label": "Magnate",
+          "prerequisiteIds": [
+            "BROKER"
+          ],
+          "rank": 3
+        }
+      ],
+      "weather": [
+        {
+          "durationSeconds": 45,
+          "fogDensity": 0.0035,
+          "gripMultiplier": 1,
+          "groundFriction": 0.85,
+          "id": "clear",
+          "rainOpacity": 0,
+          "statusText": "☀️ CLEAR",
+          "wetness": 0
+        },
+        {
+          "durationSeconds": 30,
+          "fogDensity": 0.015,
+          "gripMultiplier": 0.72,
+          "groundFriction": 0.55,
+          "id": "mist",
+          "rainOpacity": 0,
+          "statusText": "🌫️ MIST",
+          "wetness": 0.12
+        },
+        {
+          "durationSeconds": 40,
+          "fogDensity": 0.008,
+          "gripMultiplier": 0.48,
+          "groundFriction": 0.28,
+          "id": "rain",
+          "rainOpacity": 0.6,
+          "statusText": "🌧️ RAIN",
+          "wetness": 0.72
+        },
+        {
+          "durationSeconds": 28,
+          "fogDensity": 0.012,
+          "gripMultiplier": 0.38,
+          "groundFriction": 0.22,
+          "id": "thunderstorm",
+          "rainOpacity": 0.85,
+          "statusText": "⛈️ STORM",
+          "wetness": 1
+        }
+      ],
+      "zones": [
+        {
+          "aliases": [
+            "RES"
+          ],
+          "color": 2278750,
+          "happiness": 1.2,
+          "id": "RESIDENTIAL",
+          "kind": "DEVELOPMENT",
+          "label": "Residential",
+          "landValue": 1.5,
+          "releaseScope": "MVP"
+        },
+        {
+          "aliases": [
+            "COM",
+            "OFFICE"
+          ],
+          "color": 14239471,
+          "happiness": 0.3,
+          "id": "COMMERCIAL",
+          "kind": "DEVELOPMENT",
+          "label": "Commercial",
+          "landValue": 2.2,
+          "releaseScope": "MVP"
+        },
+        {
+          "aliases": [
+            "OPS",
+            "IND",
+            "INDUSTRIAL"
+          ],
+          "color": 16347926,
+          "happiness": -1.5,
+          "id": "OPERATIONS",
+          "kind": "DEVELOPMENT",
+          "label": "Operations",
+          "landValue": -1,
+          "releaseScope": "MVP"
+        },
+        {
+          "aliases": [
+            "POWER"
+          ],
+          "color": 16436245,
+          "happiness": 0.2,
+          "id": "POWER_SERVICE",
+          "kind": "SERVICE",
+          "label": "Legacy Power Parcel",
+          "landValue": 0.4,
+          "releaseScope": "COMPATIBILITY"
+        },
+        {
+          "aliases": [
+            "WATER"
+          ],
+          "color": 440020,
+          "happiness": 0.8,
+          "id": "WATER_SERVICE",
+          "kind": "SERVICE",
+          "label": "Legacy Water Parcel",
+          "landValue": 0.7,
+          "releaseScope": "COMPATIBILITY"
+        },
+        {
+          "aliases": [
+            "FIRE"
+          ],
+          "color": 15680580,
+          "happiness": 1.5,
+          "id": "FIRE_SERVICE",
+          "kind": "SERVICE",
+          "label": "Legacy Fire Parcel",
+          "landValue": 1.2,
+          "releaseScope": "COMPATIBILITY"
+        },
+        {
+          "aliases": [],
+          "color": 6660877,
+          "happiness": 1.4,
+          "id": "SUBURBAN_RESIDENTIAL",
+          "kind": "AUTHORED_WORLD",
+          "label": "Suburban Residential",
+          "landValue": 1.1,
+          "releaseScope": "POST_MVP"
+        }
+      ]
+    },
+    "scope": {
+      "activityTemplates": [
+        "TAXI",
+        "COURIER",
+        "DELIVERY",
+        "RACE",
+        "SABOTAGE",
+        "SURVIVAL"
+      ],
+      "missionIds": [
+        "mission_executive",
+        "mission_scientist",
+        "mission_police_robbery",
+        "mission_police_park",
+        "mission_sports_trial",
+        "mission_sports_smuggle",
+        "mission_bus_loop",
+        "mission_truck_delivery",
+        "mission_sedan_grocery",
+        "mission_mayhem_escape"
+      ],
+      "worldFootprint": [
+        "WEST_CORE",
+        "CENTRAL_PARK",
+        "PRIMARY_BRIDGE_CORRIDOR"
+      ],
+      "zoneLabels": {
+        "COMMERCIAL": "Commercial",
+        "OPERATIONS": "Operations",
+        "RESIDENTIAL": "Residential"
+      }
+    },
+    "validationFailures": {
+      "circularProgression": {
+        "accepted": false,
+        "code": "CIRCULAR_REFERENCE",
+        "field": "prerequisiteIds",
+        "message": "progression[OPERATOR].prerequisiteIds: contains circular prerequisites (OPERATOR -> MAGNATE -> BROKER -> OPERATOR).",
+        "name": "DataValidationError",
+        "path": "progression[OPERATOR].prerequisiteIds",
+        "recordId": "OPERATOR",
+        "source": "progression"
+      },
+      "duplicateBuilding": {
+        "accepted": false,
+        "code": "DUPLICATE_ID",
+        "field": "id",
+        "message": "buildings[NEOTECH_HQ].id: duplicates stable ID NEOTECH_HQ.",
+        "name": "DataValidationError",
+        "path": "buildings[NEOTECH_HQ].id",
+        "recordId": "NEOTECH_HQ",
+        "source": "buildings"
+      },
+      "impossibleCoordinate": {
+        "accepted": false,
+        "code": "INVALID_GAME_DATA",
+        "field": "pickup.x",
+        "message": "missions[mission_executive].pickup.x: must be a finite number in the range -190..810.",
+        "name": "DataValidationError",
+        "path": "missions[mission_executive].pickup.x",
+        "recordId": "mission_executive",
+        "source": "missions"
+      },
+      "invalidMissionType": {
+        "accepted": false,
+        "code": "INVALID_ENUM",
+        "field": "missionType",
+        "message": "missions[mission_executive].missionType: uses unsupported objective TELEPORT.",
+        "name": "DataValidationError",
+        "path": "missions[mission_executive].missionType",
+        "recordId": "mission_executive",
+        "source": "missions"
+      },
+      "missingDistrict": {
+        "accepted": false,
+        "code": "MISSING_REFERENCE",
+        "field": "pickup.districtId",
+        "message": "missions[mission_executive].pickup.districtId: references missing districts record REMOVED_DISTRICT.",
+        "name": "DataValidationError",
+        "path": "missions[mission_executive].pickup.districtId",
+        "recordId": "mission_executive",
+        "source": "missions"
+      }
+    },
+    "vehicleIds": [
+      "SEDAN",
+      "SPORTS",
+      "SPORTS_CAR",
+      "BUS",
+      "TRUCK",
+      "TAXI",
+      "POLICE",
+      "AMBULANCE",
+      "ICECREAM",
+      "DUMP_TRUCK",
+      "MOTORBIKE"
+    ],
+    "worldBounds": {
+      "maxX": 810,
+      "maxY": 2000,
+      "maxZ": 390,
+      "minX": -190,
+      "minY": -100,
+      "minZ": -390
+    }
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "content-registry",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

@@ -1,0 +1,866 @@
+{
+  "comparison": {
+    "mode": "exact"
+  },
+  "data": {
+    "availability": {
+      "alpha": {
+        "available": true,
+        "missionId": "mission-alpha",
+        "prerequisites": [],
+        "reasons": [],
+        "status": "AVAILABLE",
+        "weather": {
+          "allowed": true,
+          "delayed": false,
+          "disposition": "ALLOWED",
+          "mode": "clear",
+          "reason": "Alpha Run allows clear conditions.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1
+        }
+      },
+      "betaLocked": {
+        "available": false,
+        "missionId": "mission-beta",
+        "prerequisites": [
+          {
+            "passed": false,
+            "reason": "Complete Alpha Run first.",
+            "requirement": {
+              "missionId": "mission-alpha",
+              "type": "MISSION_COMPLETED"
+            }
+          }
+        ],
+        "reasons": [
+          "Complete Alpha Run first."
+        ],
+        "status": "LOCKED",
+        "weather": {
+          "allowed": true,
+          "delayed": false,
+          "disposition": "ALLOWED",
+          "mode": "clear",
+          "reason": "Beta Run allows clear conditions.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1
+        }
+      },
+      "missing": {
+        "available": false,
+        "missionId": null,
+        "prerequisites": [],
+        "reasons": [
+          "Mission data is unavailable."
+        ],
+        "status": "BLOCKED",
+        "weather": null
+      },
+      "weather": {
+        "clear": {
+          "allowed": true,
+          "delayed": false,
+          "disposition": "ALLOWED",
+          "mode": "clear",
+          "reason": "Alpha Run allows clear conditions.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1
+        },
+        "mist": {
+          "allowed": true,
+          "delayed": false,
+          "disposition": "ALLOWED",
+          "mode": "mist",
+          "reason": "Alpha Run allows mist conditions.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1
+        },
+        "rain": {
+          "allowed": true,
+          "delayed": false,
+          "disposition": "ADAPTED",
+          "mode": "rain",
+          "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+          "rewardMultiplier": 1.1,
+          "timeLimitMultiplier": 1.2
+        },
+        "thunderstorm": {
+          "allowed": false,
+          "delayed": true,
+          "disposition": "DELAYED",
+          "mode": "thunderstorm",
+          "reason": "Dispatch has delayed this road mission until the thunderstorm passes.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1
+        }
+      }
+    },
+    "productionAvailability": [
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_executive",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Boardroom Emergency allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_executive",
+        "missionType": "TAXI",
+        "rain": {
+          "available": true,
+          "missionId": "mission_executive",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_cyberdj",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Headlining Set at Neon Club allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_cyberdj",
+        "missionType": "TAXI",
+        "rain": {
+          "available": true,
+          "missionId": "mission_cyberdj",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_scientist",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Classified Quantum Data allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_scientist",
+        "missionType": "COURIER",
+        "rain": {
+          "available": true,
+          "missionId": "mission_scientist",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_tourist",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Skyline Grand Tour allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_tourist",
+        "missionType": "TAXI",
+        "rain": {
+          "available": false,
+          "missionId": "mission_tourist",
+          "prerequisites": [],
+          "reasons": [
+            "The passenger is waiting for clearer sightseeing conditions."
+          ],
+          "status": "DELAYED",
+          "weather": {
+            "allowed": false,
+            "delayed": true,
+            "disposition": "DELAYED",
+            "mode": "rain",
+            "reason": "The passenger is waiting for clearer sightseeing conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_police_robbery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Bank Heist Response allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_police_robbery",
+        "missionType": "SABOTAGE",
+        "rain": {
+          "available": true,
+          "missionId": "mission_police_robbery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_police_park",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Park Patrol Commotion allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_police_park",
+        "missionType": "DELIVERY",
+        "rain": {
+          "available": true,
+          "missionId": "mission_police_park",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_sports_trial",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Waterfront Time Trial allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_sports_trial",
+        "missionType": "RACE",
+        "rain": {
+          "available": true,
+          "missionId": "mission_sports_trial",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "The wet-weather race uses a slower target time and increased purse.",
+            "rewardMultiplier": 1.15,
+            "timeLimitMultiplier": 1.25
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_sports_smuggle",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Contraband Courier allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_sports_smuggle",
+        "missionType": "COURIER",
+        "rain": {
+          "available": true,
+          "missionId": "mission_sports_smuggle",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_bus_loop",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Waterfront Transit Route allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_bus_loop",
+        "missionType": "DELIVERY",
+        "rain": {
+          "available": true,
+          "missionId": "mission_bus_loop",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_bus_tour",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Downtown Sightseeing allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_bus_tour",
+        "missionType": "DELIVERY",
+        "rain": {
+          "available": false,
+          "missionId": "mission_bus_tour",
+          "prerequisites": [],
+          "reasons": [
+            "The passenger is waiting for clearer sightseeing conditions."
+          ],
+          "status": "DELAYED",
+          "weather": {
+            "allowed": false,
+            "delayed": true,
+            "disposition": "DELAYED",
+            "mode": "rain",
+            "reason": "The passenger is waiting for clearer sightseeing conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_truck_delivery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Steel Cargo Haul allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_truck_delivery",
+        "missionType": "COURIER",
+        "rain": {
+          "available": true,
+          "missionId": "mission_truck_delivery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_truck_goods",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Chilled Market Supply allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_truck_goods",
+        "missionType": "COURIER",
+        "rain": {
+          "available": true,
+          "missionId": "mission_truck_goods",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_sedan_grocery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Aunt Sarah's Errand allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_sedan_grocery",
+        "missionType": "TAXI",
+        "rain": {
+          "available": true,
+          "missionId": "mission_sedan_grocery",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_sedan_testing",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Autopilot Diagnostic Run allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_sedan_testing",
+        "missionType": "DELIVERY",
+        "rain": {
+          "available": true,
+          "missionId": "mission_sedan_testing",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ADAPTED",
+            "mode": "rain",
+            "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+            "rewardMultiplier": 1.1,
+            "timeLimitMultiplier": 1.2
+          }
+        }
+      },
+      {
+        "clear": {
+          "available": true,
+          "missionId": "mission_mayhem_escape",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "This activity is designed for the current weather.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "missionId": "mission_mayhem_escape",
+        "missionType": "SURVIVAL",
+        "rain": {
+          "available": true,
+          "missionId": "mission_mayhem_escape",
+          "prerequisites": [],
+          "reasons": [],
+          "status": "AVAILABLE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "rain",
+            "reason": "This activity is designed for the current weather.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        }
+      }
+    ],
+    "retry": {
+      "decision": {
+        "allowed": true,
+        "attemptsRemaining": 2,
+        "checkpoint": {
+          "id": "race:checkpoint-2",
+          "payload": {
+            "routeIndex": 2,
+            "timeRemaining": 31
+          },
+          "sequence": 1
+        },
+        "nextAttempt": 2,
+        "reason": "Retry from race:checkpoint-2.",
+        "strategy": "LAST_CHECKPOINT"
+      },
+      "failedResult": {
+        "phase": "RESULT",
+        "progress": {
+          "chronologyStep": 0,
+          "completedMissionIds": [],
+          "dialogueChoices": [],
+          "runCounts": [
+            [
+              "mission-alpha",
+              1
+            ]
+          ]
+        },
+        "revision": 9,
+        "run": {
+          "attempt": 1,
+          "baseReward": 500,
+          "checkpoint": {
+            "id": "race:checkpoint-2",
+            "payload": {
+              "routeIndex": 2,
+              "timeRemaining": 31
+            },
+            "sequence": 1
+          },
+          "choice": null,
+          "cleanupError": null,
+          "initialTimeLimit": 60,
+          "missionId": "mission-alpha",
+          "objective": "RACE",
+          "receipt": {
+            "duplicate": false,
+            "effects": [],
+            "summary": {
+              "description": "Finished behind the rival.",
+              "title": "Alpha Run failed"
+            },
+            "transactionId": "mission:mission-alpha:run-1:attempt-1:FAILURE"
+          },
+          "resolution": {
+            "outcome": "FAILURE",
+            "reason": "race_lost",
+            "summary": "Finished behind the rival."
+          },
+          "retryPolicy": {
+            "maxAttempts": 3,
+            "strategy": "LAST_CHECKPOINT"
+          },
+          "runId": "mission-alpha:run-1",
+          "runNumber": 1,
+          "transactionId": "mission:mission-alpha:run-1:attempt-1:FAILURE",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Alpha Run allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "selectedMissionId": "mission-alpha",
+        "version": 1
+      }
+    },
+    "success": {
+      "committedResult": {
+        "phase": "RESULT",
+        "progress": {
+          "chronologyStep": 1,
+          "completedMissionIds": [
+            "mission-alpha"
+          ],
+          "dialogueChoices": [],
+          "runCounts": [
+            [
+              "mission-alpha",
+              1
+            ]
+          ]
+        },
+        "revision": 7,
+        "run": {
+          "attempt": 1,
+          "baseReward": 500,
+          "checkpoint": null,
+          "choice": null,
+          "cleanupError": null,
+          "initialTimeLimit": 60,
+          "missionId": "mission-alpha",
+          "objective": "DELIVERY",
+          "receipt": {
+            "duplicate": false,
+            "effects": [],
+            "summary": {
+              "description": "Delivered.",
+              "title": "Alpha Run complete"
+            },
+            "transactionId": "mission:mission-alpha:run-1:attempt-1:SUCCESS"
+          },
+          "resolution": {
+            "outcome": "SUCCESS",
+            "payout": 650,
+            "summary": "Delivered."
+          },
+          "retryPolicy": {
+            "maxAttempts": 3,
+            "strategy": "RESTART"
+          },
+          "runId": "mission-alpha:run-1",
+          "runNumber": 1,
+          "transactionId": "mission:mission-alpha:run-1:attempt-1:SUCCESS",
+          "weather": {
+            "allowed": true,
+            "delayed": false,
+            "disposition": "ALLOWED",
+            "mode": "clear",
+            "reason": "Alpha Run allows clear conditions.",
+            "rewardMultiplier": 1,
+            "timeLimitMultiplier": 1
+          }
+        },
+        "selectedMissionId": "mission-alpha",
+        "version": 1
+      },
+      "phases": [
+        "PREPARATION",
+        "BRIEFING",
+        "APPROACH",
+        "ACTIVE",
+        "COMPLETION",
+        "CLEANUP",
+        "RESULT",
+        "RECOVERY",
+        "IDLE"
+      ],
+      "receipt": {
+        "duplicate": false,
+        "effects": [],
+        "summary": {
+          "description": "Delivered.",
+          "title": "Alpha Run complete"
+        },
+        "transactionId": "mission:mission-alpha:run-1:attempt-1:SUCCESS"
+      },
+      "recovered": {
+        "phase": "IDLE",
+        "progress": {
+          "chronologyStep": 1,
+          "completedMissionIds": [
+            "mission-alpha"
+          ],
+          "dialogueChoices": [],
+          "runCounts": [
+            [
+              "mission-alpha",
+              1
+            ]
+          ]
+        },
+        "revision": 9,
+        "run": null,
+        "selectedMissionId": null,
+        "version": 1
+      },
+      "transaction": {
+        "commands": [
+          {
+            "amount": 650,
+            "reason": "Alpha Run paid 650 Capital.",
+            "type": "CAPITAL_ADJUSTED"
+          }
+        ],
+        "source": {
+          "contentId": "mission-alpha",
+          "kind": "MISSION",
+          "outcome": "SUCCESS",
+          "reason": null,
+          "runId": "mission-alpha:run-1"
+        },
+        "summary": {
+          "description": "Delivered.",
+          "title": "Alpha Run complete"
+        },
+        "transactionId": "mission:mission-alpha:run-1:attempt-1:SUCCESS"
+      }
+    }
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "missions",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}

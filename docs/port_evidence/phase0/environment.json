@@ -1,0 +1,53 @@
+{
+  "browser": {
+    "chrome": "Google Chrome 151.0.7922.76",
+    "driver": "Version 1.61.1"
+  },
+  "capturedOn": "2026-08-07",
+  "hardware": {
+    "chip": "Apple M1 Pro",
+    "graphics": [
+      {
+        "chipset": "Apple M1 Pro",
+        "metalSupport": null,
+        "vendor": null
+      }
+    ],
+    "memory": "16 GB",
+    "modelIdentifier": "MacBookPro18,3",
+    "modelName": "MacBook Pro"
+  },
+  "operatingSystem": {
+    "architecture": "arm64",
+    "build": "25G72",
+    "platform": "darwin",
+    "release": "25.6.0",
+    "version": "26.6"
+  },
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "referenceScenarios": {
+    "browserPedestrians": 16,
+    "browserQuality": "low",
+    "browserTraffic": 12,
+    "browserViewport": {
+      "height": 720,
+      "width": 1280
+    },
+    "domainSeed": "godot-port-phase-0",
+    "performanceBaseline": "docs/PERFORMANCE_BASELINE_2026-07-17.md"
+  },
+  "repository": {
+    "branch": "codex/godot_port",
+    "head": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "referenceTreeCleanBeforePhase0Work": true
+  },
+  "runtime": {
+    "cannonEs": "^0.20.0",
+    "node": "v24.15.0",
+    "npm": "11.12.1",
+    "playwright": "^1.61.1",
+    "three": "^0.185.1",
+    "vite": "^8.1.1"
+  },
+  "schemaVersion": 1
+}

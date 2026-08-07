@@ -1,0 +1,5530 @@
+{
+  "browserName": "chromium",
+  "browserVersion": "151.0.7922.76",
+  "captureCommand": "PLAYWRIGHT_CHANNEL=chrome npm run baseline:capture:browser",
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "scenarios": [
+    {
+      "configuration": {
+        "profile": "clean",
+        "worldInstantiated": false
+      },
+      "id": "boot-menu",
+      "screenshot": "screenshots/boot-menu.png",
+      "sha256": "41b9a262032fbe5c4fe5dbb7eb6beba30a38f6d8bd350c9880ed7acda0e52f67",
+      "telemetry": null
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 9.25,
+        "weather": "clear"
+      },
+      "id": "new-game-management",
+      "screenshot": "screenshots/new-game-management.png",
+      "sha256": "dd4f84fa6ac7916cdb68377993b2bd9250d56951400077eafc987a0b5be1419b",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 60,
+          "frameTimeMs": 16.666666666666668,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 174716476,
+            "usedHeapBytes": 129534728
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3178,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 277258
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.5001999999999998,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008,
+              "elapsed": 0.5001999999999998,
+              "ticks": 27
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 0.5000000000000007,
+              "ticks": 60
+            },
+            "RENDER": {
+              "delta": 0.008,
+              "elapsed": 0.6085999999999999,
+              "ticks": 27
+            },
+            "UI": {
+              "delta": 0.008,
+              "elapsed": 0.5001999999999998,
+              "ticks": 27
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 28,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00019999999999983746
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 6.25,
+        "timeLabel": "dawn",
+        "weather": "clear"
+      },
+      "id": "management-dawn-clear",
+      "screenshot": "screenshots/management-dawn-clear.png",
+      "sha256": "ef345fa3017a446ae89aca9c19adf6af80b66b2b555ef979e90fc55cd963a39b",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 60,
+          "frameTimeMs": 16.666666666666668,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 174981319,
+            "usedHeapBytes": 112935127
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3178,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 277258
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.9582999999999998,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.01669999999999982,
+              "elapsed": 0.9582999999999998,
+              "ticks": 60
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 0.9499999999999991,
+              "ticks": 114
+            },
+            "RENDER": {
+              "delta": 0.01669999999999982,
+              "elapsed": 1.0666999999999998,
+              "ticks": 60
+            },
+            "UI": {
+              "delta": 0.01669999999999982,
+              "elapsed": 0.9582999999999998,
+              "ticks": 60
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 61,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008299999999999743
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 6.25,
+        "timeLabel": "dawn",
+        "weather": "mist"
+      },
+      "id": "management-dawn-mist",
+      "screenshot": "screenshots/management-dawn-mist.png",
+      "sha256": "3b599f279f42fe7e58698f8114923724574f5ddba7a4477bfed12bd8e35e37fd",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 64,
+          "frameTimeMs": 15.625,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 175244034,
+            "usedHeapBytes": 123404366
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3178,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 277258
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.3751999999999998,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 1,
+              "ticks": 1
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008199999999999819,
+              "elapsed": 1.3752000000000002,
+              "ticks": 91
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 1.3749999999999976,
+              "ticks": 165
+            },
+            "RENDER": {
+              "delta": 0.008199999999999819,
+              "elapsed": 1.4836,
+              "ticks": 91
+            },
+            "UI": {
+              "delta": 0.008199999999999819,
+              "elapsed": 1.3752000000000002,
+              "ticks": 91
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 92,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0001999999999998201
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 6.25,
+        "timeLabel": "dawn",
+        "weather": "rain"
+      },
+      "id": "management-dawn-rain",
+      "screenshot": "screenshots/management-dawn-rain.png",
+      "sha256": "b5b1b9fbb1d14d96e5841b4d8641b5db93e99ac129703d5ff3588469c3ea9078",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 64,
+          "frameTimeMs": 15.625,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 175771166,
+            "usedHeapBytes": 134603798
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3184,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 277354
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.8082999999999998,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 1,
+              "ticks": 1
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016,
+              "elapsed": 1.8083,
+              "ticks": 122
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 1.799999999999996,
+              "ticks": 216
+            },
+            "RENDER": {
+              "delta": 0.016,
+              "elapsed": 1.9166999999999998,
+              "ticks": 122
+            },
+            "UI": {
+              "delta": 0.016,
+              "elapsed": 1.8083,
+              "ticks": 122
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 123,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00829999999999973
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 6.25,
+        "timeLabel": "dawn",
+        "weather": "thunderstorm"
+      },
+      "id": "management-dawn-thunderstorm",
+      "screenshot": "screenshots/management-dawn-thunderstorm.png",
+      "sha256": "c0fde027179c80d14708bfe4fd3a9b6bb0348dff7469f887f5bb1c4b18613479",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 570,
+          "sceneObjects": 4655,
+          "vehicles": 27
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 72.96351824087955,
+          "frameTimeMs": 13.705479452054796,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 176036153,
+            "usedHeapBytes": 111737881
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3172,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276194
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.2256000000000001,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 2,
+              "ticks": 2
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.01669999999999982,
+              "elapsed": 2.225600000000001,
+              "ticks": 153
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 2.2249999999999948,
+              "ticks": 267
+            },
+            "RENDER": {
+              "delta": 0.01669999999999982,
+              "elapsed": 2.334000000000001,
+              "ticks": 153
+            },
+            "UI": {
+              "delta": 0.01669999999999982,
+              "elapsed": 2.225600000000001,
+              "ticks": 153
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 154,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005999999999999443
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 13,
+        "timeLabel": "day",
+        "weather": "clear"
+      },
+      "id": "management-day-clear",
+      "screenshot": "screenshots/management-day-clear.png",
+      "sha256": "c7319ddf17c7f204803769fe218587bfcb568c7d8243d3992bab672db48b62d5",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 570,
+          "sceneObjects": 4655,
+          "vehicles": 27
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 72.96351824087955,
+          "frameTimeMs": 13.705479452054796,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 176301023,
+            "usedHeapBytes": 120069603
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3168,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276930
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.6506000000000003,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 2,
+              "ticks": 2
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.017399999999999635,
+              "elapsed": 2.650600000000001,
+              "ticks": 185
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 2.6499999999999932,
+              "ticks": 318
+            },
+            "RENDER": {
+              "delta": 0.017399999999999635,
+              "elapsed": 2.7590000000000012,
+              "ticks": 185
+            },
+            "UI": {
+              "delta": 0.017399999999999635,
+              "elapsed": 2.650600000000001,
+              "ticks": 185
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 186,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 3
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005999999999999651
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 13,
+        "timeLabel": "day",
+        "weather": "mist"
+      },
+      "id": "management-day-mist",
+      "screenshot": "screenshots/management-day-mist.png",
+      "sha256": "2e10937ab51f26cb09a8cd1cde68cb581dafab9cf7ba450c4abb9267af3eeecf",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 570,
+          "sceneObjects": 4655,
+          "vehicles": 27
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 74.78106858211157,
+          "frameTimeMs": 13.372368421052633,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 176303689,
+            "usedHeapBytes": 127206893
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3168,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276930
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.06660000000000044,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 3,
+              "ticks": 3
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016,
+              "elapsed": 3.066600000000002,
+              "ticks": 216
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 3.058333333333325,
+              "ticks": 367
+            },
+            "RENDER": {
+              "delta": 0.016,
+              "elapsed": 3.175000000000002,
+              "ticks": 216
+            },
+            "UI": {
+              "delta": 0.016,
+              "elapsed": 3.066600000000002,
+              "ticks": 216
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 217,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008266666666667045
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 13,
+        "timeLabel": "day",
+        "weather": "rain"
+      },
+      "id": "management-day-rain",
+      "screenshot": "screenshots/management-day-rain.png",
+      "sha256": "70132cd00e41e4fbb8973eee859f0e084208437a87e6ba5db3a707bee1b2959d",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 570,
+          "sceneObjects": 4655,
+          "vehicles": 27
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 74.78106858211157,
+          "frameTimeMs": 13.372368421052633,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177355058,
+            "usedHeapBytes": 134997338
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3174,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 277026
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.5006000000000004,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 3,
+              "ticks": 3
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.01669999999999982,
+              "elapsed": 3.500600000000002,
+              "ticks": 248
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 3.4999999999999902,
+              "ticks": 420
+            },
+            "RENDER": {
+              "delta": 0.01669999999999982,
+              "elapsed": 3.609000000000002,
+              "ticks": 248
+            },
+            "UI": {
+              "delta": 0.01669999999999982,
+              "elapsed": 3.500600000000002,
+              "ticks": 248
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 249,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0006000000000003745
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 13,
+        "timeLabel": "day",
+        "weather": "thunderstorm"
+      },
+      "id": "management-day-thunderstorm",
+      "screenshot": "screenshots/management-day-thunderstorm.png",
+      "sha256": "e2ae861aca50e439cab281138492b65a50fc7a2313d38ccf44b452d8800ec317",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 570,
+          "sceneObjects": 4655,
+          "vehicles": 27
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 74.78106858211157,
+          "frameTimeMs": 13.372368421052633,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177619936,
+            "usedHeapBytes": 109196156
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3172,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276194
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.9331000000000003,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 3,
+              "ticks": 3
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.015899999999999637,
+              "elapsed": 3.9331000000000023,
+              "ticks": 280
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 3.9249999999999887,
+              "ticks": 471
+            },
+            "RENDER": {
+              "delta": 0.015899999999999637,
+              "elapsed": 4.041500000000002,
+              "ticks": 280
+            },
+            "UI": {
+              "delta": 0.015899999999999637,
+              "elapsed": 3.9331000000000023,
+              "ticks": 280
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 281,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00810000000000041
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 18.5,
+        "timeLabel": "dusk",
+        "weather": "clear"
+      },
+      "id": "management-dusk-clear",
+      "screenshot": "screenshots/management-dusk-clear.png",
+      "sha256": "178c61389e18a3de393368ea267b2d74b564ea83c86b328a4910ee586efe30b7",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4642,
+          "vehicles": 26
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 73.40541612935223,
+          "frameTimeMs": 13.622972972972976,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177620475,
+            "usedHeapBytes": 116225451
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3157,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276590
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.3414999999999999,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 4,
+              "ticks": 4
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.0075,
+              "elapsed": 4.3415000000000035,
+              "ticks": 311
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 4.333333333333338,
+              "ticks": 520
+            },
+            "RENDER": {
+              "delta": 0.0075,
+              "elapsed": 4.449900000000003,
+              "ticks": 311
+            },
+            "UI": {
+              "delta": 0.0075,
+              "elapsed": 4.3415000000000035,
+              "ticks": 311
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 312,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008166666666666749
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 18.5,
+        "timeLabel": "dusk",
+        "weather": "mist"
+      },
+      "id": "management-dusk-mist",
+      "screenshot": "screenshots/management-dusk-mist.png",
+      "sha256": "9816dc45c8fd1470f38ccdf87ec7e37bc99da2be58a3c06e24c288d21f5cdb7a",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4642,
+          "vehicles": 26
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 73.40541612935223,
+          "frameTimeMs": 13.622972972972976,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177623331,
+            "usedHeapBytes": 122453687
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3157,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276590
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.7497000000000007,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 4,
+              "ticks": 4
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008200000000000728,
+              "elapsed": 4.749700000000004,
+              "ticks": 342
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 4.741666666666692,
+              "ticks": 569
+            },
+            "RENDER": {
+              "delta": 0.008200000000000728,
+              "elapsed": 4.858100000000004,
+              "ticks": 342
+            },
+            "UI": {
+              "delta": 0.008200000000000728,
+              "elapsed": 4.749700000000004,
+              "ticks": 342
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 343,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00803333333333416
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 18.5,
+        "timeLabel": "dusk",
+        "weather": "rain"
+      },
+      "id": "management-dusk-rain",
+      "screenshot": "screenshots/management-dusk-rain.png",
+      "sha256": "baa18af8a3a3e97b5def1d0769b85a4af17d2f3aeb3fdc53117013e944487761",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4642,
+          "vehicles": 26
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 75.35197303192548,
+          "frameTimeMs": 13.27105263157894,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177626479,
+            "usedHeapBytes": 128617899
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3163,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276686
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.15890000000000057,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 5,
+              "ticks": 5
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016600000000000364,
+              "elapsed": 5.158900000000007,
+              "ticks": 372
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 5.158333333333379,
+              "ticks": 619
+            },
+            "RENDER": {
+              "delta": 0.016600000000000364,
+              "elapsed": 5.267300000000007,
+              "ticks": 372
+            },
+            "UI": {
+              "delta": 0.016600000000000364,
+              "elapsed": 5.158900000000007,
+              "ticks": 372
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 373,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005666666666672253
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 18.5,
+        "timeLabel": "dusk",
+        "weather": "thunderstorm"
+      },
+      "id": "management-dusk-thunderstorm",
+      "screenshot": "screenshots/management-dusk-thunderstorm.png",
+      "sha256": "6a7a9458064ea2e5b01638363138401a28664bdbbded73b1fa3a7314b2afd43f",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4642,
+          "vehicles": 26
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 75.35197303192548,
+          "frameTimeMs": 13.27105263157894,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 178153691,
+            "usedHeapBytes": 138377611
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3161,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 275854
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.6082000000000009,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 5,
+              "ticks": 5
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016100000000000364,
+              "elapsed": 5.608200000000012,
+              "ticks": 404
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 5.600000000000068,
+              "ticks": 672
+            },
+            "RENDER": {
+              "delta": 0.016100000000000364,
+              "elapsed": 5.716600000000011,
+              "ticks": 404
+            },
+            "UI": {
+              "delta": 0.016100000000000364,
+              "elapsed": 5.608200000000012,
+              "ticks": 404
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 405,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008200000000000733
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 23,
+        "timeLabel": "night",
+        "weather": "clear"
+      },
+      "id": "management-night-clear",
+      "screenshot": "screenshots/management-night-clear.png",
+      "sha256": "1cd06021078e76fee5552eac9858432a11315034f0890852c31052801eb0c8d3",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4628,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 73.98520295940806,
+          "frameTimeMs": 13.516216216216227,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 178418697,
+            "usedHeapBytes": 112453693
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3145,
+            "geometries": 2717,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276134
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.033700000000000875,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 6,
+              "ticks": 6
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.01720000000000073,
+              "elapsed": 6.033700000000015,
+              "ticks": 436
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 6.033333333333423,
+              "ticks": 724
+            },
+            "RENDER": {
+              "delta": 0.01720000000000073,
+              "elapsed": 6.142100000000014,
+              "ticks": 436
+            },
+            "UI": {
+              "delta": 0.01720000000000073,
+              "elapsed": 6.033700000000015,
+              "ticks": 436
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 437,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 3
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0003666666666674069
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 23,
+        "timeLabel": "night",
+        "weather": "mist"
+      },
+      "id": "management-night-mist",
+      "screenshot": "screenshots/management-night-mist.png",
+      "sha256": "e28c0bb2deb17018f76d68691bed289b0d1ff8ceb35a1eb7a13214b4d59efe99",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4628,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 73.98520295940806,
+          "frameTimeMs": 13.516216216216227,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 178421515,
+            "usedHeapBytes": 118173827
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3146,
+            "geometries": 2718,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276146
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.4589000000000008,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 6,
+              "ticks": 6
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.01669999999999982,
+              "elapsed": 6.458900000000016,
+              "ticks": 467
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 6.458333333333444,
+              "ticks": 775
+            },
+            "RENDER": {
+              "delta": 0.01669999999999982,
+              "elapsed": 6.5673000000000155,
+              "ticks": 467
+            },
+            "UI": {
+              "delta": 0.01669999999999982,
+              "elapsed": 6.458900000000016,
+              "ticks": 467
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 468,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005666666666672322
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 23,
+        "timeLabel": "night",
+        "weather": "rain"
+      },
+      "id": "management-night-rain",
+      "screenshot": "screenshots/management-night-rain.png",
+      "sha256": "16bd79528b9f4ca636c4c9ffdd13b02feb217b33e8178d3815a52f93392a9d28",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4628,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 73.98520295940806,
+          "frameTimeMs": 13.516216216216227,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 178421515,
+            "usedHeapBytes": 125004811
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3152,
+            "geometries": 2718,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 276242
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.8837000000000009,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 6,
+              "ticks": 6
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016399999999999637,
+              "elapsed": 6.883700000000019,
+              "ticks": 499
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 6.883333333333465,
+              "ticks": 826
+            },
+            "RENDER": {
+              "delta": 0.016399999999999637,
+              "elapsed": 6.992100000000018,
+              "ticks": 499
+            },
+            "UI": {
+              "delta": 0.016399999999999637,
+              "elapsed": 6.883700000000019,
+              "ticks": 499
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 500,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00036666666666743467
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "MANAGEMENT",
+        "time": 23,
+        "timeLabel": "night",
+        "weather": "thunderstorm"
+      },
+      "id": "management-night-thunderstorm",
+      "screenshot": "screenshots/management-night-thunderstorm.png",
+      "sha256": "1bcf81d36d54029c984748b1e7798bd64cf090bbbeb63deb3b00e7fdf677d6be",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4628,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 74.40476190476188,
+          "frameTimeMs": 13.440000000000003,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 180259704,
+            "usedHeapBytes": 132473076
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3151,
+            "geometries": 2719,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 275422
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.3006000000000004,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 7,
+              "ticks": 7
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.017100000000000365,
+              "elapsed": 7.30060000000002,
+              "ticks": 531
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 7.300000000000153,
+              "ticks": 876
+            },
+            "RENDER": {
+              "delta": 0.017100000000000365,
+              "elapsed": 7.409000000000019,
+              "ticks": 531
+            },
+            "UI": {
+              "delta": 0.017100000000000365,
+              "elapsed": 7.30060000000002,
+              "ticks": 531
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 532,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0006000000000004335
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131894731,
+            "effects": {
+              "camera": {
+                "from": "LOADING",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "STOPPED",
+                "to": "CITY"
+              }
+            },
+            "from": "LOAD",
+            "id": "transition-4",
+            "metadata": {
+              "correlationId": null,
+              "reason": "boot-complete",
+              "source": "MetroPulseApp",
+              "target": null
+            },
+            "recoveryState": "LOAD",
+            "requestedAt": 1786131894729,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 8
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "BUILDER",
+        "tool": "none"
+      },
+      "id": "builder-empty",
+      "screenshot": "screenshots/builder-empty.png",
+      "sha256": "65ec8221deaa219a8fea3f1f00ea10fb24295be512c11972783b49da9aed88a1",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4631,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 74.40476190476188,
+          "frameTimeMs": 13.440000000000003,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 175960346,
+            "usedHeapBytes": 111873170
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3154,
+            "geometries": 2721,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 275438
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.7756000000000004,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "BUILDER",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 7,
+              "ticks": 7
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016700000000000728,
+              "elapsed": 7.775600000000023,
+              "ticks": 561
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 7.775000000000176,
+              "ticks": 933
+            },
+            "RENDER": {
+              "delta": 0.016700000000000728,
+              "elapsed": 7.8840000000000225,
+              "ticks": 561
+            },
+            "UI": {
+              "delta": 0.016700000000000728,
+              "elapsed": 7.775600000000023,
+              "ticks": 561
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 562,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0006000000000004647
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131902209,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "BUILDER"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "BUILDER"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-5",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-builder",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131902207,
+            "status": "COMMITTED",
+            "to": "BUILDER"
+          },
+          "mode": "BUILDER",
+          "resumeState": null,
+          "revision": 10
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "preview": {
+          "cost": 200000,
+          "x": -170,
+          "y": 0,
+          "z": -130
+        },
+        "specId": "CYBERCAFE",
+        "state": "BUILDER",
+        "tool": "PLACE"
+      },
+      "id": "builder-placement-preview",
+      "screenshot": "screenshots/builder-placement-preview.png",
+      "sha256": "a8f0b3bd5176aa43d421b4eb8911f1131ba315478ac65f3c4704fb59277a0bbb",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 568,
+          "sceneObjects": 4631,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 69.44444444444444,
+          "frameTimeMs": 14.4,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 176448872,
+            "usedHeapBytes": 121347268
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3154,
+            "geometries": 2721,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 275438
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.18320000000000078,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "BUILDER",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 8,
+              "ticks": 8
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016800000000001092,
+              "elapsed": 8.183200000000024,
+              "ticks": 592
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 8.175000000000177,
+              "ticks": 981
+            },
+            "RENDER": {
+              "delta": 0.016800000000001092,
+              "elapsed": 8.291600000000026,
+              "ticks": 592
+            },
+            "UI": {
+              "delta": 0.016800000000001092,
+              "elapsed": 8.183200000000024,
+              "ticks": 592
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 593,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008200000000000837
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131902209,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "BUILDER"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "BUILDER"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-5",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-builder",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131902207,
+            "status": "COMMITTED",
+            "to": "BUILDER"
+          },
+          "mode": "BUILDER",
+          "resumeState": null,
+          "revision": 10
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "preview": {
+          "cost": 200000,
+          "x": -170,
+          "y": 0,
+          "z": -130
+        },
+        "specId": "CYBERCAFE",
+        "state": "BUILDER",
+        "tool": "PLACE"
+      },
+      "id": "builder-valid-placement",
+      "screenshot": "screenshots/builder-valid-placement.png",
+      "sha256": "a451c65e6b75c3e68a08d9b8841e630d9493e829a4f6f6f9c403b97a6e6ae794",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4636,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 69.44444444444444,
+          "frameTimeMs": 14.4,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177504500,
+            "usedHeapBytes": 100027344
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 3158,
+            "geometries": 2725,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 275476
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.6256000000000005,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "BUILDER",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 8,
+              "ticks": 8
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.016700000000000728,
+              "elapsed": 8.625600000000029,
+              "ticks": 624
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 8.625000000000151,
+              "ticks": 1035
+            },
+            "RENDER": {
+              "delta": 0.016700000000000728,
+              "elapsed": 8.73400000000003,
+              "ticks": 624
+            },
+            "UI": {
+              "delta": 0.016700000000000728,
+              "elapsed": 8.625600000000029,
+              "ticks": 624
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 625,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 2
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.000600000000000496
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131902209,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "BUILDER"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "BUILDER"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-5",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-builder",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131902207,
+            "status": "COMMITTED",
+            "to": "BUILDER"
+          },
+          "mode": "BUILDER",
+          "resumeState": null,
+          "revision": 10
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "STREET_ON_FOOT"
+      },
+      "id": "street-on-foot",
+      "screenshot": "screenshots/street-on-foot.png",
+      "sha256": "546b415c2b9aae02d90b0c95243d013373f4934101668d401314df69c570c7f6",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "Jordan S.",
+          "type": "PEDESTRIAN"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 69.44444444444444,
+          "frameTimeMs": 14.4,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177505594,
+            "usedHeapBytes": 95355506
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 81,
+            "geometries": 2723,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 56388
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.8922000000000008,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 8,
+              "ticks": 8
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008300000000001091,
+              "elapsed": 8.892200000000031,
+              "ticks": 652
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 8.891666666666802,
+              "ticks": 1067
+            },
+            "RENDER": {
+              "delta": 0.008300000000001091,
+              "elapsed": 9.000600000000032,
+              "ticks": 652
+            },
+            "UI": {
+              "delta": 0.008300000000001091,
+              "elapsed": 8.892200000000031,
+              "ticks": 652
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 653,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005333333333340604
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131903541,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "STREET_ON_FOOT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_PEDESTRIAN"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "STREET"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-7",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-on-foot",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131903538,
+            "status": "COMMITTED",
+            "to": "STREET_ON_FOOT"
+          },
+          "mode": "STREET_ON_FOOT",
+          "resumeState": null,
+          "revision": 14
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "inventory": "baseball-bat",
+        "state": "STREET_ON_FOOT"
+      },
+      "id": "street-on-foot-bat",
+      "screenshot": "screenshots/street-on-foot-bat.png",
+      "sha256": "c614f47f0357d862cb4041893d6e2bc7be28d279c4b77aa41e7d978be59761d4",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "Jordan S.",
+          "type": "PEDESTRIAN"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 89.92805755395692,
+          "frameTimeMs": 11.11999999999999,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 177509014,
+            "usedHeapBytes": 90947722
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 82,
+            "geometries": 2723,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 56576
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.11630000000000118,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 9,
+              "ticks": 9
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.007700000000000728,
+              "elapsed": 9.116300000000031,
+              "ticks": 679
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 9.108333333333457,
+              "ticks": 1093
+            },
+            "RENDER": {
+              "delta": 0.007700000000000728,
+              "elapsed": 9.224700000000032,
+              "ticks": 679
+            },
+            "UI": {
+              "delta": 0.007700000000000728,
+              "elapsed": 9.116300000000031,
+              "ticks": 679
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 680,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00796666666666777
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131903768,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "STREET_ON_FOOT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_PEDESTRIAN"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "STREET"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-9",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-on-foot",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131903767,
+            "status": "COMMITTED",
+            "to": "STREET_ON_FOOT"
+          },
+          "mode": "STREET_ON_FOOT",
+          "resumeState": null,
+          "revision": 18
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "STREET_VEHICLE"
+      },
+      "id": "street-vehicle",
+      "screenshot": "screenshots/street-vehicle.png",
+      "sha256": "1339cbe18771261afa72636db1463d5ce961ac8e881556166926b9d780544ad0",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "Express Freight Truck #13",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 89.92805755395692,
+          "frameTimeMs": 11.11999999999999,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 179918570,
+            "usedHeapBytes": 112326914
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 39,
+            "geometries": 2723,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 32686
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.35889999999999983,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 9,
+              "ticks": 9
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008899999999999636,
+              "elapsed": 9.358900000000027,
+              "ticks": 708
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 9.358333333333443,
+              "ticks": 1123
+            },
+            "RENDER": {
+              "delta": 0.008899999999999636,
+              "elapsed": 9.467300000000028,
+              "ticks": 708
+            },
+            "UI": {
+              "delta": 0.008899999999999636,
+              "elapsed": 9.358900000000027,
+              "ticks": 708
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 709,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0005666666666663024
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131903993,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "STREET_VEHICLE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_VEHICLE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "STREET"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-11",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-pause-driving",
+              "source": "BrowserTestBridge",
+              "target": null
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131903992,
+            "status": "COMMITTED",
+            "to": "STREET_VEHICLE"
+          },
+          "mode": "STREET_VEHICLE",
+          "resumeState": null,
+          "revision": 22
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "heat": true,
+        "state": "STREET_VEHICLE"
+      },
+      "id": "heat-police",
+      "screenshot": "screenshots/heat-police.png",
+      "sha256": "182462db1157ebbf6817ae1240e447f33f4266862d281786b815977faf309908",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 89.92805755395692,
+          "frameTimeMs": 11.11999999999999,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 179613324,
+            "usedHeapBytes": 125987556
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 2093,
+            "geometries": 3314,
+            "lines": 0,
+            "points": 13200,
+            "programs": 18,
+            "textures": 9,
+            "triangles": 245284
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:44:59.750Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.7248000000000013,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 9,
+              "ticks": 9
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.015900000000001455,
+              "elapsed": 9.724800000000027,
+              "ticks": 741
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 9.716666666666756,
+              "ticks": 1166
+            },
+            "RENDER": {
+              "delta": 0.015900000000001455,
+              "elapsed": 9.833200000000028,
+              "ticks": 741
+            },
+            "UI": {
+              "delta": 0.015900000000001455,
+              "elapsed": 9.724800000000027,
+              "ticks": 741
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 742,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008133333333334452
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131904234,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "STREET_VEHICLE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_VEHICLE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "STREET"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-15",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-clock-matching-vehicle",
+              "source": "BrowserTestBridge",
+              "target": {
+                "id": "City Yellow Cab #88 #14",
+                "type": "VEHICLE"
+              }
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131904232,
+            "status": "COMMITTED",
+            "to": "STREET_VEHICLE"
+          },
+          "mode": "STREET_VEHICLE",
+          "resumeState": null,
+          "revision": 30
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "state": "PAUSED"
+      },
+      "id": "pause-menu",
+      "screenshot": "screenshots/pause-menu.png",
+      "sha256": "21944febf2e343e325671bb57ba18c9f23f91c8bc77a4be47dc2536c0355081c",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 95.20031733439114,
+          "frameTimeMs": 10.504166666666663,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 179618606,
+            "usedHeapBytes": 109625038
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 2437,
+            "geometries": 3394,
+            "lines": 0,
+            "points": 13200,
+            "programs": 18,
+            "textures": 9,
+            "triangles": 258038
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:45:04.877Z",
+          "pending": false,
+          "restoring": false,
+          "status": "SAVED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.8089,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "PAUSED",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 9,
+              "ticks": 9
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 9.808900000000024,
+              "ticks": 747
+            },
+            "PAUSED": {
+              "delta": 0.008299999999999273,
+              "elapsed": 0.42420000000000074,
+              "ticks": 37
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 9.808333333333417,
+              "ticks": 1177
+            },
+            "RENDER": {
+              "delta": 0.008299999999999273,
+              "elapsed": 10.341500000000021,
+              "ticks": 784
+            },
+            "UI": {
+              "delta": 0.008299999999999273,
+              "elapsed": 10.23310000000002,
+              "ticks": 784
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 785,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": true,
+          "physicsRemainder": 0.0005666666666663371
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131904682,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "PRESERVE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "SUSPEND"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "SUSPEND"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "PAUSED"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-16",
+            "metadata": {
+              "correlationId": null,
+              "reason": "pause:menu",
+              "source": "InputManager",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131904681,
+            "status": "COMMITTED",
+            "to": "PAUSED"
+          },
+          "mode": "PAUSED",
+          "resumeState": "STREET_VEHICLE",
+          "revision": 32
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "modal": "SETTINGS",
+        "state": "PAUSED"
+      },
+      "id": "settings",
+      "screenshot": "screenshots/settings.png",
+      "sha256": "d02f2ed3e26546e129408c9e131a171112f8749831f13113a80676d9abb06e85",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 95.20031733439114,
+          "frameTimeMs": 10.504166666666663,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 168654683,
+            "usedHeapBytes": 100373219
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 2437,
+            "geometries": 3394,
+            "lines": 0,
+            "points": 13200,
+            "programs": 18,
+            "textures": 9,
+            "triangles": 258038
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:45:04.877Z",
+          "pending": false,
+          "restoring": false,
+          "status": "SAVED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.8089,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "PAUSED",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 9,
+              "ticks": 9
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 9.808900000000024,
+              "ticks": 747
+            },
+            "PAUSED": {
+              "delta": 0.008600000000000364,
+              "elapsed": 1.0334000000000014,
+              "ticks": 92
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 9.808333333333417,
+              "ticks": 1177
+            },
+            "RENDER": {
+              "delta": 0.008600000000000364,
+              "elapsed": 10.950700000000017,
+              "ticks": 839
+            },
+            "UI": {
+              "delta": 0.008600000000000364,
+              "elapsed": 10.842300000000016,
+              "ticks": 839
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 840,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": true,
+          "physicsRemainder": 0.0005666666666663371
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131904682,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "PRESERVE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "SUSPEND"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "SUSPEND"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "PAUSED"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-16",
+            "metadata": {
+              "correlationId": null,
+              "reason": "pause:menu",
+              "source": "InputManager",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131904681,
+            "status": "COMMITTED",
+            "to": "PAUSED"
+          },
+          "mode": "PAUSED",
+          "resumeState": "STREET_VEHICLE",
+          "revision": 32
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "alertId": "alert-6",
+        "state": "STREET_VEHICLE"
+      },
+      "id": "structured-alert",
+      "screenshot": "screenshots/structured-alert.png",
+      "sha256": "150f98f54f29e06d8fddad7d664e818abebb7fc60c37d840e12fef804993292e",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 92,
+          "frameTimeMs": 10.869565217391305,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 169708321,
+            "usedHeapBytes": 101833633
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 2267,
+            "geometries": 3394,
+            "lines": 0,
+            "points": 13200,
+            "programs": 18,
+            "textures": 9,
+            "triangles": 251478
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:45:04.877Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.20910000000000084,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 10,
+              "ticks": 10
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.0085,
+              "elapsed": 10.209100000000024,
+              "ticks": 786
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 1.3331000000000008,
+              "ticks": 120
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 10.208333333333394,
+              "ticks": 1225
+            },
+            "RENDER": {
+              "delta": 0.0085,
+              "elapsed": 11.650600000000017,
+              "ticks": 906
+            },
+            "UI": {
+              "delta": 0.0085,
+              "elapsed": 11.542200000000015,
+              "ticks": 906
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 907,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0007666666666670419
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131906008,
+            "effects": {
+              "camera": {
+                "from": "PRESERVE",
+                "to": "STREET_VEHICLE"
+              },
+              "controlledEntity": {
+                "from": "SUSPEND",
+                "to": "REQUIRE_VEHICLE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "SUSPEND",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "PAUSED",
+                "to": "STREET"
+              }
+            },
+            "from": "PAUSED",
+            "id": "transition-17",
+            "metadata": {
+              "correlationId": null,
+              "reason": "resume:menu",
+              "source": "PauseMenu",
+              "target": null
+            },
+            "recoveryState": "PAUSED",
+            "requestedAt": 1786131906007,
+            "status": "COMMITTED",
+            "to": "STREET_VEHICLE"
+          },
+          "mode": "STREET_VEHICLE",
+          "resumeState": null,
+          "revision": 34
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "missionId": "mission_executive",
+        "phase": "BRIEFING"
+      },
+      "id": "mission-offer-dialogue",
+      "screenshot": "screenshots/mission-offer-dialogue.png",
+      "sha256": "fcecbcaa705b848153580b201965515a3bba243e2cd6baf0375aae0adede4ef2",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "Express Freight Truck #13",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 569,
+          "sceneObjects": 4633,
+          "vehicles": 25
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 92,
+          "frameTimeMs": 10.869565217391305,
+          "interactiveMs": 837.7000000178814,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 169709150,
+            "usedHeapBytes": 113944278
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 39,
+            "geometries": 3394,
+            "lines": 0,
+            "points": 13200,
+            "programs": 18,
+            "textures": 9,
+            "triangles": 32686
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:45:04.877Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.2506000000000008,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "PAUSED",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 10,
+              "ticks": 10
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 10.250600000000025,
+              "ticks": 789
+            },
+            "PAUSED": {
+              "delta": 0.007900000000001454,
+              "elapsed": 1.5662000000000014,
+              "ticks": 146
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 10.250000000000059,
+              "ticks": 1230
+            },
+            "RENDER": {
+              "delta": 0.007900000000001454,
+              "elapsed": 11.925200000000016,
+              "ticks": 935
+            },
+            "UI": {
+              "delta": 0.007900000000001454,
+              "elapsed": 11.816800000000015,
+              "ticks": 935
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 936,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": true,
+          "physicsRemainder": 0.0006000000000003763
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131906458,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "PRESERVE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "SUSPEND"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "SUSPEND"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "PAUSED"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-20",
+            "metadata": {
+              "correlationId": null,
+              "reason": "pause:dialogue",
+              "source": "DialogueOverlay",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131906458,
+            "status": "COMMITTED",
+            "to": "PAUSED"
+          },
+          "mode": "PAUSED",
+          "resumeState": "STREET_VEHICLE",
+          "revision": 40
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "missionId": "mission_executive",
+        "phase": "ACTIVE"
+      },
+      "id": "mission-active-hud",
+      "screenshot": "screenshots/mission-active-hud.png",
+      "sha256": "da48f9ec263854e639710671f5981563fe20fd88ad4e7e24216a270cbfbb66dc",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4670,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 60,
+          "frameTimeMs": 16.666666666666668,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 149970204,
+            "usedHeapBytes": 93948888
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 361,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 171900
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.46640000000000026,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.008799999999999954,
+              "elapsed": 0.46640000000000026,
+              "ticks": 35
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 0.4583333333333339,
+              "ticks": 55
+            },
+            "RENDER": {
+              "delta": 0.008799999999999954,
+              "elapsed": 0.5412000000000001,
+              "ticks": 35
+            },
+            "UI": {
+              "delta": 0.008799999999999954,
+              "elapsed": 0.46640000000000026,
+              "ticks": 35
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 36,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.008066666666666755
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131907921,
+            "effects": {
+              "camera": {
+                "from": "MANAGEMENT",
+                "to": "STREET_VEHICLE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_VEHICLE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "REQUIRE_RESOLVED",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "CITY",
+                "to": "STREET"
+              }
+            },
+            "from": "MANAGEMENT",
+            "id": "transition-5",
+            "metadata": {
+              "correlationId": null,
+              "reason": "browser-mission-start",
+              "source": "BrowserTestBridge",
+              "target": {
+                "id": "City Yellow Cab #88 #14",
+                "type": "VEHICLE"
+              }
+            },
+            "recoveryState": "MANAGEMENT",
+            "requestedAt": 1786131907916,
+            "status": "COMMITTED",
+            "to": "STREET_VEHICLE"
+          },
+          "mode": "STREET_VEHICLE",
+          "resumeState": null,
+          "revision": 10
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "missionId": "mission_executive",
+        "outcome": "FAILURE",
+        "phase": "RESULT"
+      },
+      "id": "mission-failure-result",
+      "screenshot": "screenshots/mission-failure-result.png",
+      "sha256": "62ba07682710e599e67a52bbfe9ffa61503e48397c009be7f0f162cbb8f97e53",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 60,
+          "frameTimeMs": 16.666666666666668,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 151742696,
+            "usedHeapBytes": 109067212
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 372,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 172262
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.49170000000000025,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "RESULT",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 0.49170000000000025,
+              "ticks": 38
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 0.49166666666666736,
+              "ticks": 59
+            },
+            "RENDER": {
+              "delta": 0.008299999999999955,
+              "elapsed": 0.8657000000000005,
+              "ticks": 72
+            },
+            "UI": {
+              "delta": 0.008299999999999955,
+              "elapsed": 0.7909000000000006,
+              "ticks": 72
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 73,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.000033333333333378234
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131908215,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "RESULT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "PRESERVE_UNTIL_RESULT_COMMIT"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "RESULT"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-6",
+            "metadata": {
+              "correlationId": null,
+              "reason": "mission-result-committed",
+              "source": "MissionSystem",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131908213,
+            "status": "COMMITTED",
+            "to": "RESULT"
+          },
+          "mode": "RESULT",
+          "resumeState": null,
+          "revision": 12
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "attempt": 2,
+        "missionId": "mission_executive",
+        "phase": "ACTIVE"
+      },
+      "id": "mission-retry",
+      "screenshot": "screenshots/mission-retry.png",
+      "sha256": "1a8add4be43f5d0d1d90d8dffc67301fd6be25eb1a80a487cc62f4d80049f763",
+      "telemetry": {
+        "controlledEntity": {
+          "id": "City Yellow Cab #88 #14",
+          "type": "VEHICLE"
+        },
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4670,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 97.99020097990194,
+          "frameTimeMs": 10.205102040816334,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 155341879,
+            "usedHeapBytes": 105283007
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 354,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 171816
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.7408000000000001,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "STREET",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.0074000000000000905,
+              "elapsed": 0.7408000000000001,
+              "ticks": 68
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 0.7333333333333332,
+              "ticks": 88
+            },
+            "RENDER": {
+              "delta": 0.0074000000000000905,
+              "elapsed": 1.1323000000000008,
+              "ticks": 104
+            },
+            "UI": {
+              "delta": 0.0074000000000000905,
+              "elapsed": 1.0575000000000008,
+              "ticks": 104
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 105,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0074666666666666215
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131908526,
+            "effects": {
+              "camera": {
+                "from": "RESULT",
+                "to": "STREET_VEHICLE"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_VEHICLE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_RUNNING"
+              },
+              "mission": {
+                "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+                "to": "PRESERVE"
+              },
+              "simulationClock": {
+                "from": "RESULT",
+                "to": "STREET"
+              }
+            },
+            "from": "RESULT",
+            "id": "transition-7",
+            "metadata": {
+              "correlationId": null,
+              "reason": "mission-retry",
+              "source": "MissionSystem",
+              "target": {
+                "id": "City Yellow Cab #88 #14",
+                "type": "VEHICLE"
+              }
+            },
+            "recoveryState": "RESULT",
+            "requestedAt": 1786131908524,
+            "status": "COMMITTED",
+            "to": "STREET_VEHICLE"
+          },
+          "mode": "STREET_VEHICLE",
+          "resumeState": null,
+          "revision": 14
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "missionId": "mission_executive",
+        "outcome": "SUCCESS",
+        "phase": "RESULT"
+      },
+      "id": "mission-success-result",
+      "screenshot": "screenshots/mission-success-result.png",
+      "sha256": "f2c534e2036b09e26ef4e8a5fcc73cc3c9bcaf27f5db3f748a3fe05491fbd732",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 97.99020097990194,
+          "frameTimeMs": 10.205102040816334,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 156122386,
+            "usedHeapBytes": 91363494
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 365,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 172178
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.7667000000000002,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "RESULT",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 0.7667000000000002,
+              "ticks": 71
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 0.7666666666666664,
+              "ticks": 92
+            },
+            "RENDER": {
+              "delta": 0.007700000000000273,
+              "elapsed": 1.4325000000000006,
+              "ticks": 140
+            },
+            "UI": {
+              "delta": 0.007700000000000273,
+              "elapsed": 1.3577000000000006,
+              "ticks": 140
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 141,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00003333333333337997
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131908804,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "RESULT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "PRESERVE_UNTIL_RESULT_COMMIT"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "RESULT"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-8",
+            "metadata": {
+              "correlationId": null,
+              "reason": "mission-result-committed",
+              "source": "MissionSystem",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131908803,
+            "status": "COMMITTED",
+            "to": "RESULT"
+          },
+          "mode": "RESULT",
+          "resumeState": null,
+          "revision": 16
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "missionId": "mission_executive",
+        "modal": "RESULT_HISTORY"
+      },
+      "id": "mission-result-history",
+      "screenshot": "screenshots/mission-result-history.png",
+      "sha256": "2780fa3b2d5c584c140c1ec1f28b6e6e6c82920d6531d075c62a820d2a3feedb",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 97.99020097990194,
+          "frameTimeMs": 10.205102040816334,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 156125935,
+            "usedHeapBytes": 103174059
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 365,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 172178
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": null,
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": false,
+          "cityRemainder": 0.7667000000000002,
+          "cityStep": 1,
+          "cityTimePaused": true,
+          "clockPolicy": "RESULT",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0,
+              "elapsed": 0.7667000000000002,
+              "ticks": 71
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 0.7666666666666664,
+              "ticks": 92
+            },
+            "RENDER": {
+              "delta": 0.007599999999999909,
+              "elapsed": 1.7324000000000004,
+              "ticks": 176
+            },
+            "UI": {
+              "delta": 0.007599999999999909,
+              "elapsed": 1.6576000000000004,
+              "ticks": 176
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 177,
+          "gameplayActive": false,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 0,
+            "physicsSteps": 0
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.00003333333333337997
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131908804,
+            "effects": {
+              "camera": {
+                "from": "STREET_VEHICLE",
+                "to": "RESULT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_VEHICLE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_RUNNING",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE",
+                "to": "PRESERVE_UNTIL_RESULT_COMMIT"
+              },
+              "simulationClock": {
+                "from": "STREET",
+                "to": "RESULT"
+              }
+            },
+            "from": "STREET_VEHICLE",
+            "id": "transition-8",
+            "metadata": {
+              "correlationId": null,
+              "reason": "mission-result-committed",
+              "source": "MissionSystem",
+              "target": null
+            },
+            "recoveryState": "STREET_VEHICLE",
+            "requestedAt": 1786131908803,
+            "status": "COMMITTED",
+            "to": "RESULT"
+          },
+          "mode": "RESULT",
+          "resumeState": null,
+          "revision": 16
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "saveSlots": [
+          "current",
+          "recovery"
+        ],
+        "state": "MANAGEMENT"
+      },
+      "id": "saved-city",
+      "screenshot": "screenshots/saved-city.png",
+      "sha256": "3f3dfb7ee21999a5a8041dc013483ac110c028f8bb304f1cd490360f6a9b8b41",
+      "telemetry": {
+        "controlledEntity": null,
+        "entities": {
+          "aircraft": 0,
+          "pedestrians": 16,
+          "physicsBodies": 571,
+          "sceneObjects": 4667,
+          "vehicles": 28
+        },
+        "features": {
+          "aircraft": false,
+          "countrysideExpansion": false,
+          "eastSideDevelopment": false,
+          "mayhemVariants": false,
+          "persistentMayhem": false,
+          "rocketLaunch": false,
+          "temporaryMayhem": false
+        },
+        "performance": {
+          "fps": 119.60530250174426,
+          "frameTimeMs": 8.360833333333332,
+          "interactiveMs": 477.40000000596046,
+          "memory": {
+            "heapLimitBytes": 4395630592,
+            "totalHeapBytes": 156121820,
+            "usedHeapBytes": 111933344
+          },
+          "quality": "LOW",
+          "renderer": {
+            "calls": 368,
+            "geometries": 2711,
+            "lines": 0,
+            "points": 13200,
+            "programs": 15,
+            "textures": 6,
+            "triangles": 172214
+          }
+        },
+        "save": {
+          "available": true,
+          "error": null,
+          "lastSavedAt": "2026-08-07T19:45:09.444Z",
+          "pending": true,
+          "restoring": false,
+          "status": "SCHEDULED"
+        },
+        "scheduler": {
+          "cityActive": true,
+          "cityRemainder": 0.19599999999999992,
+          "cityStep": 1,
+          "cityTimePaused": false,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 1,
+              "ticks": 1
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.009099999999999909,
+              "elapsed": 1.196,
+              "ticks": 122
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.008333333333333333,
+              "elapsed": 1.1916666666666649,
+              "ticks": 143
+            },
+            "RENDER": {
+              "delta": 0.009099999999999909,
+              "elapsed": 2.2123000000000017,
+              "ticks": 233
+            },
+            "UI": {
+              "delta": 0.009099999999999909,
+              "elapsed": 2.1375000000000015,
+              "ticks": 233
+            }
+          },
+          "fixedPhysicsStep": 0.008333333333333333,
+          "frame": 234,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 1,
+            "physicsSteps": 1
+          },
+          "owner": "SimulationScheduler",
+          "paused": false,
+          "physicsRemainder": 0.0043333333333331215
+        },
+        "state": {
+          "activeTransition": null,
+          "lastTransition": {
+            "completedAt": 1786131909426,
+            "effects": {
+              "camera": {
+                "from": "RESULT",
+                "to": "MANAGEMENT"
+              },
+              "controlledEntity": {
+                "from": "REQUIRE_NONE",
+                "to": "REQUIRE_NONE"
+              },
+              "heat": {
+                "from": "PRESERVE_FROZEN",
+                "to": "PRESERVE_FROZEN"
+              },
+              "mission": {
+                "from": "PRESERVE_UNTIL_RESULT_COMMIT",
+                "to": "REQUIRE_RESOLVED"
+              },
+              "simulationClock": {
+                "from": "RESULT",
+                "to": "CITY"
+              }
+            },
+            "from": "RESULT",
+            "id": "transition-9",
+            "metadata": {
+              "correlationId": null,
+              "reason": "mission-result-acknowledged",
+              "source": "MissionSystem",
+              "target": null
+            },
+            "recoveryState": "RESULT",
+            "requestedAt": 1786131909426,
+            "status": "COMMITTED",
+            "to": "MANAGEMENT"
+          },
+          "mode": "MANAGEMENT",
+          "resumeState": null,
+          "revision": 18
+        },
+        "testMode": {
+          "cleanProfile": true,
+          "missionId": "mission_executive",
+          "pedestrianCount": 16,
+          "seed": "godot-port-phase-0",
+          "time": 9.25,
+          "trafficCount": 12,
+          "unavailableCapabilities": [],
+          "weather": "clear"
+        }
+      }
+    },
+    {
+      "configuration": {
+        "profile": "saved",
+        "worldInstantiated": false
+      },
+      "id": "boot-continue-recover",
+      "screenshot": "screenshots/boot-continue-recover.png",
+      "sha256": "e2ec272c6787458fda6ff59b88f9076ff064b02d519917ef0d6b7fb2199bb593",
+      "telemetry": null
+    }
+  ],
+  "schemaVersion": 1,
+  "url": "/?testMode=1&profile=clean&seed=godot-port-phase-0&traffic=12&pedestrians=16&time=9.25&weather=clear&mission=mission_executive&diagnostics=1&quality=low",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  }
+}

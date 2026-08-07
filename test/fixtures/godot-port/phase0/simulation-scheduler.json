@@ -1,0 +1,835 @@
+{
+  "comparison": {
+    "epsilon": 1e-9,
+    "mode": "absolute"
+  },
+  "data": {
+    "clocks": {
+      "CITY": "CITY_LOGICAL",
+      "GAMEPLAY": "GAMEPLAY_REAL_TIME",
+      "PAUSED": "PAUSED",
+      "PHYSICS": "PHYSICS_FIXED",
+      "RENDER": "RENDER",
+      "UI": "UI"
+    },
+    "frames": [
+      {
+        "delta": 0.06,
+        "snapshot": {
+          "cityActive": true,
+          "cityRemainder": 0.3,
+          "cityStep": 1,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.06,
+              "elapsed": 0.06,
+              "ticks": 1
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "RENDER": {
+              "delta": 0.06,
+              "elapsed": 0.06,
+              "ticks": 1
+            },
+            "UI": {
+              "delta": 0.06,
+              "elapsed": 0.06,
+              "ticks": 1
+            }
+          },
+          "fixedPhysicsStep": 0.1,
+          "frame": 1,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 5,
+            "physicsSteps": 0
+          },
+          "paused": false,
+          "physicsRemainder": 0.06
+        }
+      },
+      {
+        "delta": 0.07,
+        "snapshot": {
+          "cityActive": true,
+          "cityRemainder": 0.65,
+          "cityStep": 1,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.07,
+              "elapsed": 0.13,
+              "ticks": 2
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.1,
+              "elapsed": 0.1,
+              "ticks": 1
+            },
+            "RENDER": {
+              "delta": 0.07,
+              "elapsed": 0.13,
+              "ticks": 2
+            },
+            "UI": {
+              "delta": 0.07,
+              "elapsed": 0.13,
+              "ticks": 2
+            }
+          },
+          "fixedPhysicsStep": 0.1,
+          "frame": 2,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 0,
+            "cityTimeScale": 5,
+            "physicsSteps": 1
+          },
+          "paused": false,
+          "physicsRemainder": 0.03
+        }
+      },
+      {
+        "delta": 0.87,
+        "snapshot": {
+          "cityActive": true,
+          "cityRemainder": 0,
+          "cityStep": 1,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 1,
+              "elapsed": 5,
+              "ticks": 5
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.87,
+              "elapsed": 1,
+              "ticks": 3
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.1,
+              "elapsed": 0.9999999999999999,
+              "ticks": 10
+            },
+            "RENDER": {
+              "delta": 0.87,
+              "elapsed": 1,
+              "ticks": 3
+            },
+            "UI": {
+              "delta": 0.87,
+              "elapsed": 1,
+              "ticks": 3
+            }
+          },
+          "fixedPhysicsStep": 0.1,
+          "frame": 3,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 5,
+            "cityTimeScale": 5,
+            "physicsSteps": 9
+          },
+          "paused": false,
+          "physicsRemainder": 0
+        }
+      },
+      {
+        "delta": 0.25,
+        "snapshot": {
+          "cityActive": true,
+          "cityRemainder": 0.25,
+          "cityStep": 1,
+          "clockPolicy": "CITY",
+          "clocks": {
+            "CITY_LOGICAL": {
+              "delta": 1,
+              "elapsed": 6,
+              "ticks": 6
+            },
+            "GAMEPLAY_REAL_TIME": {
+              "delta": 0.25,
+              "elapsed": 1.25,
+              "ticks": 4
+            },
+            "PAUSED": {
+              "delta": 0,
+              "elapsed": 0,
+              "ticks": 0
+            },
+            "PHYSICS_FIXED": {
+              "delta": 0.1,
+              "elapsed": 1.2,
+              "ticks": 12
+            },
+            "RENDER": {
+              "delta": 0.25,
+              "elapsed": 1.25,
+              "ticks": 4
+            },
+            "UI": {
+              "delta": 0.25,
+              "elapsed": 1.25,
+              "ticks": 4
+            }
+          },
+          "fixedPhysicsStep": 0.1,
+          "frame": 4,
+          "gameplayActive": true,
+          "lastFrame": {
+            "cityTicks": 1,
+            "cityTimeScale": 5,
+            "physicsSteps": 2
+          },
+          "paused": false,
+          "physicsRemainder": 0.04999999999999999
+        }
+      }
+    ],
+    "policySnapshots": {
+      "BUILDER": {
+        "cityActive": true,
+        "cityRemainder": 0.75,
+        "cityStep": 1,
+        "clockPolicy": "BUILDER",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 1,
+            "elapsed": 3,
+            "ticks": 3
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0.1,
+            "elapsed": 0.2,
+            "ticks": 2
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": true,
+        "lastFrame": {
+          "cityTicks": 3,
+          "cityTimeScale": 15,
+          "physicsSteps": 2
+        },
+        "paused": false,
+        "physicsRemainder": 0.04999999999999999
+      },
+      "CITY": {
+        "cityActive": true,
+        "cityRemainder": 0.75,
+        "cityStep": 1,
+        "clockPolicy": "CITY",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 1,
+            "elapsed": 3,
+            "ticks": 3
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0.1,
+            "elapsed": 0.2,
+            "ticks": 2
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": true,
+        "lastFrame": {
+          "cityTicks": 3,
+          "cityTimeScale": 15,
+          "physicsSteps": 2
+        },
+        "paused": false,
+        "physicsRemainder": 0.04999999999999999
+      },
+      "HANDOFF": {
+        "cityActive": false,
+        "cityRemainder": 0,
+        "cityStep": 1,
+        "clockPolicy": "HANDOFF",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": false,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 0,
+          "physicsSteps": 0
+        },
+        "paused": false,
+        "physicsRemainder": 0
+      },
+      "MENU": {
+        "cityActive": false,
+        "cityRemainder": 0,
+        "cityStep": 1,
+        "clockPolicy": "MENU",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": false,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 0,
+          "physicsSteps": 0
+        },
+        "paused": false,
+        "physicsRemainder": 0
+      },
+      "PAUSED": {
+        "cityActive": false,
+        "cityRemainder": 0,
+        "cityStep": 1,
+        "clockPolicy": "PAUSED",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PAUSED": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": false,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 0,
+          "physicsSteps": 0
+        },
+        "paused": true,
+        "physicsRemainder": 0
+      },
+      "RESULT": {
+        "cityActive": false,
+        "cityRemainder": 0,
+        "cityStep": 1,
+        "clockPolicy": "RESULT",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": false,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 0,
+          "physicsSteps": 0
+        },
+        "paused": false,
+        "physicsRemainder": 0
+      },
+      "STOPPED": {
+        "cityActive": false,
+        "cityRemainder": 0,
+        "cityStep": 1,
+        "clockPolicy": "STOPPED",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": false,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 0,
+          "physicsSteps": 0
+        },
+        "paused": false,
+        "physicsRemainder": 0
+      },
+      "STREET": {
+        "cityActive": true,
+        "cityRemainder": 0.25,
+        "cityStep": 1,
+        "clockPolicy": "STREET",
+        "clocks": {
+          "CITY_LOGICAL": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "GAMEPLAY_REAL_TIME": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "PAUSED": {
+            "delta": 0,
+            "elapsed": 0,
+            "ticks": 0
+          },
+          "PHYSICS_FIXED": {
+            "delta": 0.1,
+            "elapsed": 0.2,
+            "ticks": 2
+          },
+          "RENDER": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          },
+          "UI": {
+            "delta": 0.25,
+            "elapsed": 0.25,
+            "ticks": 1
+          }
+        },
+        "fixedPhysicsStep": 0.1,
+        "frame": 1,
+        "gameplayActive": true,
+        "lastFrame": {
+          "cityTicks": 0,
+          "cityTimeScale": 1,
+          "physicsSteps": 2
+        },
+        "paused": false,
+        "physicsRemainder": 0.04999999999999999
+      }
+    },
+    "stageOrder": [
+      "INPUT",
+      "FIXED_PHYSICS",
+      "GAMEPLAY",
+      "CITY",
+      "PRESENTATION",
+      "CAMERA",
+      "RENDER"
+    ],
+    "stages": {
+      "CAMERA": "CAMERA",
+      "CITY": "CITY",
+      "FIXED_PHYSICS": "FIXED_PHYSICS",
+      "GAMEPLAY": "GAMEPLAY",
+      "INPUT": "INPUT",
+      "PRESENTATION": "PRESENTATION",
+      "RENDER": "RENDER"
+    },
+    "taskOrder": [
+      {
+        "delta": 0.06,
+        "frame": 1,
+        "stage": "INPUT"
+      },
+      {
+        "delta": 0.06,
+        "frame": 1,
+        "stage": "GAMEPLAY"
+      },
+      {
+        "delta": 0.06,
+        "frame": 1,
+        "stage": "PRESENTATION"
+      },
+      {
+        "delta": 0.06,
+        "frame": 1,
+        "stage": "CAMERA"
+      },
+      {
+        "delta": 0.06,
+        "frame": 1,
+        "stage": "RENDER"
+      },
+      {
+        "delta": 0.07,
+        "frame": 2,
+        "stage": "INPUT"
+      },
+      {
+        "delta": 0.1,
+        "frame": 2,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.07,
+        "frame": 2,
+        "stage": "GAMEPLAY"
+      },
+      {
+        "delta": 0.07,
+        "frame": 2,
+        "stage": "PRESENTATION"
+      },
+      {
+        "delta": 0.07,
+        "frame": 2,
+        "stage": "CAMERA"
+      },
+      {
+        "delta": 0.07,
+        "frame": 2,
+        "stage": "RENDER"
+      },
+      {
+        "delta": 0.87,
+        "frame": 3,
+        "stage": "INPUT"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 3,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.87,
+        "frame": 3,
+        "stage": "GAMEPLAY"
+      },
+      {
+        "delta": 1,
+        "frame": 3,
+        "stage": "CITY"
+      },
+      {
+        "delta": 1,
+        "frame": 3,
+        "stage": "CITY"
+      },
+      {
+        "delta": 1,
+        "frame": 3,
+        "stage": "CITY"
+      },
+      {
+        "delta": 1,
+        "frame": 3,
+        "stage": "CITY"
+      },
+      {
+        "delta": 1,
+        "frame": 3,
+        "stage": "CITY"
+      },
+      {
+        "delta": 0.87,
+        "frame": 3,
+        "stage": "PRESENTATION"
+      },
+      {
+        "delta": 0.87,
+        "frame": 3,
+        "stage": "CAMERA"
+      },
+      {
+        "delta": 0.87,
+        "frame": 3,
+        "stage": "RENDER"
+      },
+      {
+        "delta": 0.25,
+        "frame": 4,
+        "stage": "INPUT"
+      },
+      {
+        "delta": 0.1,
+        "frame": 4,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.1,
+        "frame": 4,
+        "stage": "FIXED_PHYSICS"
+      },
+      {
+        "delta": 0.25,
+        "frame": 4,
+        "stage": "GAMEPLAY"
+      },
+      {
+        "delta": 1,
+        "frame": 4,
+        "stage": "CITY"
+      },
+      {
+        "delta": 0.25,
+        "frame": 4,
+        "stage": "PRESENTATION"
+      },
+      {
+        "delta": 0.25,
+        "frame": 4,
+        "stage": "CAMERA"
+      },
+      {
+        "delta": 0.25,
+        "frame": 4,
+        "stage": "RENDER"
+      }
+    ]
+  },
+  "fixtureSchemaVersion": 1,
+  "kind": "simulation-scheduler",
+  "reference": {
+    "application": "MetroPulse 3D browser reference",
+    "capturedOn": "2026-08-07",
+    "featureFlags": {
+      "aircraft": false,
+      "countrysideExpansion": false,
+      "eastSideDevelopment": false,
+      "mayhemVariants": false,
+      "persistentMayhem": false,
+      "rocketLaunch": false,
+      "temporaryMayhem": false
+    },
+    "revision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+    "seed": "godot-port-phase-0"
+  }
+}
