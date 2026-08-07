@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "phase": 0,
+  "status": "ACCEPTED",
+  "acceptedOn": "2026-08-07",
+  "timezone": "America/Chicago",
+  "signer": {
+    "role": "Project Owner",
+    "source": "User-confirmed in Codex task"
+  },
+  "browserCompatibility": [
+    {
+      "browserFamily": "Chromium/Chrome",
+      "result": "PASS",
+      "evidenceType": "archived-machine-report",
+      "artifact": "verification/browser.json"
+    },
+    {
+      "browserFamily": "Firefox",
+      "profile": "clean",
+      "result": "PASS",
+      "evidenceType": "project-owner-attestation",
+      "version": null,
+      "rawLogsArchived": false
+    },
+    {
+      "browserFamily": "WebKit",
+      "profile": "clean",
+      "result": "PASS",
+      "evidenceType": "project-owner-attestation",
+      "version": null,
+      "rawLogsArchived": false
+    }
+  ],
+  "acceptedArtifacts": [
+    "docs/GODOT_PORT_PARITY_MATRIX.md",
+    "docs/port_evidence/phase0/browser/manifest.json",
+    "docs/port_evidence/phase0/manual/manual-manifest.json",
+    "docs/GODOT_PORT_TARGET_HARDWARE_MATRIX.md",
+    "docs/DESIGN_DECISIONS.md#dd-016"
+  ],
+  "limitations": [
+    "Firefox and WebKit executable versions and raw logs were not archived; their clean-profile compatibility results are accepted by Project Owner attestation."
+  ]
+}

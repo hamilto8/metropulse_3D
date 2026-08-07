@@ -3,9 +3,14 @@
 > **Browser reference revision:** `44a286a74557adfe4fabd3a6e16b9006079eba32`  
 > **Fixture manifest:** `test/fixtures/godot-port/phase0/manifest.json`  
 > **Browser evidence:** `docs/port_evidence/phase0/browser/manifest.json`  
+> **Phase 0 reference signoff:** Accepted by the Project Owner on 2026-08-07; see `docs/port_evidence/phase0/acceptance.json`.
 > **Policy:** Browser state is evidence about the frozen source only. No row is a Godot pass until its automated and manual acceptance are complete.
 
 This matrix contains all 97 permanent requirement IDs from `REQUIREMENT_TRACEABILITY.md`. The browser evidence column points to the Phase 0 evidence family; individual Godot tests and signoffs replace the planned entries as each phase lands.
+
+The Phase 0 signoff accepts the frozen evidence package and planned ownership/
+phase mapping. It does not complete row-level Godot signoff or replace the
+verification owner named in each row.
 
 ## Game loop
 
@@ -155,4 +160,3 @@ This matrix contains all 97 permanent requirement IDs from `REQUIREMENT_TRACEABI
 2. Link exact test names and artifact paths; do not mark a row Pass from source-code inspection alone.
 3. Record approved parity changes in an ADR and link it in the deviation column.
 4. Only the named verification owner, or an explicitly delegated reviewer, may complete signoff.
-

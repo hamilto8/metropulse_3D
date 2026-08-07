@@ -493,6 +493,10 @@ movement from `_Process`.
 
 ## 8. Phase 0 — Freeze the reference and create parity evidence
 
+> **Status:** Exited on 2026-08-07. The Project Owner accepted the frozen
+> reference package after the archived Chrome pass and clean-profile Firefox
+> and WebKit runs. See `docs/port_evidence/phase0/acceptance.json`.
+
 ### Objective
 
 Turn the current browser build into a repeatable behavioral oracle before the

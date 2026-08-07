@@ -1,7 +1,7 @@
 # Phase 0 Reference Handoff
 
-**Chunk ID and status:** Phase 0 reference oracle; automated and manual evidence
-complete, phase exit pending browser-scope decision and named product signoff.
+**Chunk ID and status:** Phase 0 reference oracle; exited and accepted by the
+Project Owner on 2026-08-07.
 
 **Source revision / Godot revision:** Browser
 `44a286a74557adfe4fabd3a6e16b9006079eba32`; no Godot project/revision exists
@@ -27,9 +27,9 @@ under `Tools/BaselineCapture/`; 18 JSON fixtures and manifest under
 `test/fixtures/godot-port/phase0/`; deterministic fixture tests; 36 browser
 screenshots, telemetry manifest, environment and verification reports under
 `docs/port_evidence/phase0/`; 43 manual screenshots and their telemetry/hash
-manifest; the test-only `ManualCaptureHarness`; parity matrix, target hardware
-matrix, this exit report/handoff; `DD-016`; npm scripts. No scenes or runtime
-assets changed.
+manifest; machine-readable Phase 0 acceptance; the test-only
+`ManualCaptureHarness`; parity matrix, target hardware matrix, this exit
+report/handoff; `DD-016`; npm scripts. No scenes or runtime assets changed.
 
 **Authoritative owners touched:** Read-only use of GameManager,
 SimulationScheduler, EconomySystem, content validation, mission lifecycle,
@@ -53,6 +53,9 @@ mode and `manualCapture=1`. Normal browser product behavior is unchanged.
 
 **Known deviations and ADR links:** No parity deviation. `DD-016` records the
 accepted desktop-first platform, browser-reference, and save-import policy.
+Firefox/WebKit versions and raw logs were not archived; their clean-profile
+pass is recorded as Project Owner attestation in
+`docs/port_evidence/phase0/acceptance.json`.
 
 **Tests added and exact commands:** `test/BaselineCapture.test.js` checks
 same-process determinism and checked-in fixture identity. Exact commands:
@@ -64,9 +67,11 @@ same-process determinism and checked-in fixture identity. Exact commands:
 **Test results and artifact paths:** 389/389 Node tests pass; production build
 passes with 144 modules; 9/9 Chrome smoke scenarios pass; 1/1 browser atlas
 capture passes; 18 fixture files reproduce with no mismatch; 43/43 manual
-scenarios pass their telemetry assertions and visual review. Machine-readable
+scenarios pass their telemetry assertions and visual review. The Project Owner
+reports clean-profile Firefox and WebKit runs pass. Machine-readable Chrome
 results are under `docs/port_evidence/phase0/verification/`; exact fixture and
-screenshot hashes are in their manifests.
+screenshot hashes are in their manifests, and cross-browser acceptance is in
+`docs/port_evidence/phase0/acceptance.json`.
 
 **Performance/resource counts before and after:** Normal browser runtime
 behavior is unchanged; the capture-only module is inert outside an explicit
@@ -81,20 +86,18 @@ six conditions, race, sabotage, minimap, pursuit, and recovery restore. The
 manifest records the associated semantic assertions; this is targeted parity
 evidence, not a subjective handling-quality or accessibility playtest.
 
-**Open defects with severity and reproduction:** P1 process decision: run
-Firefox/WebKit reference checks or formally accept Chrome-only Phase 0
-evidence. P1 process gate: obtain named parity/atlas signoff. P2 known build
-risk: app and Three.js core chunks exceed Vite's 500 kB advisory; run
-`npm run build`.
+**Open defects with severity and reproduction:** No open Phase 0 P0/P1 defect or
+process gate. P2 known build risk: app and Three.js core chunks exceed Vite's
+500 kB advisory; run `npm run build`. Evidence provenance limitation:
+Firefox/WebKit executable versions and raw logs were not archived.
 
 **Compatibility adapters and removal conditions:** The browser build itself is
 the Phase 0 compatibility oracle. Keep it available until every parity-matrix
 row passes or has an approved deviation ADR and browser-save import is released
 or explicitly excluded.
 
-**Next safe task:** Resolve browser evidence scope and obtain final matrix/atlas
-signoff, then mark Phase 0 exited. After that, scaffold the Phase 1
-three-project Godot/.NET workspace against the checked fixtures.
+**Next safe task:** Scaffold the Phase 1 three-project Godot/.NET workspace
+against the checked fixtures.
 
 **Unsafe/blocked tasks and required decision:** Do not claim C# web export,
 delete the browser reference, choose a different stable ID/save vocabulary, or
