@@ -1,7 +1,7 @@
 # Phase 0 Reference Handoff
 
-**Chunk ID and status:** Phase 0 reference oracle; automated evidence complete,
-phase exit pending product/manual signoff.
+**Chunk ID and status:** Phase 0 reference oracle; automated and manual evidence
+complete, phase exit pending browser-scope decision and named product signoff.
 
 **Source revision / Godot revision:** Browser
 `44a286a74557adfe4fabd3a6e16b9006079eba32`; no Godot project/revision exists
@@ -26,8 +26,10 @@ sources imported by `Tools/BaselineCapture/baseline-fixtures.mjs`.
 under `Tools/BaselineCapture/`; 18 JSON fixtures and manifest under
 `test/fixtures/godot-port/phase0/`; deterministic fixture tests; 36 browser
 screenshots, telemetry manifest, environment and verification reports under
-`docs/port_evidence/phase0/`; parity matrix, target hardware matrix, this exit
-report/handoff; `DD-016`; npm scripts. No scenes or runtime assets changed.
+`docs/port_evidence/phase0/`; 43 manual screenshots and their telemetry/hash
+manifest; the test-only `ManualCaptureHarness`; parity matrix, target hardware
+matrix, this exit report/handoff; `DD-016`; npm scripts. No scenes or runtime
+assets changed.
 
 **Authoritative owners touched:** Read-only use of GameManager,
 SimulationScheduler, EconomySystem, content validation, mission lifecycle,
@@ -45,11 +47,12 @@ are `baseline:capture`, `baseline:check`, `baseline:capture:browser`,
 1 and references the existing save schema 2 / feature version 2. All production
 stable IDs are copied from the frozen browser source.
 
-**Behavior implemented:** Deterministic capture and verification tooling only.
-The browser product behavior is unchanged.
+**Behavior implemented:** Deterministic capture and verification tooling plus
+an off-canvas manual scenario surface that activates only with development test
+mode and `manualCapture=1`. Normal browser product behavior is unchanged.
 
 **Known deviations and ADR links:** No parity deviation. `DD-016` records the
-provisional desktop-first platform choice and remains unsigned.
+accepted desktop-first platform, browser-reference, and save-import policy.
 
 **Tests added and exact commands:** `test/BaselineCapture.test.js` checks
 same-process determinism and checked-in fixture identity. Exact commands:
@@ -59,26 +62,29 @@ same-process determinism and checked-in fixture identity. Exact commands:
 `PLAYWRIGHT_CHANNEL=chrome npm run baseline:verify:reference`.
 
 **Test results and artifact paths:** 389/389 Node tests pass; production build
-passes with 143 modules; 9/9 Chrome smoke scenarios pass; 1/1 browser atlas
-capture passes; 18 fixture files reproduce with no mismatch. Machine-readable
+passes with 144 modules; 9/9 Chrome smoke scenarios pass; 1/1 browser atlas
+capture passes; 18 fixture files reproduce with no mismatch; 43/43 manual
+scenarios pass their telemetry assertions and visual review. Machine-readable
 results are under `docs/port_evidence/phase0/verification/`; exact fixture and
 screenshot hashes are in their manifests.
 
-**Performance/resource counts before and after:** No browser runtime code
-changed, so there is no before/after product delta. The low-quality reference
-atlas records live renderer/entity/resource counters per scenario. The current
-build remains 854.63 kB raw for application code and 559.34 kB for Three.js
-core; these are existing advisories.
+**Performance/resource counts before and after:** Normal browser runtime
+behavior is unchanged; the capture-only module is inert outside an explicit
+development manual session. The low-quality reference atlases record live
+renderer/entity/resource counters per scenario. The current build is 868.19 kB
+raw for application code and 559.34 kB for Three.js core; these remain advisory
+risks rather than Phase 0 failures.
 
-**Manual checks performed:** Visually inspected the generated Management
-reference at 1280×720 for a rendered city, visible HUD/tools, diagnostics, and
-nonblank WebGL content. The capture test asserts visible boot/runtime/modal
-states and successful domain operations. This is not a full human playtest.
+**Manual checks performed:** Visually inspected 43 1280×720 frames covering
+Builder editing, on-foot control/combat/hijack/exit, five vehicle classes across
+six conditions, race, sabotage, minimap, pursuit, and recovery restore. The
+manifest records the associated semantic assertions; this is targeted parity
+evidence, not a subjective handling-quality or accessibility playtest.
 
-**Open defects with severity and reproduction:** P1 process blocker: `DD-016`
-needs Product Lead signoff. P1 evidence gap: manual interaction/vehicle atlas
-items listed in `GODOT_PORT_PHASE_0_EXIT_REPORT.md` are not captured. P2 known
-build risk: app and Three.js core chunks exceed Vite's 500 kB advisory; run
+**Open defects with severity and reproduction:** P1 process decision: run
+Firefox/WebKit reference checks or formally accept Chrome-only Phase 0
+evidence. P1 process gate: obtain named parity/atlas signoff. P2 known build
+risk: app and Three.js core chunks exceed Vite's 500 kB advisory; run
 `npm run build`.
 
 **Compatibility adapters and removal conditions:** The browser build itself is
@@ -86,8 +92,8 @@ the Phase 0 compatibility oracle. Keep it available until every parity-matrix
 row passes or has an approved deviation ADR and browser-save import is released
 or explicitly excluded.
 
-**Next safe task:** Obtain platform/save-policy signoff, complete the manual
-capture atlas, then mark Phase 0 exited. After that, scaffold the Phase 1
+**Next safe task:** Resolve browser evidence scope and obtain final matrix/atlas
+signoff, then mark Phase 0 exited. After that, scaffold the Phase 1
 three-project Godot/.NET workspace against the checked fixtures.
 
 **Unsafe/blocked tasks and required decision:** Do not claim C# web export,

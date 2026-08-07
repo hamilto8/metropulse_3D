@@ -1,6 +1,6 @@
 # Godot 4.6 Port Phase 0 Exit Report
 
-> **Status:** In progress — automated browser oracle complete; exit gate not yet signed off  
+> **Status:** In progress — manual evidence complete; browser-scope decision and final named signoff remain
 > **Frozen browser reference:** `44a286a74557adfe4fabd3a6e16b9006079eba32` (`codex/godot_port`)  
 > **Captured:** 2026-08-07, America/Chicago
 
@@ -12,10 +12,11 @@ browser smoke suites pass, and their complete outputs are archived as JSON.
 All 97 permanent MVP requirement IDs have a planned Godot owner, port phase,
 automated test, manual test, deviation, and signoff column.
 
-Phase 0 must not yet be reported as exited. `DD-016` still needs Product Lead
-acceptance, the target hardware matrix is a proposal rather than a measured
-compatibility result, and several interaction/vehicle screenshots named by the
-port plan remain manual capture work.
+Phase 0 must not yet be reported as exited. `DD-016` and the Phase 0 target
+hardware matrix were accepted on 2026-08-07, and the complete named manual
+interaction/vehicle atlas now passes. Browser coverage scope still needs an
+explicit decision, and the parity matrix plus both atlases need final named
+signoff.
 
 ## Work-item status
 
@@ -24,10 +25,10 @@ port plan remain manual capture work.
 | 0.1 Environment and scenario record | Complete | `docs/port_evidence/phase0/environment.json`; browser manifest records actual Chrome version, configured UA, viewport, renderer telemetry, scenario seed, entity targets, quality, and feature flags. |
 | 0.2 Unit/build/browser evidence | Complete on the reference workstation | `docs/port_evidence/phase0/verification/summary.json` and per-command JSON reports. |
 | 0.3 Deterministic JSON parity fixtures | Complete | 18 fixture files plus SHA-256 manifest under `test/fixtures/godot-port/phase0/`. |
-| 0.4 Screenshots and telemetry traces | Partial | 36 screenshot/telemetry scenarios under `docs/port_evidence/phase0/browser/`; manual gaps are listed below. |
+| 0.4 Screenshots and telemetry traces | Complete | 36 reproducible scenarios under `docs/port_evidence/phase0/browser/` plus 43 reviewed interaction/vehicle scenarios and SHA-256 manifest under `docs/port_evidence/phase0/manual/`. |
 | 0.5 Save corpus | Complete for schema/validation parity | Valid, recovery, corrupt, schema 0, schema 1, future, controlled-entity, mid-mission, and RESULT fixtures. |
 | 0.6 Requirement parity matrix | Complete | `docs/GODOT_PORT_PARITY_MATRIX.md` contains all 97 IDs. |
-| 0.7 Platform decision and hardware targets | Recorded, awaiting signoff/measurement | `DD-016` and `docs/GODOT_PORT_TARGET_HARDWARE_MATRIX.md`. |
+| 0.7 Platform decision and hardware targets | Complete for Phase 0 | Accepted `DD-016` and `docs/GODOT_PORT_TARGET_HARDWARE_MATRIX.md`; exported-build measurements remain Phase 11 work. |
 
 ## Automated verification result
 
@@ -37,12 +38,12 @@ Playwright browser is not assumed to be installed locally.
 | Check | Result | Duration | Artifact |
 |---|---:|---:|---|
 | `npm run baseline:check` | Pass | 277 ms | `verification/baseline-fixtures.json` |
-| `npm test` | Pass — 389 tests | 3.58 s | `verification/unit.json` |
-| `npm run build` | Pass — 143 modules | 456 ms | `verification/build.json` |
-| `PLAYWRIGHT_CHANNEL=chrome npm run test:browser -- --reporter=json` | Pass — 9 scenarios | 36.20 s | `verification/browser.json` |
+| `npm test` | Pass — 389 tests | 3.48 s | `verification/unit.json` |
+| `npm run build` | Pass — 144 modules | 427 ms | `verification/build.json` |
+| `PLAYWRIGHT_CHANNEL=chrome npm run test:browser -- --reporter=json` | Pass — 9 scenarios | 35.40 s | `verification/browser.json` |
 
 The production build remains above Vite's advisory threshold: the application
-chunk is 854.63 kB raw and the Three.js core chunk is 559.34 kB raw. This is a
+chunk is 868.19 kB raw and the Three.js core chunk is 559.34 kB raw. This is a
 reference fact, not a Godot regression and not a Phase 0 failure.
 
 ## Fixture inventory and comparison rules
@@ -94,22 +95,35 @@ Desktop Chrome device profile supplies a Chrome 149 user-agent string; both
 values are retained in the manifest so future runs can distinguish executable
 version from emulation metadata.
 
+## Manual interaction and vehicle atlas
+
+`docs/port_evidence/phase0/manual/manual-manifest.json` records 43/43 reviewed
+scenarios and 4,064,225 screenshot bytes. Every screenshot has a checked
+SHA-256 and paired telemetry. The pass includes:
+
+- Builder move, rotate, and demolition with committed before/after state;
+- on-foot collision blocking, airborne jump, registered bat contact, timed
+  hijack, and an exit spawn 1.814 m from the source vehicle;
+- sedan, sports, bus, truck, and motorbike captures for flat acceleration,
+  turning, bridge travel, rain, resolved vehicle contact, and upright reset;
+- a race checkpoint advance, active sabotage hold, readable minimap mission
+  composition, four responding police vehicles, and an applied recovery save
+  restored to the earlier 07:15 state.
+
+The off-canvas semantic controls used for the run are available only when both
+development test mode and `manualCapture=1` are explicit. Normal play is
+unchanged.
+
 ## Remaining exit-gate work
 
-1. Product Lead must accept or supersede `DD-016` and approve the save-import
-   policy. No engineer or automated run can manufacture that signoff.
-2. Capture and review Builder move, rotate, and demolish; on-foot collision,
-   jump, live bat impact, hijack, and exit; sedan/sports/bus/truck/motorbike
-   flat/turn/bridge/rain/collision/reset envelopes; race checkpoint; sabotage
-   hold; minimap-specific composition; police pursuit; and an applied recovery
-   restore. Existing automated tests remain supporting evidence, not substitutes
-   for the named visual/manual captures.
-3. Run the browser reference on clean Firefox/WebKit profiles or explicitly
+1. Run the browser reference on clean Firefox/WebKit profiles or explicitly
    narrow Phase 0 evidence to Chrome. The current full pass is Chrome-only.
-4. Measure at least one minimum and recommended native target per release OS in
-   Phase 11; the Phase 0 hardware table is intentionally a target matrix.
-5. Obtain named signoff for the parity matrix and screenshot atlas. All Godot
-   rows correctly remain `Not Started`.
+2. Obtain named signoff for the parity matrix, reproducible browser atlas, and
+   manual atlas. All Godot rows correctly remain `Not Started`.
+
+Native measurements for minimum and recommended configurations remain required
+in Phase 11, but they are not a Phase 0 exit blocker now that the target matrix
+is accepted.
 
 ## Known variability and exclusions
 
@@ -129,6 +143,7 @@ version from emulation metadata.
 
 ## Next safe task
 
-Obtain `DD-016` signoff and finish the manual atlas gaps. Phase 1 scaffolding
-may be prepared in parallel only if it treats this report as a non-exited Phase
-0 gate and does not claim release-platform acceptance.
+Resolve the Chrome-only evidence decision and obtain final
+parity-matrix/atlas signoff. Phase 1 scaffolding may be prepared in
+parallel only if it treats this report as a non-exited Phase 0 gate and does not
+claim release-platform measurement.

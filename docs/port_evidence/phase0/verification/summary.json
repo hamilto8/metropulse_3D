@@ -18,7 +18,7 @@
         "npm",
         "test"
       ],
-      "durationMs": 3577,
+      "durationMs": 3483,
       "exitCode": 0,
       "id": "unit"
     },
@@ -29,7 +29,7 @@
         "run",
         "build"
       ],
-      "durationMs": 456,
+      "durationMs": 427,
       "exitCode": 0,
       "id": "build"
     },
@@ -42,7 +42,7 @@
         "--",
         "--reporter=json"
       ],
-      "durationMs": 36202,
+      "durationMs": 35395,
       "exitCode": 0,
       "id": "browser"
     }

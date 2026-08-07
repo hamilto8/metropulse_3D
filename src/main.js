@@ -49,6 +49,7 @@ import {
 } from './app/RuntimeConfig.js';
 import { DiagnosticsService } from './debug/DiagnosticsService.js';
 import { installBrowserTestBridge } from './testing/BrowserTestBridge.js';
+import { installManualCaptureHarness } from './testing/ManualCaptureHarness.js';
 import { MVP_MISSION_IDS } from './config/MvpScope.js';
 import { validateGameData } from './data/GameDataValidator.js';
 import { BootPipeline } from './boot/BootPipeline.js';
@@ -435,7 +436,8 @@ export class MetroPulseApp {
     this.diagnostics = new DiagnosticsService(this, {
       enabled: runtimeConfig.diagnosticsEnabled
     });
-    installBrowserTestBridge(this, this.diagnostics, runtimeErrorMonitor);
+    const browserTestBridge = installBrowserTestBridge(this, this.diagnostics, runtimeErrorMonitor);
+    installManualCaptureHarness(this, this.diagnostics, browserTestBridge);
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);

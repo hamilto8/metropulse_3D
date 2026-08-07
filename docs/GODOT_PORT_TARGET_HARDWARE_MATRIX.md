@@ -1,8 +1,8 @@
 # Godot 4.6 Port Initial Target Hardware Matrix
 
-> **Status:** Phase 0 target proposal; measured acceptance is owned by Phase 11  
+> **Status:** Phase 0 targets accepted; measured acceptance is owned by Phase 11
 > **Reference revision:** `44a286a74557adfe4fabd3a6e16b9006079eba32`  
-> **Platform decision:** `DD-016` (provisional; Product Lead signoff pending)
+> **Platform decision:** `DD-016` (accepted 2026-08-07)
 
 ## Release targets
 
@@ -11,7 +11,7 @@ The browser implementation remains the behavioral reference and legacy build;
 it is not an export target for the C# project. Mobile is excluded from the
 initial release matrix.
 
-These are test targets, not measured compatibility claims. Phase 11 must
+These accepted targets are not measured compatibility claims. Phase 11 must
 replace every `Target` result below with evidence from exported binaries before
 release.
 
@@ -54,9 +54,8 @@ The performance gates remain at least 30 FPS on minimum, a 60 FPS target on
 recommended, routine frame time no worse than 33 ms, and useful staged progress
 when initial interactive load cannot remain below the accepted budget.
 
-## Open decisions
+## Remaining Phase 11 decisions
 
-- Product Lead acceptance or replacement of `DD-016`.
 - Exact supported OS version floors at release-candidate freeze.
 - Measured minimum/recommended GPU models and driver floors.
 - Whether the Compatibility renderer meets gameplay readability and

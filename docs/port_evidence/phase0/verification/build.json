@@ -4,7 +4,7 @@
     "run",
     "build"
   ],
-  "durationMs": 456,
+  "durationMs": 427,
   "exitCode": 0,
   "id": "build",
   "parseError": null,
@@ -13,5 +13,5 @@
   "schemaVersion": 1,
   "signal": null,
   "stderr": "[plugin builtin:vite-reporter] \n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.\n",
-  "stdout": "\n> 3d_objects@0.0.0 build\n> vite build\n\nvite v8.1.3 building client environment for production...\n\u001b[2K\rtransforming...✓ 143 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/assets/hero-CLDdwZDr.png            13.05 kB\ndist/index.html                          38.67 kB │ gzip:   9.06 kB\ndist/assets/index-BsmHnqiy.css           97.54 kB │ gzip:  20.55 kB\ndist/assets/three-addons-CQeSQPvn.js     35.31 kB │ gzip:   8.06 kB\ndist/assets/physics-vendor-_3alTKai.js   99.00 kB │ gzip:  28.66 kB\ndist/assets/three-vendor-57zSfsPc.js    559.34 kB │ gzip: 140.44 kB\ndist/assets/index-N8zFIH7N.js           854.63 kB │ gzip: 246.07 kB\n\n✓ built in 213ms\n"
+  "stdout": "\n> 3d_objects@0.0.0 build\n> vite build\n\nvite v8.1.3 building client environment for production...\n\u001b[2K\rtransforming...✓ 144 modules transformed.\nrendering chunks...\ncomputing gzip size...\ndist/assets/hero-CLDdwZDr.png            13.05 kB\ndist/index.html                          38.67 kB │ gzip:   9.06 kB\ndist/assets/index-BsmHnqiy.css           97.54 kB │ gzip:  20.55 kB\ndist/assets/three-addons-CQeSQPvn.js     35.31 kB │ gzip:   8.06 kB\ndist/assets/physics-vendor-_3alTKai.js   99.00 kB │ gzip:  28.66 kB\ndist/assets/three-vendor-57zSfsPc.js    559.34 kB │ gzip: 140.44 kB\ndist/assets/index-B7C4tYKp.js           868.19 kB │ gzip: 250.29 kB\n\n✓ built in 197ms\n"
 }

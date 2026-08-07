@@ -1,0 +1,6076 @@
+{
+  "schemaVersion": 1,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "capturedOn": "2026-08-07",
+  "timezone": "America/Chicago",
+  "status": "PASS",
+  "evidenceBoundary": "Manual/agent-driven interaction capture of the frozen browser reference; semantic screenshots are not pixel-match goldens.",
+  "captureMethod": "Test-mode-only semantic controls invoked through the Codex in-app browser; real transition, input, physics, mission, save, and presentation owners produced the observed state.",
+  "browser": {
+    "name": "Codex In-app Browser",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.55 Safari/537.36",
+    "referenceChromeVersion": "151.0.7922.76"
+  },
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "scenarioSeed": "metropulse-phase-0",
+  "population": {
+    "traffic": 48,
+    "pedestrians": 60
+  },
+  "scenarioCount": 43,
+  "totalScreenshotBytes": 4064225,
+  "assertions": {
+    "inventoryComplete": true,
+    "builderCommitted": true,
+    "collisionBlocked": true,
+    "jumpAirborne": true,
+    "batImpactRegistered": true,
+    "hijackTimed": true,
+    "exitNearVehicle": true,
+    "vehicleMovement": true,
+    "contactsResolved": true,
+    "resetsUpright": true,
+    "raceCheckpointAdvanced": true,
+    "sabotageHoldActive": true,
+    "minimapVisible": true,
+    "pursuitActive": true,
+    "recoveryApplied": true
+  },
+  "reviewSummary": {
+    "result": "PASS",
+    "reviewer": "Codex",
+    "notes": [
+      "Builder move, rotate, and demolition committed with before/after world-edit telemetry.",
+      "On-foot collision, jump, bat contact, timed hijack, and vehicle exit produced the expected control and spatial signals.",
+      "All five vehicle classes moved in flat, turn, bridge, rain, and contact conditions; all five contact probes resolved and all five reset probes returned upright.",
+      "Race checkpoint, sabotage hold, minimap composition, police pursuit, and recovery restore states were legible in the captured HUD."
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "builder-move",
+      "screenshot": "screenshots/builder-move.png",
+      "sha256": "1ee24cddd216df5ee216fb6db8fcd3a9bcbfe20033eb6d8b758467700019a10a",
+      "byteCount": 115419,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "builder-move",
+        "capturedAt": "2026-08-07T20:19:41.028Z",
+        "details": {
+          "tool": "MOVE",
+          "before": {
+            "position": {
+              "x": -160,
+              "y": 0,
+              "z": -130,
+              "width": 30,
+              "depth": 30
+            },
+            "rotationY": 0
+          },
+          "after": {
+            "destroyed": false,
+            "position": {
+              "x": -130,
+              "y": 0,
+              "z": -130,
+              "width": 30,
+              "depth": 30
+            },
+            "rotationY": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "BUILDER",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "BUILDER",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786133980778,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-builder",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "REQUIRE_RESOLVED"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_FROZEN"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_NONE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "BUILDER"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "BUILDER"
+                }
+              },
+              "completedAt": 1786133980781
+            }
+          },
+          "controlledEntity": null,
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 62,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 603,
+            "sceneObjects": 5702
+          },
+          "performance": {
+            "interactiveMs": 579.6999999880791,
+            "fps": 57.51685838952797,
+            "frameTimeMs": 17.386206896551723,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3988,
+              "triangles": 305368,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3332,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 136975944,
+              "totalHeapBytes": 218185812,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "BUILDER",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "builder-rotate",
+      "screenshot": "screenshots/builder-rotate.png",
+      "sha256": "ce2179282d82e7867c6787b591777c1b7abbfccd0957cf12922486c947d962af",
+      "byteCount": 113705,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "builder-rotate",
+        "capturedAt": "2026-08-07T20:19:45.612Z",
+        "details": {
+          "tool": "ROTATE",
+          "before": {
+            "position": {
+              "x": -140,
+              "y": 0,
+              "z": 130,
+              "width": 30,
+              "depth": 30
+            },
+            "rotationY": 0
+          },
+          "after": {
+            "destroyed": false,
+            "position": {
+              "x": -140,
+              "y": 0,
+              "z": 130,
+              "width": 30,
+              "depth": 30
+            },
+            "rotationY": 1.571
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "BUILDER",
+            "revision": 14,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-7",
+              "from": "MANAGEMENT",
+              "to": "BUILDER",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786133985401,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-builder",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "REQUIRE_RESOLVED"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_FROZEN"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_NONE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "BUILDER"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "BUILDER"
+                }
+              },
+              "completedAt": 1786133985402
+            }
+          },
+          "controlledEntity": null,
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:19:41.511Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 60,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 602,
+            "sceneObjects": 5681
+          },
+          "performance": {
+            "interactiveMs": 579.6999999880791,
+            "fps": 58.47373637264618,
+            "frameTimeMs": 17.10169491525424,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3975,
+              "triangles": 304682,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3341,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 127723316,
+              "totalHeapBytes": 218210648,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "BUILDER",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "builder-demolish",
+      "screenshot": "screenshots/builder-demolish.png",
+      "sha256": "267e0216bab4241de6e1a5759f4026d1483933e0200dd740afb586a39c386e52",
+      "byteCount": 98037,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "builder-demolish",
+        "capturedAt": "2026-08-07T20:24:51.831Z",
+        "details": {
+          "tool": "DELETE",
+          "before": {
+            "position": {
+              "x": -160,
+              "y": 0,
+              "z": -130,
+              "width": 30,
+              "depth": 30
+            },
+            "rotationY": 0
+          },
+          "after": {
+            "destroyed": true
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "BUILDER",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "BUILDER",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134291635,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-builder",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "REQUIRE_RESOLVED"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_FROZEN"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_NONE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "BUILDER"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "BUILDER"
+                }
+              },
+              "completedAt": 1786134291636
+            }
+          },
+          "controlledEntity": null,
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 626.5,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 26,
+              "triangles": 32562,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 117366807,
+              "totalHeapBytes": 174912111,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "BUILDER",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "on-foot-collision",
+      "screenshot": "screenshots/on-foot-collision.png",
+      "sha256": "da22a1f7e413f02ea075aee7d119bab68eed6880557e71a871fbf28840885cbc",
+      "byteCount": 70960,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "on-foot-collision",
+        "capturedAt": "2026-08-07T20:25:03.816Z",
+        "details": {
+          "obstacle": "NeoTech HQ",
+          "before": {
+            "x": -75,
+            "y": 0,
+            "z": -41.8
+          },
+          "after": {
+            "x": -75,
+            "y": 0.4,
+            "z": -40.432
+          },
+          "displacement": 1.368
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 14,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-7",
+              "from": "MANAGEMENT",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134302941,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-on-foot",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134302945
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:25:00.982Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 58,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 598,
+            "sceneObjects": 5643
+          },
+          "performance": {
+            "interactiveMs": 626.5,
+            "fps": 119.01219875037202,
+            "frameTimeMs": 8.402499999999993,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1195,
+              "triangles": 93074,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 153060455,
+              "totalHeapBytes": 192496187,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "ON_FOOT",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "on-foot-jump",
+      "screenshot": "screenshots/on-foot-jump.png",
+      "sha256": "f41c76e8e900e0bd1004e5fcfa565d4bcb5df46f0a1065827343a61161c45761",
+      "byteCount": 67982,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "on-foot-jump",
+        "capturedAt": "2026-08-07T20:25:04.438Z",
+        "details": {
+          "groundY": 0,
+          "position": {
+            "x": -75,
+            "y": 2.105,
+            "z": -40.429
+          },
+          "isJumping": true,
+          "jumpVelocity": 5.928
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 18,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-9",
+              "from": "MANAGEMENT",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134304256,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-on-foot",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134304258
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:25:00.982Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 58,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 598,
+            "sceneObjects": 5643
+          },
+          "performance": {
+            "interactiveMs": 626.5,
+            "fps": 111.06703689012302,
+            "frameTimeMs": 9.003571428571425,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 312,
+              "triangles": 191136,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3334,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 150209484,
+              "totalHeapBytes": 194353208,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "ON_FOOT",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "on-foot-bat-impact",
+      "screenshot": "screenshots/on-foot-bat-impact.png",
+      "sha256": "7e149043648c81208159c615afa44be8c97bef08c211fac2bba2376d1633d909",
+      "byteCount": 68021,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "on-foot-bat-impact",
+        "capturedAt": "2026-08-07T20:33:51.193Z",
+        "details": {
+          "target": "SEDAN",
+          "batHits": 1,
+          "swingTimer": 0.225,
+          "position": {
+            "x": -109,
+            "y": 0,
+            "z": -107.355
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134830888,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-on-foot",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134830891
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 576.5,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 52,
+              "triangles": 33150,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 265759704,
+              "totalHeapBytes": 394464456,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "ON_FOOT",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "on-foot-hijack",
+      "screenshot": "screenshots/on-foot-hijack.png",
+      "sha256": "a2b9d2a5a449fbb76f0506cc3ab086026fec6b9b7e14b937911cdefc6bc2177e",
+      "byteCount": 70133,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "on-foot-hijack",
+        "capturedAt": "2026-08-07T20:33:53.285Z",
+        "details": {
+          "target": "SEDAN",
+          "transition": {
+            "elapsed": 0.15,
+            "duration": 0.6
+          },
+          "position": {
+            "x": -105.986,
+            "y": 0,
+            "z": -105.673
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134832909,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-on-foot",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134832912
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 544.9000000059605,
+            "fps": 74.4195276840643,
+            "frameTimeMs": 13.437333333333331,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 62,
+              "triangles": 158744,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 333631721,
+              "totalHeapBytes": 417372861,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "ON_FOOT",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "on-foot-exit",
+      "screenshot": "screenshots/on-foot-exit.png",
+      "sha256": "84a0f27fa1ddab1c900a2938fcd0e74d9b48fafa23b44a556d7ef06d5b2a4a37",
+      "byteCount": 87850,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "on-foot-exit",
+        "capturedAt": "2026-08-07T20:25:45.963Z",
+        "details": {
+          "vehiclePosition": {
+            "x": -87.341,
+            "y": 0.77,
+            "z": -96.5
+          },
+          "pedestrianPosition": {
+            "x": -87.113,
+            "y": 0,
+            "z": -94.7
+          },
+          "exitDistance": 1.814
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 18,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-9",
+              "from": "STREET_VEHICLE",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "STREET_VEHICLE",
+              "requestedAt": 1786134345808,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-exit",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "PRESERVE",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_RUNNING",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_VEHICLE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "STREET_VEHICLE",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "STREET",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134345810
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 598.5999999940395,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 96,
+              "triangles": 57376,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 271921464,
+              "totalHeapBytes": 318249216,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_executive",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "ON_FOOT",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-flat",
+      "screenshot": "screenshots/vehicle-sedan-flat.png",
+      "sha256": "522537492f8438a1f9e7a7bbbf29db9bf15caf384d1047ec4f60bec59cd506cb",
+      "byteCount": 95770,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-flat",
+        "capturedAt": "2026-08-07T20:34:40.735Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "flat",
+          "weather": "clear",
+          "before": {
+            "x": -125,
+            "y": 1.47,
+            "z": -50
+          },
+          "after": {
+            "x": -118.685,
+            "y": 0.766,
+            "z": -50
+          },
+          "displacement": 6.315,
+          "speedKmh": 43,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134879575,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134879580
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 65.99999999999997,
+            "frameTimeMs": 15.151515151515158,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3994,
+              "triangles": 314254,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4024,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 152974206,
+              "totalHeapBytes": 226030934,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-turn",
+      "screenshot": "screenshots/vehicle-sedan-turn.png",
+      "sha256": "98ed849b8cb4f678b84719a1e4d074864d1658ca3a30e6838915d0389f6d492e",
+      "byteCount": 101698,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-turn",
+        "capturedAt": "2026-08-07T20:34:42.498Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "turn",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.47,
+            "z": -75
+          },
+          "after": {
+            "x": -96.956,
+            "y": 0.77,
+            "z": -71.197
+          },
+          "displacement": 4.871,
+          "speedKmh": 26,
+          "steering": 0.023,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 14,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-7",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134881220,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134881221
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 63,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 603,
+            "sceneObjects": 5709
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 98.40582562487697,
+            "frameTimeMs": 10.162000000000003,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3794,
+              "triangles": 299764,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4024,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 169359478,
+              "totalHeapBytes": 226053358,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-bridge",
+      "screenshot": "screenshots/vehicle-sedan-bridge.png",
+      "sha256": "b39bf410af45f2bf288dab0c44942663a4fcf07f4e0c784dffffc5911b363d8f",
+      "byteCount": 119363,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-bridge",
+        "capturedAt": "2026-08-07T20:34:44.388Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "bridge",
+          "weather": "clear",
+          "before": {
+            "x": 125,
+            "y": 1.47,
+            "z": 3.5
+          },
+          "after": {
+            "x": 134.694,
+            "y": 0.757,
+            "z": 3.5
+          },
+          "displacement": 9.694,
+          "speedKmh": 54,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 18,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-9",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134883029,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134883030
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:43.754Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 62,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 602,
+            "sceneObjects": 5695
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 98.99010098990094,
+            "frameTimeMs": 10.10202020202021,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1862,
+              "triangles": 244972,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4024,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 159841239,
+              "totalHeapBytes": 226075583,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-rain",
+      "screenshot": "screenshots/vehicle-sedan-rain.png",
+      "sha256": "409aecc684c641954bcc9ed388c8d4e287f15e82a343633ca938c2d0319311e8",
+      "byteCount": 88918,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-rain",
+        "capturedAt": "2026-08-07T20:34:46.026Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "rain",
+          "weather": "rain",
+          "before": {
+            "x": -125,
+            "y": 1.47,
+            "z": 50
+          },
+          "after": {
+            "x": -118.259,
+            "y": 0.768,
+            "z": 50
+          },
+          "displacement": 6.741,
+          "speedKmh": 43,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 22,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-11",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134884827,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134884828
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:43.754Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 61,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 601,
+            "sceneObjects": 5683
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 80.65309334120194,
+            "frameTimeMs": 12.398780487804876,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 4074,
+              "triangles": 312846,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4066,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 187716046,
+              "totalHeapBytes": 237156982,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-collision",
+      "screenshot": "screenshots/vehicle-sedan-collision.png",
+      "sha256": "2cb31c665b006221d71754c02c392a846bf11f3433519071cc49fd40b6f196cd",
+      "byteCount": 92865,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-collision",
+        "capturedAt": "2026-08-07T20:34:47.246Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "collision",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.47,
+            "z": -75
+          },
+          "after": {
+            "x": -100,
+            "y": 0.786,
+            "z": -70.548
+          },
+          "displacement": 4.452,
+          "speedKmh": 14,
+          "steering": 0,
+          "obstacle": {
+            "type": "TAXI",
+            "distance": 4.452
+          },
+          "collision": {
+            "resolved": true,
+            "obstacleBefore": {
+              "x": -100,
+              "y": 0.464,
+              "z": -75
+            },
+            "obstacleAfter": {
+              "x": -100,
+              "y": 0.464,
+              "z": -75
+            },
+            "obstacleDisplacement": 0,
+            "bumpCooldown": 0
+          },
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 26,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-13",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134886518,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134886519
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:43.754Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 60,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 600,
+            "sceneObjects": 5667
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 80.99999999999989,
+            "frameTimeMs": 12.345679012345697,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 841,
+              "triangles": 81286,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4085,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 199226364,
+              "totalHeapBytes": 246878500,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SEDAN-reset",
+      "screenshot": "screenshots/vehicle-sedan-reset.png",
+      "sha256": "0a47c6038345374369fa7c743ee466bef40ba68486200359a0d89144baf99c1e",
+      "byteCount": 73766,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SEDAN-reset",
+        "capturedAt": "2026-08-07T20:34:48.085Z",
+        "details": {
+          "type": "SEDAN",
+          "condition": "reset",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.47,
+            "z": 50
+          },
+          "after": {
+            "x": -100,
+            "y": 0.91,
+            "z": -69.375
+          },
+          "displacement": 119.375,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": {
+            "before": 0,
+            "after": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 30,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-15",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134887631,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Cyber Cruiser 2099 #10"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134887632
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Cyber Cruiser 2099 #10"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:43.754Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 60,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 600,
+            "sceneObjects": 5667
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 111.99999999999997,
+            "frameTimeMs": 8.92857142857143,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 57,
+              "triangles": 56596,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4086,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 202909049,
+              "totalHeapBytes": 255289473,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-flat",
+      "screenshot": "screenshots/vehicle-sports-flat.png",
+      "sha256": "a1517ed4841e05bc6550f8ad26b1fcd866b93ee6ec6a124ba6219483636f617c",
+      "byteCount": 99376,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-flat",
+        "capturedAt": "2026-08-07T20:34:49.639Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "flat",
+          "weather": "clear",
+          "before": {
+            "x": -125,
+            "y": 1.488,
+            "z": -50
+          },
+          "after": {
+            "x": -112.532,
+            "y": 0.769,
+            "z": -50
+          },
+          "displacement": 12.468,
+          "speedKmh": 88,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 34,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-17",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134888445,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134888447
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SAVED",
+            "available": true,
+            "pending": false,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:48.995Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 59,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 599,
+            "sceneObjects": 5655
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 83.99160083991616,
+            "frameTimeMs": 11.905952380952359,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3901,
+              "triangles": 311354,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4087,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 223191301,
+              "totalHeapBytes": 265011041,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-turn",
+      "screenshot": "screenshots/vehicle-sports-turn.png",
+      "sha256": "4405b111a386b65754b5ddae91954fe23bda2e5b26aeffd4a649766235d21b3e",
+      "byteCount": 108595,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-turn",
+        "capturedAt": "2026-08-07T20:34:51.511Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "turn",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.488,
+            "z": -75
+          },
+          "after": {
+            "x": -97.14,
+            "y": 0.781,
+            "z": -69.846
+          },
+          "displacement": 5.894,
+          "speedKmh": 49,
+          "steering": 0.022,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 38,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-19",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134890233,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134890234
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:48.995Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 58,
+            "pedestrians": 61,
+            "aircraft": 0,
+            "physicsBodies": 598,
+            "sceneObjects": 5639
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 100.15866719555737,
+            "frameTimeMs": 9.984158415841579,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3946,
+              "triangles": 312060,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4087,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 224810970,
+              "totalHeapBytes": 278926870,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-bridge",
+      "screenshot": "screenshots/vehicle-sports-bridge.png",
+      "sha256": "2fcdf62331a93d43f7c318564833b78d2165ec78b93b6ce49f5241f0ec6801e4",
+      "byteCount": 110710,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-bridge",
+        "capturedAt": "2026-08-07T20:34:53.352Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "bridge",
+          "weather": "clear",
+          "before": {
+            "x": 125,
+            "y": 1.488,
+            "z": 3.5
+          },
+          "after": {
+            "x": 143.474,
+            "y": 0.745,
+            "z": 3.5
+          },
+          "displacement": 18.474,
+          "speedKmh": 108,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 42,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-21",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134892009,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134892010
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:48.995Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 57,
+            "pedestrians": 61,
+            "aircraft": 0,
+            "physicsBodies": 597,
+            "sceneObjects": 5624
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 99.35077710013769,
+            "frameTimeMs": 10.065346534653468,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1829,
+              "triangles": 243532,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4087,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 267960298,
+              "totalHeapBytes": 306998474,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-rain",
+      "screenshot": "screenshots/vehicle-sports-rain.png",
+      "sha256": "85e65f435847b32178f47e5c48ec3b72a7adf2998dee257f7466901e366c8e20",
+      "byteCount": 87843,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-rain",
+        "capturedAt": "2026-08-07T20:34:54.879Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "rain",
+          "weather": "rain",
+          "before": {
+            "x": -125,
+            "y": 1.488,
+            "z": 50
+          },
+          "after": {
+            "x": -113.441,
+            "y": 0.773,
+            "z": 50
+          },
+          "displacement": 11.559,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 46,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-23",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134893696,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134893697
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:48.995Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 57,
+            "pedestrians": 61,
+            "aircraft": 0,
+            "physicsBodies": 597,
+            "sceneObjects": 5624
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 94.99999999999999,
+            "frameTimeMs": 10.526315789473685,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3962,
+              "triangles": 309668,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4088,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 268624706,
+              "totalHeapBytes": 331137926,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-collision",
+      "screenshot": "screenshots/vehicle-sports-collision.png",
+      "sha256": "f32622b7f34b2f40d0503906b727c08b076c358f8e94c663a6ba0395ec9d2e85",
+      "byteCount": 98791,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-collision",
+        "capturedAt": "2026-08-07T20:34:56.088Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "collision",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.488,
+            "z": -75
+          },
+          "after": {
+            "x": -93.58,
+            "y": 0.783,
+            "z": -72.45
+          },
+          "displacement": 6.908,
+          "speedKmh": 31,
+          "steering": 0,
+          "obstacle": {
+            "type": "TAXI",
+            "distance": 4.1
+          },
+          "collision": {
+            "resolved": true,
+            "obstacleBefore": {
+              "x": -96.79,
+              "y": 0.464,
+              "z": -75
+            },
+            "obstacleAfter": {
+              "x": -96.79,
+              "y": 0.464,
+              "z": -75
+            },
+            "obstacleDisplacement": 0,
+            "bumpCooldown": 0
+          },
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 50,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-25",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134895369,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134895370
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:54.994Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 56,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 596,
+            "sceneObjects": 5610
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 95.99999999999999,
+            "frameTimeMs": 10.416666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 883,
+              "triangles": 82438,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4095,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 291207546,
+              "totalHeapBytes": 350034614,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-SPORTS-reset",
+      "screenshot": "screenshots/vehicle-sports-reset.png",
+      "sha256": "38d53191155ac1b5b647b248b7a6f87bcc12d972224ca12737fd178973b91d5c",
+      "byteCount": 83534,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-SPORTS-reset",
+        "capturedAt": "2026-08-07T20:34:56.817Z",
+        "details": {
+          "type": "SPORTS",
+          "condition": "reset",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.488,
+            "z": 50
+          },
+          "after": {
+            "x": -93.58,
+            "y": 0.926,
+            "z": -70.436
+          },
+          "displacement": 120.607,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": {
+            "before": 0,
+            "after": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 54,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-27",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134896366,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #22"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134896367
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #22"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:54.994Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 56,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 596,
+            "sceneObjects": 5610
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 95.99999999999999,
+            "frameTimeMs": 10.416666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 58,
+              "triangles": 56608,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4095,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 141727423,
+              "totalHeapBytes": 304419935,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-flat",
+      "screenshot": "screenshots/vehicle-bus-flat.png",
+      "sha256": "e527b688adffa9eeafc495bcc17a2067adcd3a7197ce3809a5a0de6203392667",
+      "byteCount": 95527,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-flat",
+        "capturedAt": "2026-08-07T20:34:58.336Z",
+        "details": {
+          "type": "BUS",
+          "condition": "flat",
+          "weather": "clear",
+          "before": {
+            "x": -125,
+            "y": 1.915,
+            "z": -50
+          },
+          "after": {
+            "x": -117.623,
+            "y": 1.215,
+            "z": -50
+          },
+          "displacement": 7.377,
+          "speedKmh": 57,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 58,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-29",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134897182,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134897183
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:54.994Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 55,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 595,
+            "sceneObjects": 5609
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 88.26738073985895,
+            "frameTimeMs": 11.329213483146095,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3905,
+              "triangles": 310024,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4097,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 177809147,
+              "totalHeapBytes": 304320951,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-turn",
+      "screenshot": "screenshots/vehicle-bus-turn.png",
+      "sha256": "02a44b1c166e3b1c09a9e31d25b1c5f519d7211c085d337faec3aef0511d3595",
+      "byteCount": 111387,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-turn",
+        "capturedAt": "2026-08-07T20:35:00.127Z",
+        "details": {
+          "type": "BUS",
+          "condition": "turn",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.915,
+            "z": -75
+          },
+          "after": {
+            "x": -95.682,
+            "y": 1.233,
+            "z": -66.806
+          },
+          "displacement": 9.262,
+          "speedKmh": 7,
+          "steering": 0.015,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 62,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-31",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134898867,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134898868
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:34:54.994Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 54,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 594,
+            "sceneObjects": 5586
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 93.22622235445776,
+            "frameTimeMs": 10.726595744680878,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3940,
+              "triangles": 305788,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4097,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 196166183,
+              "totalHeapBytes": 304343147,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-bridge",
+      "screenshot": "screenshots/vehicle-bus-bridge.png",
+      "sha256": "77a59d5e58416a393db16fee63f785a51bb00303fd765ac437228a6aee428c70",
+      "byteCount": 120278,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-bridge",
+        "capturedAt": "2026-08-07T20:35:01.870Z",
+        "details": {
+          "type": "BUS",
+          "condition": "bridge",
+          "weather": "clear",
+          "before": {
+            "x": 125,
+            "y": 1.915,
+            "z": 3.5
+          },
+          "after": {
+            "x": 137.018,
+            "y": 1.214,
+            "z": 3.5
+          },
+          "displacement": 12.018,
+          "speedKmh": 75,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 66,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-33",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134900519,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134900520
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:00.385Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 53,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 593,
+            "sceneObjects": 5597
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 89.99100089991015,
+            "frameTimeMs": 11.112222222222204,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1879,
+              "triangles": 245592,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4112,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 222695303,
+              "totalHeapBytes": 304388123,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-rain",
+      "screenshot": "screenshots/vehicle-bus-rain.png",
+      "sha256": "036790c7069fa5f60702a3434ae9cb919750b848aff10c9ca15fb21520b49dfc",
+      "byteCount": 90523,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-rain",
+        "capturedAt": "2026-08-07T20:35:03.397Z",
+        "details": {
+          "type": "BUS",
+          "condition": "rain",
+          "weather": "rain",
+          "before": {
+            "x": -125,
+            "y": 1.915,
+            "z": 50
+          },
+          "after": {
+            "x": -116.931,
+            "y": 1.214,
+            "z": 50
+          },
+          "displacement": 8.069,
+          "speedKmh": 58,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 70,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-35",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134902213,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134902214
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:00.385Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 94.22733584606225,
+            "frameTimeMs": 10.612631578947374,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3962,
+              "triangles": 308464,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4112,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 253164201,
+              "totalHeapBytes": 304410329,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-collision",
+      "screenshot": "screenshots/vehicle-bus-collision.png",
+      "sha256": "21f7cddd10a672ce85b792781691f44a37499fdab52262af2a7cbce5ffa3f676",
+      "byteCount": 94465,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-collision",
+        "capturedAt": "2026-08-07T20:35:04.576Z",
+        "details": {
+          "type": "BUS",
+          "condition": "collision",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.915,
+            "z": -75
+          },
+          "after": {
+            "x": -100.25,
+            "y": 1.214,
+            "z": -77.799
+          },
+          "displacement": 2.81,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": {
+            "type": "TAXI",
+            "distance": 6.304
+          },
+          "collision": {
+            "resolved": true,
+            "obstacleBefore": {
+              "x": -100,
+              "y": 0,
+              "z": -71.5
+            },
+            "obstacleAfter": {
+              "x": -100,
+              "y": 0,
+              "z": -71.5
+            },
+            "obstacleDisplacement": 0,
+            "bumpCooldown": 0
+          },
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 74,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-37",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134903845,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134903846
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:00.385Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 67.99320067993209,
+            "frameTimeMs": 14.707352941176453,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 788,
+              "triangles": 79510,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4112,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 273219728,
+              "totalHeapBytes": 320423308,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-BUS-reset",
+      "screenshot": "screenshots/vehicle-bus-reset.png",
+      "sha256": "577de621e1cd54c5997f412bb19f8de3153335d0fda4696304472e7baf7f7f5c",
+      "byteCount": 74533,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-BUS-reset",
+        "capturedAt": "2026-08-07T20:35:05.401Z",
+        "details": {
+          "type": "BUS",
+          "condition": "reset",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.915,
+            "z": 50
+          },
+          "after": {
+            "x": -100.25,
+            "y": 1.358,
+            "z": -77.81
+          },
+          "displacement": 127.81,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": {
+            "before": 0,
+            "after": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 78,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-39",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134904954,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Transit Bus #42 #23"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134904955
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Transit Bus #42 #23"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:00.385Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 109.10533624280892,
+            "frameTimeMs": 9.16545454545455,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 46,
+              "triangles": 55800,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4113,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 148216220,
+              "totalHeapBytes": 306257376,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-flat",
+      "screenshot": "screenshots/vehicle-truck-flat.png",
+      "sha256": "92adf7186f2f35dd4b8a7e194c2fd5bea0486dd93f081d8255c9cbb9548f2a64",
+      "byteCount": 94264,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-flat",
+        "capturedAt": "2026-08-07T20:35:07.008Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "flat",
+          "weather": "clear",
+          "before": {
+            "x": -125,
+            "y": 1.784,
+            "z": -50
+          },
+          "after": {
+            "x": -119.382,
+            "y": 1.086,
+            "z": -50
+          },
+          "displacement": 5.618,
+          "speedKmh": 40,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 82,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-41",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134905825,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134905826
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:05.519Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 104.97900419916013,
+            "frameTimeMs": 9.525714285714288,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3912,
+              "triangles": 310288,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4113,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 162017955,
+              "totalHeapBytes": 306229359,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-turn",
+      "screenshot": "screenshots/vehicle-truck-turn.png",
+      "sha256": "571e43cbdf9e009a5afe21c813f931fa71175bda0885860c2dcce9fe2b64e19b",
+      "byteCount": 91756,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-turn",
+        "capturedAt": "2026-08-07T20:35:08.655Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "turn",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.784,
+            "z": -75
+          },
+          "after": {
+            "x": -99.397,
+            "y": 1.087,
+            "z": -76.324
+          },
+          "displacement": 1.455,
+          "speedKmh": 1,
+          "steering": 0.027,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 86,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-43",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134907409,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134907410
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:05.519Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 100.16860061489608,
+            "frameTimeMs": 9.983168316831712,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1421,
+              "triangles": 203752,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4115,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 177954517,
+              "totalHeapBytes": 306251553,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-bridge",
+      "screenshot": "screenshots/vehicle-truck-bridge.png",
+      "sha256": "01b9d4b0f7ab79e5b992377668cc434e6ae1a7d8524162c35672e34576f6bea5",
+      "byteCount": 120144,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-bridge",
+        "capturedAt": "2026-08-07T20:35:10.393Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "bridge",
+          "weather": "clear",
+          "before": {
+            "x": 125,
+            "y": 1.784,
+            "z": 3.5
+          },
+          "after": {
+            "x": 133.307,
+            "y": 1.085,
+            "z": 4.628
+          },
+          "displacement": 8.383,
+          "speedKmh": 48,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 90,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-45",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134909031,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134909032
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:05.519Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 100.19841269841274,
+            "frameTimeMs": 9.980198019801977,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1921,
+              "triangles": 246592,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4115,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 222398434,
+              "totalHeapBytes": 306273770,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-rain",
+      "screenshot": "screenshots/vehicle-truck-rain.png",
+      "sha256": "bfa3f821ee99854c908c6b357245453a4cc43282ee599883d493e0f06a1daa39",
+      "byteCount": 87149,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-rain",
+        "capturedAt": "2026-08-07T20:35:11.950Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "rain",
+          "weather": "rain",
+          "before": {
+            "x": -125,
+            "y": 1.784,
+            "z": 50
+          },
+          "after": {
+            "x": -119.775,
+            "y": 1.085,
+            "z": 50
+          },
+          "displacement": 5.225,
+          "speedKmh": 38,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 94,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-47",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134910786,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134910787
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:10.821Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 94.9715085474356,
+            "frameTimeMs": 10.529473684210545,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3954,
+              "triangles": 308088,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4115,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 245367618,
+              "totalHeapBytes": 306558210,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-collision",
+      "screenshot": "screenshots/vehicle-truck-collision.png",
+      "sha256": "f418841cdbf0d26ceb462a7aad21677ffc754f344e36be0e77d5f0da65e1520b",
+      "byteCount": 98169,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-collision",
+        "capturedAt": "2026-08-07T20:35:13.179Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "collision",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.784,
+            "z": -75
+          },
+          "after": {
+            "x": -96.468,
+            "y": 1.087,
+            "z": -75.483
+          },
+          "displacement": 3.565,
+          "speedKmh": 11,
+          "steering": 0,
+          "obstacle": {
+            "type": "TAXI",
+            "distance": 3.46
+          },
+          "collision": {
+            "resolved": true,
+            "obstacleBefore": {
+              "x": -99.828,
+              "y": 0.547,
+              "z": -76.308
+            },
+            "obstacleAfter": {
+              "x": -99.828,
+              "y": 0.547,
+              "z": -76.308
+            },
+            "obstacleDisplacement": 0,
+            "bumpCooldown": 0
+          },
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 98,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-49",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134912486,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134912487
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:10.821Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 97.1836572788576,
+            "frameTimeMs": 10.289795918367346,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 662,
+              "triangles": 74530,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4115,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 248257709,
+              "totalHeapBytes": 306580453,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-TRUCK-reset",
+      "screenshot": "screenshots/vehicle-truck-reset.png",
+      "sha256": "385c3d552915163430d3dfc99cdde8ac437268396af98566bdd8e41e82f680a3",
+      "byteCount": 63535,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-TRUCK-reset",
+        "capturedAt": "2026-08-07T20:35:14.028Z",
+        "details": {
+          "type": "TRUCK",
+          "condition": "reset",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.784,
+            "z": 50
+          },
+          "after": {
+            "x": -96.468,
+            "y": 1.227,
+            "z": -74.427
+          },
+          "displacement": 124.477,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": {
+            "before": 0,
+            "after": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 102,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-51",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134913582,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Express Freight Truck #24"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134913583
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Express Freight Truck #24"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:10.821Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 63,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 97.1836572788576,
+            "frameTimeMs": 10.289795918367346,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 68,
+              "triangles": 57064,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4115,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 253546650,
+              "totalHeapBytes": 306602850,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-flat",
+      "screenshot": "screenshots/vehicle-motorbike-flat.png",
+      "sha256": "21e4c8251c867be43e86ac8c0b79bdaa5e82899ea30fd88254cd26e5ac2c0e73",
+      "byteCount": 94929,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-flat",
+        "capturedAt": "2026-08-07T20:35:15.556Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "flat",
+          "weather": "clear",
+          "before": {
+            "x": -125,
+            "y": 1.336,
+            "z": -50
+          },
+          "after": {
+            "x": -120.36,
+            "y": 0.645,
+            "z": -50.001
+          },
+          "displacement": 4.64,
+          "speedKmh": 20,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 106,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-53",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134914382,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134914384
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:10.821Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 64,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5584
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 111.13316134153582,
+            "frameTimeMs": 8.998214285714301,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3896,
+              "triangles": 309650,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4123,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 264734308,
+              "totalHeapBytes": 326023724,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-turn",
+      "screenshot": "screenshots/vehicle-motorbike-turn.png",
+      "sha256": "9517588d2e66fb39910435bc41b56e496ba7e3ad37c3dd642450463c3c33ff86",
+      "byteCount": 110388,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-turn",
+        "capturedAt": "2026-08-07T20:35:17.352Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "turn",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.336,
+            "z": -75
+          },
+          "after": {
+            "x": -98.625,
+            "y": 0.647,
+            "z": -71.855
+          },
+          "displacement": 3.432,
+          "speedKmh": 2,
+          "steering": 0.022,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 110,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-55",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134916071,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134916072
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SAVED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:15.918Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 65,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5594
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 100.14873574615771,
+            "frameTimeMs": 9.98514851485148,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3736,
+              "triangles": 298202,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4130,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 297381294,
+              "totalHeapBytes": 341260118,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-bridge",
+      "screenshot": "screenshots/vehicle-motorbike-bridge.png",
+      "sha256": "3bd524f14c478bdbe209161211e2ef053c893bbe6f54ce71421b13fc74793d54",
+      "byteCount": 119586,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-bridge",
+        "capturedAt": "2026-08-07T20:35:19.180Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "bridge",
+          "weather": "clear",
+          "before": {
+            "x": 125,
+            "y": 1.336,
+            "z": 3.5
+          },
+          "after": {
+            "x": 132.092,
+            "y": 0.64,
+            "z": 3.5
+          },
+          "displacement": 7.092,
+          "speedKmh": 30,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 114,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-57",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134917827,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134917829
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SAVED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:15.918Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 66,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5607
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 78.96051974013,
+            "frameTimeMs": 12.664556962025307,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 1931,
+              "triangles": 247178,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4136,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 296284425,
+              "totalHeapBytes": 355187969,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-rain",
+      "screenshot": "screenshots/vehicle-motorbike-rain.png",
+      "sha256": "c28d0242cf339806800f8507260775f0b2a4b70cd7934be5cb88d2bf631369e4",
+      "byteCount": 87195,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-rain",
+        "capturedAt": "2026-08-07T20:35:20.830Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "rain",
+          "weather": "rain",
+          "before": {
+            "x": -125,
+            "y": 1.336,
+            "z": 50
+          },
+          "after": {
+            "x": -120.319,
+            "y": 0.646,
+            "z": 50
+          },
+          "displacement": 4.681,
+          "speedKmh": 20,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 118,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-59",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134919644,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134919646
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SAVED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:15.918Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 67,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5617
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 98.12667261373836,
+            "frameTimeMs": 10.190909090909026,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 3968,
+              "triangles": 309118,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4143,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 130977034,
+              "totalHeapBytes": 332392986,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-collision",
+      "screenshot": "screenshots/vehicle-motorbike-collision.png",
+      "sha256": "748790bbf10417571e130dc92f71d2d2e317141bf6ef3cfb2f58a146c0db1706",
+      "byteCount": 93833,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-collision",
+        "capturedAt": "2026-08-07T20:35:21.997Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "collision",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.336,
+            "z": -75
+          },
+          "after": {
+            "x": -100,
+            "y": 0.662,
+            "z": -76.263
+          },
+          "displacement": 1.263,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": {
+            "type": "TAXI",
+            "distance": 2.115
+          },
+          "collision": {
+            "resolved": true,
+            "obstacleBefore": {
+              "x": -100,
+              "y": 0.491,
+              "z": -74.148
+            },
+            "obstacleAfter": {
+              "x": -100,
+              "y": 0.491,
+              "z": -74.148
+            },
+            "obstacleDisplacement": 0,
+            "bumpCooldown": 0
+          },
+          "resetTilt": null
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 122,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-61",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134921296,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134921298
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:20.980Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 68,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5627
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 58.036592563446455,
+            "frameTimeMs": 17.230508474576368,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 688,
+              "triangles": 75030,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4149,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 132174080,
+              "totalHeapBytes": 332425116,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "vehicle-MOTORBIKE-reset",
+      "screenshot": "screenshots/vehicle-motorbike-reset.png",
+      "sha256": "84dddb279d01421ffc43c6b332ceb83774b5d26c12466eaf41c425377f659448",
+      "byteCount": 79260,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "vehicle-MOTORBIKE-reset",
+        "capturedAt": "2026-08-07T20:35:22.836Z",
+        "details": {
+          "type": "MOTORBIKE",
+          "condition": "reset",
+          "weather": "clear",
+          "before": {
+            "x": -100,
+            "y": 1.336,
+            "z": 50
+          },
+          "after": {
+            "x": -100,
+            "y": 0.777,
+            "z": -76.308
+          },
+          "displacement": 126.308,
+          "speedKmh": 0,
+          "steering": 0,
+          "obstacle": null,
+          "collision": null,
+          "resetTilt": {
+            "before": 0,
+            "after": 0
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 126,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-63",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134922386,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "phase0-manual-vehicle",
+                "source": "ManualCaptureHarness",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Phantom Streetfighter Motorbike #31"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134922388
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Phantom Streetfighter Motorbike #31"
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:35:20.980Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 52,
+            "pedestrians": 69,
+            "aircraft": 0,
+            "physicsBodies": 592,
+            "sceneObjects": 5637
+          },
+          "performance": {
+            "interactiveMs": 569.5,
+            "fps": 113.0615888128539,
+            "frameTimeMs": 8.844736842105219,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 69,
+              "triangles": 56460,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 4155,
+              "textures": 9,
+              "programs": 18
+            },
+            "memory": {
+              "usedHeapBytes": 156959714,
+              "totalHeapBytes": 332457282,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "VEHICLE",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "race-checkpoint",
+      "screenshot": "screenshots/race-checkpoint.png",
+      "sha256": "0b803d3055733bf5a34acc38380f3901c188977cfdf4ae39f0ff208a332ca08c",
+      "byteCount": 93073,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "race-checkpoint",
+        "capturedAt": "2026-08-07T20:31:39.853Z",
+        "details": {
+          "missionId": "mission_sports_trial",
+          "routeIndex": 1,
+          "routeLength": 4,
+          "target": {
+            "x": 100,
+            "z": 50,
+            "district": "Financial Chicane",
+            "districtId": "WEST_CORE"
+          },
+          "minimapVisible": true
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134699711,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-mission-start",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #11"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134699718
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #11"
+          },
+          "mission": {
+            "state": "ACTIVE",
+            "id": "mission_sports_trial",
+            "timeRemaining": 41.3088770909091
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5725
+          },
+          "performance": {
+            "interactiveMs": 534.4000000059605,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 40,
+              "triangles": 32634,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3332,
+              "textures": 6,
+              "programs": 16
+            },
+            "memory": {
+              "usedHeapBytes": 183580876,
+              "totalHeapBytes": 237013372,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "MISSION_AND_HUD",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "sabotage-hold",
+      "screenshot": "screenshots/sabotage-hold.png",
+      "sha256": "cf1b761eab86ff894df15f1d56ad03cf478d6b3bbca22f0f8c12517adf20780a",
+      "byteCount": 93945,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "sabotage-hold",
+        "capturedAt": "2026-08-07T20:32:07.816Z",
+        "details": {
+          "missionId": "mission_police_robbery",
+          "sabotageActive": true,
+          "sabotageProgress": 1.383,
+          "sabotageDuration": 3
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134727698,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-mission-start",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Metro Police Interceptor #01 #15"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134727703
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Metro Police Interceptor #01 #15"
+          },
+          "mission": {
+            "state": "ACTIVE",
+            "id": "mission_police_robbery",
+            "timeRemaining": 45.32403672727273
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5725
+          },
+          "performance": {
+            "interactiveMs": 557.1999999880791,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 265,
+              "triangles": 64824,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 251034722,
+              "totalHeapBytes": 314707814,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_police_robbery",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "MISSION_AND_HUD",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "minimap-composition",
+      "screenshot": "screenshots/minimap-composition.png",
+      "sha256": "863486628039f1bfe0902d8129afb803cf93137f698504d79bbfde48acf907e8",
+      "byteCount": 92271,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "minimap-composition",
+        "capturedAt": "2026-08-07T20:32:09.904Z",
+        "details": {
+          "missionId": "mission_sports_trial",
+          "routeIndex": 1,
+          "routeLength": 4,
+          "target": {
+            "x": 100,
+            "z": 50,
+            "district": "Financial Chicane",
+            "districtId": "WEST_CORE"
+          },
+          "minimapVisible": true
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_VEHICLE",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_VEHICLE",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134729767,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-mission-start",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": {
+                  "type": "VEHICLE",
+                  "id": "Apex GT Turbo #11"
+                }
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_VEHICLE"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_VEHICLE"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134729772
+            }
+          },
+          "controlledEntity": {
+            "type": "VEHICLE",
+            "id": "Apex GT Turbo #11"
+          },
+          "mission": {
+            "state": "ACTIVE",
+            "id": "mission_sports_trial",
+            "timeRemaining": 41.31747709090909
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5725
+          },
+          "performance": {
+            "interactiveMs": 524.7000000178814,
+            "fps": 60,
+            "frameTimeMs": 16.666666666666668,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 40,
+              "triangles": 32654,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3331,
+              "textures": 6,
+              "programs": 16
+            },
+            "memory": {
+              "usedHeapBytes": 315506802,
+              "totalHeapBytes": 384228638,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "MISSION_AND_HUD",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "police-pursuit",
+      "screenshot": "screenshots/police-pursuit.png",
+      "sha256": "2546fb60c5abbe4fb5fb3856eefe45478b50fa3a145c8d18aa9436c3c7884380",
+      "byteCount": 58718,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "police-pursuit",
+        "capturedAt": "2026-08-07T20:32:16.528Z",
+        "details": {
+          "wanted": true,
+          "escapeTimer": 0.375,
+          "policeResponding": 4
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "STREET_ON_FOOT",
+            "revision": 10,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-5",
+              "from": "MANAGEMENT",
+              "to": "STREET_ON_FOOT",
+              "recoveryState": "MANAGEMENT",
+              "requestedAt": 1786134736171,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "browser-pause-on-foot",
+                "source": "BrowserTestBridge",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_RESOLVED",
+                  "to": "PRESERVE"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_RUNNING"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_PEDESTRIAN"
+                },
+                "camera": {
+                  "from": "MANAGEMENT",
+                  "to": "STREET_ON_FOOT"
+                },
+                "simulationClock": {
+                  "from": "CITY",
+                  "to": "STREET"
+                }
+              },
+              "completedAt": 1786134736174
+            }
+          },
+          "controlledEntity": {
+            "type": "PEDESTRIAN",
+            "id": "Sophia L."
+          },
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "SCHEDULED",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": null,
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 556.1000000238419,
+            "fps": 71.99999999999999,
+            "frameTimeMs": 13.888888888888891,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 44,
+              "triangles": 32846,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 386314642,
+              "totalHeapBytes": 443542854,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "MISSION_AND_HUD",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    },
+    {
+      "id": "recovery-restore",
+      "screenshot": "screenshots/recovery-restore.png",
+      "sha256": "c416dbc04ed7eb48be025ef441c35170526935449ac3ea03f0ccedde41a73bdc",
+      "byteCount": 145961,
+      "telemetry": {
+        "schemaVersion": 1,
+        "scenarioId": "recovery-restore",
+        "capturedAt": "2026-08-07T20:32:18.795Z",
+        "details": {
+          "applied": true,
+          "restoredTime": 7.267,
+          "savedAt": "2026-08-07T20:32:18.389Z",
+          "saveStatus": {
+            "status": "IDLE",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:32:18.389Z",
+            "error": null
+          }
+        },
+        "diagnostics": {
+          "state": {
+            "mode": "MANAGEMENT",
+            "revision": 8,
+            "resumeState": null,
+            "activeTransition": null,
+            "lastTransition": {
+              "id": "transition-4",
+              "from": "LOAD",
+              "to": "MANAGEMENT",
+              "recoveryState": "LOAD",
+              "requestedAt": 1786134737505,
+              "status": "COMMITTED",
+              "metadata": {
+                "reason": "boot-complete",
+                "source": "MetroPulseApp",
+                "correlationId": null,
+                "target": null
+              },
+              "effects": {
+                "mission": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_RESOLVED"
+                },
+                "heat": {
+                  "from": "PRESERVE_FROZEN",
+                  "to": "PRESERVE_FROZEN"
+                },
+                "controlledEntity": {
+                  "from": "REQUIRE_NONE",
+                  "to": "REQUIRE_NONE"
+                },
+                "camera": {
+                  "from": "LOADING",
+                  "to": "MANAGEMENT"
+                },
+                "simulationClock": {
+                  "from": "STOPPED",
+                  "to": "CITY"
+                }
+              },
+              "completedAt": 1786134737506
+            }
+          },
+          "controlledEntity": null,
+          "mission": {
+            "state": "IDLE",
+            "id": null,
+            "timeRemaining": 0
+          },
+          "save": {
+            "status": "IDLE",
+            "available": true,
+            "pending": true,
+            "restoring": false,
+            "lastSavedAt": "2026-08-07T20:32:18.389Z",
+            "error": null
+          },
+          "entities": {
+            "vehicles": 64,
+            "pedestrians": 60,
+            "aircraft": 0,
+            "physicsBodies": 604,
+            "sceneObjects": 5722
+          },
+          "performance": {
+            "interactiveMs": 606.4000000059605,
+            "fps": 50.99490050994899,
+            "frameTimeMs": 19.609803921568634,
+            "quality": "LOW",
+            "renderer": {
+              "calls": 4005,
+              "triangles": 305998,
+              "lines": 0,
+              "points": 13200,
+              "geometries": 3328,
+              "textures": 6,
+              "programs": 15
+            },
+            "memory": {
+              "usedHeapBytes": 462207668,
+              "totalHeapBytes": 512097508,
+              "heapLimitBytes": 4395630592
+            }
+          },
+          "alerts": null,
+          "testMode": {
+            "seed": "metropulse-phase-0",
+            "trafficCount": 48,
+            "pedestrianCount": 60,
+            "time": 9.25,
+            "weather": "clear",
+            "missionId": "mission_sports_trial",
+            "cleanProfile": true,
+            "unavailableCapabilities": []
+          }
+        }
+      },
+      "family": "RECOVERY",
+      "review": {
+        "status": "PASS",
+        "reviewedAt": "2026-08-07",
+        "method": "In-app browser visual inspection plus scenario telemetry assertion"
+      }
+    }
+  ]
+}
