@@ -1,0 +1,302 @@
+{
+  "grid": {
+    "bounds": {
+      "maxX": 800,
+      "maxZ": 350,
+      "minX": 420,
+      "minZ": -350
+    },
+    "buildableBounds": {
+      "maxX": 780,
+      "maxZ": 330,
+      "minX": 440,
+      "minZ": -330
+    },
+    "horizontalRoadCenters": [
+      -100,
+      -50,
+      0,
+      50,
+      100
+    ],
+    "missionControlSpur": {
+      "centerZ": -245,
+      "maxX": 735,
+      "minX": 700,
+      "width": 12
+    },
+    "residentialColumnCenters": [
+      500,
+      600,
+      700
+    ],
+    "residentialRowCenters": [
+      -125,
+      -75,
+      -25,
+      25,
+      75,
+      125
+    ],
+    "roadWidth": 14,
+    "rocketAccessRoad": {
+      "centerX": 700,
+      "maxZ": -100,
+      "minZ": -280,
+      "width": 14
+    },
+    "verticalRoadCenters": [
+      450,
+      550,
+      650,
+      750
+    ],
+    "verticalRoadMaxZ": 100,
+    "verticalRoadMinZ": -100
+  },
+  "homeRules": {
+    "footprint": {
+      "depth": 8.8,
+      "width": 11.6
+    },
+    "occupancyProbability": 0.8,
+    "roadSetback": 3
+  },
+  "parcels": [
+    {
+      "id": "suburban-500--125",
+      "rotationY": 0,
+      "x": 500,
+      "z": -125,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-500--75",
+      "rotationY": 3.141592653589793,
+      "x": 500,
+      "z": -75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-500--25",
+      "rotationY": 3.141592653589793,
+      "x": 500,
+      "z": -25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-500-25",
+      "rotationY": 3.141592653589793,
+      "x": 500,
+      "z": 25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-500-75",
+      "rotationY": 3.141592653589793,
+      "x": 500,
+      "z": 75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-500-125",
+      "rotationY": 3.141592653589793,
+      "x": 500,
+      "z": 125,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600--125",
+      "rotationY": 0,
+      "x": 600,
+      "z": -125,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600--75",
+      "rotationY": 3.141592653589793,
+      "x": 600,
+      "z": -75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600--25",
+      "rotationY": 3.141592653589793,
+      "x": 600,
+      "z": -25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600-25",
+      "rotationY": 3.141592653589793,
+      "x": 600,
+      "z": 25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600-75",
+      "rotationY": 3.141592653589793,
+      "x": 600,
+      "z": 75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-600-125",
+      "rotationY": 3.141592653589793,
+      "x": 600,
+      "z": 125,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-700--75",
+      "rotationY": 3.141592653589793,
+      "x": 700,
+      "z": -75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-700--25",
+      "rotationY": 3.141592653589793,
+      "x": 700,
+      "z": -25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-700-25",
+      "rotationY": 3.141592653589793,
+      "x": 700,
+      "z": 25,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-700-75",
+      "rotationY": 3.141592653589793,
+      "x": 700,
+      "z": 75,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    },
+    {
+      "id": "suburban-700-125",
+      "rotationY": 3.141592653589793,
+      "x": 700,
+      "z": 125,
+      "zone": "SUBURBAN_RESIDENTIAL"
+    }
+  ],
+  "reservations": [
+    {
+      "id": "road-horizontal--100",
+      "kind": "ROAD",
+      "maxX": 800,
+      "maxZ": -93,
+      "minX": 420,
+      "minZ": -107
+    },
+    {
+      "id": "road-horizontal--50",
+      "kind": "ROAD",
+      "maxX": 800,
+      "maxZ": -43,
+      "minX": 420,
+      "minZ": -57
+    },
+    {
+      "id": "road-horizontal-0",
+      "kind": "ROAD",
+      "maxX": 800,
+      "maxZ": 7,
+      "minX": 420,
+      "minZ": -7
+    },
+    {
+      "id": "road-horizontal-50",
+      "kind": "ROAD",
+      "maxX": 800,
+      "maxZ": 57,
+      "minX": 420,
+      "minZ": 43
+    },
+    {
+      "id": "road-horizontal-100",
+      "kind": "ROAD",
+      "maxX": 800,
+      "maxZ": 107,
+      "minX": 420,
+      "minZ": 93
+    },
+    {
+      "id": "road-vertical-450",
+      "kind": "ROAD",
+      "maxX": 457,
+      "maxZ": 100,
+      "minX": 443,
+      "minZ": -100
+    },
+    {
+      "id": "road-vertical-550",
+      "kind": "ROAD",
+      "maxX": 557,
+      "maxZ": 100,
+      "minX": 543,
+      "minZ": -100
+    },
+    {
+      "id": "road-vertical-650",
+      "kind": "ROAD",
+      "maxX": 657,
+      "maxZ": 100,
+      "minX": 643,
+      "minZ": -100
+    },
+    {
+      "id": "road-vertical-750",
+      "kind": "ROAD",
+      "maxX": 757,
+      "maxZ": 100,
+      "minX": 743,
+      "minZ": -100
+    },
+    {
+      "id": "road-rocket-access",
+      "kind": "ROAD",
+      "maxX": 707,
+      "maxZ": -100,
+      "minX": 693,
+      "minZ": -280
+    },
+    {
+      "id": "road-mission-control-spur",
+      "kind": "ROAD",
+      "maxX": 735,
+      "maxZ": -239,
+      "minX": 700,
+      "minZ": -251
+    },
+    {
+      "id": "site-rocket-pad",
+      "kind": "CIVIC",
+      "maxX": 724,
+      "maxZ": -256,
+      "minX": 676,
+      "minZ": -304
+    },
+    {
+      "id": "site-mission-control",
+      "kind": "CIVIC",
+      "maxX": 750,
+      "maxZ": -232,
+      "minX": 720,
+      "minZ": -258
+    },
+    {
+      "id": "site-space-billboard",
+      "kind": "CIVIC",
+      "maxX": 644,
+      "maxZ": -140,
+      "minX": 600,
+      "minZ": -180
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

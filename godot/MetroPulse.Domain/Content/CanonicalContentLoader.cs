@@ -13,6 +13,9 @@ public static class CanonicalContentLoader
     private const string PedestrianArchetypesResource = "MetroPulse.Domain.Content.Data.pedestrian-archetypes.json";
     private const string CameraPresetsResource = "MetroPulse.Domain.Content.Data.camera-presets.json";
     private const string SuspensionBridgeResource = "MetroPulse.Domain.Content.Data.suspension-bridge.json";
+    private const string EconomyBalanceResource = "MetroPulse.Domain.Content.Data.economy-balance.json";
+    private const string CountrysidePlanResource = "MetroPulse.Domain.Content.Data.countryside-plan.json";
+    private const string StreetFurnitureResource = "MetroPulse.Domain.Content.Data.street-furniture.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -61,6 +64,24 @@ public static class CanonicalContentLoader
 
     public static SuspensionBridgeDocument LoadSuspensionBridge(string json) =>
         Load<SuspensionBridgeDocument>(json, "suspension-bridge");
+
+    public static EconomyBalanceDocument LoadEconomyBalance() =>
+        LoadEmbedded<EconomyBalanceDocument>(EconomyBalanceResource, "economy-balance");
+
+    public static EconomyBalanceDocument LoadEconomyBalance(string json) =>
+        Load<EconomyBalanceDocument>(json, "economy-balance");
+
+    public static CountrysidePlanDocument LoadCountrysidePlan() =>
+        LoadEmbedded<CountrysidePlanDocument>(CountrysidePlanResource, "countryside-plan");
+
+    public static CountrysidePlanDocument LoadCountrysidePlan(string json) =>
+        Load<CountrysidePlanDocument>(json, "countryside-plan");
+
+    public static StreetFurnitureDocument LoadStreetFurniture() =>
+        LoadEmbedded<StreetFurnitureDocument>(StreetFurnitureResource, "street-furniture");
+
+    public static StreetFurnitureDocument LoadStreetFurniture(string json) =>
+        Load<StreetFurnitureDocument>(json, "street-furniture");
 
     private static T LoadEmbedded<T>(string resourceName, string source)
     {

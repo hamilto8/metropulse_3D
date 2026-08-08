@@ -26,7 +26,10 @@ public sealed class GameContentRegistry
         VehicleProfileDocument vehicleDocument,
         PedestrianArchetypeDocument pedestrianDocument,
         CameraPresetDocument cameraDocument,
-        SuspensionBridgeDocument bridgeDocument)
+        SuspensionBridgeDocument bridgeDocument,
+        EconomyBalanceDocument economyDocument,
+        CountrysidePlanDocument countrysideDocument,
+        StreetFurnitureDocument streetFurnitureDocument)
     {
         Missions = missions;
         BuildingRecords = Array.AsReadOnly(buildingDocument.Records!.ToArray());
@@ -56,6 +59,19 @@ public sealed class GameContentRegistry
             StringComparer.Ordinal);
         SuspensionBridgeLayout = bridgeDocument.Layout!;
         SuspensionBridgeCableSamples = Array.AsReadOnly(bridgeDocument.CableSamples!.ToArray());
+        FiscalStates = economyDocument.FiscalStates!.ToFrozenDictionary(StringComparer.Ordinal);
+        SpendingCategories = economyDocument.SpendingCategories!.ToFrozenDictionary(StringComparer.Ordinal);
+        EconomyBalance = economyDocument.Balance! with
+        {
+            SessionTargets = economyDocument.Balance!.SessionTargets!.ToFrozenDictionary(StringComparer.Ordinal),
+        };
+        CountrysideGrid = Freeze(countrysideDocument.Grid!);
+        SuburbanHomeRules = countrysideDocument.HomeRules!;
+        CountrysideReservations = Array.AsReadOnly(countrysideDocument.Reservations!.ToArray());
+        SuburbanParcels = Array.AsReadOnly(countrysideDocument.Parcels!.ToArray());
+        StreetLampMinimumSpacing = streetFurnitureDocument.MinSpacing;
+        StreetLampRoads = Freeze(streetFurnitureDocument.Roads!);
+        StreetLampPlacements = Array.AsReadOnly(streetFurnitureDocument.Placements!.ToArray());
         buildings = BuildingRecords.ToFrozenDictionary(record => record.Id!, StringComparer.Ordinal);
         weather = WeatherRecords.ToFrozenDictionary(record => record.Id!, StringComparer.Ordinal);
         Counts = new ContentCounts(
@@ -101,6 +117,26 @@ public sealed class GameContentRegistry
 
     public IReadOnlyList<BridgeCableSample> SuspensionBridgeCableSamples { get; }
 
+    public IReadOnlyDictionary<string, string> FiscalStates { get; }
+
+    public IReadOnlyDictionary<string, string> SpendingCategories { get; }
+
+    public EconomyBalanceDefinition EconomyBalance { get; }
+
+    public CountrysideGridDefinition CountrysideGrid { get; }
+
+    public SuburbanHomeRulesDefinition SuburbanHomeRules { get; }
+
+    public IReadOnlyList<PlanarReservationDefinition> CountrysideReservations { get; }
+
+    public IReadOnlyList<SuburbanParcelDefinition> SuburbanParcels { get; }
+
+    public double StreetLampMinimumSpacing { get; }
+
+    public StreetRoadCoordinates StreetLampRoads { get; }
+
+    public IReadOnlyList<StreetLampPlacement> StreetLampPlacements { get; }
+
     public ContentCounts Counts { get; }
 
     public BuildingDefinition? GetBuilding(string id) => buildings.GetValueOrDefault(id);
@@ -124,6 +160,9 @@ public sealed class GameContentRegistry
         PedestrianArchetypeDocument pedestrians = CanonicalContentLoader.LoadPedestrianArchetypes();
         CameraPresetDocument cameras = CanonicalContentLoader.LoadCameraPresets();
         SuspensionBridgeDocument bridge = CanonicalContentLoader.LoadSuspensionBridge();
+        EconomyBalanceDocument economy = CanonicalContentLoader.LoadEconomyBalance();
+        CountrysidePlanDocument countryside = CanonicalContentLoader.LoadCountrysidePlan();
+        StreetFurnitureDocument streetFurniture = CanonicalContentLoader.LoadStreetFurniture();
 
         CanonicalContentValidator.ValidateBuildings(buildings);
         CanonicalContentValidator.ValidateWeather(weather);
@@ -131,6 +170,9 @@ public sealed class GameContentRegistry
         CanonicalContentValidator.ValidatePedestrianArchetypes(pedestrians);
         CanonicalContentValidator.ValidateCameraPresets(cameras);
         CanonicalContentValidator.ValidateSuspensionBridge(bridge);
+        CanonicalContentValidator.ValidateEconomyBalance(economy);
+        CanonicalContentValidator.ValidateCountrysidePlan(countryside);
+        CanonicalContentValidator.ValidateStreetFurniture(streetFurniture);
         IReadOnlySet<string> weatherIds = weather.Records!.Select(record => record.Id!).ToFrozenSet(StringComparer.Ordinal);
         CanonicalContentValidator.ValidateMissionWeatherPolicies(policies, weatherIds);
         IReadOnlySet<string> policyIds = policies.Records!.Keys.ToFrozenSet(StringComparer.Ordinal);
@@ -144,7 +186,10 @@ public sealed class GameContentRegistry
             vehicles,
             pedestrians,
             cameras,
-            bridge);
+            bridge,
+            economy,
+            countryside,
+            streetFurniture);
     }
 
     private static MissionWeatherPolicyDefinition Freeze(MissionWeatherPolicyDefinition policy) => policy with
@@ -163,5 +208,19 @@ public sealed class GameContentRegistry
     {
         Position = Array.AsReadOnly(preset.Position!.ToArray()),
         Target = Array.AsReadOnly(preset.Target!.ToArray()),
+    };
+
+    private static CountrysideGridDefinition Freeze(CountrysideGridDefinition grid) => grid with
+    {
+        HorizontalRoadCenters = Array.AsReadOnly(grid.HorizontalRoadCenters!.ToArray()),
+        VerticalRoadCenters = Array.AsReadOnly(grid.VerticalRoadCenters!.ToArray()),
+        ResidentialColumnCenters = Array.AsReadOnly(grid.ResidentialColumnCenters!.ToArray()),
+        ResidentialRowCenters = Array.AsReadOnly(grid.ResidentialRowCenters!.ToArray()),
+    };
+
+    private static StreetRoadCoordinates Freeze(StreetRoadCoordinates roads) => roads with
+    {
+        X = Array.AsReadOnly(roads.X!.ToArray()),
+        Z = Array.AsReadOnly(roads.Z!.ToArray()),
     };
 }

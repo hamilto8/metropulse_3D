@@ -1,0 +1,23 @@
+# Phase 2 Planning and Economy Content Handoff
+
+Chunk ID and status: `phase-2-planning-economy-content`; complete as the fourth Phase 2 slice and completes Phase 2.4 canonical extraction. Phase 2 overall remains in progress.
+
+Source revision / Godot revision: Frozen browser reference `44a286a74557adfe4fabd3a6e16b9006079eba32`; implementation based on Godot revision `73b2b1c` targeting Godot 4.6 stable .NET.
+
+Objective and non-goals: Canonicalize economy balance, countryside planning, and street-furniture layout authorities; load, validate, and publish them through the immutable C# production registry. This chunk does not port the mutable economy system, spending decisions, recovery workflow, construction placement service, renderer geometry, deterministic random streams, pause/coordinator logic, or scheduler.
+
+Authorities and evidence: Read `src/systems/EconomyBalance.js`, `src/world/CountrysidePlan.js`, `src/world/StreetFurnitureLayout.js`, their JavaScript tests, `Tools/BaselineCapture/baseline-fixtures.mjs`, and `economy.json`. Economy constants are checked against directly observable frozen fixture fields and session outcomes. Countryside and lamp families were not captured in Phase 0 JSON; their frozen fixture files were intentionally not rewritten. Instead, the extractor enforces the existing JavaScript test contracts and byte-compares committed generated output on every check.
+
+Files/resources and ownership: Extended `Tools/GodotContentExtraction/extract-content.mjs`; added `economy-balance.json`, `countryside-plan.json`, and `street-furniture.json`; added typed documents and `CanonicalPlanningEconomyValidator`; extended strict loading, embedded resources, and `GameContentRegistry`; embedded the unchanged economy fixture for xUnit; added `PlanningEconomyContentTests`; and updated the plan/matrix/handoff. Browser modules remain authorities during the dual-engine period, generated JSON remains the compatibility artifact, and no browser scalar, fixture, scene, collision layer, input action, or save schema changed.
+
+Data and hashes: Added 4 fiscal states, 3 spending categories, the complete nested economy balance including four session targets, countryside bounds/grid/roads/home rules, 14 reservations, 17 valid suburban parcels, 13 street road-center coordinates, a 12-unit lamp spacing rule, and 146 deterministic lamp placements. SHA-256: `a7bdc54e1cced304c3dd57b9f7bfb431df406e2d41de10f253bd8d7498e24dd2` (`economy-balance.json`), `d5e14c2f6947e2c9ccb8a5c6efdb241469573b4afe25bca7d33df094dbe724c1` (`countryside-plan.json`), and `4b091aa07ed2ad0f58fcd52999ae1d46802c7ec5061d7bcc27cb7b977efff08b` (`street-furniture.json`).
+
+Validation behavior: Economy validation enforces exact tokens, nonnegative/ranged scalars, ordered ranges, and the complete 15/30/60/120-minute target set. Countryside validation enforces nested bounds, road/rule ranges, unique authored layout IDs (including intentional double hyphens for negative coordinates), reservation geometry, grid/zone references, frontage rotation, buildable bounds, and no parcel/reservation overlap. Street validation enforces finite coordinates, authored road references, road-facing rotation, and pairwise minimum spacing. The registry publishes copied read-only arrays and frozen dictionaries only after the complete graph validates.
+
+Tests and results: Added five xUnit cases, bringing the domain suite to 35. Extraction check reports zero mismatches across ten artifacts; the unchanged Phase 0 baseline check reports zero mismatches; formatting passes; the complete `verify.sh` gate passes with a deterministic zero-warning build, 35/35 domain tests in 101 ms, Godot 4.6 headless import, and 18/18 foundation integration assertions. Artifacts remain under `godot/artifacts/test-results/`.
+
+Performance/resources: Data-only work. No nodes, bodies, timers, subscriptions, or frame work were added. Validation performs one bounded pairwise check across 146 lamp placements during registry construction; no runtime loop retains that work.
+
+Known deviations and defects: No defects found. Evidence classification is explicit: economy has Phase 0 JSON parity; countryside and street furniture have deterministic source/test parity and generated-byte drift protection because Phase 0 omitted their raw layouts. No ADR is required because authored values and behavior are unchanged.
+
+Next safe task: Begin Phase 2.5 dependency items 3 and 4: pure pause-hold/transition-coordinator contracts, followed by scheduler clock math and ordered task registration. Keep Godot nodes and boot wiring out of the domain assembly.

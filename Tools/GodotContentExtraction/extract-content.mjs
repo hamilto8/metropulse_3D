@@ -33,6 +33,22 @@ import {
   getSuspensionCableHeight,
   SUSPENSION_BRIDGE_LAYOUT
 } from '../../src/world/SuspensionBridge.js';
+import {
+  ECONOMY_BALANCE,
+  FISCAL_STATES,
+  SPENDING_CATEGORIES
+} from '../../src/systems/EconomyBalance.js';
+import {
+  COUNTRYSIDE_GRID,
+  COUNTRYSIDE_RESERVATIONS,
+  createSuburbanParcels,
+  SUBURBAN_HOME_RULES
+} from '../../src/world/CountrysidePlan.js';
+import {
+  createStreetLampLayout,
+  STREET_LAMP_MIN_SPACING,
+  STREET_LAMP_ROADS
+} from '../../src/world/StreetFurnitureLayout.js';
 
 const toolDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(toolDirectory, '../..');
@@ -47,6 +63,10 @@ const worldFixturePath = path.join(
 const agentsFixturePath = path.join(
   repositoryRoot,
   'test/fixtures/godot-port/phase0/seeded-agents-navigation.json'
+);
+const economyFixturePath = path.join(
+  repositoryRoot,
+  'test/fixtures/godot-port/phase0/economy.json'
 );
 const outputDirectory = path.join(
   repositoryRoot,
@@ -75,10 +95,11 @@ function ids(records) {
 }
 
 async function buildOutputs() {
-  const [contentFixture, worldFixture, agentsFixture] = await Promise.all([
+  const [contentFixture, worldFixture, agentsFixture, economyFixture] = await Promise.all([
     readFile(contentFixturePath, 'utf8').then(JSON.parse),
     readFile(worldFixturePath, 'utf8').then(JSON.parse),
-    readFile(agentsFixturePath, 'utf8').then(JSON.parse)
+    readFile(agentsFixturePath, 'utf8').then(JSON.parse),
+    readFile(economyFixturePath, 'utf8').then(JSON.parse)
   ]);
   const referenceBuildings = contentFixture.data.records.buildings;
   const referenceWeather = contentFixture.data.records.weather;
@@ -165,6 +186,46 @@ async function buildOutputs() {
     'Suspension bridge cable samples differ from the frozen Phase 0 fixture'
   );
 
+  const referenceEconomy = economyFixture.data;
+  assert.equal(ECONOMY_BALANCE.startingTreasury, referenceEconomy.initial.treasury, 'Starting treasury changed');
+  assert.equal(ECONOMY_BALANCE.baseRevenuePerSecond, referenceEconomy.initial.budgetBreakdown.baseRevenueRate, 'Base revenue changed');
+  assert.equal(ECONOMY_BALANCE.fiscal.reserveFloor, referenceEconomy.initial.fiscal.reserveFloor, 'Reserve floor changed');
+  assert.equal(ECONOMY_BALANCE.fiscal.warningRunwayMinutes, referenceEconomy.initial.fiscal.warningRunwayMinutes, 'Warning runway changed');
+  assert.equal(ECONOMY_BALANCE.fiscal.emergencyGrant, referenceEconomy.initial.fiscal.emergencyGrant, 'Emergency grant changed');
+  assert.equal(
+    ECONOMY_BALANCE.progression.eastDistrictUnlockCost,
+    referenceEconomy.initial.districts.EAST_CYBER_METROPOLIS.unlockCost,
+    'East district unlock cost changed'
+  );
+  assert.ok(Object.values(FISCAL_STATES).includes(referenceEconomy.initial.fiscalStatus), 'Fixture fiscal state is unknown');
+  for (const [minutes, target] of Object.entries(ECONOMY_BALANCE.sessionTargets)) {
+    const scenario = referenceEconomy.scenarios[minutes];
+    assert.equal(scenario.durationMinutes, Number(minutes), `Missing ${minutes}-minute economy fixture`);
+    assert.ok(scenario.snapshot.treasury >= target.minimumTreasury, `${minutes}-minute treasury target no longer holds`);
+    assert.ok(scenario.assetCount >= target.minimumAssets, `${minutes}-minute asset target no longer holds`);
+  }
+  for (const decision of Object.values(referenceEconomy.spendingDecisions)) {
+    assert.ok(Object.values(SPENDING_CATEGORIES).includes(decision.category), `Unknown spending category ${decision.category}`);
+  }
+
+  const suburbanParcels = createSuburbanParcels();
+  assert.equal(COUNTRYSIDE_RESERVATIONS.length, 14, 'Countryside reservation count changed');
+  assert.equal(suburbanParcels.length, 17, 'Suburban parcel count changed');
+  assert.equal(suburbanParcels.some(parcel => parcel.x === 700 && parcel.z === -125), false, 'Rocket access parcel returned');
+
+  const streetLampPlacements = createStreetLampLayout();
+  assert.equal(streetLampPlacements.length, 146, 'Street lamp placement count changed');
+  for (let firstIndex = 0; firstIndex < streetLampPlacements.length; firstIndex += 1) {
+    for (let secondIndex = firstIndex + 1; secondIndex < streetLampPlacements.length; secondIndex += 1) {
+      const first = streetLampPlacements[firstIndex];
+      const second = streetLampPlacements[secondIndex];
+      assert.ok(
+        Math.hypot(first.x - second.x, first.z - second.z) >= STREET_LAMP_MIN_SPACING,
+        'Street lamp minimum spacing changed'
+      );
+    }
+  }
+
   return new Map([
     ['buildings.json', stableStringify({
       schemaVersion: 1,
@@ -208,6 +269,28 @@ async function buildOutputs() {
       sourceRevision,
       layout: SUSPENSION_BRIDGE_LAYOUT,
       cableSamples: bridgeCableSamples
+    })],
+    ['economy-balance.json', stableStringify({
+      schemaVersion: 1,
+      sourceRevision,
+      fiscalStates: FISCAL_STATES,
+      spendingCategories: SPENDING_CATEGORIES,
+      balance: ECONOMY_BALANCE
+    })],
+    ['countryside-plan.json', stableStringify({
+      schemaVersion: 1,
+      sourceRevision,
+      grid: COUNTRYSIDE_GRID,
+      homeRules: SUBURBAN_HOME_RULES,
+      reservations: COUNTRYSIDE_RESERVATIONS,
+      parcels: suburbanParcels
+    })],
+    ['street-furniture.json', stableStringify({
+      schemaVersion: 1,
+      sourceRevision,
+      minSpacing: STREET_LAMP_MIN_SPACING,
+      roads: STREET_LAMP_ROADS,
+      placements: streetLampPlacements
     })]
   ]);
 }

@@ -22,5 +22,11 @@
                       LogicalName="MetroPulse.Domain.Content.Data.camera-presets.json" />
     <EmbeddedResource Include="Content/Data/suspension-bridge.json"
                       LogicalName="MetroPulse.Domain.Content.Data.suspension-bridge.json" />
+    <EmbeddedResource Include="Content/Data/economy-balance.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.economy-balance.json" />
+    <EmbeddedResource Include="Content/Data/countryside-plan.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.countryside-plan.json" />
+    <EmbeddedResource Include="Content/Data/street-furniture.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.street-furniture.json" />
   </ItemGroup>
 </Project>

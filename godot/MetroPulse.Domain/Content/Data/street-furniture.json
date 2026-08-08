@@ -1,0 +1,1048 @@
+{
+  "minSpacing": 12,
+  "placements": [
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": -1.5707963267948966,
+      "x": -92,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": 1.5707963267948966,
+      "x": -108,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": -1.5707963267948966,
+      "x": -92,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": 1.5707963267948966,
+      "x": -108,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": -1.5707963267948966,
+      "x": -92,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": 1.5707963267948966,
+      "x": -108,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": -1.5707963267948966,
+      "x": -92,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -100,
+      "rot": 1.5707963267948966,
+      "x": -108,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": -1.5707963267948966,
+      "x": -42,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": 1.5707963267948966,
+      "x": -58,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": -1.5707963267948966,
+      "x": -42,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": 1.5707963267948966,
+      "x": -58,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": -1.5707963267948966,
+      "x": -42,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": 1.5707963267948966,
+      "x": -58,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": -1.5707963267948966,
+      "x": -42,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": -50,
+      "rot": 1.5707963267948966,
+      "x": -58,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": -1.5707963267948966,
+      "x": 8,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": 1.5707963267948966,
+      "x": -8,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": -1.5707963267948966,
+      "x": 8,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": 1.5707963267948966,
+      "x": -8,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": -1.5707963267948966,
+      "x": 8,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": 1.5707963267948966,
+      "x": -8,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": -1.5707963267948966,
+      "x": 8,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 0,
+      "rot": 1.5707963267948966,
+      "x": -8,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": -1.5707963267948966,
+      "x": 58,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": 1.5707963267948966,
+      "x": 42,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": -1.5707963267948966,
+      "x": 58,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": 1.5707963267948966,
+      "x": 42,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": -1.5707963267948966,
+      "x": 58,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": 1.5707963267948966,
+      "x": 42,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": -1.5707963267948966,
+      "x": 58,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 50,
+      "rot": 1.5707963267948966,
+      "x": 42,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": -1.5707963267948966,
+      "x": 108,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": 1.5707963267948966,
+      "x": 92,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": -1.5707963267948966,
+      "x": 108,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": 1.5707963267948966,
+      "x": 92,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": -1.5707963267948966,
+      "x": 108,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": 1.5707963267948966,
+      "x": 92,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": -1.5707963267948966,
+      "x": 108,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 100,
+      "rot": 1.5707963267948966,
+      "x": 92,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": -1.5707963267948966,
+      "x": 218,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": 1.5707963267948966,
+      "x": 202,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": -1.5707963267948966,
+      "x": 218,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": 1.5707963267948966,
+      "x": 202,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": -1.5707963267948966,
+      "x": 218,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": 1.5707963267948966,
+      "x": 202,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": -1.5707963267948966,
+      "x": 218,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 210,
+      "rot": 1.5707963267948966,
+      "x": 202,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": -1.5707963267948966,
+      "x": 268,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": 1.5707963267948966,
+      "x": 252,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": -1.5707963267948966,
+      "x": 268,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": 1.5707963267948966,
+      "x": 252,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": -1.5707963267948966,
+      "x": 268,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": 1.5707963267948966,
+      "x": 252,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": -1.5707963267948966,
+      "x": 268,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 260,
+      "rot": 1.5707963267948966,
+      "x": 252,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": -1.5707963267948966,
+      "x": 318,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": 1.5707963267948966,
+      "x": 302,
+      "z": -85
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": -1.5707963267948966,
+      "x": 318,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": 1.5707963267948966,
+      "x": 302,
+      "z": -25
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": -1.5707963267948966,
+      "x": 318,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": 1.5707963267948966,
+      "x": 302,
+      "z": 35
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": -1.5707963267948966,
+      "x": 318,
+      "z": 65
+    },
+    {
+      "roadAxis": "z",
+      "roadCenter": 310,
+      "rot": 1.5707963267948966,
+      "x": 302,
+      "z": 65
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 3.141592653589793,
+      "x": -135,
+      "z": -92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": -135,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 3.141592653589793,
+      "x": -75,
+      "z": -92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": -75,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": -45,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": -15,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 15,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 45,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 3.141592653589793,
+      "x": 75,
+      "z": -92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 75,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 225,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 3.141592653589793,
+      "x": 285,
+      "z": -92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 285,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -100,
+      "rot": 0,
+      "x": 315,
+      "z": -108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": -135,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": -135,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": -75,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": -75,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": -45,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": -45,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": -15,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": -15,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 15,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 15,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 45,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 45,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 75,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 75,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 225,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 225,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 285,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 285,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 3.141592653589793,
+      "x": 315,
+      "z": -42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": -50,
+      "rot": 0,
+      "x": 315,
+      "z": -58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": -135,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": -135,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": -75,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": -75,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": -45,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": -45,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": -15,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": -15,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 15,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 15,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 45,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 45,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 75,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 75,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 225,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 225,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 285,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 285,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 3.141592653589793,
+      "x": 315,
+      "z": 8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 0,
+      "rot": 0,
+      "x": 315,
+      "z": -8
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 3.141592653589793,
+      "x": -135,
+      "z": 58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 0,
+      "x": -135,
+      "z": 42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 3.141592653589793,
+      "x": -75,
+      "z": 58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 0,
+      "x": -75,
+      "z": 42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 3.141592653589793,
+      "x": 75,
+      "z": 58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 0,
+      "x": 75,
+      "z": 42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 3.141592653589793,
+      "x": 285,
+      "z": 58
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 50,
+      "rot": 0,
+      "x": 285,
+      "z": 42
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": -135,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": -135,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": -75,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": -75,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": -45,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": -45,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": -15,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": -15,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 15,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 15,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 45,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 45,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 75,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 75,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 225,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 225,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 285,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 285,
+      "z": 92
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 3.141592653589793,
+      "x": 315,
+      "z": 108
+    },
+    {
+      "roadAxis": "x",
+      "roadCenter": 100,
+      "rot": 0,
+      "x": 315,
+      "z": 92
+    }
+  ],
+  "roads": {
+    "x": [
+      -100,
+      -50,
+      0,
+      50,
+      100,
+      210,
+      260,
+      310
+    ],
+    "z": [
+      -100,
+      -50,
+      0,
+      50,
+      100
+    ]
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

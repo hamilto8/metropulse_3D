@@ -1,0 +1,75 @@
+{
+  "balance": {
+    "baseRevenuePerSecond": 8,
+    "construction": {
+      "defaultSalvageRate": 0.5,
+      "starterPaybackMinutes": {
+        "max": 200,
+        "min": 45
+      },
+      "zoningCost": 2500
+    },
+    "fines": {
+      "maximum": 25000,
+      "treasuryShare": 0.1
+    },
+    "fiscal": {
+      "emergencyGrant": 100000,
+      "reserveFloor": 25000,
+      "warningRunwayMinutes": 10
+    },
+    "incidents": {
+      "cleanupCostPerSeverity": 350,
+      "repairCostPerSeverity": 850
+    },
+    "missions": {
+      "rewardScale": 100,
+      "targetRewardRange": {
+        "max": 150000,
+        "min": 30000
+      }
+    },
+    "policies": {
+      "freightPriorityCostPerSecond": 2
+    },
+    "progression": {
+      "eastDistrictUnlockCost": 1000000
+    },
+    "sessionTargets": {
+      "15": {
+        "label": "First investment",
+        "minimumAssets": 1,
+        "minimumTreasury": 100000
+      },
+      "30": {
+        "label": "Second decision",
+        "minimumAssets": 2,
+        "minimumTreasury": 100000
+      },
+      "60": {
+        "label": "Incident recovery",
+        "minimumAssets": 2,
+        "minimumTreasury": 150000
+      },
+      "120": {
+        "label": "Sustainable growth",
+        "minimumAssets": 4,
+        "minimumTreasury": 200000
+      }
+    },
+    "startingTreasury": 650000
+  },
+  "fiscalStates": {
+    "DEFICIT": "DEFICIT",
+    "INSOLVENT": "INSOLVENT",
+    "RECOVERY": "RECOVERY",
+    "STABLE": "STABLE"
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "spendingCategories": {
+    "DISCRETIONARY": "DISCRETIONARY",
+    "ESSENTIAL": "ESSENTIAL",
+    "RECOVERY": "RECOVERY"
+  }
+}

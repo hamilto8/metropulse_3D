@@ -657,10 +657,12 @@ platform setup gaps.
 > content primitives, unchanged mission JSON loading/validation, MVP filtering,
 > game-state policy/request evaluation, and canonical building/weather/policy
 > extraction plus vehicle, pedestrian, camera, and suspension-bridge canonical
-> data in the typed production registry. See
+> data. Phase 2.4 extraction is now complete with economy balance, countryside,
+> and street-furniture plans in the typed production registry. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
-> `docs/port_handoffs/phase-2-mobility-world-content.md`.
+> `docs/port_handoffs/phase-2-mobility-world-content.md` and
+> `docs/port_handoffs/phase-2-planning-economy-content.md`.
 
 ### Objective
 
