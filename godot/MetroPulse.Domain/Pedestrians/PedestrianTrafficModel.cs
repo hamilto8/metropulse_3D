@@ -1,3 +1,5 @@
+using MetroPulse.Domain.Randomness;
+
 namespace MetroPulse.Domain.Pedestrians;
 
 public sealed record PedestrianTrafficConfig(
@@ -122,6 +124,29 @@ public static class PedestrianTrafficModel
             ? Math.Clamp(config.ImpatienceProbability, 0, 1)
             : DefaultConfig.ImpatienceProbability;
         return new PedestrianTrafficEncounter(roll < probability);
+    }
+
+    public static PedestrianTrafficEncounter CreateEncounter(
+        IRandomStream stream,
+        PedestrianTrafficConfig? config = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (stream.Name != RandomStreamNames.TrafficBehavior)
+        {
+            throw new ArgumentException(
+                $"Driver disposition requires the {RandomStreamNames.TrafficBehavior} stream.",
+                nameof(stream));
+        }
+        double sample;
+        try
+        {
+            sample = stream.NextDouble();
+        }
+        catch
+        {
+            sample = 0.5;
+        }
+        return CreateEncounter(sample, config);
     }
 
     public static PedestrianTrafficAction UpdateEncounter(

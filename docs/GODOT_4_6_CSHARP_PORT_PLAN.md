@@ -684,7 +684,12 @@ platform setup gaps.
 > knockdown transitions plus placement footprint, access, slope, forecast,
 > blocker-priority, and remedy contracts plus aircraft takeoff, bank, stall,
 > landing, runway/road/countryside assessment, propeller, and audio telemetry
-> are now pure C# models. See
+> are now pure C# models. Item 2.6 is complete: all eight required named streams
+> use browser-compatible xmur3/mulberry32 sequences, gameplay-relevant stream
+> positions have an exact versioned persistence document, the Cosmetic stream
+> deliberately restarts, and deferred pedestrian descriptor, NPC timing,
+> knockdown, and driver-disposition sampling now require their assigned stream.
+> See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -701,7 +706,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-camera-kernel.md` and
 > `docs/port_handoffs/phase-2-pedestrian-kernel.md` and
 > `docs/port_handoffs/phase-2-placement-kernel.md` and
-> `docs/port_handoffs/phase-2-aircraft-kernel.md`.
+> `docs/port_handoffs/phase-2-aircraft-kernel.md` and
+> `docs/port_handoffs/phase-2-random-streams.md`.
 
 ### Objective
 
@@ -779,7 +785,10 @@ the JavaScript source fixture.
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
 `Weather`, `Mission`, and `Cosmetic`. Persist only streams whose future outcome
-is gameplay-relevant. Never use `Random.Shared` in domain code.
+is gameplay-relevant. Never use `Random.Shared` in domain code. *(complete:
+browser-compatible named stream registry, strict consumer assignment, immutable
+version-1 state document for all seven gameplay streams, atomic validation and
+restore, deliberate Cosmetic restart, and deferred pedestrian random consumers)*.
 
 2.7 Port tests by behavioral family, comparing C# output to the Phase 0 JSON
 fixtures with documented numeric tolerance. Test invalid inputs and atomic

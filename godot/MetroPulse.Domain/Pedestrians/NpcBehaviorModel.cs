@@ -1,3 +1,5 @@
+using MetroPulse.Domain.Randomness;
+
 namespace MetroPulse.Domain.Pedestrians;
 
 public static class NpcBehaviorModes
@@ -69,6 +71,12 @@ public static class NpcBehaviorModel
         };
     }
 
+    public static NpcBehaviorState CreateState(
+        string? archetype,
+        IRandomStream stream,
+        NpcBehaviorConfig? config = null) =>
+        CreateState(archetype, NextBehaviorSample(stream), config);
+
     public static NpcBehaviorState AdvanceTourist(
         NpcBehaviorState state,
         double delta,
@@ -93,6 +101,13 @@ public static class NpcBehaviorModel
                 Timer = Range(config.TouristWalkMinimum, config.TouristWalkMaximum, timingSample),
             };
     }
+
+    public static NpcBehaviorState AdvanceTourist(
+        NpcBehaviorState state,
+        double delta,
+        IRandomStream stream,
+        NpcBehaviorConfig? config = null) =>
+        AdvanceTourist(state, delta, NextBehaviorSample(stream), config);
 
     public static NpcCandidate? SelectAggressionTarget(
         string criminalId,
@@ -174,6 +189,39 @@ public static class NpcBehaviorModel
                 Timer = Range(config.PostFightCooldownMinimum, config.PostFightCooldownMaximum, timingSample),
             },
             targetAttackedById == criminalId ? null : targetAttackedById);
+    }
+
+    public static AggressionTransition FinishAggression(
+        string criminalId,
+        NpcBehaviorState state,
+        string? targetAttackedById,
+        IRandomStream stream,
+        NpcBehaviorConfig? config = null) =>
+        FinishAggression(
+            criminalId,
+            state,
+            targetAttackedById,
+            NextBehaviorSample(stream),
+            config);
+
+    private static double NextBehaviorSample(IRandomStream stream)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (stream.Name != RandomStreamNames.PedestrianBehavior)
+        {
+            throw new ArgumentException(
+                $"NPC behavior requires the {RandomStreamNames.PedestrianBehavior} stream.",
+                nameof(stream));
+        }
+        try
+        {
+            double sample = stream.NextDouble();
+            return double.IsFinite(sample) ? Math.Clamp(sample, 0, 1) : 0.5;
+        }
+        catch
+        {
+            return 0.5;
+        }
     }
 
     private static double Range(double minimum, double maximum, double sample)

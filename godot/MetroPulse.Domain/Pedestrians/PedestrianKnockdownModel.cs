@@ -1,3 +1,5 @@
+using MetroPulse.Domain.Randomness;
+
 namespace MetroPulse.Domain.Pedestrians;
 
 public sealed record PedestrianKnockdownConfig(
@@ -74,6 +76,29 @@ public static class PedestrianKnockdownModel
             0,
             0,
             1);
+    }
+
+    public static PedestrianKnockdownState Start(
+        PedestrianVector3 position,
+        PedestrianVector3? knockDirection,
+        IRandomStream stream,
+        double impactSpeed = 8,
+        PedestrianKnockdownConfig? config = null)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (stream.Name != RandomStreamNames.PedestrianBehavior)
+        {
+            throw new ArgumentException(
+                $"Pedestrian knockdown requires the {RandomStreamNames.PedestrianBehavior} stream.",
+                nameof(stream));
+        }
+        return Start(
+            position,
+            knockDirection,
+            impactSpeed,
+            NextSample(stream),
+            NextSample(stream),
+            config);
     }
 
     public static PedestrianKnockdownState Update(
@@ -163,6 +188,18 @@ public static class PedestrianKnockdownModel
     }
 
     private static double Sample(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0.5;
+
+    private static double NextSample(IRandomStream stream)
+    {
+        try
+        {
+            return Sample(stream.NextDouble());
+        }
+        catch
+        {
+            return 0.5;
+        }
+    }
 
     private static double Smoothstep(double value)
     {
