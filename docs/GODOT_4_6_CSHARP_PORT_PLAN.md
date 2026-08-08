@@ -653,6 +653,11 @@ platform setup gaps.
 
 ## 10. Phase 2 — Port content, validation, and the pure domain kernel
 
+> **Status:** In progress since 2026-08-07. The first slice ports stable content
+> primitives, unchanged mission JSON loading/validation, MVP filtering, and
+> game-state policy/request evaluation. See
+> `docs/port_handoffs/phase-2-content-state-kernel.md`.
+
 ### Objective
 
 Port engine-neutral behavior into C# with fixture parity before any large world

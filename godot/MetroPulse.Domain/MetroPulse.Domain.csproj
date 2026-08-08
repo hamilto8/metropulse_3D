@@ -3,4 +3,10 @@
     <RootNamespace>MetroPulse.Domain</RootNamespace>
     <AssemblyName>MetroPulse.Domain</AssemblyName>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../src/data/missions.json"
+                      Link="Content/missions.json"
+                      LogicalName="MetroPulse.Domain.Content.missions.json" />
+  </ItemGroup>
 </Project>

@@ -18,4 +18,13 @@
   <ItemGroup>
     <ProjectReference Include="../MetroPulse.Domain/MetroPulse.Domain.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/game-state.json"
+                      Link="Fixtures/game-state.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.game-state.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/content-registry.json"
+                      Link="Fixtures/content-registry.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.content-registry.json" />
+  </ItemGroup>
 </Project>
