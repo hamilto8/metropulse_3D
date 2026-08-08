@@ -670,7 +670,9 @@ platform setup gaps.
 > publishers remain with the later authorities they observe. Item 7 is
 > complete: idempotent cross-system outcome transactions, versioned receipts,
 > authored condition operators, and district-aware city queries are pure C#
-> authorities. See
+> authorities. Item 8 is complete: mission availability, weather decisions,
+> phase ownership, checkpoints, bounded retry/recovery, save gating, versioned
+> state, and exactly-once cleanup handoff are pure C# authority. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -679,7 +681,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-economy-ledger.md` and
 > `docs/port_handoffs/phase-2-city-pulse-kernel.md` and
 > `docs/port_handoffs/phase-2-alert-interaction-kernel.md` and
-> `docs/port_handoffs/phase-2-outcome-condition-kernel.md`.
+> `docs/port_handoffs/phase-2-outcome-condition-kernel.md` and
+> `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md`.
 
 ### Objective
 
@@ -728,7 +731,10 @@ the JavaScript source fixture.
 7. mission outcome transactions and condition queries *(complete: all
    consequence command families, atomic/idempotent receipts, persistence,
    explanations, condition resolvers, paths, operators, and ALL/ANY rules)*;
-8. mission lifecycle, availability, weather, checkpoints, and retry;
+8. mission lifecycle, availability, weather, checkpoints, and retry
+   *(complete: version-1 phase/progress state, prerequisite and follow-up
+   composition, canonical weather adaptation, checkpoint/restart policies,
+   bounded recovery, save gating, and idempotent outcome cleanup identity)*;
 9. settings/binding validation;
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight
     model helpers.

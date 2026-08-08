@@ -68,6 +68,9 @@ public sealed record MissionDefinition
     [JsonPropertyName("requiresMayhem")]
     public bool? RequiresMayhem { get; init; }
 
+    [JsonPropertyName("repeatable")]
+    public bool? Repeatable { get; init; }
+
     [JsonPropertyName("retryPolicy")]
     public MissionRetryPolicy? RetryPolicy { get; init; }
 
