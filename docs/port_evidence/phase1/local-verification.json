@@ -1,7 +1,8 @@
 {
-  "status": "pass_with_ci_pending",
+  "status": "pass_with_ci_rerun_pending",
   "date": "2026-08-07",
-  "sourceRevision": "fc1e4651aa898740cb32b9e9b2b1a6095a5b4d35",
+  "sourceRevision": "ad0c76780d19b380e48b4983cc4faa0690293ac2",
+  "workingTreeChangesIncluded": true,
   "host": {
     "os": "macOS 26.6 (25G72)",
     "architecture": "arm64"
@@ -39,6 +40,19 @@
       "exitCode": 0,
       "report": "godot/artifacts/test-results/godot-integration.log"
     },
+    "exportPresetValidation": {
+      "status": "pass",
+      "linuxPlatformIdentifier": "Linux/X11",
+      "report": "console"
+    },
+    "linuxReleaseCrossExport": {
+      "status": "pass",
+      "executionStatus": "not_host_compatible",
+      "format": "ELF 64-bit LSB executable",
+      "architecture": "x86-64",
+      "sizeBytes": 71211584,
+      "sha256": "d78cf9c784ae7e8de19b1720a7f12ce142c1eafa9349e06cbbbc899ef0b15db5"
+    },
     "macosDebugExportSmoke": {
       "status": "pass",
       "physicsTicksPerSecond": 120,
@@ -53,9 +67,21 @@
       "bundleSizeKiB": 342084,
       "exitCode": 0
     },
+    "macosLowTickVisualReview": {
+      "status": "pass",
+      "physicsTicksPerSecond": 30,
+      "physicsInterpolationEnabled": true,
+      "deterministicTestMode": false,
+      "sessionLoaded": true,
+      "fatalErrorCode": null,
+      "screenshot": "docs/port_evidence/phase1/macos-low-tick-visual.png"
+    },
     "githubCi": {
-      "status": "pending_first_run",
-      "job": "godot-foundation"
+      "status": "rerun_pending_after_local_fix",
+      "job": "godot-foundation",
+      "initialRunId": 31230152731,
+      "initialFailure": "Godot ignored platform=Linux/BSD and did not register the Linux preset.",
+      "localFixValidation": "Linux/X11 preset registered and cross-exported successfully."
     }
   }
 }

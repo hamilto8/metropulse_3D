@@ -70,6 +70,7 @@ Set `GODOT_BIN` when the 4.6 .NET executable is not on `PATH`.
 ```bash
 ./godot/scripts/build.sh
 ./godot/scripts/test-domain.sh
+./godot/scripts/validate-export-presets.sh
 ./godot/scripts/validate-headless.sh
 ./godot/scripts/test-integration.sh
 ./godot/scripts/launch-debug.sh
@@ -83,6 +84,8 @@ Set `GODOT_BIN` when the 4.6 .NET executable is not on `PATH`.
 ```
 
 `validate-headless.sh` imports and compiles the project without an editor click.
+`validate-export-presets.sh` rejects platform identifiers that Godot 4.6 does
+not register, before CI downloads the editor and export templates.
 `test-integration.sh` loads `Main.tscn`, verifies the session hierarchy, 120 Hz
 cadence, interpolation, Jolt, and deterministic diagnostics, then exits.
 Both commands retain raw output under `godot/artifacts/test-results/`.
@@ -120,8 +123,8 @@ to identify a build; it is `unavailable` when not supplied.
 
 ## Environment gaps before Phase 1 exit
 
-- Run the new `godot-foundation` job and retain its Linux desktop export and test
-  reports; local evidence does not substitute for the first CI readback.
-- Perform one interactive visual boot review of the empty macOS shell.
+- Rerun `godot-foundation` with the corrected `Linux/X11` preset, retain its
+  Linux desktop export and test reports, and inspect the Linux smoke result;
+  successful macOS cross-export does not substitute for host execution.
 - Windows and Linux preset execution beyond the CI Linux smoke remains part of
   the later release-platform matrix; do not infer compatibility from macOS.

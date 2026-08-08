@@ -65,6 +65,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate export preset identifiers
+        run: ./godot/scripts/validate-export-presets.sh
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

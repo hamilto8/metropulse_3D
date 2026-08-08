@@ -13,6 +13,8 @@ if [[ "${BUILD_KIND}" != "debug" && "${BUILD_KIND}" != "release" ]]; then
   exit 64
 fi
 
+"${SCRIPT_DIR}/validate-export-presets.sh"
+
 OUTPUT_SUFFIX=""
 EXPORT_FLAG="--export-release"
 if [[ "${BUILD_KIND}" == "debug" ]]; then
