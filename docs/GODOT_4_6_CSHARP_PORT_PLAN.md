@@ -680,7 +680,8 @@ platform setup gaps.
 > cycling, simulation-time advancement, twilight classification, celestial
 > orbit/horizon geometry, traffic navigation/rule geometry, and aggregate road
 > productivity plus camera preset, ground, clearance, street-look, chase,
-> easing, and FOV geometry are now pure C# models. See
+> easing, and FOV geometry plus pedestrian collision, traffic-yield, NPC, and
+> knockdown transitions are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -694,7 +695,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-settings-binding-kernel.md` and
 > `docs/port_handoffs/phase-2-time-weather-kernel.md` and
 > `docs/port_handoffs/phase-2-traffic-kernel.md` and
-> `docs/port_handoffs/phase-2-camera-kernel.md`.
+> `docs/port_handoffs/phase-2-camera-kernel.md` and
+> `docs/port_handoffs/phase-2-pedestrian-kernel.md`.
 
 ### Objective
 
@@ -760,8 +762,10 @@ the JavaScript source fixture.
     structured mobility alerts complete; canonical camera preset adaptation,
     terrain/obstacle clearance, ground contact, street look/leveling, chase
     framing, transition easing, and speed-FOV math complete; engine-owned
-    traffic/camera actors and adapters plus pedestrian, placement, and flight
-    families remain)*.
+    traffic/camera actors and adapters plus pedestrian capsule sweep/slide,
+    vehicle-yield policy, deterministic-sample NPC transitions, aggression
+    reservations, and knockdown/recovery complete; randomized descriptors move
+    to item 2.6, while placement and flight families remain)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
