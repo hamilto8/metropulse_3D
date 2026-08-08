@@ -676,13 +676,15 @@ platform setup gaps.
 > state, and exactly-once cleanup handoff are pure C# authority. Item 9 is
 > complete: the versioned accessibility preference document, migration,
 > contextual binding catalog, conflicts, atomic storage boundary, and immutable
-> observation are pure C# authority. Item 10 is in progress: canonical weather
+> observation are pure C# authority. Item 10 is complete: canonical weather
 > cycling, simulation-time advancement, twilight classification, celestial
 > orbit/horizon geometry, traffic navigation/rule geometry, and aggregate road
 > productivity plus camera preset, ground, clearance, street-look, chase,
 > easing, and FOV geometry plus pedestrian collision, traffic-yield, NPC, and
 > knockdown transitions plus placement footprint, access, slope, forecast,
-> blocker-priority, and remedy contracts are now pure C# models. See
+> blocker-priority, and remedy contracts plus aircraft takeoff, bank, stall,
+> landing, runway/road/countryside assessment, propeller, and audio telemetry
+> are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -698,7 +700,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-traffic-kernel.md` and
 > `docs/port_handoffs/phase-2-camera-kernel.md` and
 > `docs/port_handoffs/phase-2-pedestrian-kernel.md` and
-> `docs/port_handoffs/phase-2-placement-kernel.md`.
+> `docs/port_handoffs/phase-2-placement-kernel.md` and
+> `docs/port_handoffs/phase-2-aircraft-kernel.md`.
 
 ### Objective
 
@@ -756,7 +759,7 @@ the JavaScript source fixture.
    binding maps, stable directional slots, conflict/device/reserved-input
    rejection, atomic storage boundary, reset scopes, and immutable events)*;
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight
-    model helpers *(in progress: canonical weather sequence/overflow clock,
+    model helpers *(complete: canonical weather sequence/overflow clock,
     simulation-time rate/wrap math, twilight factor, and sun/moon orbit and
     visibility geometry complete; traffic segment projection, target/reach and
     turn-speed math, signal/control/stopping rules, aggregate productivity,
@@ -768,8 +771,10 @@ the JavaScript source fixture.
     vehicle-yield policy, deterministic-sample NPC transitions, aggression
     reservations, and knockdown/recovery complete; placement footprint,
     overlap/access/slope geometry, canonical forecasts, service prerequisites,
-    and prioritized blocker/remedy decisions complete; randomized pedestrian
-    descriptors move to item 2.6, while the flight family remains)*.
+    and prioritized blocker/remedy decisions complete; aircraft control/state,
+    takeoff/bank/stall/landing/crash, airfield/runway/road/countryside assessment,
+    seven-point landing footprint, propeller rotation, and audio telemetry
+    complete; randomized pedestrian descriptors move to item 2.6)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
