@@ -681,7 +681,8 @@ platform setup gaps.
 > orbit/horizon geometry, traffic navigation/rule geometry, and aggregate road
 > productivity plus camera preset, ground, clearance, street-look, chase,
 > easing, and FOV geometry plus pedestrian collision, traffic-yield, NPC, and
-> knockdown transitions are now pure C# models. See
+> knockdown transitions plus placement footprint, access, slope, forecast,
+> blocker-priority, and remedy contracts are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -696,7 +697,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-time-weather-kernel.md` and
 > `docs/port_handoffs/phase-2-traffic-kernel.md` and
 > `docs/port_handoffs/phase-2-camera-kernel.md` and
-> `docs/port_handoffs/phase-2-pedestrian-kernel.md`.
+> `docs/port_handoffs/phase-2-pedestrian-kernel.md` and
+> `docs/port_handoffs/phase-2-placement-kernel.md`.
 
 ### Objective
 
@@ -764,8 +766,10 @@ the JavaScript source fixture.
     framing, transition easing, and speed-FOV math complete; engine-owned
     traffic/camera actors and adapters plus pedestrian capsule sweep/slide,
     vehicle-yield policy, deterministic-sample NPC transitions, aggression
-    reservations, and knockdown/recovery complete; randomized descriptors move
-    to item 2.6, while placement and flight families remain)*.
+    reservations, and knockdown/recovery complete; placement footprint,
+    overlap/access/slope geometry, canonical forecasts, service prerequisites,
+    and prioritized blocker/remedy decisions complete; randomized pedestrian
+    descriptors move to item 2.6, while the flight family remains)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
