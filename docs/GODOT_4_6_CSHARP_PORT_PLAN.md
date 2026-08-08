@@ -672,7 +672,10 @@ platform setup gaps.
 > authored condition operators, and district-aware city queries are pure C#
 > authorities. Item 8 is complete: mission availability, weather decisions,
 > phase ownership, checkpoints, bounded retry/recovery, save gating, versioned
-> state, and exactly-once cleanup handoff are pure C# authority. See
+> state, and exactly-once cleanup handoff are pure C# authority. Item 9 is
+> complete: the versioned accessibility preference document, migration,
+> contextual binding catalog, conflicts, atomic storage boundary, and immutable
+> observation are pure C# authority. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -682,7 +685,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-city-pulse-kernel.md` and
 > `docs/port_handoffs/phase-2-alert-interaction-kernel.md` and
 > `docs/port_handoffs/phase-2-outcome-condition-kernel.md` and
-> `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md`.
+> `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md` and
+> `docs/port_handoffs/phase-2-settings-binding-kernel.md`.
 
 ### Objective
 
@@ -735,7 +739,10 @@ the JavaScript source fixture.
    *(complete: version-1 phase/progress state, prerequisite and follow-up
    composition, canonical weather adaptation, checkpoint/restart policies,
    bounded recovery, save gating, and idempotent outcome cleanup identity)*;
-9. settings/binding validation;
+9. settings/binding validation *(complete: version-2 preference document,
+   version-1 migration, complete range/enum validation, seven contextual
+   binding maps, stable directional slots, conflict/device/reserved-input
+   rejection, atomic storage boundary, reset scopes, and immutable events)*;
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight
     model helpers.
 
