@@ -12,10 +12,6 @@ public static class MissionValidator
     private static readonly FrozenSet<string> DialogueActions =
         new[] { "START_MISSION", "DECLINE" }.ToFrozenSet(StringComparer.Ordinal);
 
-    private static readonly FrozenSet<string> WeatherPolicies =
-        new[] { "STANDARD_ROAD", "EMERGENCY_RESPONSE", "DRY_COMPETITION", "SIGHTSEEING", "ALL_WEATHER" }
-            .ToFrozenSet(StringComparer.Ordinal);
-
     private static readonly FrozenSet<string> PrerequisiteTypes =
         new[] { "MISSION_COMPLETED", "FOLLOW_UP_STATUS", "CITY_CONDITION" }
             .ToFrozenSet(StringComparer.Ordinal);
@@ -29,7 +25,9 @@ public static class MissionValidator
 
     public static IReadOnlySet<string> SupportedObjectives => Objectives;
 
-    public static void Validate(IReadOnlyList<MissionDefinition>? missions)
+    public static void Validate(
+        IReadOnlyList<MissionDefinition>? missions,
+        IReadOnlySet<string> weatherPolicyIds)
     {
         if (missions is null || missions.Count == 0)
         {
@@ -116,7 +114,7 @@ public static class MissionValidator
                 throw Error("must be an array.", missionId, "prerequisites");
             }
 
-            RequireEnum(mission.WeatherPolicy, WeatherPolicies, missionId, "weatherPolicy");
+            RequireEnum(mission.WeatherPolicy, weatherPolicyIds, missionId, "weatherPolicy");
             ValidateRetryPolicy(mission.RetryPolicy, missionId);
             ValidateDialogueTree(mission.DialogueTree, missionId);
         }

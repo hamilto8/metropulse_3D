@@ -8,5 +8,11 @@
     <EmbeddedResource Include="../../src/data/missions.json"
                       Link="Content/missions.json"
                       LogicalName="MetroPulse.Domain.Content.missions.json" />
+    <EmbeddedResource Include="Content/Data/buildings.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.buildings.json" />
+    <EmbeddedResource Include="Content/Data/weather.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.weather.json" />
+    <EmbeddedResource Include="Content/Data/mission-weather-policies.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.mission-weather-policies.json" />
   </ItemGroup>
 </Project>

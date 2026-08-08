@@ -653,10 +653,12 @@ platform setup gaps.
 
 ## 10. Phase 2 — Port content, validation, and the pure domain kernel
 
-> **Status:** In progress since 2026-08-07. The first slice ports stable content
-> primitives, unchanged mission JSON loading/validation, MVP filtering, and
-> game-state policy/request evaluation. See
-> `docs/port_handoffs/phase-2-content-state-kernel.md`.
+> **Status:** In progress since 2026-08-07. Completed slices cover stable
+> content primitives, unchanged mission JSON loading/validation, MVP filtering,
+> game-state policy/request evaluation, and canonical building/weather/policy
+> extraction with a complete typed production registry. See
+> `docs/port_handoffs/phase-2-content-state-kernel.md` and
+> `docs/port_handoffs/phase-2-canonical-content.md`.
 
 ### Objective
 

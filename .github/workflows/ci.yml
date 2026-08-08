@@ -68,6 +68,14 @@ jobs:
       - name: Validate export preset identifiers
         run: ./godot/scripts/validate-export-presets.sh
 
+      - name: Setup Node.js for canonical content validation
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate canonical Godot content extraction
+        run: ./godot/scripts/validate-content-extraction.sh
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

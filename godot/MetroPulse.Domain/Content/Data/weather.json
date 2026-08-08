@@ -1,0 +1,53 @@
+{
+  "defaultMode": "clear",
+  "records": [
+    {
+      "durationSeconds": 45,
+      "fogDensity": 0.0035,
+      "gripMultiplier": 1,
+      "groundFriction": 0.85,
+      "id": "clear",
+      "rainOpacity": 0,
+      "statusText": "☀️ CLEAR",
+      "wetness": 0
+    },
+    {
+      "durationSeconds": 30,
+      "fogDensity": 0.015,
+      "gripMultiplier": 0.72,
+      "groundFriction": 0.55,
+      "id": "mist",
+      "rainOpacity": 0,
+      "statusText": "🌫️ MIST",
+      "wetness": 0.12
+    },
+    {
+      "durationSeconds": 40,
+      "fogDensity": 0.008,
+      "gripMultiplier": 0.48,
+      "groundFriction": 0.28,
+      "id": "rain",
+      "rainOpacity": 0.6,
+      "statusText": "🌧️ RAIN",
+      "wetness": 0.72
+    },
+    {
+      "durationSeconds": 28,
+      "fogDensity": 0.012,
+      "gripMultiplier": 0.38,
+      "groundFriction": 0.22,
+      "id": "thunderstorm",
+      "rainOpacity": 0.85,
+      "statusText": "⛈️ STORM",
+      "wetness": 1
+    }
+  ],
+  "schemaVersion": 1,
+  "sequence": [
+    "clear",
+    "mist",
+    "rain",
+    "thunderstorm"
+  ],
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

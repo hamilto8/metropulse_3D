@@ -47,7 +47,15 @@ public sealed class MissionRegistry
 
     public static MissionRegistry Load(string json)
     {
+        MissionWeatherPolicyDocument policies = CanonicalContentLoader.LoadMissionWeatherPolicies();
+        IReadOnlySet<string> policyIds = policies.Records!.Keys.ToFrozenSet(StringComparer.Ordinal);
+        return Load(json, policyIds);
+    }
+
+    public static MissionRegistry Load(string json, IReadOnlySet<string> weatherPolicyIds)
+    {
         ArgumentNullException.ThrowIfNull(json);
+        ArgumentNullException.ThrowIfNull(weatherPolicyIds);
         IReadOnlyList<MissionDefinition>? definitions;
         try
         {
@@ -63,18 +71,25 @@ public sealed class MissionRegistry
                 code: "MALFORMED_JSON");
         }
 
-        MissionValidator.Validate(definitions);
+        MissionValidator.Validate(definitions, weatherPolicyIds);
         ContentCatalogValidator.ValidateScope(definitions!);
         return new MissionRegistry(definitions!);
     }
 
     public static MissionRegistry LoadProduction()
     {
+        MissionWeatherPolicyDocument policies = CanonicalContentLoader.LoadMissionWeatherPolicies();
+        IReadOnlySet<string> policyIds = policies.Records!.Keys.ToFrozenSet(StringComparer.Ordinal);
+        return LoadProduction(policyIds);
+    }
+
+    public static MissionRegistry LoadProduction(IReadOnlySet<string> weatherPolicyIds)
+    {
         Assembly assembly = typeof(MissionRegistry).Assembly;
         using Stream stream = assembly.GetManifestResourceStream(ProductionResourceName)
             ?? throw new InvalidOperationException($"Missing embedded mission content: {ProductionResourceName}");
         using var reader = new StreamReader(stream);
-        return Load(reader.ReadToEnd());
+        return Load(reader.ReadToEnd(), weatherPolicyIds);
     }
 
     private static MissionDefinition Freeze(MissionDefinition mission) => mission with

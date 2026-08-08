@@ -1,0 +1,77 @@
+{
+  "records": {
+    "ALL_WEATHER": {
+      "defaultDisposition": "ALLOWED",
+      "defaultReason": "This activity is designed for the current weather.",
+      "modes": {}
+    },
+    "DRY_COMPETITION": {
+      "defaultDisposition": "ALLOWED",
+      "modes": {
+        "rain": {
+          "disposition": "ADAPTED",
+          "reason": "The wet-weather race uses a slower target time and increased purse.",
+          "rewardMultiplier": 1.15,
+          "timeLimitMultiplier": 1.25
+        },
+        "thunderstorm": {
+          "disposition": "BLOCKED",
+          "reason": "Race control has closed the course during the thunderstorm."
+        }
+      }
+    },
+    "EMERGENCY_RESPONSE": {
+      "defaultDisposition": "ALLOWED",
+      "modes": {
+        "rain": {
+          "disposition": "ADAPTED",
+          "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+          "rewardMultiplier": 1.1,
+          "timeLimitMultiplier": 1.2
+        },
+        "thunderstorm": {
+          "disposition": "ADAPTED",
+          "reason": "Emergency dispatch remains active; extra response time and hazard pay are authorized.",
+          "rewardMultiplier": 1.2,
+          "timeLimitMultiplier": 1.35
+        }
+      }
+    },
+    "SIGHTSEEING": {
+      "defaultDisposition": "ALLOWED",
+      "modes": {
+        "mist": {
+          "disposition": "ADAPTED",
+          "reason": "The sightseeing route is adapted to low-visibility landmarks.",
+          "rewardMultiplier": 1,
+          "timeLimitMultiplier": 1.1
+        },
+        "rain": {
+          "disposition": "DELAYED",
+          "reason": "The passenger is waiting for clearer sightseeing conditions."
+        },
+        "thunderstorm": {
+          "disposition": "BLOCKED",
+          "reason": "The skyline tour is unavailable during the thunderstorm."
+        }
+      }
+    },
+    "STANDARD_ROAD": {
+      "defaultDisposition": "ALLOWED",
+      "modes": {
+        "rain": {
+          "disposition": "ADAPTED",
+          "reason": "Wet roads reduce grip, so dispatch extends the deadline and hazard premium.",
+          "rewardMultiplier": 1.1,
+          "timeLimitMultiplier": 1.2
+        },
+        "thunderstorm": {
+          "disposition": "DELAYED",
+          "reason": "Dispatch has delayed this road mission until the thunderstorm passes."
+        }
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}
