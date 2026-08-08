@@ -26,5 +26,11 @@
     <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/content-registry.json"
                       Link="Fixtures/content-registry.json"
                       LogicalName="MetroPulse.Domain.Tests.Fixtures.content-registry.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/world-landmarks.json"
+                      Link="Fixtures/world-landmarks.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.world-landmarks.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/seeded-agents-navigation.json"
+                      Link="Fixtures/seeded-agents-navigation.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.seeded-agents-navigation.json" />
   </ItemGroup>
 </Project>

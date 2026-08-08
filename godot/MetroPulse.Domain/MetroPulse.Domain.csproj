@@ -14,5 +14,13 @@
                       LogicalName="MetroPulse.Domain.Content.Data.weather.json" />
     <EmbeddedResource Include="Content/Data/mission-weather-policies.json"
                       LogicalName="MetroPulse.Domain.Content.Data.mission-weather-policies.json" />
+    <EmbeddedResource Include="Content/Data/vehicle-profiles.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.vehicle-profiles.json" />
+    <EmbeddedResource Include="Content/Data/pedestrian-archetypes.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.pedestrian-archetypes.json" />
+    <EmbeddedResource Include="Content/Data/camera-presets.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.camera-presets.json" />
+    <EmbeddedResource Include="Content/Data/suspension-bridge.json"
+                      LogicalName="MetroPulse.Domain.Content.Data.suspension-bridge.json" />
   </ItemGroup>
 </Project>

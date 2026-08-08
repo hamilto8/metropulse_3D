@@ -656,9 +656,11 @@ platform setup gaps.
 > **Status:** In progress since 2026-08-07. Completed slices cover stable
 > content primitives, unchanged mission JSON loading/validation, MVP filtering,
 > game-state policy/request evaluation, and canonical building/weather/policy
-> extraction with a complete typed production registry. See
+> extraction plus vehicle, pedestrian, camera, and suspension-bridge canonical
+> data in the typed production registry. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
-> `docs/port_handoffs/phase-2-canonical-content.md`.
+> `docs/port_handoffs/phase-2-canonical-content.md` and
+> `docs/port_handoffs/phase-2-mobility-world-content.md`.
 
 ### Objective
 

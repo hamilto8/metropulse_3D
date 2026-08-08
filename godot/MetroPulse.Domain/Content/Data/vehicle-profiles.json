@@ -1,0 +1,481 @@
+{
+  "contentIds": [
+    "SEDAN",
+    "SPORTS",
+    "SPORTS_CAR",
+    "BUS",
+    "TRUCK",
+    "TAXI",
+    "POLICE",
+    "AMBULANCE",
+    "ICECREAM",
+    "DUMP_TRUCK",
+    "MOTORBIKE"
+  ],
+  "records": {
+    "AMBULANCE": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.5,
+        "chassisShapeOffsetY": 0.7333333333333333,
+        "settledRideHeight": 0.9666666666666667,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 11050,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 46,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 9775
+        },
+        "height": 2.4,
+        "length": 6.2,
+        "mass": 2400,
+        "maxSuspensionForce": 180000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.5,
+        "suspensionStiffness": 75,
+        "wheelCount": 4,
+        "wheelRadius": 0.5,
+        "width": 2.3
+      }
+    },
+    "BUS": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.6,
+        "chassisShapeOffsetY": 0.9847222222222225,
+        "settledRideHeight": 1.2152777777777777,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 6
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 23400,
+          "maxBrakeForce": 600,
+          "maxForwardSpeed": 22,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.35,
+          "reverseEngineForce": 20700
+        },
+        "height": 3.2,
+        "length": 10.5,
+        "mass": 4800,
+        "maxSuspensionForce": 350000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 100,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.6,
+        "suspensionStiffness": 120,
+        "wheelCount": 6,
+        "wheelRadius": 0.6,
+        "width": 2.6
+      }
+    },
+    "DUMP_TRUCK": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.6,
+        "chassisShapeOffsetY": 0.8768181818181817,
+        "settledRideHeight": 1.173181818181818,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 23400,
+          "maxBrakeForce": 600,
+          "maxForwardSpeed": 22,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.35,
+          "reverseEngineForce": 20700
+        },
+        "height": 2.9,
+        "length": 7.8,
+        "mass": 4200,
+        "maxSuspensionForce": 300000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.58,
+        "suspensionStiffness": 110,
+        "wheelCount": 4,
+        "wheelRadius": 0.6,
+        "width": 2.5
+      }
+    },
+    "ICECREAM": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.48,
+        "chassisShapeOffsetY": 0.716153846153846,
+        "settledRideHeight": 0.9138461538461539,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 5850,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 42,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 5175
+        },
+        "height": 2.3,
+        "length": 5.8,
+        "mass": 1900,
+        "maxSuspensionForce": 150000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.48,
+        "suspensionStiffness": 65,
+        "wheelCount": 4,
+        "wheelRadius": 0.48,
+        "width": 2.2
+      }
+    },
+    "MOTORBIKE": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.35,
+        "chassisShapeOffsetY": 0.21363636363636362,
+        "settledRideHeight": 0.6363636363636364,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 1900,
+          "maxBrakeForce": 90,
+          "maxForwardSpeed": 36,
+          "maxReverseSpeed": 10,
+          "maxSteering": 0.48,
+          "reverseEngineForce": 1500
+        },
+        "height": 1,
+        "length": 2.2,
+        "mass": 250,
+        "maxSuspensionForce": 80000,
+        "playerDynamics": {
+          "angularDamping": 0.65,
+          "angularFactor": {
+            "x": 0.3,
+            "y": 1,
+            "z": 0
+          },
+          "downforceFactor": 60,
+          "drivenAxle": "rear",
+          "lateralGripFactor": 8,
+          "rollInfluence": 0.015,
+          "visualLeanFactor": 0.24,
+          "wheelTrackFactor": 0.72
+        },
+        "suspensionRestLength": 0.35,
+        "suspensionStiffness": 55,
+        "wheelCount": 4,
+        "wheelRadius": 0.35,
+        "width": 0.7
+      }
+    },
+    "POLICE": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.4,
+        "chassisShapeOffsetY": 0.3302083333333333,
+        "settledRideHeight": 0.7697916666666668,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 5850,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 42,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 5175
+        },
+        "height": 1.4,
+        "length": 4.2,
+        "mass": 1200,
+        "maxSuspensionForce": 100000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.45,
+        "suspensionStiffness": 48,
+        "wheelCount": 4,
+        "wheelRadius": 0.4,
+        "width": 2
+      }
+    },
+    "SEDAN": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.4,
+        "chassisShapeOffsetY": 0.3302083333333333,
+        "settledRideHeight": 0.7697916666666668,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 5850,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 42,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 5175
+        },
+        "height": 1.4,
+        "length": 4.2,
+        "mass": 1200,
+        "maxSuspensionForce": 100000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.45,
+        "suspensionStiffness": 48,
+        "wheelCount": 4,
+        "wheelRadius": 0.4,
+        "width": 2
+      }
+    },
+    "SPORTS": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.45,
+        "chassisShapeOffsetY": 0.18691176470588233,
+        "settledRideHeight": 0.7880882352941178,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 9360,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 56,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 8280
+        },
+        "height": 1.05,
+        "length": 4.4,
+        "mass": 950,
+        "maxSuspensionForce": 100000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 600,
+          "drivenAxle": "all",
+          "lateralGripFactor": 12,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.38,
+        "suspensionStiffness": 68,
+        "wheelCount": 4,
+        "wheelRadius": 0.45,
+        "width": 2.1
+      }
+    },
+    "SPORTS_CAR": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.45,
+        "chassisShapeOffsetY": 0.18691176470588233,
+        "settledRideHeight": 0.7880882352941178,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 9360,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 56,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 8280
+        },
+        "height": 1.05,
+        "length": 4.4,
+        "mass": 950,
+        "maxSuspensionForce": 100000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 600,
+          "drivenAxle": "all",
+          "lateralGripFactor": 12,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.38,
+        "suspensionStiffness": 68,
+        "wheelCount": 4,
+        "wheelRadius": 0.45,
+        "width": 2.1
+      }
+    },
+    "TAXI": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.4,
+        "chassisShapeOffsetY": 0.3302083333333333,
+        "settledRideHeight": 0.7697916666666668,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 5850,
+          "maxBrakeForce": 160,
+          "maxForwardSpeed": 42,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.55,
+          "reverseEngineForce": 5175
+        },
+        "height": 1.4,
+        "length": 4.2,
+        "mass": 1200,
+        "maxSuspensionForce": 100000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 400,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.45,
+        "suspensionStiffness": 48,
+        "wheelCount": 4,
+        "wheelRadius": 0.4,
+        "width": 2
+      }
+    },
+    "TRUCK": {
+      "physicsLayout": {
+        "chassisGroundClearance": 0.55,
+        "chassisShapeOffsetY": 0.9657894736842103,
+        "settledRideHeight": 1.0842105263157895,
+        "wheelConnectionY": -0.05,
+        "wheelCount": 4
+      },
+      "profile": {
+        "drive": {
+          "forwardEngineForce": 15600,
+          "maxBrakeForce": 400,
+          "maxForwardSpeed": 28,
+          "maxReverseSpeed": 18,
+          "maxSteering": 0.45,
+          "reverseEngineForce": 13800
+        },
+        "height": 3,
+        "length": 7.5,
+        "mass": 3500,
+        "maxSuspensionForce": 250000,
+        "playerDynamics": {
+          "angularDamping": 0.25,
+          "angularFactor": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "downforceFactor": 200,
+          "drivenAxle": "all",
+          "lateralGripFactor": 10,
+          "rollInfluence": 0.05,
+          "visualLeanFactor": 0,
+          "wheelTrackFactor": 0.45
+        },
+        "suspensionRestLength": 0.55,
+        "suspensionStiffness": 95,
+        "wheelCount": 4,
+        "wheelRadius": 0.55,
+        "width": 2.4
+      }
+    }
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

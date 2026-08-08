@@ -1,0 +1,57 @@
+{
+  "cableSamples": [
+    {
+      "height": 3.2,
+      "x": 110
+    },
+    {
+      "height": 26.1,
+      "x": 124
+    },
+    {
+      "height": 62,
+      "x": 138
+    },
+    {
+      "height": 23.91735537190083,
+      "x": 150
+    },
+    {
+      "height": 14,
+      "x": 160
+    },
+    {
+      "height": 23.91735537190083,
+      "x": 170
+    },
+    {
+      "height": 62,
+      "x": 182
+    },
+    {
+      "height": 26.1,
+      "x": 196
+    },
+    {
+      "height": 3.2,
+      "x": 210
+    }
+  ],
+  "layout": {
+    "anchorCableY": 3.2,
+    "cableZ": 8,
+    "centerCableY": 14,
+    "centerX": 160,
+    "deckEndX": 210,
+    "deckStartX": 110,
+    "deckWidth": 18,
+    "eastTowerX": 182,
+    "hangerDeckY": 1.15,
+    "hangerSpacing": 5,
+    "sideSpanSag": 6.5,
+    "towerCableY": 62,
+    "westTowerX": 138
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

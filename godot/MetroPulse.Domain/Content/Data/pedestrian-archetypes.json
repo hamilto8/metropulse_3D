@@ -1,0 +1,135 @@
+{
+  "records": {
+    "BUSINESS": {
+      "accessory": "BRIEFCASE",
+      "activity": "Commuting to Office",
+      "colors": [
+        1920728,
+        3359061,
+        4988309,
+        1013358
+      ],
+      "hair": [
+        "SHORT",
+        "PARTED"
+      ],
+      "label": "Professional",
+      "maxSpeed": 3.5,
+      "mood": "Focused"
+    },
+    "CAFE_READER": {
+      "accessory": "BOOK",
+      "activity": "Reading at Sidewalk Café",
+      "colors": [
+        8141549,
+        12458077,
+        223649,
+        5078031
+      ],
+      "hair": [
+        "SHORT",
+        "CURLY",
+        "PONYTAIL"
+      ],
+      "label": "Café Patron",
+      "maxSpeed": 2.6,
+      "mood": "Absorbed"
+    },
+    "CASUAL": {
+      "accessory": null,
+      "activity": "Strolling Downtown",
+      "colors": [
+        14362487,
+        14251782,
+        561586,
+        1483594,
+        8141549
+      ],
+      "hair": [
+        "SHORT",
+        "CURLY",
+        "PONYTAIL",
+        "BALD"
+      ],
+      "label": "Resident",
+      "maxSpeed": 2.8,
+      "mood": "Relaxed"
+    },
+    "CRIMINAL": {
+      "accessory": null,
+      "activity": "Loitering Suspiciously",
+      "colors": [
+        2565930,
+        4144966,
+        8330525,
+        1976635
+      ],
+      "hair": [
+        "BEANIE",
+        "BUZZ"
+      ],
+      "label": "Troublemaker",
+      "maxSpeed": 4.2,
+      "mood": "Hostile"
+    },
+    "JOGGER": {
+      "accessory": "HEADBAND",
+      "activity": "Running the City Loop",
+      "colors": [
+        1483594,
+        15680580,
+        959977,
+        16347926
+      ],
+      "hair": [
+        "SHORT",
+        "PONYTAIL"
+      ],
+      "label": "Jogger",
+      "maxSpeed": 5.5,
+      "mood": "Energized"
+    },
+    "TOURIST": {
+      "accessory": "PHONE",
+      "activity": "Exploring Landmarks",
+      "colors": [
+        15381256,
+        165063,
+        14427686,
+        366185
+      ],
+      "hair": [
+        "CAP",
+        "SHORT",
+        "CURLY"
+      ],
+      "label": "Tourist",
+      "maxSpeed": 2.5,
+      "mood": "Curious"
+    }
+  },
+  "schemaVersion": 1,
+  "sequence": [
+    "CASUAL",
+    "BUSINESS",
+    "JOGGER",
+    "CASUAL",
+    "TOURIST",
+    "BUSINESS",
+    "CAFE_READER",
+    "CASUAL",
+    "CRIMINAL",
+    "JOGGER",
+    "TOURIST",
+    "CASUAL",
+    "BUSINESS",
+    "CAFE_READER",
+    "CASUAL",
+    "JOGGER",
+    "TOURIST",
+    "BUSINESS",
+    "CRIMINAL",
+    "CASUAL"
+  ],
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32"
+}

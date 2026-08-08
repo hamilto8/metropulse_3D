@@ -2,7 +2,7 @@ using System.Collections.Frozen;
 
 namespace MetroPulse.Domain.Content;
 
-public static class CanonicalContentValidator
+public static partial class CanonicalContentValidator
 {
     public const int SchemaVersion = 1;
     public const string SourceRevision = "44a286a74557adfe4fabd3a6e16b9006079eba32";

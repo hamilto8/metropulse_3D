@@ -9,6 +9,10 @@ public static class CanonicalContentLoader
     private const string BuildingsResource = "MetroPulse.Domain.Content.Data.buildings.json";
     private const string WeatherResource = "MetroPulse.Domain.Content.Data.weather.json";
     private const string MissionWeatherPoliciesResource = "MetroPulse.Domain.Content.Data.mission-weather-policies.json";
+    private const string VehicleProfilesResource = "MetroPulse.Domain.Content.Data.vehicle-profiles.json";
+    private const string PedestrianArchetypesResource = "MetroPulse.Domain.Content.Data.pedestrian-archetypes.json";
+    private const string CameraPresetsResource = "MetroPulse.Domain.Content.Data.camera-presets.json";
+    private const string SuspensionBridgeResource = "MetroPulse.Domain.Content.Data.suspension-bridge.json";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -33,6 +37,30 @@ public static class CanonicalContentLoader
 
     public static MissionWeatherPolicyDocument LoadMissionWeatherPolicies(string json) =>
         Load<MissionWeatherPolicyDocument>(json, "mission-weather-policies");
+
+    public static VehicleProfileDocument LoadVehicleProfiles() =>
+        LoadEmbedded<VehicleProfileDocument>(VehicleProfilesResource, "vehicle-profiles");
+
+    public static VehicleProfileDocument LoadVehicleProfiles(string json) =>
+        Load<VehicleProfileDocument>(json, "vehicle-profiles");
+
+    public static PedestrianArchetypeDocument LoadPedestrianArchetypes() =>
+        LoadEmbedded<PedestrianArchetypeDocument>(PedestrianArchetypesResource, "pedestrian-archetypes");
+
+    public static PedestrianArchetypeDocument LoadPedestrianArchetypes(string json) =>
+        Load<PedestrianArchetypeDocument>(json, "pedestrian-archetypes");
+
+    public static CameraPresetDocument LoadCameraPresets() =>
+        LoadEmbedded<CameraPresetDocument>(CameraPresetsResource, "camera-presets");
+
+    public static CameraPresetDocument LoadCameraPresets(string json) =>
+        Load<CameraPresetDocument>(json, "camera-presets");
+
+    public static SuspensionBridgeDocument LoadSuspensionBridge() =>
+        LoadEmbedded<SuspensionBridgeDocument>(SuspensionBridgeResource, "suspension-bridge");
+
+    public static SuspensionBridgeDocument LoadSuspensionBridge(string json) =>
+        Load<SuspensionBridgeDocument>(json, "suspension-bridge");
 
     private static T LoadEmbedded<T>(string resourceName, string source)
     {
