@@ -8,7 +8,10 @@ namespace MetroPulse.Domain.Tests.Economy;
 
 public sealed class EconomyLedgerTests
 {
-    private static readonly JsonSerializerOptions JsonOptions = new();
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     [Fact]
     public void SpendingPolicyMatchesEveryFrozenDecision()
@@ -65,6 +68,28 @@ public sealed class EconomyLedgerTests
                 expectedSnapshot.GetProperty("operatingCostRate").GetDouble(),
                 actual.Snapshot.OperatingCostRate);
             Assert.Equal(expectedSnapshot.GetProperty("fiscalStatus").GetString(), actual.Snapshot.FiscalStatus);
+            Assert.Equal(expectedSnapshot.GetProperty("revision").GetInt64(), actual.Snapshot.Revision);
+            Assert.Equal(expectedSnapshot.GetProperty("population").GetInt32(), actual.Snapshot.Population);
+            Assert.Equal(expectedSnapshot.GetProperty("energy").GetDouble(), actual.Snapshot.Energy);
+            Assert.Equal(expectedSnapshot.GetProperty("happiness").GetDouble(), actual.Snapshot.Happiness);
+            Assert.Equal(expectedSnapshot.GetProperty("landValue").GetDouble(), actual.Snapshot.LandValue);
+            Assert.Equal(expectedSnapshot.GetProperty("reputation").GetDouble(), actual.Snapshot.Reputation);
+            Assert.Equal(
+                expectedSnapshot.GetProperty("narrativeProgress").GetInt32(),
+                actual.Snapshot.NarrativeProgress);
+            AssertJsonEqual(expectedSnapshot.GetProperty("budgetBreakdown"), actual.Snapshot.BudgetBreakdown);
+            AssertJsonEqual(expectedSnapshot.GetProperty("demographics"), actual.Snapshot.Demographics);
+            AssertJsonEqual(expectedSnapshot.GetProperty("demand"), actual.Snapshot.Demand);
+            AssertJsonEqual(expectedSnapshot.GetProperty("happinessBreakdown"), actual.Snapshot.HappinessBreakdown);
+            AssertJsonEqual(expectedSnapshot.GetProperty("mobility"), actual.Snapshot.Mobility);
+            AssertJsonEqual(expectedSnapshot.GetProperty("cityPulse"), actual.Snapshot.CityPulse);
+            AssertJsonEqual(expectedSnapshot.GetProperty("services"), actual.Snapshot.Services);
+            AssertJsonEqual(expectedSnapshot.GetProperty("buildings"), actual.Snapshot.Buildings);
+            AssertJsonEqual(expectedSnapshot.GetProperty("completedMissions"), actual.Snapshot.CompletedMissions);
+            AssertJsonEqual(expectedSnapshot.GetProperty("incidents"), actual.Snapshot.Incidents);
+            AssertJsonEqual(expectedSnapshot.GetProperty("zones"), actual.Snapshot.Zones);
+            AssertJsonEqual(expectedSnapshot.GetProperty("districts"), actual.Snapshot.Districts);
+            AssertJsonEqual(expectedSnapshot.GetProperty("unlockedDistricts"), actual.Snapshot.UnlockedDistricts);
 
             JsonElement expectedTransactions = expected.GetProperty("transactions");
             Assert.Equal(expectedTransactions.GetArrayLength(), actual.Transactions.Count);
@@ -116,7 +141,7 @@ public sealed class EconomyLedgerTests
     public void DeficitsClampAtZeroAndRecoveryHasAReachableExit()
     {
         var ledger = new EconomyLedger(ProductionBalance(), 100, 0);
-        ledger.RegisterBuilding(new EconomyBuilding("cost-center", OperatingCostRate: 2));
+        ledger.RegisterBuilding(new EconomyBuilding("cost-center", operatingCostRate: 2));
 
         Assert.Equal(-100, ledger.Update(100));
         Assert.Equal(0, ledger.Treasury);
