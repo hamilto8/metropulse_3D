@@ -679,7 +679,8 @@ platform setup gaps.
 > observation are pure C# authority. Item 10 is in progress: canonical weather
 > cycling, simulation-time advancement, twilight classification, celestial
 > orbit/horizon geometry, traffic navigation/rule geometry, and aggregate road
-> productivity are now pure C# models. See
+> productivity plus camera preset, ground, clearance, street-look, chase,
+> easing, and FOV geometry are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -692,7 +693,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md` and
 > `docs/port_handoffs/phase-2-settings-binding-kernel.md` and
 > `docs/port_handoffs/phase-2-time-weather-kernel.md` and
-> `docs/port_handoffs/phase-2-traffic-kernel.md`.
+> `docs/port_handoffs/phase-2-traffic-kernel.md` and
+> `docs/port_handoffs/phase-2-camera-kernel.md`.
 
 ### Objective
 
@@ -755,8 +757,11 @@ the JavaScript source fixture.
     visibility geometry complete; traffic segment projection, target/reach and
     turn-speed math, signal/control/stopping rules, aggregate productivity,
     mission/street directives, policy persistence, economy feedback, and
-    structured mobility alerts complete; engine-owned traffic actors/physics
-    plus pedestrian, camera, placement, and flight families remain)*.
+    structured mobility alerts complete; canonical camera preset adaptation,
+    terrain/obstacle clearance, ground contact, street look/leveling, chase
+    framing, transition easing, and speed-FOV math complete; engine-owned
+    traffic/camera actors and adapters plus pedestrian, placement, and flight
+    families remain)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
