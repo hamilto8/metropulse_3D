@@ -660,12 +660,17 @@ platform setup gaps.
 > data. Phase 2.4 extraction is now complete with economy balance, countryside,
 > and street-furniture plans in the typed production registry. Phase 2.5 items
 > 3–4 now cover nested pause ownership, transition-runtime interfaces, and the
-> fixture-exact deterministic scheduler/task registry. See
+> fixture-exact deterministic scheduler/task registry. Item 5 is in progress:
+> the shared treasury, spending/recovery policy, building and mission ledger,
+> and all four frozen balanced-session transaction streams are exact; City
+> Pulse demographics, services, land value, incidents, and persistence remain.
+> See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
 > `docs/port_handoffs/phase-2-planning-economy-content.md` and
-> `docs/port_handoffs/phase-2-pause-scheduler-kernel.md`.
+> `docs/port_handoffs/phase-2-pause-scheduler-kernel.md` and
+> `docs/port_handoffs/phase-2-economy-ledger.md`.
 
 ### Objective
 
@@ -705,7 +710,9 @@ the JavaScript source fixture.
 2. game-state policies and transition evaluation;
 3. pause holds and transition coordinator interfaces;
 4. scheduler clock math and ordered task registry;
-5. economy balance and economy system;
+5. economy balance and economy system *(in progress: canonical balance,
+   spending/recovery policy, atomic ledger, and balanced-session simulator are
+   complete; City Pulse projections, incidents, and persistence remain)*;
 6. alert service and interaction priority service;
 7. mission outcome transactions and condition queries;
 8. mission lifecycle, availability, weather, checkpoints, and retry;
