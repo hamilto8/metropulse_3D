@@ -675,7 +675,9 @@ platform setup gaps.
 > state, and exactly-once cleanup handoff are pure C# authority. Item 9 is
 > complete: the versioned accessibility preference document, migration,
 > contextual binding catalog, conflicts, atomic storage boundary, and immutable
-> observation are pure C# authority. See
+> observation are pure C# authority. Item 10 is in progress: canonical weather
+> cycling, simulation-time advancement, twilight classification, and celestial
+> orbit/horizon geometry are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -686,7 +688,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-alert-interaction-kernel.md` and
 > `docs/port_handoffs/phase-2-outcome-condition-kernel.md` and
 > `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md` and
-> `docs/port_handoffs/phase-2-settings-binding-kernel.md`.
+> `docs/port_handoffs/phase-2-settings-binding-kernel.md` and
+> `docs/port_handoffs/phase-2-time-weather-kernel.md`.
 
 ### Objective
 
@@ -744,7 +747,10 @@ the JavaScript source fixture.
    binding maps, stable directional slots, conflict/device/reserved-input
    rejection, atomic storage boundary, reset scopes, and immutable events)*;
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight
-    model helpers.
+    model helpers *(in progress: canonical weather sequence/overflow clock,
+    simulation-time rate/wrap math, twilight factor, and sun/moon orbit and
+    visibility geometry complete; traffic, pedestrian, camera, placement, and
+    flight families remain)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
