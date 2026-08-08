@@ -25,6 +25,17 @@ public sealed record FactionDefinition(string Id, string Label, double MinReputa
 
 public sealed record ProgressionDefinition(string Id, string Label, int Rank, IReadOnlyList<string> PrerequisiteIds);
 
+public static class FeatureIds
+{
+    public const string Aircraft = "aircraft";
+    public const string RocketLaunch = "rocketLaunch";
+    public const string EastSideDevelopment = "eastSideDevelopment";
+    public const string TemporaryMayhem = "temporaryMayhem";
+    public const string MayhemVariants = "mayhemVariants";
+    public const string PersistentMayhem = "persistentMayhem";
+    public const string CountrysideExpansion = "countrysideExpansion";
+}
+
 public static class ContentDefinitions
 {
     public static readonly WorldBounds WorldBounds = new(-190, 810, -100, 2_000, -390, 390);
@@ -112,13 +123,13 @@ public static class ContentDefinitions
     public static readonly IReadOnlyDictionary<string, bool> MvpFeatureFlags =
         new Dictionary<string, bool>
         {
-            ["aircraft"] = false,
-            ["rocketLaunch"] = false,
-            ["eastSideDevelopment"] = false,
-            ["temporaryMayhem"] = false,
-            ["mayhemVariants"] = false,
-            ["persistentMayhem"] = false,
-            ["countrysideExpansion"] = false,
+            [FeatureIds.Aircraft] = false,
+            [FeatureIds.RocketLaunch] = false,
+            [FeatureIds.EastSideDevelopment] = false,
+            [FeatureIds.TemporaryMayhem] = false,
+            [FeatureIds.MayhemVariants] = false,
+            [FeatureIds.PersistentMayhem] = false,
+            [FeatureIds.CountrysideExpansion] = false,
         }.ToFrozenDictionary(StringComparer.Ordinal);
 
     public static readonly IReadOnlySet<string> DistrictIds = Districts.Select(item => item.Id).ToFrozenSet(StringComparer.Ordinal);

@@ -54,6 +54,27 @@ public sealed class ContentDefinitionsTests
         Assert.Contains("OPERATOR -> MAGNATE -> BROKER -> OPERATOR", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void FeatureFlagsPreserveDefaultOffScopeAndValidateImmutableOverrides()
+    {
+        var defaults = new FeatureFlagSet();
+        Assert.Equal(ContentDefinitions.MvpFeatureFlags, defaults.Snapshot());
+        Assert.All(ContentDefinitions.MvpFeatureFlags.Keys, featureId => Assert.False(defaults.IsEnabled(featureId)));
+
+        var enabled = new FeatureFlagSet(new Dictionary<string, bool>
+        {
+            [FeatureIds.Aircraft] = true,
+        });
+        Assert.True(enabled.IsEnabled(FeatureIds.Aircraft));
+        Assert.False(enabled.IsEnabled(FeatureIds.RocketLaunch));
+        Assert.Throws<ArgumentNullException>(() => new FeatureFlagSet(null!));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            new FeatureFlagSet(new Dictionary<string, bool> { ["unknown"] = true }));
+        Assert.Throws<ArgumentOutOfRangeException>(() => enabled.IsEnabled("unknown"));
+        Assert.Throws<NotSupportedException>(() =>
+            ((IDictionary<string, bool>)enabled.Snapshot())[FeatureIds.Aircraft] = false);
+    }
+
     private static IEnumerable<string> ReadStrings(JsonElement array) =>
         array.EnumerateArray().Select(item => item.GetString()!);
 

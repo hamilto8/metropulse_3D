@@ -653,7 +653,7 @@ platform setup gaps.
 
 ## 10. Phase 2 — Port content, validation, and the pure domain kernel
 
-> **Status:** In progress since 2026-08-07. Completed slices cover stable
+> **Status:** Complete as of 2026-08-08. Completed slices cover stable
 > content primitives, unchanged mission JSON loading/validation, MVP filtering,
 > game-state policy/request evaluation, and canonical building/weather/policy
 > extraction plus vehicle, pedestrian, camera, and suspension-bridge canonical
@@ -689,6 +689,11 @@ platform setup gaps.
 > positions have an exact versioned persistence document, the Cosmetic stream
 > deliberately restarts, and deferred pedestrian descriptor, NPC timing,
 > knockdown, and driver-disposition sampling now require their assigned stream.
+> Item 2.7 and the Phase 2 exit gate are complete: an executable audit classifies
+> all 62 browser unit-test files, names every current or deferred Godot owner,
+> locks the Phase 0 numeric tolerance policy, and fails verification if a test
+> family is added or removed without an ownership decision. The audit also
+> closed the remaining pure feature-flag override/snapshot contract.
 > See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
@@ -707,7 +712,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-pedestrian-kernel.md` and
 > `docs/port_handoffs/phase-2-placement-kernel.md` and
 > `docs/port_handoffs/phase-2-aircraft-kernel.md` and
-> `docs/port_handoffs/phase-2-random-streams.md`.
+> `docs/port_handoffs/phase-2-random-streams.md` and
+> `docs/port_handoffs/phase-2-exit-audit.md`.
 
 ### Objective
 
@@ -792,7 +798,10 @@ restore, deliberate Cosmetic restart, and deferred pedestrian random consumers)*
 
 2.7 Port tests by behavioral family, comparing C# output to the Phase 0 JSON
 fixtures with documented numeric tolerance. Test invalid inputs and atomic
-failure, not only happy paths.
+failure, not only happy paths. *(complete: 20 fully owned families, 21 mixed
+families with their pure contracts owned and runtime adapters deferred, 20
+later-phase families, one Phase 0 evidence-only family, immutable feature-flag
+overrides, and an executable exact-coverage audit)*.
 
 ### Exit gate
 
@@ -802,6 +811,12 @@ failure, not only happy paths.
 - State, scheduler, economy, alert, interaction, outcome, lifecycle, settings,
   and migration logic pass pure tests without launching Godot.
 - No domain assembly references Godot types.
+
+The gate is verified by `Tools/Phase2Audit/validate-audit.mjs`, the canonical
+content extraction check, 180 pure domain tests, the dependency/reference audit,
+and the Godot headless verification suite. Deferred browser modules and their
+target phases are recorded in
+`docs/port_evidence/phase2/test-family-audit.json`.
 
 ### Handoff
 
