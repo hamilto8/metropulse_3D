@@ -666,8 +666,9 @@ platform setup gaps.
 > versioned persistence, and all four frozen balanced-session streams are now
 > pure C# authority with exact evidence. Item 6 is complete: structured alert
 > lifecycle/persistence, fiscal alert adaptation, and deterministic interaction
-> priority/resolution are pure C# authorities. Traffic and service-work
-> publishers remain with the later authorities they observe. Item 7 is
+> priority/resolution are pure C# authorities. The traffic publisher now
+> observes the aggregate mobility authority; the service-work publisher remains
+> with the later authority it observes. Item 7 is
 > complete: idempotent cross-system outcome transactions, versioned receipts,
 > authored condition operators, and district-aware city queries are pure C#
 > authorities. Item 8 is complete: mission availability, weather decisions,
@@ -676,8 +677,9 @@ platform setup gaps.
 > complete: the versioned accessibility preference document, migration,
 > contextual binding catalog, conflicts, atomic storage boundary, and immutable
 > observation are pure C# authority. Item 10 is in progress: canonical weather
-> cycling, simulation-time advancement, twilight classification, and celestial
-> orbit/horizon geometry are now pure C# models. See
+> cycling, simulation-time advancement, twilight classification, celestial
+> orbit/horizon geometry, traffic navigation/rule geometry, and aggregate road
+> productivity are now pure C# models. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -689,7 +691,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-outcome-condition-kernel.md` and
 > `docs/port_handoffs/phase-2-mission-lifecycle-kernel.md` and
 > `docs/port_handoffs/phase-2-settings-binding-kernel.md` and
-> `docs/port_handoffs/phase-2-time-weather-kernel.md`.
+> `docs/port_handoffs/phase-2-time-weather-kernel.md` and
+> `docs/port_handoffs/phase-2-traffic-kernel.md`.
 
 ### Objective
 
@@ -749,8 +752,11 @@ the JavaScript source fixture.
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight
     model helpers *(in progress: canonical weather sequence/overflow clock,
     simulation-time rate/wrap math, twilight factor, and sun/moon orbit and
-    visibility geometry complete; traffic, pedestrian, camera, placement, and
-    flight families remain)*.
+    visibility geometry complete; traffic segment projection, target/reach and
+    turn-speed math, signal/control/stopping rules, aggregate productivity,
+    mission/street directives, policy persistence, economy feedback, and
+    structured mobility alerts complete; engine-owned traffic actors/physics
+    plus pedestrian, camera, placement, and flight families remain)*.
 
 2.6 Introduce named deterministic random streams: `WorldGeneration`,
 `TrafficSpawn`, `TrafficBehavior`, `PedestrianSpawn`, `PedestrianBehavior`,
