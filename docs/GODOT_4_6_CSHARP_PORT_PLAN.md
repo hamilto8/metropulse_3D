@@ -658,11 +658,14 @@ platform setup gaps.
 > game-state policy/request evaluation, and canonical building/weather/policy
 > extraction plus vehicle, pedestrian, camera, and suspension-bridge canonical
 > data. Phase 2.4 extraction is now complete with economy balance, countryside,
-> and street-furniture plans in the typed production registry. See
+> and street-furniture plans in the typed production registry. Phase 2.5 items
+> 3–4 now cover nested pause ownership, transition-runtime interfaces, and the
+> fixture-exact deterministic scheduler/task registry. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
-> `docs/port_handoffs/phase-2-planning-economy-content.md`.
+> `docs/port_handoffs/phase-2-planning-economy-content.md` and
+> `docs/port_handoffs/phase-2-pause-scheduler-kernel.md`.
 
 ### Objective
 
