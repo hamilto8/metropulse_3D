@@ -38,5 +38,8 @@
     <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/simulation-scheduler.json"
                       Link="Fixtures/simulation-scheduler.json"
                       LogicalName="MetroPulse.Domain.Tests.Fixtures.simulation-scheduler.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/settings-bindings-alerts.json"
+                      Link="Fixtures/settings-bindings-alerts.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.settings-bindings-alerts.json" />
   </ItemGroup>
 </Project>

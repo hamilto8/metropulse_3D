@@ -664,14 +664,18 @@ platform setup gaps.
 > shared treasury, spending/recovery policy, aggregate City Pulse projections,
 > buildings, services, zones, districts, incidents, mobility feedback,
 > versioned persistence, and all four frozen balanced-session streams are now
-> pure C# authority with exact evidence. See
+> pure C# authority with exact evidence. Item 6 is complete: structured alert
+> lifecycle/persistence, fiscal alert adaptation, and deterministic interaction
+> priority/resolution are pure C# authorities. Traffic and service-work
+> publishers remain with the later authorities they observe. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
 > `docs/port_handoffs/phase-2-planning-economy-content.md` and
 > `docs/port_handoffs/phase-2-pause-scheduler-kernel.md` and
 > `docs/port_handoffs/phase-2-economy-ledger.md` and
-> `docs/port_handoffs/phase-2-city-pulse-kernel.md`.
+> `docs/port_handoffs/phase-2-city-pulse-kernel.md` and
+> `docs/port_handoffs/phase-2-alert-interaction-kernel.md`.
 
 ### Objective
 
@@ -714,7 +718,9 @@ the JavaScript source fixture.
 5. economy balance and economy system *(complete: canonical balance,
    spending/recovery policy, atomic ledger, aggregate City Pulse, versioned
    persistence, and balanced-session simulator)*;
-6. alert service and interaction priority service;
+6. alert service and interaction priority service *(complete: structured
+   lifecycle, exact Phase 0 persistence evidence, fiscal adapter, deterministic
+   selection/resolution, and isolated provider/listener failures)*;
 7. mission outcome transactions and condition queries;
 8. mission lifecycle, availability, weather, checkpoints, and retry;
 9. settings/binding validation;
