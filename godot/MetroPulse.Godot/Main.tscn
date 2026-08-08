@@ -1,0 +1,55 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://Scripts/App/CompositionRoot.cs" id="1_composition"]
+[ext_resource type="Script" path="res://Scripts/App/BootStatusPresenter.cs" id="2_boot"]
+[ext_resource type="Script" path="res://Scripts/Diagnostics/DiagnosticsOverlay.cs" id="3_diagnostics"]
+[ext_resource type="PackedScene" path="res://Scenes/App/SessionShell.tscn" id="4_session"]
+
+[node name="Main" type="Node"]
+
+[node name="CompositionRoot" type="Node" parent="."]
+script = ExtResource("1_composition")
+SessionScene = ExtResource("4_session")
+
+[node name="BootLayer" type="CanvasLayer" parent="."]
+script = ExtResource("2_boot")
+
+[node name="Panel" type="ColorRect" parent="BootLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.027, 0.039, 0.059, 1)
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="BootLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 48
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 48
+
+[node name="Status" type="Label" parent="BootLayer/Margin"]
+layout_mode = 2
+text = "METROPULSE 3D\nInitializing native runtime…"
+vertical_alignment = 1
+
+[node name="DiagnosticsLayer" type="CanvasLayer" parent="."]
+layer = 100
+script = ExtResource("3_diagnostics")
+
+[node name="Panel" type="PanelContainer" parent="DiagnosticsLayer"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 480.0
+offset_bottom = 160.0
+
+[node name="Snapshot" type="Label" parent="DiagnosticsLayer/Panel"]
+layout_mode = 2
+text = "Diagnostics unavailable"
+autowrap_mode = 2

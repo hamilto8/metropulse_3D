@@ -575,6 +575,12 @@ scenarios, excluded post-MVP behavior, and the exact reference revision.
 
 ## 9. Phase 1 — Establish the Godot/.NET foundation
 
+> **Status:** In progress on 2026-08-07. The local macOS build, pure tests,
+> headless integration harness, and debug/release export smoke pass. The first
+> Linux CI artifact and interactive shell review remain pending. See
+> `docs/GODOT_PORT_PHASE_1_FOUNDATION.md` and
+> `docs/port_handoffs/phase-1-foundation.md`.
+
 ### Objective
 
 Create a reproducible Godot 4.6 C# workspace, CI entry points, coding rules,

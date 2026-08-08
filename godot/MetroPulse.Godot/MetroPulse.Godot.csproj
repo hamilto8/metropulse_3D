@@ -1,0 +1,15 @@
+<Project Sdk="Godot.NET.Sdk/4.6.0">
+  <PropertyGroup>
+    <RootNamespace>MetroPulse.Godot</RootNamespace>
+    <AssemblyName>MetroPulse.Godot</AssemblyName>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+    <Version>0.1.0</Version>
+    <InformationalVersion>0.1.0-phase1</InformationalVersion>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MetroPulse.Domain/MetroPulse.Domain.csproj" />
+  </ItemGroup>
+</Project>

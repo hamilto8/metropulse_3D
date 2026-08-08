@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>MetroPulse.Domain</RootNamespace>
+    <AssemblyName>MetroPulse.Domain</AssemblyName>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/App/SessionShell.cs" id="1_session"]
+
+[node name="SessionRoot" type="Node"]
+script = ExtResource("1_session")
+
+[node name="WorldRoot" type="Node3D" parent="."]
+
+[node name="AuthoredWorld" type="Node3D" parent="WorldRoot"]
+
+[node name="UserWorld" type="Node3D" parent="WorldRoot"]
+
+[node name="AgentRoot" type="Node3D" parent="WorldRoot"]
+
+[node name="EffectRoot" type="Node3D" parent="WorldRoot"]
+
+[node name="NavigationRoot" type="Node3D" parent="WorldRoot"]
+
+[node name="RuntimeServices" type="Node" parent="."]
+
+[node name="CameraRig" type="Node3D" parent="."]
+
+[node name="MainCamera" type="Camera3D" parent="CameraRig"]
+transform = Transform3D(1, 0, 0, 0, 0.92388, 0.382683, 0, -0.382683, 0.92388, 0, 8, 14)
+current = true
+
+[node name="HUD" type="CanvasLayer" parent="."]

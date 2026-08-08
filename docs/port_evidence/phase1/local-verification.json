@@ -1,0 +1,61 @@
+{
+  "status": "pass_with_ci_pending",
+  "date": "2026-08-07",
+  "sourceRevision": "fc1e4651aa898740cb32b9e9b2b1a6095a5b4d35",
+  "host": {
+    "os": "macOS 26.6 (25G72)",
+    "architecture": "arm64"
+  },
+  "toolchain": {
+    "dotnetSdk": "8.0.300",
+    "godot": "4.6.stable.mono.official.89cea1439",
+    "godotEditorArchiveSha512": "85cb900331d6e2c99543b8130ad698c91508e87ec54fedef0a62c1a71b2eceb8d9ededb760109468734da0773c0a8261fda25cfe3345775b31412a944b371dad",
+    "godotExportTemplatesSha512": "2ddeb6a93366b9270ce7abc87f2e029a2704fcd9d14633dd43d7ebfd65a97172febc465f155798093472a297d71c98b276ee32ae53e15518d445dc668ea1c6c6",
+    "godotSdkNugetSha256": "281e286bd0ace784e18f7485b7a86607279917fff475f14e47fc5c40e58d9993"
+  },
+  "checks": {
+    "dotnetBuild": {
+      "status": "pass",
+      "warnings": 0,
+      "errors": 0
+    },
+    "dotnetFormatVerify": {
+      "status": "pass",
+      "formattedFiles": 0
+    },
+    "domainTests": {
+      "status": "pass",
+      "passed": 8,
+      "failed": 0,
+      "report": "godot/artifacts/test-results/domain-tests.trx"
+    },
+    "godotHeadlessImport": {
+      "status": "pass",
+      "report": "godot/artifacts/test-results/godot-import.log"
+    },
+    "godotIntegration": {
+      "status": "pass",
+      "assertions": 18,
+      "exitCode": 0,
+      "report": "godot/artifacts/test-results/godot-integration.log"
+    },
+    "macosDebugExportSmoke": {
+      "status": "pass",
+      "physicsTicksPerSecond": 120,
+      "deterministicTestMode": false,
+      "bundleSizeKiB": 357344,
+      "exitCode": 0
+    },
+    "macosReleaseExportSmoke": {
+      "status": "pass",
+      "physicsTicksPerSecond": 120,
+      "deterministicTestMode": false,
+      "bundleSizeKiB": 342084,
+      "exitCode": 0
+    },
+    "githubCi": {
+      "status": "pending_first_run",
+      "job": "godot-foundation"
+    }
+  }
+}

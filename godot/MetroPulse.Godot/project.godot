@@ -1,0 +1,44 @@
+; Engine configuration file.
+; Edit through the Godot editor when possible and review generated changes.
+config_version=5
+
+[application]
+
+config/name="MetroPulse 3D"
+run/main_scene="res://Main.tscn"
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="canvas_items"
+
+[dotnet]
+
+project/assembly_name="MetroPulse.Godot"
+
+[layer_names]
+
+3d_physics/layer_1="Surface"
+3d_physics/layer_2="StaticObstacle"
+3d_physics/layer_3="Traffic"
+3d_physics/layer_4="Player"
+3d_physics/layer_5="Pedestrian"
+3d_physics/layer_6="Interaction"
+3d_physics/layer_7="MissionTrigger"
+3d_physics/layer_8="Effect"
+3d_physics/layer_9="CameraQuery"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=120
+common/physics_interpolation=true
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.027, 0.039, 0.059, 1)
+textures/vram_compression/import_etc2_astc=true

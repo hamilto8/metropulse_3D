@@ -23,4 +23,11 @@ playwright-report
 *.ntvs*
 *.njsproj
 *.sln
+!godot/MetroPulse.Godot/MetroPulse.Godot.sln
 *.sw?
+
+# Godot/.NET generated state
+godot/**/.godot/
+godot/**/bin/
+godot/**/obj/
+godot/artifacts/

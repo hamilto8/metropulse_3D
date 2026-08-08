@@ -51,3 +51,83 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  godot-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: "4.6-stable"
+      GODOT_EDITOR_ARCHIVE: Godot_v4.6-stable_mono_linux_x86_64.zip
+      GODOT_EDITOR_SHA512: a132863e12fe4230eca9259dffefccaf98eeda79d05e082ebb8dd73d44a1a511181ff8f04a15bf4989fb5c91bd480fc21159b0753938c562ed85c2941c7a5777
+      GODOT_TEMPLATES_ARCHIVE: Godot_v4.6-stable_mono_export_templates.tpz
+      GODOT_TEMPLATES_SHA512: 2ddeb6a93366b9270ce7abc87f2e029a2704fcd9d14633dd43d7ebfd65a97172febc465f155798093472a297d71c98b276ee32ae53e15518d445dc668ea1c6c6
+      METROPULSE_SOURCE_REVISION: ${{ github.sha }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: godot/**/packages.lock.json
+
+      - name: Restore locked .NET dependencies
+        run: |
+          dotnet restore godot/MetroPulse.Domain/MetroPulse.Domain.csproj --locked-mode --disable-parallel -p:NuGetAudit=false
+          dotnet restore godot/MetroPulse.Domain.Tests/MetroPulse.Domain.Tests.csproj --locked-mode --disable-parallel -p:NuGetAudit=false
+          dotnet restore godot/MetroPulse.Godot/MetroPulse.Godot.csproj --disable-parallel -p:NuGetAudit=false
+
+      - name: Build Godot foundation
+        run: dotnet build godot/MetroPulse.Godot/MetroPulse.Godot.sln --configuration Debug --no-restore --disable-build-servers -m:1
+
+      - name: Verify C# formatting
+        run: dotnet format godot/MetroPulse.Godot/MetroPulse.Godot.sln --verify-no-changes --no-restore
+
+      - name: Run pure domain tests
+        run: ./godot/scripts/test-domain.sh
+
+      - name: Download pinned Godot editor and templates
+        shell: bash
+        run: |
+          base_url="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fL --retry 3 -o "${RUNNER_TEMP}/${GODOT_EDITOR_ARCHIVE}" "${base_url}/${GODOT_EDITOR_ARCHIVE}"
+          curl -fL --retry 3 -o "${RUNNER_TEMP}/${GODOT_TEMPLATES_ARCHIVE}" "${base_url}/${GODOT_TEMPLATES_ARCHIVE}"
+          printf '%s  %s\n' "${GODOT_EDITOR_SHA512}" "${RUNNER_TEMP}/${GODOT_EDITOR_ARCHIVE}" | sha512sum --check --strict
+          printf '%s  %s\n' "${GODOT_TEMPLATES_SHA512}" "${RUNNER_TEMP}/${GODOT_TEMPLATES_ARCHIVE}" | sha512sum --check --strict
+
+      - name: Install isolated Godot toolchain
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/godot-editor" "${RUNNER_TEMP}/godot-templates"
+          unzip -q "${RUNNER_TEMP}/${GODOT_EDITOR_ARCHIVE}" -d "${RUNNER_TEMP}/godot-editor"
+          unzip -q "${RUNNER_TEMP}/${GODOT_TEMPLATES_ARCHIVE}" -d "${RUNNER_TEMP}/godot-templates"
+          godot_bin="$(find "${RUNNER_TEMP}/godot-editor" -maxdepth 3 -type f -name 'Godot*' -perm -111 | head -n 1)"
+          test -n "${godot_bin}"
+          printf 'GODOT_BIN=%s\n' "${godot_bin}" >> "${GITHUB_ENV}"
+          template_dir="${HOME}/.local/share/godot/export_templates/4.6.stable.mono"
+          mkdir -p "${template_dir}"
+          cp -R "${RUNNER_TEMP}/godot-templates/templates/." "${template_dir}/"
+
+      - name: Validate headless import and compile
+        run: ./godot/scripts/validate-headless.sh
+
+      - name: Run headless engine integration tests
+        run: ./godot/scripts/test-integration.sh
+
+      - name: Export Linux release shell
+        run: ./godot/scripts/export.sh linux release
+
+      - name: Smoke exported Linux shell
+        run: ./godot/scripts/smoke-export.sh linux release
+
+      - name: Upload Godot foundation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-foundation-${{ github.run_id }}
+          path: |
+            godot/artifacts/test-results/
+            godot/artifacts/exports/linux/
+          if-no-files-found: warn
+          retention-days: 14

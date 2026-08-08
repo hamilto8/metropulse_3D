@@ -1,0 +1,38 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroPulse.Domain", "../MetroPulse.Domain/MetroPulse.Domain.csproj", "{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroPulse.Domain.Tests", "../MetroPulse.Domain.Tests/MetroPulse.Domain.Tests.csproj", "{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetroPulse.Godot", "MetroPulse.Godot.csproj", "{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		ExportDebug|Any CPU = ExportDebug|Any CPU
+		ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.ExportDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.ExportDebug|Any CPU.Build.0 = Debug|Any CPU
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.ExportRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{F2333278-6AD3-4FEB-8DEA-37CC2C124E1A}.ExportRelease|Any CPU.Build.0 = Release|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.ExportDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.ExportDebug|Any CPU.Build.0 = Debug|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.ExportRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{C307D5EA-A565-490B-9B6E-AC2DF4CDE079}.ExportRelease|Any CPU.Build.0 = Release|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{6386EEE8-FC30-4675-812A-D18D9CBE0CBD}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+	EndGlobalSection
+EndGlobal
