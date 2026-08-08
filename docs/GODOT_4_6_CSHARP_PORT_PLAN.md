@@ -575,9 +575,11 @@ scenarios, excluded post-MVP behavior, and the exact reference revision.
 
 ## 9. Phase 1 — Establish the Godot/.NET foundation
 
-> **Status:** In progress on 2026-08-07. The local macOS build, pure tests,
-> headless integration harness, and debug/release export smoke pass. The first
-> Linux CI artifact and interactive shell review remain pending. See
+> **Status:** Exited on 2026-08-07. The local macOS build, pure tests,
+> headless integration harness, debug/release export smoke, interactive shell
+> review, and Linux cross-export pass. One automatically triggered Linux
+> foundation boot also passed before its CI step was removed; further Linux
+> host validation is deferred to the Phase 11 platform matrix. See
 > `docs/GODOT_PORT_PHASE_1_FOUNDATION.md` and
 > `docs/port_handoffs/phase-1-foundation.md`.
 

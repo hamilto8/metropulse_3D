@@ -1,6 +1,6 @@
 # Godot 4.6 Phase 1 Foundation
 
-> **Status:** In progress
+> **Status:** Complete — exited 2026-08-07
 > **Godot target:** 4.6 stable .NET
 > **.NET SDK:** 8.0.300 (`global.json`)
 > **Platform decision:** `DD-016`, accepted 2026-08-07
@@ -121,10 +121,11 @@ They do not collect player names, file paths, save payloads, dialogue, or other
 personal data. `METROPULSE_SOURCE_REVISION` may be injected by CI/export tooling
 to identify a build; it is `unavailable` when not supplied.
 
-## Environment gaps before Phase 1 exit
+## Deferred platform validation
 
-- Rerun `godot-foundation` with the corrected `Linux/X11` preset, retain its
-  Linux desktop export and test reports, and inspect the Linux smoke result;
-  successful macOS cross-export does not substitute for host execution.
-- Windows and Linux preset execution beyond the CI Linux smoke remains part of
-  the later release-platform matrix; do not infer compatibility from macOS.
+- CI retains the corrected `Linux/X11` cross-export and artifact upload, but
+  omits Linux host execution from future Phase 1 runs. Run `31230939599`
+  completed the old smoke step before this deferral took effect.
+- Linux and Windows host smoke remain part of the Phase 11 release-platform
+  matrix. The one foundation boot is useful evidence, but is not full Linux
+  runtime-compatibility acceptance.

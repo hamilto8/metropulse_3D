@@ -121,9 +121,6 @@ jobs:
       - name: Export Linux release shell
         run: ./godot/scripts/export.sh linux release
 
-      - name: Smoke exported Linux shell
-        run: ./godot/scripts/smoke-export.sh linux release
-
       - name: Upload Godot foundation evidence
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,6 +1,6 @@
 # Phase 1 Foundation Handoff
 
-Chunk ID and status: `phase-1-foundation`; In Progress
+Chunk ID and status: `phase-1-foundation`; Complete — exited 2026-08-07
 
 Source revision / Godot revision: Browser reference `44a286a74557adfe4fabd3a6e16b9006079eba32`; implementation began from `fc1e4651aa898740cb32b9e9b2b1a6095a5b4d35`; Godot target 4.6 stable .NET.
 
@@ -18,20 +18,20 @@ Stable IDs/schema/content changes: Stable diagnostic event IDs added: `foundatio
 
 Behavior implemented: Debug boot validates options, applies the 120 Hz or debug-only 30 Hz cadence, creates the empty session shell, publishes structured diagnostics, hides the boot layer on success, and presents an actionable fatal screen on failure. Integration-test mode is deterministic and exits explicitly.
 
-Known deviations and ADR links: No gameplay parity deviation. Forward+ remains the primary renderer target; Compatibility fallback evidence remains Phase 11 work. `DD-016` governs platform scope.
+Known deviations and ADR links: No gameplay parity deviation. Forward+ remains the primary renderer target; Compatibility fallback evidence remains Phase 11 work. `DD-016` governs platform scope. Linux remains a release target. One foundation boot passed in automatically triggered run `31230939599` before the smoke step was removed; further Linux host validation is deferred to the Phase 11 release-platform matrix by Project Owner direction.
 
 Tests added and exact commands: Six `RuntimeConfigurationTests` and two collision-contract tests via `./godot/scripts/build.sh` and `./godot/scripts/test-domain.sh`; export identifiers via `./godot/scripts/validate-export-presets.sh`; eighteen engine assertions via `./godot/scripts/validate-headless.sh` and `./godot/scripts/test-integration.sh`; exported shell boot via `./godot/scripts/smoke-export.sh <host> <kind>`.
 
-Test results and artifact paths: Local macOS arm64 verification passes: deterministic build with zero warnings, formatting check with zero changes, eight domain tests, headless import, eighteen engine assertions, ad-hoc-signed macOS debug/release export smoke, and corrected Linux x86-64 cross-export. The Linux ELF is 71,211,584 bytes with SHA-256 `d78cf9c784ae7e8de19b1720a7f12ce142c1eafa9349e06cbbbc899ef0b15db5`; it cannot be executed on the macOS host. Machine-readable summary: `docs/port_evidence/phase1/local-verification.json`. Domain TRX output is `godot/artifacts/test-results/domain-tests.trx`; generated exports are intentionally ignored. CI artifacts are named `godot-foundation-<run-id>`.
+Test results and artifact paths: Local macOS arm64 verification passes: deterministic build with zero warnings, formatting check with zero changes, eight domain tests, headless import, eighteen engine assertions, ad-hoc-signed macOS debug/release export smoke, and corrected Linux x86-64 cross-export. The local Linux ELF is 71,211,584 bytes with SHA-256 `d78cf9c784ae7e8de19b1720a7f12ce142c1eafa9349e06cbbbc899ef0b15db5`. GitHub `godot-foundation` run `31230939599` passed and uploaded artifact `godot-foundation-31230939599` (`9013805654`, SHA-256 `a4ee55ef8dba91b434bb550de2898cbde18522bf65cc883e18fd81d8206fb694`). Machine-readable summary: `docs/port_evidence/phase1/local-verification.json`. Domain TRX output is `godot/artifacts/test-results/domain-tests.trx`; generated local exports are intentionally ignored.
 
 Performance/resource counts before and after: Foundation only; one session root, five empty world sub-roots, one runtime services node, one camera rig/camera, one HUD layer, and two process-wide CanvasLayers. No performance claim made.
 
 Manual checks performed: Reviewed scene ownership and output bundle contents; confirmed both universal macOS app bundles contain `MetroPulse.Godot.dll` and reach the structured `foundation.ready` event at 120 Hz. Interactive review of the debug shell confirmed a clean 1280×720 empty boot window, Metal/Forward+, Jolt Physics, interpolation enabled, a loaded session, no fatal error, and the debug-only 30 Hz profile. Screenshot: `docs/port_evidence/phase1/macos-low-tick-visual.png`.
 
-Open defects with severity and reproduction: `P1-CI-001` (high for Phase 1 exit): initial GitHub Actions run `31230152731` passed build, formatting, domain, import, and integration gates, then failed because Godot 4.6 did not register the `platform="Linux/BSD"` export preset. The working-tree correction uses `platform="Linux/X11"`, adds a preflight validator, and cross-exports successfully; a pushed CI rerun and Linux smoke/readback remain required. `P1-VIS-001` is resolved locally by the recorded debug-shell review.
+Open defects with severity and reproduction: None blocking Phase 1 exit. `P1-CI-001` is resolved: initial GitHub Actions run `31230152731` exposed the invalid `platform="Linux/BSD"` identifier; run `31230939599` passed with `platform="Linux/X11"`, the preflight validator, Linux export, and the old smoke step. Future Linux host smoke is removed from Phase 1 and deferred to Phase 11. `P1-VIS-001` is resolved by the recorded debug-shell review.
 
 Compatibility adapters and removal conditions: `METROPULSE_SOURCE_REVISION` is a build-time metadata adapter and remains until build metadata is generated into the assembly. JSON compatibility work has not started.
 
-Next safe task: Commit and push the preset correction, let `godot-foundation` rerun, then inspect its Linux smoke log and uploaded artifact. If that remote gate passes, update this handoff and decide whether Phase 1 can exit before starting Phase 2 content validation.
+Next safe task: Commit the Phase 1 status and CI deferral update, then begin Phase 2 content validation and pure-domain work.
 
-Unsafe/blocked tasks and required decision: Do not mark Phase 1 exited or any parity row passed until the corrected Linux CI artifact is executed and read back. Do not port Phase 2 gameplay/content logic into the shell while that foundation gate remains open.
+Unsafe/blocked tasks and required decision: Do not treat the single foundation boot as full Linux runtime compatibility acceptance; that remains a Phase 11 matrix decision. Phase 2 may begin after the completed foundation changes are reviewed; it must keep content and rules engine-neutral and must not introduce gameplay authority into the shell prematurely.

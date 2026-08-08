@@ -1,7 +1,7 @@
 {
-  "status": "pass_with_ci_rerun_pending",
+  "status": "pass_phase1_complete",
   "date": "2026-08-07",
-  "sourceRevision": "ad0c76780d19b380e48b4983cc4faa0690293ac2",
+  "sourceRevision": "191ca4b06abc4e8b820f8714fba0c4e9fdc4564d",
   "workingTreeChangesIncluded": true,
   "host": {
     "os": "macOS 26.6 (25G72)",
@@ -77,11 +77,17 @@
       "screenshot": "docs/port_evidence/phase1/macos-low-tick-visual.png"
     },
     "githubCi": {
-      "status": "rerun_pending_after_local_fix",
+      "status": "godot_foundation_pass",
       "job": "godot-foundation",
       "initialRunId": 31230152731,
       "initialFailure": "Godot ignored platform=Linux/BSD and did not register the Linux preset.",
-      "localFixValidation": "Linux/X11 preset registered and cross-exported successfully."
+      "localFixValidation": "Linux/X11 preset registered and cross-exported successfully.",
+      "successfulRunId": 31230939599,
+      "artifactId": 9013805654,
+      "artifactName": "godot-foundation-31230939599",
+      "artifactSha256": "a4ee55ef8dba91b434bb550de2898cbde18522bf65cc883e18fd81d8206fb694",
+      "linuxHostSmoke": "passed_before_deferral_took_effect",
+      "futureLinuxHostSmoke": "deferred_to_phase_11_by_project_owner"
     }
   }
 }
