@@ -667,7 +667,10 @@ platform setup gaps.
 > pure C# authority with exact evidence. Item 6 is complete: structured alert
 > lifecycle/persistence, fiscal alert adaptation, and deterministic interaction
 > priority/resolution are pure C# authorities. Traffic and service-work
-> publishers remain with the later authorities they observe. See
+> publishers remain with the later authorities they observe. Item 7 is
+> complete: idempotent cross-system outcome transactions, versioned receipts,
+> authored condition operators, and district-aware city queries are pure C#
+> authorities. See
 > `docs/port_handoffs/phase-2-content-state-kernel.md` and
 > `docs/port_handoffs/phase-2-canonical-content.md` and
 > `docs/port_handoffs/phase-2-mobility-world-content.md` and
@@ -675,7 +678,8 @@ platform setup gaps.
 > `docs/port_handoffs/phase-2-pause-scheduler-kernel.md` and
 > `docs/port_handoffs/phase-2-economy-ledger.md` and
 > `docs/port_handoffs/phase-2-city-pulse-kernel.md` and
-> `docs/port_handoffs/phase-2-alert-interaction-kernel.md`.
+> `docs/port_handoffs/phase-2-alert-interaction-kernel.md` and
+> `docs/port_handoffs/phase-2-outcome-condition-kernel.md`.
 
 ### Objective
 
@@ -721,7 +725,9 @@ the JavaScript source fixture.
 6. alert service and interaction priority service *(complete: structured
    lifecycle, exact Phase 0 persistence evidence, fiscal adapter, deterministic
    selection/resolution, and isolated provider/listener failures)*;
-7. mission outcome transactions and condition queries;
+7. mission outcome transactions and condition queries *(complete: all
+   consequence command families, atomic/idempotent receipts, persistence,
+   explanations, condition resolvers, paths, operators, and ALL/ANY rules)*;
 8. mission lifecycle, availability, weather, checkpoints, and retry;
 9. settings/binding validation;
 10. pure traffic, pedestrian, camera, weather, time, placement, and flight

@@ -35,6 +35,11 @@ public sealed record EconomyMissionCompletion(
     double? Satisfaction,
     long CompletedAtRevision);
 
+public sealed record EconomyMissionCompletionInput(
+    string Id,
+    int NarrativeProgressDelta = 1,
+    double ReputationDelta = 0);
+
 public sealed record EconomyBudgetBreakdown
 {
     public required double BaseRevenueRate { get; init; }
@@ -654,6 +659,21 @@ public sealed class EconomyLedger
                 return true;
             });
         return true;
+    }
+
+    /// <summary>Compatibility adapter for mission owners that publish a definition and resolved payout separately.</summary>
+    public bool RecordMissionCompletion(
+        EconomyMissionCompletionInput mission,
+        double payout,
+        double? satisfaction = null)
+    {
+        ArgumentNullException.ThrowIfNull(mission);
+        return CompleteMission(
+            mission.Id,
+            payout,
+            mission.NarrativeProgressDelta,
+            mission.ReputationDelta,
+            satisfaction);
     }
 
     public int AdvanceNarrative(int amount = 1, string? referenceId = null)
