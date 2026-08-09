@@ -4,6 +4,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
+using MetroPulse.Godot.Runtime;
 
 namespace MetroPulse.Godot.Diagnostics;
 
@@ -19,8 +20,10 @@ public partial class IntegrationTestRunner : Node
         CallDeferred(MethodName.Run);
     }
 
-    private void Run()
+    private async void Run()
     {
+        await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         List<string> failures = [];
         CompositionRoot compositionRoot = _compositionRoot ?? throw new InvalidOperationException("Test runner was not initialized.");
         DiagnosticsOverlay diagnostics = _diagnostics ?? throw new InvalidOperationException("Test runner was not initialized.");
@@ -69,6 +72,7 @@ public partial class IntegrationTestRunner : Node
             "The persistence-free initial slice explicitly selects New Game.",
             failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
+        CheckRuntimeInput(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
         CheckCollisionLayerNames(failures);
 
@@ -78,8 +82,8 @@ public partial class IntegrationTestRunner : Node
                 LogCategory.Test,
                 LogSeverity.Information,
                 "integration.passed",
-                "Foundation integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "39" }));
+                "Phase 3 shell integration checks passed.",
+                new Dictionary<string, string> { ["assertions"] = "47" }));
             GetTree().Quit(0);
             return;
         }
@@ -126,6 +130,60 @@ public partial class IntegrationTestRunner : Node
                 ProjectSettings.GetSetting(setting, string.Empty).AsString() == expectedNames[index],
                 $"Collision layer {index + 1} is named {expectedNames[index]}.",
                 failures);
+        }
+    }
+
+    private static void CheckRuntimeInput(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            RuntimeInputHost input = compositionRoot.CurrentSession?.InputHost
+                ?? throw new InvalidOperationException("Runtime input owner is unavailable.");
+            RuntimeInputSnapshot snapshot = input.LatestSnapshot;
+
+            Check(input.Initialized, "SessionRoot initializes its runtime input owner before release.", failures);
+            Check(
+                input.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true,
+                "Runtime input is owned by SessionRoot/RuntimeServices.",
+                failures);
+            Check(
+                input.ProcessPhysicsPriority == RuntimeInputHost.InputPhysicsPriority,
+                "Runtime input samples before gameplay physics consumers.",
+                failures);
+            Check(
+                input.PhysicsSnapshotCount > 0 && snapshot.PhysicsTick == input.PhysicsSnapshotCount,
+                "Interactive release publishes exactly one canonical snapshot per physics callback.",
+                failures);
+            Check(
+                snapshot.Context == ControlContexts.Management
+                    && snapshot.ActiveInterface == InputInterfaces.Keyboard,
+                "The empty session starts with Management keyboard authority.",
+                failures);
+            Check(
+                snapshot.Prompts.GetValueOrDefault("BUILD") == "F",
+                "Contextual prompt metadata reads the validated binding authority.",
+                failures);
+            Check(
+                snapshot.Actions.ContainsKey(RuntimeInputActionIds.Slot("PAN", 0)),
+                "Canonical snapshots retain stable per-binding directional slots.",
+                failures);
+            Check(
+                GodotInputMapAdapter.TryGetKeyboardMouseToken(
+                    new InputEventKey { PhysicalKeycode = Key.E },
+                    out string keyToken)
+                    && keyToken == KeyboardMouseInputs.KeyE
+                    && GodotInputMapAdapter.TryGetKeyboardMouseToken(
+                        new InputEventMouseButton { ButtonIndex = MouseButton.Right },
+                        out string mouseToken)
+                    && mouseToken == KeyboardMouseInputs.MouseSecondary,
+                "Godot events round-trip to browser-compatible physical input tokens.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Runtime input integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

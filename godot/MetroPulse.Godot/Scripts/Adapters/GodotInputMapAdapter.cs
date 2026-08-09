@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Godot;
 using MetroPulse.Domain.Settings;
 
@@ -8,6 +9,9 @@ public sealed class GodotInputMapAdapter : IDisposable
 {
     public const string ActionPrefix = "metropulse_";
     public const float DefaultDeadzone = 0.15f;
+
+    private static readonly IReadOnlyDictionary<string, GamepadBinding[]> GamepadBindings =
+        CreateGamepadBindings();
 
     private readonly SettingsStore store;
     private Func<bool>? unsubscribe;
@@ -104,6 +108,43 @@ public sealed class GodotInputMapAdapter : IDisposable
         return new StringName($"{ActionPrefix}{context.ToLowerInvariant()}_{action.ToLowerInvariant()}_slot_{index}");
     }
 
+    public static bool TryGetKeyboardMouseToken(InputEvent inputEvent, out string token)
+    {
+        ArgumentNullException.ThrowIfNull(inputEvent);
+        switch (inputEvent)
+        {
+            case InputEventMouseButton mouse:
+                token = mouse.ButtonIndex switch
+                {
+                    MouseButton.Left => "Mouse0",
+                    MouseButton.Middle => "Mouse1",
+                    MouseButton.Right => "Mouse2",
+                    _ => string.Empty,
+                };
+                return token.Length > 0;
+            case InputEventKey key:
+                token = FormatPhysicalKey(key.PhysicalKeycode, key.Location);
+                return token.Length > 0;
+            default:
+                token = string.Empty;
+                return false;
+        }
+    }
+
+    public static float GetGamepadActionStrength(string action, int device)
+    {
+        if (device < 0 || !GamepadBindings.TryGetValue(action, out GamepadBinding[]? bindings)) return 0;
+        float strength = 0;
+        foreach (GamepadBinding binding in bindings)
+        {
+            float candidate = binding.IsButton
+                ? (Input.IsJoyButtonPressed(device, binding.Button) ? 1 : 0)
+                : Math.Max(0, Input.GetJoyAxis(device, binding.Axis) * binding.Direction);
+            strength = Math.Max(strength, candidate);
+        }
+        return strength;
+    }
+
     private static void ValidateContextAction(string context, string action)
     {
         if (!ControlBindingCatalog.IsKnownAction(context, action))
@@ -130,6 +171,43 @@ public sealed class GodotInputMapAdapter : IDisposable
 
     private static bool IsOwned(StringName action) =>
         action.ToString().StartsWith(ActionPrefix, StringComparison.Ordinal);
+
+    private static string FormatPhysicalKey(Key key, KeyLocation location)
+    {
+        if (key is >= Key.A and <= Key.Z)
+        {
+            return $"Key{(char)key}";
+        }
+        if (key is >= Key.Key0 and <= Key.Key9)
+        {
+            return $"Digit{(char)key}";
+        }
+        string name = key.ToString();
+        if (name.Length is 2 or 3 && name[0] == 'F' && int.TryParse(name[1..], out int functionNumber))
+        {
+            return functionNumber is >= 1 and <= 12 ? name : string.Empty;
+        }
+        return (key, location) switch
+        {
+            (Key.Tab, _) => "Tab",
+            (Key.Enter, _) => "Enter",
+            (Key.Escape, _) => "Escape",
+            (Key.Space, _) => "Space",
+            (Key.Delete, _) => "Delete",
+            (Key.Backspace, _) => "Backspace",
+            (Key.Shift, KeyLocation.Right) => "ShiftRight",
+            (Key.Shift, _) => "ShiftLeft",
+            (Key.Ctrl, KeyLocation.Right) => "ControlRight",
+            (Key.Ctrl, _) => "ControlLeft",
+            (Key.Alt, KeyLocation.Right) => "AltRight",
+            (Key.Alt, _) => "AltLeft",
+            (Key.Up, _) => "ArrowUp",
+            (Key.Down, _) => "ArrowDown",
+            (Key.Left, _) => "ArrowLeft",
+            (Key.Right, _) => "ArrowRight",
+            _ => string.Empty,
+        };
+    }
 
     private static InputEvent? CreateKeyboardMouseEvent(string input)
     {
@@ -198,35 +276,56 @@ public sealed class GodotInputMapAdapter : IDisposable
         };
     }
 
-    private static IEnumerable<InputEvent> CreateGamepadEvents(string action) => action switch
+    private static IEnumerable<InputEvent> CreateGamepadEvents(string action)
     {
-        "NAVIGATE" => Buttons(JoyButton.DpadUp, JoyButton.DpadDown, JoyButton.DpadLeft, JoyButton.DpadRight),
-        "SELECT" or "PLACE" or "HANDBRAKE" or "AIR_BRAKE" or "JUMP" or "CONFIRM" => Buttons(JoyButton.A),
-        "ORBIT" or "CAMERA" => Axes(JoyAxis.RightX, JoyAxis.RightY),
-        "PAN" or "AIM" or "MOVE" => Axes(JoyAxis.LeftX, JoyAxis.LeftY),
-        "BUILD" or "VEHICLE_RESET" => Buttons(JoyButton.Back),
-        "MODE" or "PAUSE_MENU" => Buttons(JoyButton.Start),
-        "ROTATE" or "INTERACT" => Buttons(JoyButton.Y),
-        "DELETE" or "AIR_RESET" or "ATTACK" => Buttons(JoyButton.X),
-        "BACK" => Buttons(JoyButton.B),
-        "DRIVE" or "AIR_ROLL" => Axes(JoyAxis.LeftX),
-        "AIR_PITCH" => Axes(JoyAxis.LeftY),
-        "THROTTLE" => Axis(JoyAxis.TriggerRight, 1),
-        "BRAKE" => Axis(JoyAxis.TriggerLeft, 1),
-        "AIR_THROTTLE" => [AxisEvent(JoyAxis.TriggerRight, 1), AxisEvent(JoyAxis.TriggerLeft, 1)],
-        "HORN" => Buttons(JoyButton.LeftShoulder),
-        "SPRINT" => Buttons(JoyButton.LeftStick),
-        _ => [],
-    };
+        if (!GamepadBindings.TryGetValue(action, out GamepadBinding[]? bindings)) return [];
+        return bindings.Select(binding => binding.IsButton
+            ? (InputEvent)new InputEventJoypadButton { ButtonIndex = binding.Button }
+            : AxisEvent(binding.Axis, binding.Direction));
+    }
 
-    private static InputEvent[] Buttons(params JoyButton[] buttons) =>
-        buttons.Select(button => (InputEvent)new InputEventJoypadButton { ButtonIndex = button }).ToArray();
+    private static IReadOnlyDictionary<string, GamepadBinding[]> CreateGamepadBindings()
+    {
+        var bindings = new Dictionary<string, GamepadBinding[]>(StringComparer.Ordinal);
+        Add([Button(JoyButton.DpadUp), Button(JoyButton.DpadDown), Button(JoyButton.DpadLeft), Button(JoyButton.DpadRight)], "NAVIGATE");
+        Add([Button(JoyButton.A)], "SELECT", "PLACE", "HANDBRAKE", "AIR_BRAKE", "JUMP", "CONFIRM");
+        Add(Axes(JoyAxis.RightX, JoyAxis.RightY), "ORBIT", "CAMERA");
+        Add(Axes(JoyAxis.LeftX, JoyAxis.LeftY), "PAN", "AIM", "MOVE");
+        Add([Button(JoyButton.Back)], "BUILD", "VEHICLE_RESET");
+        Add([Button(JoyButton.Start)], "MODE", "PAUSE_MENU");
+        Add([Button(JoyButton.Y)], "ROTATE", "INTERACT");
+        Add([Button(JoyButton.X)], "DELETE", "AIR_RESET", "ATTACK");
+        Add([Button(JoyButton.B)], "BACK");
+        Add(Axes(JoyAxis.LeftX), "DRIVE", "AIR_ROLL");
+        Add(Axes(JoyAxis.LeftY), "AIR_PITCH");
+        Add([Axis(JoyAxis.TriggerRight, 1)], "THROTTLE");
+        Add([Axis(JoyAxis.TriggerLeft, 1)], "BRAKE");
+        Add([Axis(JoyAxis.TriggerRight, 1), Axis(JoyAxis.TriggerLeft, 1)], "AIR_THROTTLE");
+        Add([Button(JoyButton.LeftShoulder)], "HORN");
+        Add([Button(JoyButton.LeftStick)], "SPRINT");
+        return new ReadOnlyDictionary<string, GamepadBinding[]>(bindings);
 
-    private static InputEvent[] Axes(params JoyAxis[] axes) =>
-        axes.SelectMany(axis => new[] { AxisEvent(axis, -1), AxisEvent(axis, 1) }).ToArray();
+        void Add(GamepadBinding[] gamepadBindings, params string[] actions)
+        {
+            foreach (string action in actions) bindings.Add(action, gamepadBindings);
+        }
+    }
 
-    private static InputEvent[] Axis(JoyAxis axis, float direction) => [AxisEvent(axis, direction)];
+    private static GamepadBinding[] Axes(params JoyAxis[] axes) =>
+        axes.SelectMany(axis => new[] { Axis(axis, -1), Axis(axis, 1) }).ToArray();
+
+    private static GamepadBinding Button(JoyButton button) =>
+        new(true, button, default, 0);
+
+    private static GamepadBinding Axis(JoyAxis axis, float direction) =>
+        new(false, default, axis, direction);
 
     private static InputEventJoypadMotion AxisEvent(JoyAxis axis, float direction) =>
         new() { Axis = axis, AxisValue = direction };
+
+    private readonly record struct GamepadBinding(
+        bool IsButton,
+        JoyButton Button,
+        JoyAxis Axis,
+        float Direction);
 }

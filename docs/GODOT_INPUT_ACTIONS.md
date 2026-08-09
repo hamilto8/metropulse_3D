@@ -40,4 +40,28 @@ Keyboard bindings use physical keycodes to preserve browser `KeyboardEvent.code`
 
 Standard gamepad events are fixed and are added only to aggregate actions. They preserve the browser contract: A/B/X/Y face-button roles, View/Menu, bumpers, stick clicks, D-pad navigation, left-stick movement, right-stick camera, and left/right triggers for braking/throttle. Analog actions use the browser dead zone of `0.15`. Gamepad remapping remains outside MVP scope.
 
-The later runtime input-state owner must sample these actions at the start of `_PhysicsProcess`, clear held/edge state on focus loss and settings/context/device changes, quarantine held devices until neutral, and keep prompt selection separate from gameplay authority.
+## Runtime snapshot contract
+
+`SessionRoot/RuntimeServices/RuntimeInputHost` samples at physics priority
+`-1000`, before later gameplay physics consumers. It publishes one immutable
+`RuntimeInputSnapshot` per callback with:
+
+- the active context and keyboard/gamepad interface;
+- aggregate action strengths and keyboard slot IDs formatted as
+  `<ACTION>#SLOT_<zero-based-index>`;
+- `JustPressed` and `JustReleased` edges;
+- pointer delta, left/right sticks, and trigger values;
+- connection, suspension, and held-device quarantine state; and
+- prompt labels derived from the current validated settings document.
+
+Input events are normalized back to the same physical tokens used by the
+binding document. Pointer motion of any size is retained while keyboard/mouse
+owns input; motion of at least three combined pixels changes device authority.
+Gamepad activity changes authority at `0.32`, and analog values use the shared
+`0.15` dead zone. Context, settings, focus, suspension, and device changes clear
+edge history and quarantine controls held before the change until release or
+gamepad neutral. Gamepad disconnect returns authority to keyboard/mouse.
+
+The snapshot is the only gameplay-facing runtime input boundary. Future player,
+vehicle, aircraft, camera, and UI nodes consume it; they must not add raw key
+comparisons or mutate the settings/InputMap authorities.

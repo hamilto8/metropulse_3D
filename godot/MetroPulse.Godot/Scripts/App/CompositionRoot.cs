@@ -216,19 +216,25 @@ public partial class CompositionRoot : Node
             new(BootStageIds.ActionSelection, "Selecting startup action", (_, _) =>
                 ValueTask.FromResult<object?>("NEW_GAME")),
             new(BootStageIds.SessionConstruction, "Constructing empty Management session", (_, _) =>
-                ValueTask.FromResult<object?>(StartSession())),
+            {
+                SessionShell session = StartSession();
+                session.InitializeRuntimeInput(SettingsAuthority
+                    ?? throw new InvalidOperationException("Settings authority must precede session construction."));
+                return ValueTask.FromResult<object?>(session);
+            }),
             new(BootStageIds.FinalReadiness, "Verifying session readiness", (results, _) =>
             {
                 SessionShell session = (SessionShell)results[BootStageIds.SessionConstruction]!;
                 if (!session.IsInsideTree()
                     || session.GetNodeOrNull<Node3D>("WorldRoot") is null
-                    || session.GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null)
+                    || session.GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
+                    || session.InputHost?.Initialized != true)
                 {
                     throw new BootStageException(
                         BootStageIds.FinalReadiness,
                         "Verifying session readiness",
                         "SESSION_NOT_READY",
-                        "The Management session did not construct its required world and camera owners.",
+                        "The Management session did not construct its required world, camera, and input owners.",
                         ["Repair or reinstall MetroPulse, then retry."]);
                 }
 

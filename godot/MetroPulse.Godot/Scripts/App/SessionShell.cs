@@ -1,6 +1,8 @@
 using Godot;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Runtime;
 
 namespace MetroPulse.Godot.App;
 
@@ -9,6 +11,8 @@ public partial class SessionShell : Node
     public bool IsShutDown { get; private set; }
 
     public bool IsInteractiveReleased { get; private set; }
+
+    public RuntimeInputHost? InputHost { get; private set; }
 
     public override void _Ready()
     {
@@ -19,6 +23,19 @@ public partial class SessionShell : Node
             "An empty disposable session shell was created."));
     }
 
+    public void InitializeRuntimeInput(SettingsStore settings)
+    {
+        if (InputHost is not null)
+        {
+            throw new InvalidOperationException("The session runtime input owner already exists.");
+        }
+
+        Node runtimeServices = GetNode<Node>("RuntimeServices");
+        InputHost = new RuntimeInputHost { Name = "RuntimeInputHost" };
+        runtimeServices.AddChild(InputHost);
+        InputHost.Initialize(settings);
+    }
+
     public void Shutdown()
     {
         if (IsShutDown)
@@ -27,11 +44,12 @@ public partial class SessionShell : Node
         }
 
         IsShutDown = true;
+        InputHost?.Shutdown();
         AppLog.Write(new StructuredLogEvent(
             LogCategory.Session,
             LogSeverity.Information,
             "session.disposed",
-            "The empty session shell released its owned resources."));
+            "The session shell released its owned runtime resources."));
     }
 
     public void ReleaseInteractiveControl()
@@ -43,7 +61,8 @@ public partial class SessionShell : Node
 
         if (!IsInsideTree()
             || GetNodeOrNull<Node3D>("WorldRoot") is null
-            || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null)
+            || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
+            || InputHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");
         }

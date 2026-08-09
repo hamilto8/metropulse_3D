@@ -831,13 +831,18 @@ ported because they require engine adapters.
 > resource capability probes, canonical content validation at boot, explicit
 > temporary `NEW_GAME` selection, disabled session construction, final
 > readiness validation, and interactive release. Save discovery/application,
-> game-save file persistence, restore/import, runtime input state, and expanded
-> diagnostics remain Phase 3 work. The second slice adds validated global
+> game-save file persistence, restore/import, and expanded diagnostics remain
+> Phase 3 work. The second slice adds validated global
 > settings persistence under `user://`, atomic temporary-file promotion,
 > restart-safe migration/fallback, and a live namespaced InputMap adapter for
 > all seven contexts with fixed gamepad bindings and stable directional slots.
+> The third slice adds the scheduled runtime input owner, immutable per-physics-
+> tick snapshots, live keyboard/gamepad authority switching, contextual prompt
+> metadata, dead zones, edge detection, focus/settings/context clearing, held-
+> device quarantine, and suspension tokens without moving gameplay bodies.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
-> `docs/port_handoffs/phase-3-settings-inputmap.md`.
+> `docs/port_handoffs/phase-3-settings-inputmap.md` and
+> `docs/port_handoffs/phase-3-runtime-input-state.md`.
 
 ### Objective
 
@@ -874,7 +879,11 @@ and stable-slot actions; settings presentation remains Phase 9)*.
 3.4 Preserve live keyboard/controller device switching, dead zones, edge
 detection, focus-loss clearing, held-device quarantine, contextual prompts, and
 binding conflict validation. Browser-reserved keys may become desktop-reserved
-keys only through a documented compatibility table.
+keys only through a documented compatibility table. *(complete for the runtime
+shell: one session-owned sampler publishes immutable action/slot/axis/prompt
+snapshots at physics priority -1000; context/device/settings/focus changes clear
+edges and quarantine held inputs until release/neutral. Hardware/controller and
+prompt-presentation acceptance remain Phases 9 and 11.)*
 
 3.5 Implement a file repository under `user://`. Use explicit current,
 recovery, and temporary paths. Write a fully validated temporary document,
