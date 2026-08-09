@@ -840,6 +840,10 @@ ported because they require engine adapters.
 > tick snapshots, live keyboard/gamepad authority switching, contextual prompt
 > metadata, dead zones, edge detection, focus/settings/context clearing, held-
 > device quarantine, and suspension tokens without moving gameplay bodies.
+> The fourth slice adds crash-repairable `user://` current/recovery storage,
+> validated temporary-file promotion, corrupt-current recovery protection, and
+> fault injection at every write boundary; envelope semantics remain the next
+> slice.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
 > `docs/port_handoffs/phase-3-settings-inputmap.md` and
 > `docs/port_handoffs/phase-3-runtime-input-state.md`.
@@ -888,7 +892,12 @@ prompt-presentation acceptance remain Phases 9 and 11.)*
 3.5 Implement a file repository under `user://`. Use explicit current,
 recovery, and temporary paths. Write a fully validated temporary document,
 flush/close it, rotate current to recovery, and atomically promote the new
-document where the OS/API permits. Fault-inject every stage.
+document where the OS/API permits. Fault-inject every stage. *(complete:
+`GodotGameSaveRepository` owns explicit current, recovery, transaction-temp,
+and recovery-temp paths; it validates before writing and after flush, uses
+same-directory atomic replacement, repairs interrupted rotations on startup,
+protects known-good recovery from corrupt current, and tests all six injected
+write boundaries.)*
 
 3.6 Preserve the exact JSON envelope, sequential migrations, future-version
 rejection, whole-document validation before mutation, debounce/coalesced

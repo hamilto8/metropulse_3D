@@ -20,6 +20,31 @@ LocalStorage key `metropulse3d:city-session:v1` is read-only migration input.
 It is converted to the current envelope, copied successfully to IndexedDB, and
 then removed. New code must never write game state to LocalStorage.
 
+### Godot repository adapter
+
+The native port stores gameplay saves under `user://saves/` through
+`GodotGameSaveRepository`. It owns four explicit paths:
+
+- `current.json` — selected by Continue;
+- `recovery.json` — the prior validated current document;
+- `transaction.tmp` — a validated candidate for current promotion; and
+- `recovery.tmp` — an isolated candidate for recovery-only replacement.
+
+The repository requires an `IGameSaveDocumentValidator`; it cannot write an
+unvalidated string. Each candidate is normalized before write, flushed and
+closed, reread through the same validator, and promoted with a same-directory
+replacement. A valid current is copied to recovery before current promotion.
+A corrupt current is never allowed to overwrite known-good recovery.
+
+An ordinary caught failure rolls current and recovery back exactly. If a
+process stops after recovery rotation, the next repository read recognizes the
+validated current/recovery/temp relationship and completes promotion. If it
+stops before rotation, the old current remains authoritative and the orphaned
+candidate is discarded. A recovery-only temporary file is always aborted on
+restart, so it cannot be mistaken for a current save. These are compound
+crash-repair guarantees built from atomic same-volume file replacement; the OS
+does not provide one transaction spanning both slot names.
+
 ## Versioning
 
 The envelope has independent version axes:

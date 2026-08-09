@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Godot;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
@@ -73,6 +75,7 @@ public partial class IntegrationTestRunner : Node
             failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
+        CheckGameSaveRepository(failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
         CheckCollisionLayerNames(failures);
 
@@ -83,7 +86,7 @@ public partial class IntegrationTestRunner : Node
                 LogSeverity.Information,
                 "integration.passed",
                 "Phase 3 shell integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "47" }));
+                new Dictionary<string, string> { ["assertions"] = "60" }));
             GetTree().Quit(0);
             return;
         }
@@ -184,6 +187,202 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Runtime input integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckGameSaveRepository(ICollection<string> failures)
+    {
+        string directory = $"user://integration/save-repository-{OS.GetProcessId()}";
+        var validator = new IntegrationSaveValidator();
+        var repository = new GodotGameSaveRepository(validator, directory);
+        repository.DeleteOwnedFiles();
+
+        try
+        {
+            Check(
+                repository.CurrentPath == $"{directory}/current.json"
+                    && repository.RecoveryPath == $"{directory}/recovery.json"
+                    && repository.TemporaryPath == $"{directory}/transaction.tmp",
+                "The game-save repository exposes explicit current, recovery, and transaction paths.",
+                failures);
+
+            string first = SaveFixture("first");
+            string second = SaveFixture("second");
+            string third = SaveFixture("third");
+            repository.CommitCurrent(first);
+            GameSaveSlots firstSlots = repository.ReadSlots();
+            Check(firstSlots.Current == first && firstSlots.Recovery is null, "The first save creates only current.", failures);
+
+            repository.CommitCurrent(second);
+            GameSaveSlots rotated = repository.ReadSlots();
+            Check(
+                rotated.Current == second && rotated.Recovery == first,
+                "A subsequent save rotates the prior known-good current into recovery.",
+                failures);
+
+            bool everyStageRolledBack = true;
+            foreach (GameSaveRepositoryFault fault in Enum.GetValues<GameSaveRepositoryFault>().Where(value => value != GameSaveRepositoryFault.None))
+            {
+                repository.InjectedFault = fault;
+                try
+                {
+                    repository.CommitCurrent(third);
+                    everyStageRolledBack = false;
+                }
+                catch (IOException)
+                {
+                    GameSaveSlots afterFault = repository.ReadSlots();
+                    everyStageRolledBack &= afterFault == rotated
+                        && !global::Godot.FileAccess.FileExists(repository.TemporaryPath);
+                }
+                finally
+                {
+                    repository.InjectedFault = GameSaveRepositoryFault.None;
+                }
+            }
+            Check(everyStageRolledBack, "Every injected write boundary restores both committed slots exactly.", failures);
+
+            var interrupted = new GodotGameSaveRepository(
+                validator,
+                directory,
+                GameSaveRepositoryFault.BeforeCurrentPromote,
+                simulateProcessInterruption: true);
+            try
+            {
+                interrupted.CommitCurrent(third);
+            }
+            catch (IOException)
+            {
+                // A new repository instance below represents process restart.
+            }
+            GameSaveSlots repaired = new GodotGameSaveRepository(validator, directory).ReadSlots();
+            Check(
+                repaired.Current == third && repaired.Recovery == second
+                    && !global::Godot.FileAccess.FileExists(repository.TemporaryPath),
+                "Startup repair completes a validated transaction interrupted after recovery rotation.",
+                failures);
+
+            GameSaveSlots beforeInvalid = repository.ReadSlots();
+            bool invalidRejected = false;
+            try
+            {
+                repository.CommitCurrent("{not-json");
+            }
+            catch (InvalidDataException)
+            {
+                invalidRejected = true;
+            }
+            Check(
+                invalidRejected && repository.ReadSlots() == beforeInvalid,
+                "An invalid candidate cannot mutate current or recovery.",
+                failures);
+
+            WriteGodotText(repository.CurrentPath, "{corrupt-current");
+            repository.CommitCurrent(SaveFixture("fourth"));
+            GameSaveSlots afterCorruptCurrent = repository.ReadSlots();
+            Check(
+                afterCorruptCurrent.Current == SaveFixture("fourth")
+                    && afterCorruptCurrent.Recovery == second,
+                "A corrupt current save is replaced without overwriting known-good recovery.",
+                failures);
+
+            WriteGodotText(repository.CurrentPath, "{corrupt-current");
+            Check(
+                repository.PromoteRecovery() == second
+                    && repository.ReadSlots() == new GameSaveSlots(second, second),
+                "Recovery promotion never rotates a corrupt current over the selected recovery.",
+                failures);
+
+            repository.CommitCurrent(SaveFixture("fifth"));
+            repository.ClearCurrent();
+            Check(
+                repository.ReadSlots() == new GameSaveSlots(null, SaveFixture("fifth")),
+                "New Game clearing preserves a valid current document as recovery.",
+                failures);
+
+            repository.PutRecovery(SaveFixture("sixth"));
+            Check(
+                repository.ReadSlots() == new GameSaveSlots(null, SaveFixture("sixth")),
+                "Explicit recovery writes validate and replace only the recovery slot.",
+                failures);
+
+            var interruptedRecovery = new GodotGameSaveRepository(
+                validator,
+                directory,
+                GameSaveRepositoryFault.AfterTemporaryFlush,
+                simulateProcessInterruption: true);
+            try
+            {
+                interruptedRecovery.PutRecovery(SaveFixture("seventh"));
+            }
+            catch (IOException)
+            {
+                // Restart cleanup below must abort this incomplete recovery-only write.
+            }
+            GameSaveSlots afterRecoveryInterruption = new GodotGameSaveRepository(validator, directory).ReadSlots();
+            Check(
+                afterRecoveryInterruption == new GameSaveSlots(null, SaveFixture("sixth"))
+                    && !global::Godot.FileAccess.FileExists(repository.RecoveryTemporaryPath),
+                "An interrupted recovery-only write is discarded without inventing a current save.",
+                failures);
+
+            repository.ClearCurrent(preserveAsRecovery: false);
+            Check(
+                repository.ReadSlots().Recovery == SaveFixture("sixth"),
+                "Clearing an absent current without preservation leaves recovery unchanged.",
+                failures);
+
+            repository.DeleteOwnedFiles();
+            Check(
+                !global::Godot.FileAccess.FileExists(repository.CurrentPath)
+                    && !global::Godot.FileAccess.FileExists(repository.RecoveryPath)
+                    && !global::Godot.FileAccess.FileExists(repository.TemporaryPath),
+                "Integration cleanup removes every repository-owned file.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Game-save repository integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            repository.InjectedFault = GameSaveRepositoryFault.None;
+            repository.SimulateProcessInterruption = false;
+            repository.DeleteOwnedFiles();
+        }
+    }
+
+    private static string SaveFixture(string id) => $"{{\"format\":\"integration-save\",\"id\":\"{id}\"}}";
+
+    private static void WriteGodotText(string path, string text)
+    {
+        using global::Godot.FileAccess? writer = global::Godot.FileAccess.Open(path, global::Godot.FileAccess.ModeFlags.Write);
+        if (writer is null) throw new IOException($"Could not write integration fixture {path}.");
+        writer.StoreString(text);
+        writer.Flush();
+    }
+
+    private sealed class IntegrationSaveValidator : IGameSaveDocumentValidator
+    {
+        public string ValidateAndNormalize(string document)
+        {
+            try
+            {
+                using JsonDocument parsed = JsonDocument.Parse(document);
+                if (parsed.RootElement.ValueKind != JsonValueKind.Object
+                    || !parsed.RootElement.TryGetProperty("format", out JsonElement format)
+                    || format.GetString() != "integration-save"
+                    || !parsed.RootElement.TryGetProperty("id", out JsonElement id)
+                    || string.IsNullOrWhiteSpace(id.GetString()))
+                {
+                    throw new InvalidDataException("The integration save fixture is incomplete.");
+                }
+                return JsonSerializer.Serialize(parsed.RootElement);
+            }
+            catch (JsonException error)
+            {
+                throw new InvalidDataException("The integration save fixture is not valid JSON.", error);
+            }
         }
     }
 
