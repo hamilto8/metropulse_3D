@@ -59,6 +59,26 @@ Unsupported future schema versions fail closed with a player-facing message.
 No domain is applied until the complete envelope, every domain shape, stable
 content references, and the controlled-entity reference have been validated.
 
+### Godot envelope and discovery authority
+
+`GameSaveDocumentValidator` is the native envelope authority. It preserves
+format `METROPULSE_3D_SAVE`, schema version 2, feature version 2, metadata, and
+the complete domain object. Schema 0 and 1 documents migrate sequentially to
+schema 2; the schema-1 step canonicalizes legacy zone aliases and records
+`P4.1_ZONE_VOCABULARY` in migration history. It rejects future schema or feature
+versions, malformed domain shapes, unknown content IDs, invalid settings or
+bindings, inconsistent mission data, controlled-entity mismatches, and invalid
+structured alerts before returning normalized JSON.
+
+`GameSaveDiscovery` inspects current and recovery independently. New Game is
+always available, Continue is offered only for a valid current slot, and
+Recover only for a valid recovery slot. Preparing New Game preserves a valid
+current as recovery; preparing Recover promotes recovery without rotating a
+possibly corrupt current. The native boot pipeline runs discovery before
+session construction and retains the selected validated document during save
+application. Static domain and runtime world/entity application are separate
+later steps; retaining a descriptor is not reported as a completed restore.
+
 ## Saved domains
 
 The schema always contains these records, even when a future system is not yet
@@ -101,6 +121,15 @@ unchanged.
 `LOADING`, and `ERROR`. `UIManager` renders this through the accessible
 `#save-status` live region and disables manual Save only during an active save
 or load.
+
+The native `GameSaveService` preserves the same five-second coalescing policy
+without owning a worker timer. Its session host supplies elapsed runtime through
+`Advance`, which keeps capture and repository calls on the owning thread and
+prevents offline/background catch-up. Checkpoints save immediately, reason IDs
+are deduplicated in deterministic order, mission-critical phases can veto a
+save, and listener failures cannot corrupt status or committed slots. Native UI
+and session capture owners are still responsible for subscribing and supplying
+the complete domain snapshot.
 
 ## Extension rules
 

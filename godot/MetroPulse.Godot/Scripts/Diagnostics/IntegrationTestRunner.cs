@@ -47,14 +47,16 @@ public partial class IntegrationTestRunner : Node
                 BootStageIds.CapabilityChecks,
                 BootStageIds.SettingsBootstrap,
                 BootStageIds.ContentValidation,
+                BootStageIds.SaveDiscovery,
                 BootStageIds.ActionSelection,
                 BootStageIds.SessionConstruction,
+                BootStageIds.SaveApplication,
                 BootStageIds.FinalReadiness,
                 BootStageIds.InteractiveRelease,
             ]) == true,
             "Initial Phase 3 boot stages run in the declared order.",
             failures);
-        Check(compositionRoot.BootProgressEvents.Count == 14, "Each initial boot stage reports running and complete states.", failures);
+        Check(compositionRoot.BootProgressEvents.Count == 18, "Each initial boot stage reports running and complete states.", failures);
         Check(
             compositionRoot.BootProgressEvents
                 .Select((progress, index) => (progress, index))
@@ -69,9 +71,39 @@ public partial class IntegrationTestRunner : Node
         Check(
             string.Equals(
                 compositionRoot.LastBootResults?[BootStageIds.ActionSelection] as string,
-                "NEW_GAME",
+                BootActionIds.NewGame,
                 StringComparison.Ordinal),
-            "The persistence-free initial slice explicitly selects New Game.",
+            "A clean profile selects New Game after save discovery.",
+            failures);
+        Check(compositionRoot.SaveValidator is not null, "Boot owns the production game-save validator.", failures);
+        Check(
+            compositionRoot.SaveRepository?.DirectoryPath.StartsWith("user://integration/saves-", StringComparison.Ordinal) == true,
+            "Headless integration isolates the boot save repository under user://integration.",
+            failures);
+        Check(
+            compositionRoot.SaveDiscoveryReport is { Current.Present: false, Recovery.Present: false },
+            "Clean-profile discovery reports both persistent slots absent.",
+            failures);
+        Check(
+            compositionRoot.SaveDiscoveryReport?.Actions.SequenceEqual(new Dictionary<string, bool>(StringComparer.Ordinal)
+            {
+                [BootActionIds.NewGame] = true,
+                [BootActionIds.Continue] = false,
+                [BootActionIds.Recover] = false,
+            }) == true,
+            "Discovery exposes only actions backed by validated save slots.",
+            failures);
+        Check(
+            compositionRoot.PreparedSave is { Action: BootActionIds.NewGame, Restore: false, SaveDocument: null },
+            "Save application prepares New Game without inventing restore state.",
+            failures);
+        Check(
+            ReferenceEquals(compositionRoot.LastBootResults?[BootStageIds.SaveApplication], compositionRoot.PreparedSave),
+            "Boot publishes the retained save-application descriptor.",
+            failures);
+        Check(
+            compositionRoot.SaveRepository?.ReadSlots() == new GameSaveSlots(null, null),
+            "Clean New Game application leaves both isolated save slots empty.",
             failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
@@ -86,7 +118,7 @@ public partial class IntegrationTestRunner : Node
                 LogSeverity.Information,
                 "integration.passed",
                 "Phase 3 shell integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "60" }));
+                new Dictionary<string, string> { ["assertions"] = "67" }));
             GetTree().Quit(0);
             return;
         }

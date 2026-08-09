@@ -843,7 +843,13 @@ ported because they require engine adapters.
 > The fourth slice adds crash-repairable `user://` current/recovery storage,
 > validated temporary-file promotion, corrupt-current recovery protection, and
 > fault injection at every write boundary; envelope semantics remain the next
-> slice.
+> slice. The fifth slice implements the exact schema-2/feature-2 envelope,
+> sequential schema-0/1 migrations, future-version rejection, whole-document
+> and cross-content validation, debounced/coalesced save service, stable
+> checkpoints/status events, production current/recovery discovery, and the
+> declared save-discovery/save-application boot stages. Save application now
+> retains a fully validated descriptor; split static/runtime restore, browser
+> import, selectable boot presentation, and expanded diagnostics remain.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
 > `docs/port_handoffs/phase-3-settings-inputmap.md` and
 > `docs/port_handoffs/phase-3-runtime-input-state.md`.
@@ -858,10 +864,10 @@ an empty Management session.
 
 3.1 Recreate the boot stages: capability checks, settings bootstrap, content
 validation, save discovery, action selection, world/session construction, save
-application, final readiness, interactive release. *(in progress: the pipeline
-and capability/content/action/session/readiness/release stages are live;
-discovery and save application will be inserted at their declared
-stable IDs by later Phase 3 chunks)*.
+application, final readiness, interactive release. *(complete for the shell:
+all nine stages run once at their declared stable IDs; discovery validates both
+slots before deterministic action selection, save application retains the
+validated deferred descriptor, and input releases only after readiness)*.
 
 3.2 Replace browser capability probes with desktop checks for writable
 `user://`, compatible save/content versions, graphics backend, required input
@@ -869,8 +875,8 @@ devices, and minimum project resource availability. Provide actionable errors;
 never enter a partially constructed world. *(in progress: real `user://`
 write/flush/read/delete, graphics backend, Godot input service, packaged
 SessionRoot resource, and production content checks run before construction;
-save-version and physical-device/InputMap checks remain with their owning
-chunks)*.
+save discovery rejects unsupported future envelope versions before construction;
+physical-device acceptance remains with the release matrix)*.
 
 3.3 Rebuild settings and bindings using Godot InputMap as the runtime adapter,
 but keep the validated domain document as authority. Preserve contexts:
@@ -903,7 +909,13 @@ write boundaries.)*
 rejection, whole-document validation before mutation, debounce/coalesced
 reasons, stable checkpoints, and save status events. The official Godot
 [data-path documentation](https://docs.godotengine.org/en/4.6/tutorials/io/data_paths.html)
-requires persistent files under `user://`.
+requires persistent files under `user://`. *(complete at the domain/storage
+boundary: `GameSaveDocumentValidator` preserves the frozen schema-2/feature-2
+shape, migrates 0→1→2 in sequence, validates every required domain and stable
+content reference, and rejects future saves; `GameSaveService` coalesces a
+five-second deterministic debounce, checkpoint metadata, mission save gates,
+and immutable status notifications. Live session capture is deferred until its
+authorities exist.)*
 
 3.7 Split restore into static domain restore and runtime entity/world restore.
 At this phase, validate and retain deferred descriptors without pretending to

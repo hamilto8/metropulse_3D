@@ -41,5 +41,32 @@
     <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/settings-bindings-alerts.json"
                       Link="Fixtures/settings-bindings-alerts.json"
                       LogicalName="MetroPulse.Domain.Tests.Fixtures.settings-bindings-alerts.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-valid.json"
+                      Link="Fixtures/save-valid.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-valid.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-schema-0.json"
+                      Link="Fixtures/save-schema-0.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-schema-0.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-schema-1.json"
+                      Link="Fixtures/save-schema-1.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-schema-1.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-future.json"
+                      Link="Fixtures/save-future.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-future.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-corrupt.json"
+                      Link="Fixtures/save-corrupt.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-corrupt.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-controlled-entity.json"
+                      Link="Fixtures/save-controlled-entity.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-controlled-entity.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-mid-mission.json"
+                      Link="Fixtures/save-mid-mission.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-mid-mission.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-result.json"
+                      Link="Fixtures/save-result.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-result.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-recovery.json"
+                      Link="Fixtures/save-recovery.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.save-recovery.json" />
   </ItemGroup>
 </Project>

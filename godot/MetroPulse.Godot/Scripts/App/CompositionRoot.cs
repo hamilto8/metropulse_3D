@@ -3,6 +3,7 @@ using Godot;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.Diagnostics;
@@ -24,6 +25,14 @@ public partial class CompositionRoot : Node
     public DesktopCapabilityReport? CapabilityReport { get; private set; }
 
     public GameContentRegistry? ContentRegistry { get; private set; }
+
+    public GameSaveDocumentValidator? SaveValidator { get; private set; }
+
+    public GodotGameSaveRepository? SaveRepository { get; private set; }
+
+    public GameSaveDiscoveryReport? SaveDiscoveryReport { get; private set; }
+
+    public PreparedBootSave? PreparedSave { get; private set; }
 
     public GodotSettingsStorage? SettingsStorage { get; private set; }
 
@@ -99,6 +108,7 @@ public partial class CompositionRoot : Node
         {
             DisposeSession();
             DisposeSettingsRuntime();
+            DisposePersistenceRuntime();
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Boot,
                 LogSeverity.Fatal,
@@ -153,6 +163,7 @@ public partial class CompositionRoot : Node
     {
         DisposeSession();
         DisposeSettingsRuntime();
+        DisposePersistenceRuntime();
     }
 
     private void DisposeSettingsRuntime()
@@ -166,6 +177,18 @@ public partial class CompositionRoot : Node
             SettingsStorage?.DeleteOwnedFiles();
         }
         SettingsStorage = null;
+    }
+
+    private void DisposePersistenceRuntime()
+    {
+        if (Configuration?.RunIntegrationTests == true)
+        {
+            SaveRepository?.DeleteOwnedFiles();
+        }
+        PreparedSave = null;
+        SaveDiscoveryReport = null;
+        SaveRepository = null;
+        SaveValidator = null;
     }
 
     private IReadOnlyList<BootStageDefinition> CreateInitialStages()
@@ -213,14 +236,47 @@ public partial class CompositionRoot : Node
                 ContentRegistry = GameContentRegistry.LoadProduction();
                 return ValueTask.FromResult<object?>(ContentRegistry.Counts);
             }),
-            new(BootStageIds.ActionSelection, "Selecting startup action", (_, _) =>
-                ValueTask.FromResult<object?>("NEW_GAME")),
+            new(BootStageIds.SaveDiscovery, "Discovering validated city saves", (_, _) =>
+            {
+                RuntimeConfiguration configuration = Configuration
+                    ?? throw new InvalidOperationException("Runtime configuration must precede save discovery.");
+                GameContentRegistry content = ContentRegistry
+                    ?? throw new InvalidOperationException("Content validation must precede save discovery.");
+                SaveValidator = new GameSaveDocumentValidator(content);
+                string saveDirectory = configuration.RunIntegrationTests
+                    ? $"user://integration/saves-{OS.GetProcessId()}"
+                    : GodotGameSaveRepository.ProductionDirectory;
+                SaveRepository = new GodotGameSaveRepository(SaveValidator, saveDirectory);
+                SaveDiscoveryReport = new GameSaveDiscovery(SaveRepository, SaveValidator).Discover();
+                return ValueTask.FromResult<object?>(SaveDiscoveryReport);
+            }),
+            new(BootStageIds.ActionSelection, "Selecting startup action", (results, _) =>
+            {
+                GameSaveDiscoveryReport discovery = (GameSaveDiscoveryReport)results[BootStageIds.SaveDiscovery]!;
+                string action = discovery.Actions[BootActionIds.Continue]
+                    ? BootActionIds.Continue
+                    : discovery.Actions[BootActionIds.Recover]
+                        ? BootActionIds.Recover
+                        : BootActionIds.NewGame;
+                return ValueTask.FromResult<object?>(action);
+            }),
             new(BootStageIds.SessionConstruction, "Constructing empty Management session", (_, _) =>
             {
                 SessionShell session = StartSession();
                 session.InitializeRuntimeInput(SettingsAuthority
                     ?? throw new InvalidOperationException("Settings authority must precede session construction."));
                 return ValueTask.FromResult<object?>(session);
+            }),
+            new(BootStageIds.SaveApplication, "Preparing validated city state", (results, _) =>
+            {
+                string action = (string)results[BootStageIds.ActionSelection]!;
+                GameSaveDiscoveryReport discovery = (GameSaveDiscoveryReport)results[BootStageIds.SaveDiscovery]!;
+                GodotGameSaveRepository repository = SaveRepository
+                    ?? throw new InvalidOperationException("Save discovery must precede save application.");
+                GameSaveDocumentValidator validator = SaveValidator
+                    ?? throw new InvalidOperationException("Save validation must precede save application.");
+                PreparedSave = new GameSaveDiscovery(repository, validator).Prepare(action, discovery);
+                return ValueTask.FromResult<object?>(PreparedSave);
             }),
             new(BootStageIds.FinalReadiness, "Verifying session readiness", (results, _) =>
             {
