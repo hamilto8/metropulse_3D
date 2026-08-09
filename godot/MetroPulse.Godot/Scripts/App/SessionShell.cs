@@ -1,8 +1,10 @@
 using Godot;
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.App;
 
@@ -13,6 +15,8 @@ public partial class SessionShell : Node
     public bool IsInteractiveReleased { get; private set; }
 
     public RuntimeInputHost? InputHost { get; private set; }
+
+    public MvpWorldGenerator? World { get; private set; }
 
     public override void _Ready()
     {
@@ -36,6 +40,16 @@ public partial class SessionShell : Node
         InputHost.Initialize(settings);
     }
 
+    public void InitializeWorld(GameContentRegistry content)
+    {
+        if (World is not null)
+        {
+            throw new InvalidOperationException("The session world owner already exists.");
+        }
+        World = GetNode<MvpWorldGenerator>("WorldRoot/AuthoredWorld");
+        World.Initialize(content);
+    }
+
     public void Shutdown()
     {
         if (IsShutDown)
@@ -45,6 +59,7 @@ public partial class SessionShell : Node
 
         IsShutDown = true;
         InputHost?.Shutdown();
+        World?.ShutdownWorld();
         AppLog.Write(new StructuredLogEvent(
             LogCategory.Session,
             LogSeverity.Information,

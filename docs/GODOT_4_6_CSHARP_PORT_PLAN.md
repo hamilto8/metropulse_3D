@@ -1008,26 +1008,41 @@ street furniture, cafes, and initial skyline. Keep countryside, airfield,
 rocket, and East district gameplay behind their existing flags. Retained scenic
 geometry and safety colliders may remain where the source scope contract keeps
 them; a disabled expansion must never turn an existing safe road or surface
-into a void.
+into a void. *(complete for the MVP authored baseline: the disposable session
+builds seven named chunks covering West Core, the river corridor, the primary
+bridge, Central Park, plots, street furniture/cafes, and 23-building skyline;
+post-MVP chunks are absent while the corridor's source safety ground remains.)*
 
 4.3 Prefer reusable scenes for semantically distinct structures and code
 generators for repeated parametric geometry. Cache primitive meshes,
 `StandardMaterial3D` resources, and shapes. Never construct duplicate materials
-for every window, lamp, pedestrian limb, or vehicle.
+for every window, lamp, pedestrian limb, or vehicle. *(complete for Phase 4
+world content: immutable `MvpWorldLayout` definitions drive one Godot generator;
+`WorldResourceCache` deduplicates primitive meshes, materials, and collision
+shapes and releases its references with the session.)*
 
 4.4 Recreate instanced windows, crosswalks, trees, and repeated props with
 spatially partitioned `MultiMeshInstance3D` groups. Godot chooses one LOD for a
 whole MultiMesh, so split instances into city cells; the official
 [mesh LOD guidance](https://docs.godotengine.org/en/4.6/tutorials/3d/mesh_lod.html)
-also notes that individual instances are not independently culled.
+also notes that individual instances are not independently culled. *(complete:
+windows, 800 crosswalk stripes, tree canopies, 146 lamp poles/bulbs, bridge
+cables, and hangers are partitioned into 50- or 100-metre cells.)*
 
 4.5 Build collision shapes and metadata from the same source definitions as
 visual geometry. Every building, lamp, cafe table/chair, bridge barrier, deck,
 terrain surface, and user-editable object must have one owner and stable ID.
+*(complete for authored MVP geometry: every static surface/obstacle consumes
+the same immutable definition as its visual, uses the pinned Phase 1 layer/mask,
+and registers unique stable metadata; user-editable instances retain the
+`UserWorld` boundary for their later builder adapter.)*
 
 4.6 Recreate the suspension cable and hanger geometry with the existing
 symmetry/intersection tests. Validate continuous physical deck surfaces and
-guardrails before vehicle work begins.
+guardrails before vehicle work begins. *(complete: the shared canonical bridge
+layout produces 200 continuous cable segments, symmetric hangers, towers,
+anchorages, one deck surface, and two continuous invisible barrier bodies;
+pure and live Godot assertions pass.)*
 
 4.7 Rebuild sky, sun/moon orbit, environment lighting, fog/mist/rain/storm
 presentation, emissive windows/lights, tone mapping, shadows, glow/bloom, and

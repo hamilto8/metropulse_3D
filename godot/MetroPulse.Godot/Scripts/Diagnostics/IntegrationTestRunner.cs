@@ -7,6 +7,7 @@ using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Diagnostics;
 
@@ -153,6 +154,7 @@ public partial class IntegrationTestRunner : Node
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
+        CheckMvpWorld(compositionRoot, failures);
         CheckGameSaveRepository(failures);
         CheckImportBackupStore(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
@@ -160,6 +162,24 @@ public partial class IntegrationTestRunner : Node
 
         if (failures.Count == 0)
         {
+            MvpWorldGenerator world = compositionRoot.CurrentSession?.World
+                ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase4.world.passed",
+                "Phase 4 generated-world integration checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "12",
+                    ["chunks"] = "7",
+                    ["objects"] = world.Layout?.Objects.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["colliders"] = world.Colliders.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["multiMeshGroups"] = world.MultiMeshGroupCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["cachedMeshes"] = world.Resources.MeshCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["cachedMaterials"] = world.Resources.MaterialCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["cachedShapes"] = world.Resources.ShapeCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -192,6 +212,27 @@ public partial class IntegrationTestRunner : Node
         {
             failures.Add(assertion);
         }
+    }
+
+    private static void CheckMvpWorld(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        MvpWorldGenerator? world = compositionRoot.CurrentSession?.World;
+        Check(world?.IsBuilt == true && world.Layout is not null, "The authored MVP world is built before interactive release.", failures);
+        Check(
+            world?.Layout?.ChunkIds.SequenceEqual(
+            ["WestCore", "RiverCorridor", "PrimaryBridge", "CentralPark", "BuildingPlots", "StreetFurniture", "InitialSkyline"]) == true,
+            "The world exposes exactly the seven Phase 4 MVP chunks.",
+            failures);
+        Check(world?.Layout?.ChunkIds.All(id => world.GetNodeOrNull<Node3D>(id) is not null) == true, "Every declared world chunk owns one scene subtree.", failures);
+        Check(world?.Colliders.Count > 200, "Generated surfaces and obstacles publish stable collider metadata.", failures);
+        Check(world?.Colliders.Snapshot.Select(item => item.StableId).Distinct(StringComparer.Ordinal).Count() == world?.Colliders.Count, "World collider stable IDs are unique.", failures);
+        Check(world?.Colliders.Snapshot.All(item => item.Body.IsInsideTree()) == true, "Every registered collider has one live Godot body.", failures);
+        Check(world is not null && world.Colliders.TryGet("grand-suspension-deck", out WorldColliderMetadata? deck) && deck is { Kind: "bridge-deck" }, "The primary bridge deck is a registered continuous surface.", failures);
+        Check(world?.Colliders.Snapshot.Count(item => item.Kind == "bridge-barrier") == 2, "The bridge publishes two continuous safety barriers.", failures);
+        Check(world?.MultiMeshGroupCount > 20, "Repeated props are spatially partitioned into MultiMesh cells.", failures);
+        Check(world is not null && world.Layout is not null && world.Resources.MaterialCount < world.Layout.Objects.Count, "World materials are cached rather than duplicated per object.", failures);
+        Check(world?.DebugTraversalCapsule?.TraversalWaypoints.Count == 8, "Debug builds include the MVP traversal capsule route.", failures);
+        Check(world is not null && world.Surface.GetTerrainHeight(160, 0) == 0 && world.Surface.IsWater(160, 0, 25), "Godot world queries retain bridge-over-water precedence.", failures);
     }
 
     private async ValueTask CheckBootActionPresentation(
