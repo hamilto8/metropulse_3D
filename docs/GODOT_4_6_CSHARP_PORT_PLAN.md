@@ -995,6 +995,12 @@ metadata, and camera-safe geometry before adding full agents.
 4.1 Implement terrain and water queries first as pure/adapter services. Port
 `getHillHeight`, water classification, drivable bounds, bridge deck height, and
 world bounds. Compare a dense grid of samples with reference fixtures.
+*(complete at the engine-neutral boundary: `WorldSurfaceModel` owns the exact
+hill/roadbed profile, city surface precedence, both river hazards, production
+bridge decks, world/drivable bounds, and safe nonfinite behavior; 7,979 grid
+samples plus 26 boundary/deck samples are generated from and checked against
+the frozen browser implementation. Godot nodes and live editable-deck
+registration remain in the following world-generator slice.)*
 
 4.2 Build the MVP world in independent chunks: West Core ground/road grid,
 river/retaining walls, primary suspension bridge, Central Park, building plots,

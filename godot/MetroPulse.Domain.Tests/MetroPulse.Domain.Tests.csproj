@@ -68,5 +68,8 @@
     <EmbeddedResource Include="../../test/fixtures/godot-port/phase0/save-recovery.json"
                       Link="Fixtures/save-recovery.json"
                       LogicalName="MetroPulse.Domain.Tests.Fixtures.save-recovery.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase4/world-surface-grid.json"
+                      Link="Fixtures/world-surface-grid.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.world-surface-grid.json" />
   </ItemGroup>
 </Project>
