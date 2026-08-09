@@ -1,3 +1,5 @@
+using MetroPulse.Domain.Persistence;
+
 namespace MetroPulse.Domain.Diagnostics;
 
 public sealed record RuntimeConfiguration(
@@ -7,7 +9,8 @@ public sealed record RuntimeConfiguration(
     ulong? ScenarioSeed,
     int PhysicsTicksPerSecond,
     string? ImportSavePath,
-    bool ConfirmImport)
+    bool ConfirmImport,
+    string? BootAction)
 {
     public const int DefaultPhysicsTicksPerSecond = 120;
     public const int LowTickPhysicsTicksPerSecond = 30;
@@ -23,6 +26,7 @@ public sealed record RuntimeConfiguration(
         ulong? seed = null;
         string? importSavePath = null;
         bool confirmImport = false;
+        string? bootAction = null;
 
         foreach (string argument in arguments)
         {
@@ -63,6 +67,15 @@ public sealed record RuntimeConfiguration(
                         }
                         importSavePath = value;
                     }
+                    else if (argument.StartsWith("--boot-action=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--boot-action=".Length..].ToUpperInvariant();
+                        if (!BootActionIds.All.Contains(value, StringComparer.Ordinal))
+                        {
+                            throw new ArgumentException($"Unknown boot action: {value}.", nameof(arguments));
+                        }
+                        bootAction = value;
+                    }
 
                     break;
             }
@@ -97,6 +110,7 @@ public sealed record RuntimeConfiguration(
             seed,
             lowTickProfile ? LowTickPhysicsTicksPerSecond : DefaultPhysicsTicksPerSecond,
             importSavePath,
-            confirmImport);
+            confirmImport,
+            bootAction);
     }
 }

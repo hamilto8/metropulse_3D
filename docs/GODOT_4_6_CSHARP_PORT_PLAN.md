@@ -829,7 +829,7 @@ ported because they require engine adapters.
 > **Status:** In progress as of 2026-08-09. The first slice implements the
 > renderer-independent ordered boot pipeline, desktop `user://`/graphics/input/
 > resource capability probes, canonical content validation at boot, explicit
-> temporary `NEW_GAME` selection, disabled session construction, final
+> initial `NEW_GAME` selection, disabled session construction, final
 > readiness validation, and interactive release. Save discovery/application,
 > game-save file persistence, restore/import, and expanded diagnostics remain
 > Phase 3 work. The second slice adds validated global
@@ -852,8 +852,11 @@ ported because they require engine adapters.
 > static restore with reverse rollback, explicit deferred static/runtime
 > descriptors, a browser Export City Save action, strict native import preview,
 > exact-byte import backups, explicit CLI confirmation, and confirmed-import
-> Continue coverage. Selectable boot presentation, live world/entity restore,
-> and expanded diagnostics remain.
+> Continue coverage. The seventh slice completes explicit New Game/Continue/
+> Recover presentation and CLI selection, actionable Retry, typed debug-only
+> diagnostics, and clean/resume/recovery/corrupt/future/corrected-retry
+> headless coverage. Live world/entity restore remains deferred to its later
+> owners; the Phase 3 exit audit remains.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
 > `docs/port_handoffs/phase-3-settings-inputmap.md` and
 > `docs/port_handoffs/phase-3-runtime-input-state.md`.
@@ -870,7 +873,7 @@ an empty Management session.
 validation, save discovery, action selection, world/session construction, save
 application, final readiness, interactive release. *(complete for the shell:
 all nine stages run once at their declared stable IDs; discovery validates both
-slots before deterministic action selection, save application retains the
+slots before explicit CLI or player action selection, save application retains the
 validated deferred descriptor, and input releases only after readiness)*.
 
 3.2 Replace browser capability probes with desktop checks for writable
@@ -949,7 +952,11 @@ imports preserve both slots.)*
 3.9 Recreate diagnostics: game state, clock policy, transition, controlled
 entity descriptor, mission, save state, counts, FPS/frame time, renderer stats,
 feature flags, seed, and scenario metadata. Test hooks must be unavailable in
-release builds.
+release builds. *(complete for the Phase 3 shell: the debug-only overlay reads
+the composition/session/save authorities, labels absent simulation owners and
+runtime restore as explicit deferred states, reports live scene/render counters
+without manufacturing gameplay entities, and includes immutable feature/scenario
+metadata. Runtime test/seed/low-tick flags remain rejected outside debug builds.)*
 
 ### Exit gate
 

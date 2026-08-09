@@ -17,6 +17,7 @@ public sealed class RuntimeConfigurationTests
         Assert.Equal(120, configuration.PhysicsTicksPerSecond);
         Assert.Null(configuration.ImportSavePath);
         Assert.False(configuration.ConfirmImport);
+        Assert.Null(configuration.BootAction);
     }
 
     [Fact]
@@ -77,10 +78,30 @@ public sealed class RuntimeConfigurationTests
     }
 
     [Theory]
+    [InlineData("new_game", "NEW_GAME")]
+    [InlineData("continue", "CONTINUE")]
+    [InlineData("RECOVER", "RECOVER")]
+    public void Parse_AcceptsExplicitBootActions(string input, string expected)
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse(
+            [$"--boot-action={input}"],
+            isDebugBuild: false);
+
+        Assert.Equal(expected, configuration.BootAction);
+    }
+
+    [Theory]
     [InlineData("--import-save=relative.json")]
     [InlineData("--confirm-import")]
     public void Parse_RejectsAmbiguousImportRequests(string argument)
     {
         Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse([argument], isDebugBuild: true));
+    }
+
+    [Fact]
+    public void Parse_RejectsUnknownBootAction()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            RuntimeConfiguration.Parse(["--boot-action=LOAD_WHATEVER"], isDebugBuild: false));
     }
 }

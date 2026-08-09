@@ -34,10 +34,51 @@ theme_override_constants/margin_top = 48
 theme_override_constants/margin_right = 48
 theme_override_constants/margin_bottom = 48
 
-[node name="Status" type="Label" parent="BootLayer/Margin"]
+[node name="Content" type="VBoxContainer" parent="BootLayer/Margin"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="Status" type="Label" parent="BootLayer/Margin/Content"]
 layout_mode = 2
 text = "METROPULSE 3D\nInitializing native runtime…"
+horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Discovery" type="Label" parent="BootLayer/Margin/Content"]
+visible = false
+layout_mode = 2
+text = "Choose how to enter MetroPulse."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="BootLayer/Margin/Content"]
+visible = false
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="NewGame" type="Button" parent="BootLayer/Margin/Content/Actions"]
+layout_mode = 2
+custom_minimum_size = Vector2(180, 64)
+text = "New Game"
+
+[node name="Continue" type="Button" parent="BootLayer/Margin/Content/Actions"]
+layout_mode = 2
+custom_minimum_size = Vector2(220, 64)
+text = "Continue"
+
+[node name="Recover" type="Button" parent="BootLayer/Margin/Content/Actions"]
+layout_mode = 2
+custom_minimum_size = Vector2(240, 64)
+text = "Recover Previous Save"
+
+[node name="Retry" type="Button" parent="BootLayer/Margin/Content"]
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(180, 48)
+size_flags_horizontal = 4
+text = "Retry Boot"
 
 [node name="DiagnosticsLayer" type="CanvasLayer" parent="."]
 layer = 100
@@ -46,8 +87,8 @@ script = ExtResource("3_diagnostics")
 [node name="Panel" type="PanelContainer" parent="DiagnosticsLayer"]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 480.0
-offset_bottom = 160.0
+offset_right = 680.0
+offset_bottom = 760.0
 
 [node name="Snapshot" type="Label" parent="DiagnosticsLayer/Panel"]
 layout_mode = 2

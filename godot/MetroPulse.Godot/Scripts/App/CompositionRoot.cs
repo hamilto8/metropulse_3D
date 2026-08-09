@@ -71,9 +71,9 @@ public partial class CompositionRoot : Node
         {
             Configuration = RuntimeConfiguration.Parse(OS.GetCmdlineUserArgs(), OS.IsDebugBuild());
             Engine.PhysicsTicksPerSecond = Configuration.PhysicsTicksPerSecond;
-            diagnostics.Initialize(Configuration, sessionLoaded: false);
+            diagnostics.Initialize(Configuration, sessionLoaded: false, this);
 
-            var pipeline = new BootPipeline(CreateInitialStages(), progress =>
+            var pipeline = new BootPipeline(CreateInitialStages(boot), progress =>
             {
                 bootProgress.Add(progress);
                 boot.ShowProgress(progress);
@@ -90,7 +90,7 @@ public partial class CompositionRoot : Node
             });
 
             LastBootResults = await pipeline.RunAsync();
-            diagnostics.Initialize(Configuration, CurrentSession?.IsInteractiveReleased == true);
+            diagnostics.Initialize(Configuration, CurrentSession?.IsInteractiveReleased == true, this);
             boot.ShowReady();
 
             AppLog.Write(new StructuredLogEvent(
@@ -139,7 +139,8 @@ public partial class CompositionRoot : Node
                 : string.Join('\n', new[] { bootError.UserMessage }.Concat(bootError.Actions));
             diagnostics.Initialize(
                 Configuration ?? RuntimeConfiguration.Parse([], OS.IsDebugBuild()),
-                sessionLoaded: false);
+                sessionLoaded: false,
+                this);
             diagnostics.SetFatalError(errorCode);
             boot.ShowFatal(errorCode, remedy);
 
@@ -216,7 +217,7 @@ public partial class CompositionRoot : Node
         SaveValidator = null;
     }
 
-    private IReadOnlyList<BootStageDefinition> CreateInitialStages()
+    private IReadOnlyList<BootStageDefinition> CreateInitialStages(BootStatusPresenter boot)
     {
         const string capabilityLabel = "Checking desktop capabilities";
         return
@@ -283,8 +284,22 @@ public partial class CompositionRoot : Node
                     {
                         throw new FileNotFoundException("The selected city save import file does not exist.", configuration.ImportSavePath);
                     }
-                    PreparedGameSaveImport preparedImport = SaveImportService.Prepare(
-                        System.IO.File.ReadAllBytes(configuration.ImportSavePath));
+                    PreparedGameSaveImport preparedImport;
+                    try
+                    {
+                        preparedImport = SaveImportService.Prepare(
+                            System.IO.File.ReadAllBytes(configuration.ImportSavePath));
+                    }
+                    catch (GameSaveValidationException error)
+                    {
+                        throw new BootStageException(
+                            BootStageIds.SaveDiscovery,
+                            "Discovering validated city saves",
+                            error.Code,
+                            error.UserMessage,
+                            ["Choose another export, update MetroPulse when needed, or start a New Game."],
+                            error);
+                    }
                     ImportPreview = preparedImport.Preview;
                     if (!configuration.ConfirmImport)
                     {
@@ -300,16 +315,11 @@ public partial class CompositionRoot : Node
                 SaveDiscoveryReport = new GameSaveDiscovery(SaveRepository, SaveValidator).Discover();
                 return ValueTask.FromResult<object?>(SaveDiscoveryReport);
             }),
-            new(BootStageIds.ActionSelection, "Selecting startup action", (results, _) =>
-            {
-                GameSaveDiscoveryReport discovery = (GameSaveDiscoveryReport)results[BootStageIds.SaveDiscovery]!;
-                string action = discovery.Actions[BootActionIds.Continue]
-                    ? BootActionIds.Continue
-                    : discovery.Actions[BootActionIds.Recover]
-                        ? BootActionIds.Recover
-                        : BootActionIds.NewGame;
-                return ValueTask.FromResult<object?>(action);
-            }),
+            new(BootStageIds.ActionSelection, "Selecting startup action", (results, cancellationToken) =>
+                SelectBootAction(
+                    boot,
+                    (GameSaveDiscoveryReport)results[BootStageIds.SaveDiscovery]!,
+                    cancellationToken)),
             new(BootStageIds.SessionConstruction, "Constructing empty Management session", (_, _) =>
             {
                 SessionShell session = StartSession();
@@ -373,5 +383,37 @@ public partial class CompositionRoot : Node
             : $"{preview.ControlledKind} {preview.ControlledTypeId}";
         return $"Import preview for {preview.SaveId}: saved {preview.SavedAt}, state {preview.GameState}, "
             + $"{preview.BuildingCount} user buildings, {preview.ZoneCount} zones, {mission}, {controlled}.";
+    }
+
+    private async ValueTask<object?> SelectBootAction(
+        BootStatusPresenter boot,
+        GameSaveDiscoveryReport discovery,
+        CancellationToken cancellationToken)
+    {
+        RuntimeConfiguration configuration = Configuration
+            ?? throw new InvalidOperationException("Runtime configuration must precede action selection.");
+        if (configuration.BootAction is not null)
+        {
+            if (!discovery.Actions.GetValueOrDefault(configuration.BootAction))
+            {
+                throw new BootStageException(
+                    BootStageIds.ActionSelection,
+                    "Selecting startup action",
+                    "BOOT_ACTION_UNAVAILABLE",
+                    $"The requested {configuration.BootAction} action is unavailable because its required save slot is not valid.",
+                    ["Choose an action shown as available, repair the save file, or start a New Game."]);
+            }
+            return configuration.BootAction;
+        }
+        if (DisplayServer.GetName() == "headless")
+        {
+            throw new BootStageException(
+                BootStageIds.ActionSelection,
+                "Selecting startup action",
+                "BOOT_ACTION_REQUIRED",
+                "Headless boot requires an explicit city-session action.",
+                ["Pass --boot-action=NEW_GAME, CONTINUE, or RECOVER."]);
+        }
+        return await boot.SelectActionAsync(discovery, cancellationToken);
     }
 }

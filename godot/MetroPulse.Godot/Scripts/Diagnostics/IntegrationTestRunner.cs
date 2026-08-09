@@ -69,12 +69,16 @@ public partial class IntegrationTestRunner : Node
             "Canonical content validation completes during boot.",
             failures);
         bool importScenario = compositionRoot.Configuration?.ImportSavePath is not null;
+        string expectedAction = compositionRoot.Configuration?.BootAction
+            ?? throw new InvalidOperationException("Headless integration requires an explicit boot action.");
+        bool restoreScenario = expectedAction is BootActionIds.Continue or BootActionIds.Recover;
+        bool recoverySeedScenario = importScenario && expectedAction == BootActionIds.NewGame;
         Check(
             string.Equals(
                 compositionRoot.LastBootResults?[BootStageIds.ActionSelection] as string,
-                importScenario ? BootActionIds.Continue : BootActionIds.NewGame,
+                expectedAction,
                 StringComparison.Ordinal),
-            "Action selection matches validated clean/import discovery.",
+            "Action selection matches the explicit validated boot action.",
             failures);
         Check(compositionRoot.SaveValidator is not null, "Boot owns the production game-save validator.", failures);
         Check(
@@ -110,10 +114,11 @@ public partial class IntegrationTestRunner : Node
             "Discovery exposes only actions backed by validated save slots.",
             failures);
         Check(
-            importScenario
-                ? compositionRoot.PreparedSave is { Action: BootActionIds.Continue, Restore: true, SaveDocument: not null }
+            restoreScenario
+                ? compositionRoot.PreparedSave is { Restore: true, SaveDocument: not null }
+                    && compositionRoot.PreparedSave.Action == expectedAction
                 : compositionRoot.PreparedSave is { Action: BootActionIds.NewGame, Restore: false, SaveDocument: null },
-            "Save application prepares the validated clean/import action.",
+            "Save application prepares the selected validated action.",
             failures);
         Check(
             ReferenceEquals(compositionRoot.LastBootResults?[BootStageIds.SaveApplication], compositionRoot.PreparedSave),
@@ -124,7 +129,7 @@ public partial class IntegrationTestRunner : Node
             "Save application constructs the split static/runtime restore coordinator.",
             failures);
         Check(
-            importScenario
+            restoreScenario
                 ? compositionRoot.StaticRestoreReport is { PendingRuntime: not null }
                     && compositionRoot.StaticRestoreReport.AppliedDomains.SequenceEqual(
                         [GameSaveDomainIds.Settings, GameSaveDomainIds.Bindings])
@@ -133,14 +138,19 @@ public partial class IntegrationTestRunner : Node
                         compositionRoot.SaveRestoreCoordinator?.PendingRuntime)
                 : compositionRoot.StaticRestoreReport is null
                     && compositionRoot.SaveRestoreCoordinator?.PendingRuntime is null,
-            "Static restore applies available owners and retains runtime only when requested.",
+            "Static restore applies available owners and retains runtime only for restore actions.",
             failures);
         Check(
-            importScenario
+            restoreScenario
                 ? compositionRoot.SaveRepository?.ReadSlots() is { Current: not null, Recovery: null }
-                : compositionRoot.SaveRepository?.ReadSlots() == new GameSaveSlots(null, null),
-            "Save application leaves the expected clean/import slot state.",
+                : recoverySeedScenario
+                    ? compositionRoot.SaveRepository?.ReadSlots() is { Current: null, Recovery: not null }
+                    : compositionRoot.SaveRepository?.ReadSlots() == new GameSaveSlots(null, null),
+            "Save application leaves the expected action-specific slot state.",
             failures);
+        await CheckBootActionPresentation(compositionRoot, failures);
+        CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
+        CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckGameSaveRepository(failures);
@@ -155,7 +165,11 @@ public partial class IntegrationTestRunner : Node
                 LogSeverity.Information,
                 "integration.passed",
                 "Phase 3 shell integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "74" }));
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = recoverySeedScenario ? "88" : "84",
+                    ["bootAction"] = expectedAction,
+                }));
             GetTree().Quit(0);
             return;
         }
@@ -177,6 +191,121 @@ public partial class IntegrationTestRunner : Node
         if (!condition)
         {
             failures.Add(assertion);
+        }
+    }
+
+    private async ValueTask CheckBootActionPresentation(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        BootStatusPresenter boot = compositionRoot.GetNode<BootStatusPresenter>("../BootLayer");
+        GameSaveDiscoveryReport report = compositionRoot.SaveDiscoveryReport
+            ?? throw new InvalidOperationException("Save discovery report is unavailable.");
+        ValueTask<string> selection = boot.SelectActionAsync(report);
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        Button newGame = boot.GetNode<Button>("Margin/Content/Actions/NewGame");
+        Button continueButton = boot.GetNode<Button>("Margin/Content/Actions/Continue");
+        Button recover = boot.GetNode<Button>("Margin/Content/Actions/Recover");
+        Check(
+            boot.ActionSelectionVisible && !newGame.Disabled,
+            "Interactive boot presents an enabled New Game action.",
+            failures);
+        Check(
+            continueButton.Disabled != report.Actions[BootActionIds.Continue]
+                && recover.Disabled != report.Actions[BootActionIds.Recover],
+            "Interactive boot enables Continue and Recover only for validated slots.",
+            failures);
+        newGame.EmitSignal(BaseButton.SignalName.Pressed);
+        Check(
+            await selection == BootActionIds.NewGame && !boot.ActionSelectionVisible,
+            "Interactive action selection resolves once and hides its controls.",
+            failures);
+        boot.ShowFatal("INTEGRATION_RETRY", "Correct the fixture, then retry.");
+        Check(boot.RetryAvailable, "Actionable boot failure presentation exposes Retry.", failures);
+        boot.ShowReady();
+    }
+
+    private static void CheckDiagnostics(
+        CompositionRoot compositionRoot,
+        DiagnosticsOverlay diagnostics,
+        bool restoreScenario,
+        ICollection<string> failures)
+    {
+        DiagnosticSnapshot snapshot = diagnostics.CurrentSnapshot;
+        Check(
+            snapshot.Runtime.GameState == (restoreScenario ? "STREET_VEHICLE" : "MANAGEMENT")
+                && snapshot.Runtime.Transition == (restoreScenario ? "RUNTIME_RESTORE_PENDING" : "STABLE"),
+            "Diagnostics report the authoritative or explicitly deferred game state and transition.",
+            failures);
+        Check(
+            snapshot.Save.Action == compositionRoot.Configuration?.BootAction
+                && snapshot.Save.Status == (restoreScenario ? "RESTORE_DEFERRED" : "READY")
+                && snapshot.Save.RuntimeRestorePending == restoreScenario,
+            "Diagnostics report boot action, save-slot state, and deferred runtime restore truthfully.",
+            failures);
+        Check(
+            restoreScenario
+                ? snapshot.ControlledEntity is { Kind: "VEHICLE", TypeId: "SEDAN", Speed: 12.5 }
+                : snapshot.ControlledEntity is null,
+            "Diagnostics expose a controlled-entity descriptor only when one is retained.",
+            failures);
+        Check(
+            snapshot.Counts is { SceneNodes: > 0, WorldNodes: > 0, ContentMissions: 15, ContentBuildings: 19 },
+            "Diagnostics publish live scene/world and canonical content counts.",
+            failures);
+        Check(
+            snapshot.Performance.Fps >= 0
+                && snapshot.Performance.FrameMilliseconds >= 0
+                && !string.IsNullOrWhiteSpace(snapshot.Renderer),
+            "Diagnostics publish bounded frame timing and renderer statistics.",
+            failures);
+        Check(
+            snapshot.FeatureFlags.Count > 0
+                && snapshot.Scenario is { Deterministic: true, Seed: 1, TestHooksAvailable: true },
+            "Diagnostics publish immutable feature flags and debug-only scenario metadata.",
+            failures);
+    }
+
+    private static void CheckRecoveryScenario(
+        CompositionRoot compositionRoot,
+        bool recoverySeedScenario,
+        ICollection<string> failures)
+    {
+        if (!recoverySeedScenario) return;
+        try
+        {
+            GodotGameSaveRepository repository = compositionRoot.SaveRepository
+                ?? throw new InvalidOperationException("Save repository is unavailable.");
+            GameSaveDocumentValidator validator = compositionRoot.SaveValidator
+                ?? throw new InvalidOperationException("Save validator is unavailable.");
+            GameSaveDiscovery discovery = new(repository, validator);
+            GameSaveDiscoveryReport report = discovery.Discover();
+            Check(
+                report is { Current.Valid: false, Recovery.Valid: true }
+                    && report.Actions[BootActionIds.Recover],
+                "New Game preserves the imported known-good current as an eligible recovery.",
+                failures);
+            PreparedBootSave prepared = discovery.Prepare(BootActionIds.Recover, report);
+            Check(
+                prepared is { Action: BootActionIds.Recover, Restore: true, SaveDocument: not null },
+                "Recover selects the validated recovery document.",
+                failures);
+            Check(
+                repository.ReadSlots() is { Current: not null, Recovery: not null },
+                "Recover promotes the selected recovery into current without deleting recovery.",
+                failures);
+            GameSaveStaticRestoreReport restored = compositionRoot.SaveRestoreCoordinator?.RestoreStatic(
+                prepared.SaveDocument!.Json)
+                ?? throw new InvalidOperationException("Save restore coordinator is unavailable.");
+            Check(
+                restored.PendingRuntime.DomainIds.Contains(GameSaveDomainIds.Player, StringComparer.Ordinal)
+                    && ReferenceEquals(restored.PendingRuntime, compositionRoot.SaveRestoreCoordinator?.PendingRuntime),
+                "Recovered static state retains its runtime entity descriptor for the future adapter.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Recover scenario integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

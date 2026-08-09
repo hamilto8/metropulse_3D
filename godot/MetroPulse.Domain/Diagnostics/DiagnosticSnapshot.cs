@@ -1,5 +1,61 @@
 namespace MetroPulse.Domain.Diagnostics;
 
+public sealed record DiagnosticRuntimeState(
+    string GameState,
+    string ClockPolicy,
+    string Transition,
+    bool MayhemEnabled);
+
+public sealed record DiagnosticControlledEntity(
+    string Kind,
+    string ContentId,
+    string TypeId,
+    IReadOnlyList<double> Position,
+    double Speed);
+
+public sealed record DiagnosticMissionState(
+    string? MissionId,
+    string? Phase,
+    string? Checkpoint);
+
+public sealed record DiagnosticSaveState(
+    string Action,
+    string Status,
+    bool CurrentValid,
+    bool RecoveryValid,
+    bool RuntimeRestorePending,
+    string? SaveId,
+    string? LastSavedAt,
+    string? Error);
+
+public sealed record DiagnosticCounts(
+    int SceneNodes,
+    int WorldNodes,
+    int PhysicsBodies,
+    int Vehicles,
+    int Pedestrians,
+    int Aircraft,
+    int SavedBuildings,
+    int SavedZones,
+    int SavedAlerts,
+    int ContentMissions,
+    int ContentBuildings);
+
+public sealed record DiagnosticPerformance(
+    double Fps,
+    double FrameMilliseconds,
+    ulong DrawCalls,
+    ulong Primitives,
+    ulong VideoMemoryBytes);
+
+public sealed record DiagnosticScenarioMetadata(
+    bool Deterministic,
+    ulong? Seed,
+    string? BootAction,
+    bool ImportRequested,
+    bool ImportConfirmed,
+    bool TestHooksAvailable);
+
 public sealed record DiagnosticSnapshot(
     string ApplicationVersion,
     string SourceRevision,
@@ -8,7 +64,18 @@ public sealed record DiagnosticSnapshot(
     string PhysicsEngine,
     int PhysicsTicksPerSecond,
     bool PhysicsInterpolationEnabled,
-    bool DeterministicTestMode,
-    ulong? ScenarioSeed,
     bool SessionLoaded,
-    string? FatalErrorCode);
+    string? FatalErrorCode,
+    DiagnosticRuntimeState Runtime,
+    DiagnosticControlledEntity? ControlledEntity,
+    DiagnosticMissionState Mission,
+    DiagnosticSaveState Save,
+    DiagnosticCounts Counts,
+    DiagnosticPerformance Performance,
+    IReadOnlyDictionary<string, bool> FeatureFlags,
+    DiagnosticScenarioMetadata Scenario)
+{
+    public bool DeterministicTestMode => Scenario.Deterministic;
+
+    public ulong? ScenarioSeed => Scenario.Seed;
+}

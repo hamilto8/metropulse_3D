@@ -1,7 +1,10 @@
 using System.Reflection;
 using System.Text.Json;
 using Godot;
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Persistence;
+using MetroPulse.Godot.App;
 
 namespace MetroPulse.Godot.Diagnostics;
 
@@ -14,9 +17,12 @@ public partial class DiagnosticsOverlay : CanvasLayer
     };
 
     private RuntimeConfiguration? _configuration;
+    private CompositionRoot? _compositionRoot;
     private bool _sessionLoaded;
     private string? _fatalErrorCode;
     private Label? _snapshotLabel;
+    private double _frameMilliseconds;
+    private double _renderCountdown;
 
     public DiagnosticSnapshot CurrentSnapshot => CaptureSnapshot();
 
@@ -26,10 +32,26 @@ public partial class DiagnosticsOverlay : CanvasLayer
         Visible = OS.IsDebugBuild();
     }
 
-    public void Initialize(RuntimeConfiguration configuration, bool sessionLoaded)
+    public override void _Process(double delta)
+    {
+        _frameMilliseconds = Math.Max(0, delta) * 1000;
+        if (!OS.IsDebugBuild()) return;
+        _renderCountdown -= delta;
+        if (_renderCountdown <= 0)
+        {
+            _renderCountdown = 0.25;
+            RenderSnapshot();
+        }
+    }
+
+    public void Initialize(
+        RuntimeConfiguration configuration,
+        bool sessionLoaded,
+        CompositionRoot? compositionRoot = null)
     {
         _configuration = configuration;
         _sessionLoaded = sessionLoaded;
+        _compositionRoot = compositionRoot;
         RenderSnapshot();
     }
 
@@ -49,6 +71,18 @@ public partial class DiagnosticsOverlay : CanvasLayer
         string renderer = RenderingServer.GetCurrentRenderingDriverName();
         string physicsEngine = ProjectSettings.GetSetting("physics/3d/physics_engine", "unknown").AsString();
 
+        DiagnosticSaveData saveData = ReadSaveData();
+        GameSaveDiscoveryReport? discovery = _compositionRoot?.SaveDiscoveryReport;
+        DeferredGameSaveDescriptor? pendingRuntime = _compositionRoot?.SaveRestoreCoordinator?.PendingRuntime;
+        string action = _compositionRoot?.PreparedSave?.Action ?? _configuration?.BootAction ?? "UNSELECTED";
+        string saveStatus = _fatalErrorCode is not null
+            ? "ERROR"
+            : pendingRuntime is not null
+                ? "RESTORE_DEFERRED"
+                : _sessionLoaded
+                    ? "READY"
+                    : "BOOTING";
+
         return new DiagnosticSnapshot(
             informationalVersion,
             sourceRevision,
@@ -57,15 +91,164 @@ public partial class DiagnosticsOverlay : CanvasLayer
             physicsEngine,
             Engine.PhysicsTicksPerSecond,
             ProjectSettings.GetSetting("physics/common/physics_interpolation", false).AsBool(),
-            _configuration?.DeterministicTestMode ?? false,
-            _configuration?.ScenarioSeed,
             _sessionLoaded,
-            _fatalErrorCode);
+            _fatalErrorCode,
+            new DiagnosticRuntimeState(
+                saveData.GameState ?? "MANAGEMENT",
+                pendingRuntime is null ? "EMPTY_SESSION_NO_SIMULATION_CLOCK" : "DEFERRED_RESTORE",
+                pendingRuntime is null ? "STABLE" : "RUNTIME_RESTORE_PENDING",
+                saveData.MayhemEnabled),
+            saveData.ControlledEntity,
+            new DiagnosticMissionState(saveData.MissionId, saveData.MissionPhase, saveData.Checkpoint),
+            new DiagnosticSaveState(
+                action,
+                saveStatus,
+                discovery?.Current.Valid == true,
+                discovery?.Recovery.Valid == true,
+                pendingRuntime is not null,
+                _compositionRoot?.PreparedSave?.SaveDocument?.SaveId,
+                _compositionRoot?.PreparedSave?.SaveDocument?.SavedAt,
+                _fatalErrorCode),
+            CaptureCounts(saveData),
+            new DiagnosticPerformance(
+                Engine.GetFramesPerSecond(),
+                _frameMilliseconds,
+                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame),
+                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame),
+                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.VideoMemUsed)),
+            new FeatureFlagSet().Snapshot(),
+            new DiagnosticScenarioMetadata(
+                _configuration?.DeterministicTestMode ?? false,
+                _configuration?.ScenarioSeed,
+                _configuration?.BootAction,
+                _configuration?.ImportSavePath is not null,
+                _configuration?.ConfirmImport ?? false,
+                OS.IsDebugBuild()));
     }
+
+    private DiagnosticCounts CaptureCounts(DiagnosticSaveData saveData)
+    {
+        Node root = GetTree().Root;
+        Node? world = _compositionRoot?.CurrentSession?.GetNodeOrNull<Node>("WorldRoot");
+        int contentMissions = _compositionRoot?.ContentRegistry?.Counts.Missions ?? 0;
+        int contentBuildings = _compositionRoot?.ContentRegistry?.Counts.Buildings ?? 0;
+        return new DiagnosticCounts(
+            CountNodes(root),
+            world is null ? 0 : CountNodes(world),
+            CountNodes<CollisionObject3D>(root),
+            GetTree().GetNodesInGroup("vehicles").Count,
+            GetTree().GetNodesInGroup("pedestrians").Count,
+            GetTree().GetNodesInGroup("aircraft").Count,
+            saveData.SavedBuildings,
+            saveData.SavedZones,
+            saveData.SavedAlerts,
+            contentMissions,
+            contentBuildings);
+    }
+
+    private DiagnosticSaveData ReadSaveData()
+    {
+        string? dataJson = _compositionRoot?.SaveRestoreCoordinator?.PendingRuntime?.DataJson
+            ?? _compositionRoot?.PreparedSave?.SaveDocument?.DataJson;
+        if (string.IsNullOrWhiteSpace(dataJson)) return new DiagnosticSaveData();
+        try
+        {
+            using JsonDocument parsed = JsonDocument.Parse(dataJson);
+            JsonElement root = parsed.RootElement;
+            JsonElement game = Property(root, "game");
+            JsonElement player = Property(root, "player");
+            JsonElement missions = Property(root, "missions");
+            JsonElement world = Property(root, "world");
+            JsonElement alerts = Property(root, "alerts");
+            JsonElement controlled = Property(player, "controlled");
+            JsonElement activeMission = Property(missions, "active");
+            JsonElement lifecycle = Property(missions, "lifecycle");
+            JsonElement lifecycleRun = Property(lifecycle, "run");
+            DiagnosticControlledEntity? entity = controlled.ValueKind == JsonValueKind.Object
+                ? new DiagnosticControlledEntity(
+                    Text(controlled, "kind") ?? "UNKNOWN",
+                    Text(controlled, "contentId") ?? "UNKNOWN",
+                    Text(controlled, "typeId") ?? "UNKNOWN",
+                    Numbers(controlled, "position"),
+                    Number(controlled, "speed"))
+                : null;
+            return new DiagnosticSaveData
+            {
+                GameState = Text(game, "state"),
+                MayhemEnabled = Boolean(game, "mayhemEnabled"),
+                ControlledEntity = entity,
+                MissionId = Text(activeMission, "contentId") ?? Text(lifecycle, "selectedMissionId"),
+                MissionPhase = Text(lifecycle, "phase") ?? Text(activeMission, "state"),
+                Checkpoint = Text(lifecycleRun, "checkpoint"),
+                SavedBuildings = ArrayLength(world, "buildings"),
+                SavedZones = ArrayLength(world, "zones"),
+                SavedAlerts = ArrayLength(alerts, "items"),
+            };
+        }
+        catch (JsonException)
+        {
+            return new DiagnosticSaveData();
+        }
+    }
+
+    private static JsonElement Property(JsonElement parent, string name) =>
+        parent.ValueKind == JsonValueKind.Object && parent.TryGetProperty(name, out JsonElement value)
+            ? value
+            : default;
+
+    private static string? Text(JsonElement parent, string name)
+    {
+        JsonElement value = Property(parent, name);
+        return value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    }
+
+    private static bool Boolean(JsonElement parent, string name)
+    {
+        JsonElement value = Property(parent, name);
+        return value.ValueKind is JsonValueKind.True or JsonValueKind.False && value.GetBoolean();
+    }
+
+    private static double Number(JsonElement parent, string name)
+    {
+        JsonElement value = Property(parent, name);
+        return value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out double number) ? number : 0;
+    }
+
+    private static IReadOnlyList<double> Numbers(JsonElement parent, string name)
+    {
+        JsonElement value = Property(parent, name);
+        return value.ValueKind == JsonValueKind.Array
+            ? Array.AsReadOnly(value.EnumerateArray().Select(item => item.TryGetDouble(out double number) ? number : 0).ToArray())
+            : Array.Empty<double>();
+    }
+
+    private static int ArrayLength(JsonElement parent, string name)
+    {
+        JsonElement value = Property(parent, name);
+        return value.ValueKind == JsonValueKind.Array ? value.GetArrayLength() : 0;
+    }
+
+    private static int CountNodes(Node node) => 1 + node.GetChildren().Sum(CountNodes);
+
+    private static int CountNodes<T>(Node node) where T : Node =>
+        (node is T ? 1 : 0) + node.GetChildren().Sum(CountNodes<T>);
 
     private void RenderSnapshot()
     {
         Label snapshotLabel = _snapshotLabel ??= GetNode<Label>("Panel/Snapshot");
         snapshotLabel.Text = JsonSerializer.Serialize(CaptureSnapshot(), SerializerOptions);
+    }
+
+    private sealed record DiagnosticSaveData
+    {
+        public string? GameState { get; init; }
+        public bool MayhemEnabled { get; init; }
+        public DiagnosticControlledEntity? ControlledEntity { get; init; }
+        public string? MissionId { get; init; }
+        public string? MissionPhase { get; init; }
+        public string? Checkpoint { get; init; }
+        public int SavedBuildings { get; init; }
+        public int SavedZones { get; init; }
+        public int SavedAlerts { get; init; }
     }
 }

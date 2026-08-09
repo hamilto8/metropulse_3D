@@ -60,6 +60,33 @@ precision. The Phase 1 scheduler diagnostic reports its authoritative clock
 policy, all six clocks, fixed/city cadence, accumulator remainder, and per-frame
 step counts.
 
+### Godot Phase 3 diagnostics
+
+Godot debug builds render `DiagnosticsLayer` from a typed immutable
+`DiagnosticSnapshot`. It reports engine/renderer/physics identity; the current
+game, clock, and transition state; controlled entity and mission descriptors;
+validated current/recovery state and pending restore; live scene/world/physics
+counts; saved entity counts; FPS, frame time, draw calls, primitives, and video
+memory; feature flags; and scenario/seed metadata. An owner that does not exist
+in the empty Phase 3 session is labeled `EMPTY_SESSION_NO_SIMULATION_CLOCK` or
+`DEFERRED_RESTORE`; it is never represented as live state.
+
+The overlay and scenario hooks are debug-only. Release parsing rejects
+`--run-integration-tests`, `--deterministic-test`, `--seed`, and `--low-tick`.
+Release-safe recovery options such as `--boot-action`, `--import-save`, and
+`--confirm-import` remain available.
+
+Run the Phase 3 native scenarios with:
+
+```bash
+GODOT_BIN=/path/to/Godot ./godot/scripts/test-integration.sh
+```
+
+The script proves clean New Game, imported Continue, recovery promotion,
+corrupt-save rejection, future-version rejection, unconfirmed preview, and a
+corrected confirmed retry. Successful runs contain 84, 84, and 88 assertions;
+expected failures must exit nonzero with their stable error code.
+
 ## Smoke acceptance
 
 The smoke test uses a clean profile, verifies that the world remains absent and

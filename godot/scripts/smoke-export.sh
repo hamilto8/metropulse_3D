@@ -36,4 +36,4 @@ if [[ ! -x "${EXECUTABLE}" ]]; then
   exit 66
 fi
 
-"${EXECUTABLE}" --headless -- --smoke-boot
+"${EXECUTABLE}" --headless -- --smoke-boot --boot-action=NEW_GAME
