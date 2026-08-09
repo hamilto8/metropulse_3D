@@ -826,6 +826,15 @@ ported because they require engine adapters.
 
 ## 11. Phase 3 — Boot, settings, input, diagnostics, and persistence shell
 
+> **Status:** In progress as of 2026-08-09. The first slice implements the
+> renderer-independent ordered boot pipeline, desktop `user://`/graphics/input/
+> resource capability probes, canonical content validation at boot, explicit
+> temporary `NEW_GAME` selection, disabled session construction, final
+> readiness validation, and interactive release. Settings bootstrap, InputMap,
+> save discovery/application, file persistence, restore/import, and expanded
+> diagnostics remain Phase 3 work. See
+> `docs/port_handoffs/phase-3-boot-capability-shell.md`.
+
 ### Objective
 
 Make a safe, testable Godot application shell that can validate content,
@@ -836,12 +845,19 @@ an empty Management session.
 
 3.1 Recreate the boot stages: capability checks, settings bootstrap, content
 validation, save discovery, action selection, world/session construction, save
-application, final readiness, interactive release.
+application, final readiness, interactive release. *(in progress: the pipeline
+and capability/content/action/session/readiness/release stages are live;
+settings, discovery, and save application will be inserted at their declared
+stable IDs by later Phase 3 chunks)*.
 
 3.2 Replace browser capability probes with desktop checks for writable
 `user://`, compatible save/content versions, graphics backend, required input
 devices, and minimum project resource availability. Provide actionable errors;
-never enter a partially constructed world.
+never enter a partially constructed world. *(in progress: real `user://`
+write/flush/read/delete, graphics backend, Godot input service, packaged
+SessionRoot resource, and production content checks run before construction;
+save-version and physical-device/InputMap checks remain with their owning
+chunks)*.
 
 3.3 Rebuild settings and bindings using Godot InputMap as the runtime adapter,
 but keep the validated domain document as authority. Preserve contexts:
