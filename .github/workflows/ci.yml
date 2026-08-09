@@ -76,6 +76,9 @@ jobs:
       - name: Validate canonical Godot content extraction
         run: ./godot/scripts/validate-content-extraction.sh
 
+      - name: Validate Phase 3 exit evidence
+        run: npm run godot:phase3:audit
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

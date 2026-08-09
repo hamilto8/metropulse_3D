@@ -13,6 +13,7 @@
     "godot:content:extract": "node Tools/GodotContentExtraction/extract-content.mjs --write",
     "godot:content:check": "node Tools/GodotContentExtraction/extract-content.mjs --check",
     "godot:phase2:audit": "node Tools/Phase2Audit/validate-audit.mjs",
+    "godot:phase3:audit": "node Tools/Phase3Audit/validate-audit.mjs",
     "test": "node --test test/*.test.js",
     "test:unit": "node --test test/*.test.js",
     "test:browser": "playwright test",

@@ -826,7 +826,7 @@ ported because they require engine adapters.
 
 ## 11. Phase 3 — Boot, settings, input, diagnostics, and persistence shell
 
-> **Status:** In progress as of 2026-08-09. The first slice implements the
+> **Status:** Complete as of 2026-08-09. The first slice implements the
 > renderer-independent ordered boot pipeline, desktop `user://`/graphics/input/
 > resource capability probes, canonical content validation at boot, explicit
 > initial `NEW_GAME` selection, disabled session construction, final
@@ -855,11 +855,13 @@ ported because they require engine adapters.
 > Continue coverage. The seventh slice completes explicit New Game/Continue/
 > Recover presentation and CLI selection, actionable Retry, typed debug-only
 > diagnostics, and clean/resume/recovery/corrupt/future/corrected-retry
-> headless coverage. Live world/entity restore remains deferred to its later
-> owners; the Phase 3 exit audit remains.
+> headless coverage. The executable exit audit maps all nine requirements and
+> five exit gates to checked-in evidence and runs in local verification and CI.
+> Live world/entity restore remains explicitly deferred to its later owners.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
 > `docs/port_handoffs/phase-3-settings-inputmap.md` and
-> `docs/port_handoffs/phase-3-runtime-input-state.md`.
+> `docs/port_handoffs/phase-3-runtime-input-state.md`; the complete evidence
+> index is `docs/port_handoffs/phase-3-exit-audit.md`.
 
 ### Objective
 
@@ -961,18 +963,25 @@ metadata. Runtime test/seed/low-tick flags remain rejected outside debug builds.
 ### Exit gate
 
 - New Game, Continue, Recover, corrupt save, future save, and retry checks have
-  headless integration coverage.
-- Settings and bindings survive restart and apply through adapters.
-- Current/recovery rotation survives injected interruption.
+  headless integration coverage. *(complete: 84/84/88 successful assertions
+  plus stable-code unconfirmed/corrupt/future failures)*
+- Settings and bindings survive restart and apply through adapters. *(complete:
+  domain reload and live Godot InputMap restart checks pass)*
+- Current/recovery rotation survives injected interruption. *(complete: all six
+  write boundaries plus process-interruption repair pass)*
 - A representative exported browser save validates in Godot and retains all
-  domains, even though world/entity application remains deferred.
-- Boot releases input only after the empty session readiness gate.
+  domains, even though world/entity application remains deferred. *(complete:
+  the controlled-entity fixture migrates, backs up exactly, applies settings,
+  and retains named static/runtime descriptors)*
+- Boot releases input only after the empty session readiness gate. *(complete:
+  ordered progress and interactive-release assertions pass headlessly)*
 
 ### Handoff
 
 Document save paths, import/export workflow, atomicity guarantees by OS, input
 action names, settings adapter ownership, boot-stage events, deferred restore
-descriptors, and any schema changes.
+descriptors, and any schema changes. *(complete across the seven implementation
+handoffs and `phase-3-exit-audit.md`; no schema change was introduced)*
 
 ## 12. Phase 4 — Rebuild the procedural world and rendering baseline
 

@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "phase": 3,
+  "status": "complete",
+  "auditedOn": "2026-08-09",
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "requirements": [
+    {
+      "id": "3.1",
+      "status": "complete",
+      "owner": "BootPipeline, CompositionRoot, BootStatusPresenter",
+      "evidence": [
+        "godot/MetroPulse.Domain/Boot/BootPipeline.cs",
+        "godot/MetroPulse.Godot/Scripts/App/CompositionRoot.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"
+      ]
+    },
+    {
+      "id": "3.2",
+      "status": "complete",
+      "owner": "DesktopCapabilityChecker and fail-closed boot stages",
+      "evidence": [
+        "godot/MetroPulse.Godot/Scripts/App/DesktopCapabilityChecker.cs",
+        "godot/MetroPulse.Domain.Tests/Boot/BootPipelineTests.cs",
+        "godot/scripts/test-integration.sh"
+      ]
+    },
+    {
+      "id": "3.3",
+      "status": "complete",
+      "owner": "SettingsStore, GodotSettingsStorage, GodotInputMapAdapter",
+      "evidence": [
+        "godot/MetroPulse.Domain/Settings/SettingsStore.cs",
+        "godot/MetroPulse.Godot/Scripts/Adapters/GodotSettingsStorage.cs",
+        "godot/MetroPulse.Godot/Scripts/Adapters/GodotInputMapAdapter.cs",
+        "godot/MetroPulse.Domain.Tests/Settings/SettingsStoreTests.cs"
+      ]
+    },
+    {
+      "id": "3.4",
+      "status": "complete",
+      "owner": "RuntimeInputState and RuntimeInputHost",
+      "evidence": [
+        "godot/MetroPulse.Domain/Settings/RuntimeInputState.cs",
+        "godot/MetroPulse.Godot/Scripts/Input/RuntimeInputHost.cs",
+        "godot/MetroPulse.Domain.Tests/Settings/RuntimeInputStateTests.cs"
+      ]
+    },
+    {
+      "id": "3.5",
+      "status": "complete",
+      "owner": "GodotGameSaveRepository",
+      "evidence": [
+        "godot/MetroPulse.Godot/Scripts/Adapters/GodotGameSaveRepository.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs",
+        "docs/port_handoffs/phase-3-game-save-repository.md"
+      ]
+    },
+    {
+      "id": "3.6",
+      "status": "complete",
+      "owner": "GameSaveDocumentValidator and GameSaveService",
+      "evidence": [
+        "godot/MetroPulse.Domain/Persistence/GameSaveDocumentValidator.cs",
+        "godot/MetroPulse.Domain/Persistence/GameSaveService.cs",
+        "godot/MetroPulse.Domain.Tests/Persistence/GameSavePersistenceTests.cs"
+      ]
+    },
+    {
+      "id": "3.7",
+      "status": "complete",
+      "owner": "GameSaveRestoreCoordinator and SettingsSaveRestoreParticipant",
+      "evidence": [
+        "godot/MetroPulse.Domain/Persistence/GameSaveRestore.cs",
+        "godot/MetroPulse.Domain/Persistence/SettingsSaveRestoreParticipant.cs",
+        "godot/MetroPulse.Domain.Tests/Persistence/GameSavePersistenceTests.cs"
+      ]
+    },
+    {
+      "id": "3.8",
+      "status": "complete",
+      "owner": "BrowserSaveExport, GameSaveImportService, GodotGameSaveImportBackupStore",
+      "evidence": [
+        "src/save/BrowserSaveExport.js",
+        "godot/MetroPulse.Domain/Persistence/GameSaveImport.cs",
+        "godot/MetroPulse.Godot/Scripts/Adapters/GodotGameSaveImportBackupStore.cs",
+        "test/PersistenceSystem.test.js",
+        "godot/scripts/test-integration.sh"
+      ]
+    },
+    {
+      "id": "3.9",
+      "status": "complete",
+      "owner": "DiagnosticSnapshot, DiagnosticsOverlay, RuntimeConfiguration",
+      "evidence": [
+        "godot/MetroPulse.Domain/Diagnostics/DiagnosticSnapshot.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/DiagnosticsOverlay.cs",
+        "godot/MetroPulse.Domain.Tests/Diagnostics/RuntimeConfigurationTests.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"
+      ]
+    }
+  ],
+  "exitGates": [
+    {
+      "id": "boot-save-scenarios",
+      "status": "complete",
+      "evidence": ["godot/scripts/test-integration.sh"]
+    },
+    {
+      "id": "settings-bindings-restart",
+      "status": "complete",
+      "evidence": [
+        "godot/MetroPulse.Domain.Tests/Settings/SettingsStoreTests.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"
+      ]
+    },
+    {
+      "id": "interrupted-slot-rotation",
+      "status": "complete",
+      "evidence": [
+        "godot/MetroPulse.Godot/Scripts/Adapters/GodotGameSaveRepository.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"
+      ]
+    },
+    {
+      "id": "browser-save-validation",
+      "status": "complete",
+      "evidence": [
+        "test/fixtures/godot-port/phase0/save-controlled-entity.json",
+        "godot/MetroPulse.Domain.Tests/Persistence/GameSavePersistenceTests.cs",
+        "godot/scripts/test-integration.sh"
+      ]
+    },
+    {
+      "id": "readiness-before-input",
+      "status": "complete",
+      "evidence": [
+        "godot/MetroPulse.Godot/Scripts/App/CompositionRoot.cs",
+        "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"
+      ]
+    }
+  ],
+  "deferredBoundaries": [
+    {
+      "owner": "Live world and entity restore adapters",
+      "phases": [4, 5, 7, 8],
+      "reason": "Phase 3 validates and retains descriptors because no live owners exist yet."
+    },
+    {
+      "owner": "Settings, binding, and save-status product UI",
+      "phases": [9],
+      "reason": "Phase 3 owns the authority and boot actions; full product presentation remains Phase 9."
+    },
+    {
+      "owner": "Hardware and release-platform acceptance",
+      "phases": [11],
+      "reason": "Phase 3 implements probes and automation; the support matrix is a release gate."
+    }
+  ],
+  "lastVerified": {
+    "browserTests": 391,
+    "domainTests": 220,
+    "successfulHeadlessAssertions": [84, 84, 88],
+    "expectedFailureCodes": [
+      "IMPORT_CONFIRMATION_REQUIRED",
+      "INVALID_SAVE",
+      "FUTURE_SAVE_VERSION"
+    ]
+  }
+}
