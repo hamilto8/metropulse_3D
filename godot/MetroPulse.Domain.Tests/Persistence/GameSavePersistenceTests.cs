@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Persistence;
+using MetroPulse.Domain.Settings;
 using Xunit;
 
 namespace MetroPulse.Domain.Tests.Persistence;
@@ -188,6 +189,148 @@ public sealed class GameSavePersistenceTests
         Assert.Contains("interrupted", service.Status.Error, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void StaticRestoreAppliesAvailableSettingsAndRetainsAbsentOwnersAsImmutableDescriptors()
+    {
+        JsonObject save = FixtureNode("save-valid.json");
+        save["data"]!["settings"]!["values"]!["textScale"] = 1.25;
+        save["data"]!["bindings"]!["overrides"] = new JsonObject
+        {
+            [ControlContexts.Management] = new JsonObject { ["BUILD"] = new JsonArray("KeyG") },
+        };
+        var settings = new SettingsStore();
+        settings.Load();
+        var coordinator = new GameSaveRestoreCoordinator(
+            validator,
+            [new SettingsSaveRestoreParticipant(settings)]);
+
+        GameSaveStaticRestoreReport report = coordinator.RestoreStatic(save.ToJsonString());
+
+        Assert.Equal(1.25, settings.Get<double>("textScale"));
+        Assert.Equal("KeyG", settings.GetBindings(ControlContexts.Management, "BUILD")[0]);
+        Assert.Equal([GameSaveDomainIds.Settings, GameSaveDomainIds.Bindings], report.AppliedDomains);
+        Assert.Contains(GameSaveDomainIds.Economy, report.DeferredStatic.DomainIds);
+        Assert.Contains(GameSaveDomainIds.World, report.PendingRuntime.DomainIds);
+        Assert.Contains(GameSaveDomainIds.Player, report.PendingRuntime.DomainIds);
+        JsonObject runtime = JsonNode.Parse(report.PendingRuntime.DataJson)!.AsObject();
+        Assert.True(runtime.ContainsKey(GameSaveDomainIds.Game));
+        Assert.False(runtime.ContainsKey(GameSaveDomainIds.Settings));
+
+        var adapter = new RecordingRuntimeRestoreAdapter();
+        Assert.True(coordinator.RestoreRuntime(adapter));
+        Assert.Equal("phase0-valid", adapter.Applied?.SaveId);
+        Assert.Null(coordinator.PendingRuntime);
+        Assert.False(coordinator.RestoreRuntime(adapter));
+    }
+
+    [Fact]
+    public void StaticRestoreRollsBackAppliedParticipantsWhenACommitFails()
+    {
+        int first = 10;
+        int second = 20;
+        var coordinator = new GameSaveRestoreCoordinator(
+            validator,
+            [
+                new DelegateRestoreParticipant(
+                    GameSaveDomainIds.Economy,
+                    apply: () => first = 11,
+                    rollback: () => first = 10),
+                new DelegateRestoreParticipant(
+                    GameSaveDomainIds.TimeWeather,
+                    apply: () => throw new IOException("static owner rejected restore"),
+                    rollback: () => second = 20),
+            ]);
+
+        GameSaveRestoreException error = Assert.Throws<GameSaveRestoreException>(() =>
+            coordinator.RestoreStatic(FixtureDocument("save-valid.json")));
+
+        Assert.Equal(10, first);
+        Assert.Equal(20, second);
+        Assert.Empty(error.RollbackErrors);
+        Assert.Null(coordinator.LastStaticRestore);
+        Assert.Null(coordinator.PendingRuntime);
+    }
+
+    [Fact]
+    public void FailedRuntimeRestoreRetainsTheDescriptorForRetry()
+    {
+        var coordinator = new GameSaveRestoreCoordinator(validator);
+        GameSaveStaticRestoreReport report = coordinator.RestoreStatic(FixtureDocument("save-controlled-entity.json"));
+        var failing = new RecordingRuntimeRestoreAdapter { Failure = new IOException("runtime owner unavailable") };
+
+        Assert.Throws<IOException>(() => coordinator.RestoreRuntime(failing));
+        Assert.Same(report.PendingRuntime, coordinator.PendingRuntime);
+        Assert.Equal("phase0-controlled-entity", failing.Applied?.SaveId);
+    }
+
+    [Fact]
+    public void ImportPreviewsMigratesBacksUpOriginalAndPublishesOnlyAfterConfirmation()
+    {
+        string source = FixtureDocument("save-schema-1.json");
+        string prior = validator.Validate(FixtureDocument("save-valid.json")).Json;
+        var repository = new MemoryRepository { Current = prior };
+        var backups = new MemoryImportBackups();
+        var imports = new GameSaveImportService(
+            validator,
+            repository,
+            backups,
+            () => DateTimeOffset.Parse("2026-08-09T14:30:00Z"));
+
+        PreparedGameSaveImport prepared = imports.Prepare(source);
+
+        Assert.Equal(1, prepared.Preview.SourceSchemaVersion);
+        Assert.Equal(2, prepared.Preview.TargetSchemaVersion);
+        Assert.Equal("MANAGEMENT", prepared.Preview.GameState);
+        Assert.Equal(0, prepared.Preview.BuildingCount);
+        Assert.Null(prepared.Preview.ControlledKind);
+        Assert.False(imports.Confirm(prepared, confirmed: false).Imported);
+        Assert.Equal(prior, repository.Current);
+        Assert.Empty(backups.Entries);
+
+        GameSaveImportResult result = imports.Confirm(prepared, confirmed: true);
+        Assert.True(result.Imported);
+        Assert.Equal("user://test-import-backups/phase0-valid.json", result.BackupPath);
+        Assert.Equal(source, backups.Entries.Single().Original);
+        Assert.Equal(2, validator.Validate(repository.Current!).SchemaVersion);
+        Assert.Equal(prior, repository.Recovery);
+    }
+
+    [Fact]
+    public void ImportPreviewDescribesMissionAndControlledEntityWithoutApplyingRuntimeState()
+    {
+        var repository = new MemoryRepository();
+        var imports = new GameSaveImportService(validator, repository, new MemoryImportBackups());
+
+        GameSaveImportPreview controlled = imports.Prepare(FixtureDocument("save-controlled-entity.json")).Preview;
+        GameSaveImportPreview mission = imports.Prepare(FixtureDocument("save-mid-mission.json")).Preview;
+
+        Assert.Equal("VEHICLE", controlled.ControlledKind);
+        Assert.Equal("SEDAN", controlled.ControlledTypeId);
+        Assert.Equal("mission_executive", mission.MissionId);
+        Assert.Equal("ACTIVE", mission.MissionPhase);
+        Assert.Null(repository.Current);
+    }
+
+    [Fact]
+    public void InvalidOrInterruptedImportNeverMutatesCurrentOrRecovery()
+    {
+        string current = validator.Validate(FixtureDocument("save-valid.json")).Json;
+        string recovery = validator.Validate(FixtureDocument("save-recovery.json")).Json;
+        var repository = new MemoryRepository { Current = current, Recovery = recovery };
+        var backups = new MemoryImportBackups();
+        var imports = new GameSaveImportService(validator, repository, backups);
+
+        Assert.Throws<GameSaveValidationException>(() => imports.Prepare(FixtureDocument("save-future.json")));
+        Assert.Empty(backups.Entries);
+        Assert.Equal(new GameSaveSlots(current, recovery), repository.ReadSlots());
+
+        PreparedGameSaveImport prepared = imports.Prepare(FixtureDocument("save-schema-0.json"));
+        repository.FailWrites = true;
+        Assert.Throws<IOException>(() => imports.Confirm(prepared, confirmed: true));
+        Assert.Equal(new GameSaveSlots(current, recovery), repository.ReadSlots());
+        Assert.Single(backups.Entries);
+    }
+
     private static string FixtureDocument(string fixture) => FixtureNode(fixture).ToJsonString();
 
     private static JsonObject FixtureNode(string fixture) =>
@@ -228,6 +371,56 @@ public sealed class GameSavePersistenceTests
             if (preserveAsRecovery && Current is not null) Recovery = Current;
             Current = null;
             return true;
+        }
+    }
+
+    private sealed class RecordingRuntimeRestoreAdapter : IGameSaveRuntimeRestoreAdapter
+    {
+        public DeferredGameSaveDescriptor? Applied { get; private set; }
+
+        public Exception? Failure { get; init; }
+
+        public void Apply(DeferredGameSaveDescriptor descriptor)
+        {
+            Applied = descriptor;
+            if (Failure is not null) throw Failure;
+        }
+    }
+
+    private sealed class DelegateRestoreParticipant(
+        string domainId,
+        Action apply,
+        Action rollback) : IGameSaveStaticRestoreParticipant
+    {
+        private readonly IReadOnlyList<string> domainIds = Array.AsReadOnly([domainId]);
+
+        public IReadOnlyList<string> DomainIds => domainIds;
+
+        public IPreparedGameSaveStaticRestore Prepare(JsonObject data) =>
+            new DelegatePreparedRestore(domainIds, apply, rollback);
+    }
+
+    private sealed class DelegatePreparedRestore(
+        IReadOnlyList<string> domainIds,
+        Action apply,
+        Action rollback) : IPreparedGameSaveStaticRestore
+    {
+        public IReadOnlyList<string> DomainIds => domainIds;
+
+        public void Apply() => apply();
+
+        public void Rollback() => rollback();
+    }
+
+    private sealed class MemoryImportBackups : IGameSaveImportBackupStore
+    {
+        public List<(string Path, string Original)> Entries { get; } = [];
+
+        public string StoreOriginal(ReadOnlyMemory<byte> original, string saveId, DateTimeOffset importedAt)
+        {
+            string path = $"user://test-import-backups/{saveId}.json";
+            Entries.Add((path, System.Text.Encoding.UTF8.GetString(original.Span)));
+            return path;
         }
     }
 }

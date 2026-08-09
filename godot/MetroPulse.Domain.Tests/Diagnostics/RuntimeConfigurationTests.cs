@@ -15,6 +15,8 @@ public sealed class RuntimeConfigurationTests
         Assert.False(configuration.DeterministicTestMode);
         Assert.Null(configuration.ScenarioSeed);
         Assert.Equal(120, configuration.PhysicsTicksPerSecond);
+        Assert.Null(configuration.ImportSavePath);
+        Assert.False(configuration.ConfirmImport);
     }
 
     [Fact]
@@ -61,5 +63,24 @@ public sealed class RuntimeConfigurationTests
         Assert.True(configuration.SmokeBoot);
         Assert.False(configuration.DeterministicTestMode);
         Assert.Equal(120, configuration.PhysicsTicksPerSecond);
+    }
+
+    [Fact]
+    public void Parse_AcceptsExplicitSaveImportAndConfirmation()
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse(
+            ["--import-save=/tmp/metropulse-city.json", "--confirm-import"],
+            isDebugBuild: false);
+
+        Assert.Equal("/tmp/metropulse-city.json", configuration.ImportSavePath);
+        Assert.True(configuration.ConfirmImport);
+    }
+
+    [Theory]
+    [InlineData("--import-save=relative.json")]
+    [InlineData("--confirm-import")]
+    public void Parse_RejectsAmbiguousImportRequests(string argument)
+    {
+        Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse([argument], isDebugBuild: true));
     }
 }

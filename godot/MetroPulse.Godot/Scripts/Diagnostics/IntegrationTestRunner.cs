@@ -68,12 +68,13 @@ public partial class IntegrationTestRunner : Node
             compositionRoot.ContentRegistry?.Counts is { Missions: 15, Buildings: 19 },
             "Canonical content validation completes during boot.",
             failures);
+        bool importScenario = compositionRoot.Configuration?.ImportSavePath is not null;
         Check(
             string.Equals(
                 compositionRoot.LastBootResults?[BootStageIds.ActionSelection] as string,
-                BootActionIds.NewGame,
+                importScenario ? BootActionIds.Continue : BootActionIds.NewGame,
                 StringComparison.Ordinal),
-            "A clean profile selects New Game after save discovery.",
+            "Action selection matches validated clean/import discovery.",
             failures);
         Check(compositionRoot.SaveValidator is not null, "Boot owns the production game-save validator.", failures);
         Check(
@@ -81,33 +82,69 @@ public partial class IntegrationTestRunner : Node
             "Headless integration isolates the boot save repository under user://integration.",
             failures);
         Check(
-            compositionRoot.SaveDiscoveryReport is { Current.Present: false, Recovery.Present: false },
-            "Clean-profile discovery reports both persistent slots absent.",
+            compositionRoot.SaveImportService is not null
+                && compositionRoot.ImportBackupStore?.DirectoryPath.StartsWith("user://integration/import-backups-", StringComparison.Ordinal) == true,
+            "Boot owns the browser-save import service and an isolated backup directory.",
+            failures);
+        Check(
+            importScenario
+                ? compositionRoot.ImportPreview is { ControlledKind: "VEHICLE", ControlledTypeId: "SEDAN" }
+                    && compositionRoot.ImportResult is { Imported: true, BackupPath: not null }
+                    && global::Godot.FileAccess.FileExists(compositionRoot.ImportResult.BackupPath)
+                : compositionRoot.ImportPreview is null && compositionRoot.ImportResult is null,
+            "Import preview/result exist only for an explicitly confirmed import.",
+            failures);
+        Check(
+            importScenario
+                ? compositionRoot.SaveDiscoveryReport is { Current.Valid: true, Recovery.Present: false }
+                : compositionRoot.SaveDiscoveryReport is { Current.Present: false, Recovery.Present: false },
+            "Discovery reports the expected clean/import persistent slots.",
             failures);
         Check(
             compositionRoot.SaveDiscoveryReport?.Actions.SequenceEqual(new Dictionary<string, bool>(StringComparer.Ordinal)
             {
                 [BootActionIds.NewGame] = true,
-                [BootActionIds.Continue] = false,
+                [BootActionIds.Continue] = importScenario,
                 [BootActionIds.Recover] = false,
             }) == true,
             "Discovery exposes only actions backed by validated save slots.",
             failures);
         Check(
-            compositionRoot.PreparedSave is { Action: BootActionIds.NewGame, Restore: false, SaveDocument: null },
-            "Save application prepares New Game without inventing restore state.",
+            importScenario
+                ? compositionRoot.PreparedSave is { Action: BootActionIds.Continue, Restore: true, SaveDocument: not null }
+                : compositionRoot.PreparedSave is { Action: BootActionIds.NewGame, Restore: false, SaveDocument: null },
+            "Save application prepares the validated clean/import action.",
             failures);
         Check(
             ReferenceEquals(compositionRoot.LastBootResults?[BootStageIds.SaveApplication], compositionRoot.PreparedSave),
             "Boot publishes the retained save-application descriptor.",
             failures);
         Check(
-            compositionRoot.SaveRepository?.ReadSlots() == new GameSaveSlots(null, null),
-            "Clean New Game application leaves both isolated save slots empty.",
+            compositionRoot.SaveRestoreCoordinator is not null,
+            "Save application constructs the split static/runtime restore coordinator.",
+            failures);
+        Check(
+            importScenario
+                ? compositionRoot.StaticRestoreReport is { PendingRuntime: not null }
+                    && compositionRoot.StaticRestoreReport.AppliedDomains.SequenceEqual(
+                        [GameSaveDomainIds.Settings, GameSaveDomainIds.Bindings])
+                    && ReferenceEquals(
+                        compositionRoot.StaticRestoreReport.PendingRuntime,
+                        compositionRoot.SaveRestoreCoordinator?.PendingRuntime)
+                : compositionRoot.StaticRestoreReport is null
+                    && compositionRoot.SaveRestoreCoordinator?.PendingRuntime is null,
+            "Static restore applies available owners and retains runtime only when requested.",
+            failures);
+        Check(
+            importScenario
+                ? compositionRoot.SaveRepository?.ReadSlots() is { Current: not null, Recovery: null }
+                : compositionRoot.SaveRepository?.ReadSlots() == new GameSaveSlots(null, null),
+            "Save application leaves the expected clean/import slot state.",
             failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckGameSaveRepository(failures);
+        CheckImportBackupStore(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
         CheckCollisionLayerNames(failures);
 
@@ -118,7 +155,7 @@ public partial class IntegrationTestRunner : Node
                 LogSeverity.Information,
                 "integration.passed",
                 "Phase 3 shell integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "67" }));
+                new Dictionary<string, string> { ["assertions"] = "74" }));
             GetTree().Quit(0);
             return;
         }
@@ -381,6 +418,40 @@ public partial class IntegrationTestRunner : Node
             repository.InjectedFault = GameSaveRepositoryFault.None;
             repository.SimulateProcessInterruption = false;
             repository.DeleteOwnedFiles();
+        }
+    }
+
+    private static void CheckImportBackupStore(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            GodotGameSaveImportBackupStore store = compositionRoot.ImportBackupStore
+                ?? throw new InvalidOperationException("Import backup store is unavailable.");
+            byte[] original = "{\"schemaVersion\":1,\"original\":true}\n"u8.ToArray();
+            string path = store.StoreOriginal(
+                original,
+                "fixture/import",
+                DateTimeOffset.Parse("2026-08-09T14:30:00Z"));
+            Check(
+                path.StartsWith(store.DirectoryPath, StringComparison.Ordinal)
+                    && path.EndsWith("-fixture-import.json", StringComparison.Ordinal),
+                "Import backup paths retain a stable timestamp and sanitized save ID.",
+                failures);
+            Check(
+                global::Godot.FileAccess.GetFileAsBytes(path).SequenceEqual(original),
+                "Import backup storage preserves the exact original bytes.",
+                failures);
+            store.DeleteOwnedFiles();
+            Check(
+                !System.IO.Directory.Exists(ProjectSettings.GlobalizePath(store.DirectoryPath)),
+                "Integration cleanup removes the import-backup directory.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Import backup integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

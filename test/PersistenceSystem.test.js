@@ -24,6 +24,7 @@ import {
   MissionOutcomeService
 } from '../src/missions/MissionOutcomeService.js';
 import { EconomySystem } from '../src/systems/EconomySystem.js';
+import { exportCitySave } from '../src/save/BrowserSaveExport.js';
 
 class MemoryRepository {
   constructor(current = null) {
@@ -44,6 +45,10 @@ class MemoryRepository {
   async clearCurrent({ preserveAsRecovery = true } = {}) {
     if (preserveAsRecovery && this.current) this.recovery = structuredClone(this.current);
     this.current = null;
+  }
+
+  async read(slot) {
+    return structuredClone(slot === 'current' ? this.current : this.recovery);
   }
 }
 
@@ -192,6 +197,41 @@ test('transactional save rotates the prior known-good document into recovery', a
   assert.equal(repository.recovery.metadata.saveId, 'previous');
   assert.equal(service.getStatus().status, SAVE_STATUS.SAVED);
   service.destroy();
+});
+
+test('browser export reads and validates only the selected slot before download', async () => {
+  const current = createSaveDocument(validData(), { idFactory: () => 'export/current' });
+  const recovery = createSaveDocument(validData(), { idFactory: () => 'export-recovery' });
+  const repository = new MemoryRepository(current);
+  repository.recovery = recovery;
+  const downloads = [];
+
+  const result = await exportCitySave({
+    repository,
+    slot: 'recovery',
+    download: value => downloads.push(value)
+  });
+
+  assert.equal(result.saveId, 'export-recovery');
+  assert.equal(result.filename, 'metropulse-city-export-recovery.json');
+  assert.equal(downloads.length, 1);
+  assert.equal(JSON.parse(downloads[0].text).metadata.saveId, 'export-recovery');
+  assert.equal(repository.current.metadata.saveId, 'export/current');
+});
+
+test('browser export rejects corrupt selected data without downloading or mutating slots', async () => {
+  const current = createSaveDocument(validData(), { idFactory: () => 'export-current' });
+  const repository = new MemoryRepository(current);
+  repository.recovery = { ...current, schemaVersion: 99 };
+  const before = structuredClone({ current: repository.current, recovery: repository.recovery });
+  let downloads = 0;
+
+  await assert.rejects(
+    exportCitySave({ repository, slot: 'recovery', download: () => { downloads += 1; } }),
+    error => error instanceof SaveValidationError && error.code === 'FUTURE_SAVE_VERSION'
+  );
+  assert.equal(downloads, 0);
+  assert.deepEqual({ current: repository.current, recovery: repository.recovery }, before);
 });
 
 test('an interrupted write reports failure without destroying either valid slot', async () => {

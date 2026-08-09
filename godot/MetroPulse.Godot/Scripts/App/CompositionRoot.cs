@@ -34,6 +34,18 @@ public partial class CompositionRoot : Node
 
     public PreparedBootSave? PreparedSave { get; private set; }
 
+    public GameSaveRestoreCoordinator? SaveRestoreCoordinator { get; private set; }
+
+    public GameSaveStaticRestoreReport? StaticRestoreReport { get; private set; }
+
+    public GodotGameSaveImportBackupStore? ImportBackupStore { get; private set; }
+
+    public GameSaveImportService? SaveImportService { get; private set; }
+
+    public GameSaveImportPreview? ImportPreview { get; private set; }
+
+    public GameSaveImportResult? ImportResult { get; private set; }
+
     public GodotSettingsStorage? SettingsStorage { get; private set; }
 
     public SettingsStore? SettingsAuthority { get; private set; }
@@ -109,14 +121,19 @@ public partial class CompositionRoot : Node
             DisposeSession();
             DisposeSettingsRuntime();
             DisposePersistenceRuntime();
+            BootStageException? bootError = error as BootStageException;
+            string errorCode = bootError?.Code ?? "PHASE3_BOOT_FAILED";
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Boot,
                 LogSeverity.Fatal,
                 "phase3.boot.failed",
-                error.Message));
+                error.Message,
+                new Dictionary<string, string>
+                {
+                    ["errorCode"] = errorCode,
+                    ["stageId"] = bootError?.StageId ?? "application",
+                }));
 
-            BootStageException? bootError = error as BootStageException;
-            string errorCode = bootError?.Code ?? "PHASE3_BOOT_FAILED";
             string remedy = bootError is null
                 ? "Verify the Godot 4.6 .NET runtime and project files, then restart. See the structured log for details."
                 : string.Join('\n', new[] { bootError.UserMessage }.Concat(bootError.Actions));
@@ -184,8 +201,16 @@ public partial class CompositionRoot : Node
         if (Configuration?.RunIntegrationTests == true)
         {
             SaveRepository?.DeleteOwnedFiles();
+            ImportBackupStore?.DeleteOwnedFiles();
         }
+        ImportResult = null;
+        ImportPreview = null;
+        SaveImportService = null;
+        ImportBackupStore = null;
         PreparedSave = null;
+        StaticRestoreReport = null;
+        SaveRestoreCoordinator?.ClearPending();
+        SaveRestoreCoordinator = null;
         SaveDiscoveryReport = null;
         SaveRepository = null;
         SaveValidator = null;
@@ -247,6 +272,31 @@ public partial class CompositionRoot : Node
                     ? $"user://integration/saves-{OS.GetProcessId()}"
                     : GodotGameSaveRepository.ProductionDirectory;
                 SaveRepository = new GodotGameSaveRepository(SaveValidator, saveDirectory);
+                string importBackupDirectory = configuration.RunIntegrationTests
+                    ? $"user://integration/import-backups-{OS.GetProcessId()}"
+                    : GodotGameSaveImportBackupStore.ProductionDirectory;
+                ImportBackupStore = new GodotGameSaveImportBackupStore(importBackupDirectory);
+                SaveImportService = new GameSaveImportService(SaveValidator, SaveRepository, ImportBackupStore);
+                if (configuration.ImportSavePath is not null)
+                {
+                    if (!System.IO.File.Exists(configuration.ImportSavePath))
+                    {
+                        throw new FileNotFoundException("The selected city save import file does not exist.", configuration.ImportSavePath);
+                    }
+                    PreparedGameSaveImport preparedImport = SaveImportService.Prepare(
+                        System.IO.File.ReadAllBytes(configuration.ImportSavePath));
+                    ImportPreview = preparedImport.Preview;
+                    if (!configuration.ConfirmImport)
+                    {
+                        throw new BootStageException(
+                            BootStageIds.SaveDiscovery,
+                            "Discovering validated city saves",
+                            "IMPORT_CONFIRMATION_REQUIRED",
+                            ImportSummary(ImportPreview),
+                            [$"Review this preview, then rerun with --import-save=\"{configuration.ImportSavePath}\" --confirm-import."]);
+                    }
+                    ImportResult = SaveImportService.Confirm(preparedImport, confirmed: true);
+                }
                 SaveDiscoveryReport = new GameSaveDiscovery(SaveRepository, SaveValidator).Discover();
                 return ValueTask.FromResult<object?>(SaveDiscoveryReport);
             }),
@@ -276,6 +326,14 @@ public partial class CompositionRoot : Node
                 GameSaveDocumentValidator validator = SaveValidator
                     ?? throw new InvalidOperationException("Save validation must precede save application.");
                 PreparedSave = new GameSaveDiscovery(repository, validator).Prepare(action, discovery);
+                SettingsStore settings = SettingsAuthority
+                    ?? throw new InvalidOperationException("Settings authority must precede save application.");
+                SaveRestoreCoordinator = new GameSaveRestoreCoordinator(
+                    validator,
+                    [new SettingsSaveRestoreParticipant(settings)]);
+                StaticRestoreReport = PreparedSave.SaveDocument is null
+                    ? null
+                    : SaveRestoreCoordinator.RestoreStatic(PreparedSave.SaveDocument.Json);
                 return ValueTask.FromResult<object?>(PreparedSave);
             }),
             new(BootStageIds.FinalReadiness, "Verifying session readiness", (results, _) =>
@@ -303,5 +361,17 @@ public partial class CompositionRoot : Node
                 return ValueTask.FromResult<object?>(session.IsInteractiveReleased);
             }),
         ];
+    }
+
+    private static string ImportSummary(GameSaveImportPreview preview)
+    {
+        string mission = preview.MissionId is null
+            ? "no active mission"
+            : $"mission {preview.MissionId} ({preview.MissionPhase ?? "saved"})";
+        string controlled = preview.ControlledKind is null
+            ? "no controlled entity"
+            : $"{preview.ControlledKind} {preview.ControlledTypeId}";
+        return $"Import preview for {preview.SaveId}: saved {preview.SavedAt}, state {preview.GameState}, "
+            + $"{preview.BuildingCount} user buildings, {preview.ZoneCount} zones, {mission}, {controlled}.";
     }
 }

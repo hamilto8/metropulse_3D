@@ -5,7 +5,9 @@ public sealed record RuntimeConfiguration(
     bool SmokeBoot,
     bool DeterministicTestMode,
     ulong? ScenarioSeed,
-    int PhysicsTicksPerSecond)
+    int PhysicsTicksPerSecond,
+    string? ImportSavePath,
+    bool ConfirmImport)
 {
     public const int DefaultPhysicsTicksPerSecond = 120;
     public const int LowTickPhysicsTicksPerSecond = 30;
@@ -19,6 +21,8 @@ public sealed record RuntimeConfiguration(
         bool deterministicTestMode = false;
         bool lowTickProfile = false;
         ulong? seed = null;
+        string? importSavePath = null;
+        bool confirmImport = false;
 
         foreach (string argument in arguments)
         {
@@ -36,6 +40,9 @@ public sealed record RuntimeConfiguration(
                 case "--low-tick":
                     lowTickProfile = true;
                     break;
+                case "--confirm-import":
+                    confirmImport = true;
+                    break;
                 default:
                     if (argument.StartsWith("--seed=", StringComparison.Ordinal))
                     {
@@ -46,6 +53,15 @@ public sealed record RuntimeConfiguration(
                         }
 
                         seed = parsedSeed;
+                    }
+                    else if (argument.StartsWith("--import-save=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--import-save=".Length..];
+                        if (string.IsNullOrWhiteSpace(value) || !Path.IsPathFullyQualified(value))
+                        {
+                            throw new ArgumentException("The import save path must be an absolute file path.", nameof(arguments));
+                        }
+                        importSavePath = value;
                     }
 
                     break;
@@ -69,11 +85,18 @@ public sealed record RuntimeConfiguration(
             seed ??= 1UL;
         }
 
+        if (confirmImport && importSavePath is null)
+        {
+            throw new ArgumentException("--confirm-import requires --import-save=<absolute-path>.", nameof(arguments));
+        }
+
         return new RuntimeConfiguration(
             runIntegrationTests,
             smokeBoot,
             deterministicTestMode,
             seed,
-            lowTickProfile ? LowTickPhysicsTicksPerSecond : DefaultPhysicsTicksPerSecond);
+            lowTickProfile ? LowTickPhysicsTicksPerSecond : DefaultPhysicsTicksPerSecond,
+            importSavePath,
+            confirmImport);
     }
 }

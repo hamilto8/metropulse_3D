@@ -848,8 +848,12 @@ ported because they require engine adapters.
 > and cross-content validation, debounced/coalesced save service, stable
 > checkpoints/status events, production current/recovery discovery, and the
 > declared save-discovery/save-application boot stages. Save application now
-> retains a fully validated descriptor; split static/runtime restore, browser
-> import, selectable boot presentation, and expanded diagnostics remain.
+> retains a fully validated descriptor. The sixth slice adds transactional
+> static restore with reverse rollback, explicit deferred static/runtime
+> descriptors, a browser Export City Save action, strict native import preview,
+> exact-byte import backups, explicit CLI confirmation, and confirmed-import
+> Continue coverage. Selectable boot presentation, live world/entity restore,
+> and expanded diagnostics remain.
 > See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
 > `docs/port_handoffs/phase-3-settings-inputmap.md` and
 > `docs/port_handoffs/phase-3-runtime-input-state.md`.
@@ -919,7 +923,11 @@ authorities exist.)*
 
 3.7 Split restore into static domain restore and runtime entity/world restore.
 At this phase, validate and retain deferred descriptors without pretending to
-restore absent world nodes.
+restore absent world nodes. *(complete for the Phase 3 shell:
+`GameSaveRestoreCoordinator` prepares every static participant before mutation,
+applies settings/bindings through their real authority, rolls back applied
+participants in reverse on failure, names every absent static owner, and keeps
+an immutable runtime descriptor retryable until a real adapter succeeds.)*
 
 3.8 Build the browser save bridge:
 
@@ -930,7 +938,13 @@ restore absent world nodes.
 4. migrate through the same schema code;
 5. show a preview of city, save time, mission, and controlled entity;
 6. import to current only after confirmation;
-7. prove failed imports do not alter current or recovery.
+7. prove failed imports do not alter current or recovery. *(complete: the
+browser sidebar exports a selected validated slot as plain JSON; Godot accepts
+`--import-save=<absolute-path>`, renders/logs a city/save/mission/entity preview,
+requires `--confirm-import`, stores the exact original bytes under
+`user://import-backups/`, migrates through `GameSaveDocumentValidator`, and
+publishes current only after confirmation. Invalid, unconfirmed, and interrupted
+imports preserve both slots.)*
 
 3.9 Recreate diagnostics: game state, clock policy, transition, controlled
 entity descriptor, mission, save state, counts, FPS/frame time, renderer stats,

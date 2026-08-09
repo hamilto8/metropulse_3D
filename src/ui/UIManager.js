@@ -82,6 +82,7 @@ export class UIManager {
     this.btnUnlockEast = document.getElementById('btn-unlock-east');
     this.btnBridgePriority = document.getElementById('btn-bridge-priority');
     this.btnSaveCity = document.getElementById('btn-save-city');
+    this.btnExportCity = document.getElementById('btn-export-city');
     this.btnNewCity = document.getElementById('btn-new-city');
 
     // Fun Mode controls
@@ -565,6 +566,15 @@ export class UIManager {
     this.btnSaveCity?.addEventListener('click', async () => {
       const saved = await this.app.saveService?.saveNow?.({ reason: 'manual' });
       this.showToast(saved ? '💾 City saved locally.' : '⚠️ City could not be saved; your previous save is still safe.');
+    });
+
+    this.btnExportCity?.addEventListener('click', async () => {
+      try {
+        const exported = await this.app.saveService?.exportCitySave?.();
+        this.showToast(exported ? `⬇ Exported ${exported.filename}.` : '⚠️ No city save is available to export.');
+      } catch (error) {
+        this.showToast(`⚠️ ${error?.userMessage || error?.message || 'City save export failed.'}`);
+      }
     });
 
     this.btnNewCity?.addEventListener('click', () => {

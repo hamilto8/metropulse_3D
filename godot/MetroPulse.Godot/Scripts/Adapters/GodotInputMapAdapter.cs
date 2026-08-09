@@ -60,7 +60,7 @@ public sealed class GodotInputMapAdapter : IDisposable
                 {
                     StringName slotName = GetSlotActionName(context, action, index);
                     AddAction(slotName);
-                    InputEvent? keyboardEvent = CreateKeyboardMouseEvent(bindings[index]);
+                    using InputEvent? keyboardEvent = CreateKeyboardMouseEvent(bindings[index]);
                     if (keyboardEvent is null)
                     {
                         continue;
@@ -72,7 +72,10 @@ public sealed class GodotInputMapAdapter : IDisposable
 
                 foreach (InputEvent gamepadEvent in CreateGamepadEvents(action))
                 {
-                    InputMap.ActionAddEvent(aggregateName, gamepadEvent);
+                    using (gamepadEvent)
+                    {
+                        InputMap.ActionAddEvent(aggregateName, gamepadEvent);
+                    }
                 }
             }
         }

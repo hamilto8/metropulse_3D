@@ -131,6 +131,44 @@ save, and listener failures cannot corrupt status or committed slots. Native UI
 and session capture owners are still responsible for subscribing and supplying
 the complete domain snapshot.
 
+## Browser export and native import
+
+The browser sidebar's **Export City Save** action reads exactly one selected
+IndexedDB slot, validates the envelope and all domains without mutating live
+owners, and downloads UTF-8 JSON named from the stable save ID. Corrupt,
+unsupported, or absent selected slots do not download anything and do not touch
+current or recovery.
+
+Godot accepts `--import-save=<absolute-path>` as its initial native import path.
+Without `--confirm-import`, boot stops at save discovery with error code
+`IMPORT_CONFIRMATION_REQUIRED` and a preview containing save time, state, user
+building/zone counts, active mission, and controlled entity. Confirmation must
+be explicit through `--confirm-import`. A confirmed import:
+
+1. strictly decodes and validates the selected UTF-8 bytes;
+2. retains the exact original bytes under `user://import-backups/`;
+3. runs the same sequential envelope migrations and whole-document validator;
+4. commits normalized JSON to current through the rotating repository; and
+5. enters Continue with static owners applied and runtime owners still deferred.
+
+Validation or confirmation failures write neither backup nor save slot. A
+repository failure may leave the import backup for diagnosis, but current and
+recovery retain their exact pre-import values.
+
+## Native split restore
+
+`GameSaveRestoreCoordinator` separates static owner mutation from runtime
+world/entity application. Every static participant prepares against a cloned,
+fully validated aggregate before any participant applies. If an apply fails,
+already-applied participants roll back in reverse order and no runtime
+descriptor is published. The Phase 3 shell applies only global settings and
+binding overrides because those are the only constructed static authorities;
+economy, time/weather, mission, faction, progression, and mobility records are
+named as deferred static data. Game state, world edits, controlled player,
+mission runtime, Heat, and alerts remain an immutable pending runtime descriptor.
+An adapter failure retains that descriptor for retry and never masquerades as a
+completed restore.
+
 ## Extension rules
 
 1. Add a domain version and pure capture/validation logic before adding restore

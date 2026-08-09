@@ -10,6 +10,7 @@ import {
   validateGameState
 } from './SaveGameState.js';
 import { IndexedDbSaveRepository } from './IndexedDbSaveRepository.js';
+import { exportCitySave } from './BrowserSaveExport.js';
 
 export const SAVE_STATUS = Object.freeze({
   IDLE: 'IDLE',
@@ -117,6 +118,14 @@ export class SaveService {
       reason,
       reasons,
       checkpoint
+    });
+  }
+
+  exportCitySave(options = {}) {
+    return exportCitySave({
+      repository: this.repository,
+      contentRegistry: this.app.contentRegistry,
+      ...options
     });
   }
 
