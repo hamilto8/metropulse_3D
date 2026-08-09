@@ -1,6 +1,8 @@
 using Godot;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Settings;
+using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 
 namespace MetroPulse.Godot.Diagnostics;
@@ -38,6 +40,7 @@ public partial class IntegrationTestRunner : Node
             compositionRoot.LastBootResults?.Keys.SequenceEqual(
             [
                 BootStageIds.CapabilityChecks,
+                BootStageIds.SettingsBootstrap,
                 BootStageIds.ContentValidation,
                 BootStageIds.ActionSelection,
                 BootStageIds.SessionConstruction,
@@ -46,7 +49,7 @@ public partial class IntegrationTestRunner : Node
             ]) == true,
             "Initial Phase 3 boot stages run in the declared order.",
             failures);
-        Check(compositionRoot.BootProgressEvents.Count == 12, "Each initial boot stage reports running and complete states.", failures);
+        Check(compositionRoot.BootProgressEvents.Count == 14, "Each initial boot stage reports running and complete states.", failures);
         Check(
             compositionRoot.BootProgressEvents
                 .Select((progress, index) => (progress, index))
@@ -65,6 +68,7 @@ public partial class IntegrationTestRunner : Node
                 StringComparison.Ordinal),
             "The persistence-free initial slice explicitly selects New Game.",
             failures);
+        CheckSettingsAndInputMap(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
         CheckCollisionLayerNames(failures);
 
@@ -75,7 +79,7 @@ public partial class IntegrationTestRunner : Node
                 LogSeverity.Information,
                 "integration.passed",
                 "Foundation integration checks passed.",
-                new Dictionary<string, string> { ["assertions"] = "28" }));
+                new Dictionary<string, string> { ["assertions"] = "39" }));
             GetTree().Quit(0);
             return;
         }
@@ -151,4 +155,98 @@ public partial class IntegrationTestRunner : Node
                 failures);
         }
     }
+
+    private static void CheckSettingsAndInputMap(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings authority is unavailable.");
+            GodotSettingsStorage storage = compositionRoot.SettingsStorage
+                ?? throw new InvalidOperationException("Settings storage is unavailable.");
+            GodotInputMapAdapter adapter = compositionRoot.InputMapAdapter
+                ?? throw new InvalidOperationException("InputMap adapter is unavailable.");
+
+            Check(settings.Loaded, "Settings bootstrap loads the validated domain authority.", failures);
+            Check(
+                storage.CurrentPath.StartsWith("user://integration/settings-", StringComparison.Ordinal),
+                "Headless integration isolates its settings file under user://integration.",
+                failures);
+            Check(adapter.Started && adapter.OwnedActionCount == 111, "InputMap publishes 45 aggregate and 66 stable-slot actions.", failures);
+            Check(
+                ControlContexts.All.All(context =>
+                    ControlBindingCatalog.DefaultBindings[context].Keys.All(action =>
+                        InputMap.HasAction(GodotInputMapAdapter.GetActionName(context, action)))),
+                "Every action in all seven contexts has a namespaced InputMap owner.",
+                failures);
+
+            StringName vehicleInteract = GodotInputMapAdapter.GetActionName(ControlContexts.Vehicle, "INTERACT");
+            Check(
+                HasPhysicalKey(vehicleInteract, Key.E) && HasJoyButton(vehicleInteract, JoyButton.Y),
+                "Vehicle Interact combines the validated E key with fixed gamepad Y.",
+                failures);
+            StringName builderAim = GodotInputMapAdapter.GetSlotActionName(ControlContexts.Builder, "AIM", 0);
+            Check(
+                InputMap.ActionGetEvents(builderAim).Count == 0,
+                "Fixed pointer motion remains an analog source instead of a false button event.",
+                failures);
+
+            settings.SetBinding(ControlContexts.Vehicle, "INTERACT", "KeyG");
+            Check(
+                HasPhysicalKey(vehicleInteract, Key.G) && !HasPhysicalKey(vehicleInteract, Key.E),
+                "A committed binding update reapplies InputMap immediately.",
+                failures);
+            SettingsLoadResult restarted = new SettingsStore(storage).Load();
+            Check(
+                restarted.Bindings[ControlContexts.Vehicle]["INTERACT"][0] == "KeyG",
+                "Settings and bindings survive a fresh authority load from user://.",
+                failures);
+
+            var faultStorage = new GodotSettingsStorage(storage.CurrentPath, SettingsStorageFault.BeforePromote);
+            var faultStore = new SettingsStore(faultStorage);
+            faultStore.Load();
+            double priorScale = faultStore.Get<double>("textScale");
+            bool interrupted = false;
+            try
+            {
+                faultStore.Set("textScale", 1.1);
+            }
+            catch (IOException)
+            {
+                interrupted = true;
+            }
+            Check(
+                interrupted && faultStore.Get<double>("textScale") == priorScale,
+                "An interrupted settings promotion cannot mutate the live snapshot.",
+                failures);
+            SettingsLoadResult afterInterruption = new SettingsStore(storage).Load();
+            Check(
+                afterInterruption.Bindings[ControlContexts.Vehicle]["INTERACT"][0] == "KeyG"
+                    && !global::Godot.FileAccess.FileExists(storage.TemporaryPath),
+                "An interrupted settings promotion preserves current and removes its temporary file.",
+                failures);
+
+            settings.ResetContext(ControlContexts.Vehicle);
+            Check(
+                HasPhysicalKey(vehicleInteract, Key.E) && !HasPhysicalKey(vehicleInteract, Key.G),
+                "Resetting one context restores its default InputMap events.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Settings/InputMap integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static bool HasPhysicalKey(StringName action, Key key) =>
+        InputMap.ActionGetEvents(action)
+            .OfType<InputEventKey>()
+            .Any(input => input.PhysicalKeycode == key);
+
+    private static bool HasJoyButton(StringName action, JoyButton button) =>
+        InputMap.ActionGetEvents(action)
+            .OfType<InputEventJoypadButton>()
+            .Any(input => input.ButtonIndex == button);
 }

@@ -830,10 +830,14 @@ ported because they require engine adapters.
 > renderer-independent ordered boot pipeline, desktop `user://`/graphics/input/
 > resource capability probes, canonical content validation at boot, explicit
 > temporary `NEW_GAME` selection, disabled session construction, final
-> readiness validation, and interactive release. Settings bootstrap, InputMap,
-> save discovery/application, file persistence, restore/import, and expanded
-> diagnostics remain Phase 3 work. See
-> `docs/port_handoffs/phase-3-boot-capability-shell.md`.
+> readiness validation, and interactive release. Save discovery/application,
+> game-save file persistence, restore/import, runtime input state, and expanded
+> diagnostics remain Phase 3 work. The second slice adds validated global
+> settings persistence under `user://`, atomic temporary-file promotion,
+> restart-safe migration/fallback, and a live namespaced InputMap adapter for
+> all seven contexts with fixed gamepad bindings and stable directional slots.
+> See `docs/port_handoffs/phase-3-boot-capability-shell.md` and
+> `docs/port_handoffs/phase-3-settings-inputmap.md`.
 
 ### Objective
 
@@ -847,7 +851,7 @@ an empty Management session.
 validation, save discovery, action selection, world/session construction, save
 application, final readiness, interactive release. *(in progress: the pipeline
 and capability/content/action/session/readiness/release stages are live;
-settings, discovery, and save application will be inserted at their declared
+discovery and save application will be inserted at their declared
 stable IDs by later Phase 3 chunks)*.
 
 3.2 Replace browser capability probes with desktop checks for writable
@@ -862,6 +866,10 @@ chunks)*.
 3.3 Rebuild settings and bindings using Godot InputMap as the runtime adapter,
 but keep the validated domain document as authority. Preserve contexts:
 Management, Builder, Vehicle, Aircraft, Pedestrian, Dialogue, and Pause.
+*(complete for bootstrap/runtime persistence: `SettingsStore` remains the
+validated authority, `GodotSettingsStorage` owns `user://settings-v2.json`, and
+`GodotInputMapAdapter` projects all seven contexts into namespaced aggregate
+and stable-slot actions; settings presentation remains Phase 9)*.
 
 3.4 Preserve live keyboard/controller device switching, dead zones, edge
 detection, focus-loss clearing, held-device quarantine, contextual prompts, and

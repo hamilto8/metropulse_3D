@@ -3,6 +3,8 @@ using Godot;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Settings;
+using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.Diagnostics;
 
 namespace MetroPulse.Godot.App;
@@ -22,6 +24,12 @@ public partial class CompositionRoot : Node
     public DesktopCapabilityReport? CapabilityReport { get; private set; }
 
     public GameContentRegistry? ContentRegistry { get; private set; }
+
+    public GodotSettingsStorage? SettingsStorage { get; private set; }
+
+    public SettingsStore? SettingsAuthority { get; private set; }
+
+    public GodotInputMapAdapter? InputMapAdapter { get; private set; }
 
     public IReadOnlyDictionary<string, object?>? LastBootResults { get; private set; }
 
@@ -90,6 +98,7 @@ public partial class CompositionRoot : Node
         catch (Exception error)
         {
             DisposeSession();
+            DisposeSettingsRuntime();
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Boot,
                 LogSeverity.Fatal,
@@ -143,6 +152,20 @@ public partial class CompositionRoot : Node
     public override void _ExitTree()
     {
         DisposeSession();
+        DisposeSettingsRuntime();
+    }
+
+    private void DisposeSettingsRuntime()
+    {
+        InputMapAdapter?.Dispose();
+        InputMapAdapter = null;
+        SettingsAuthority?.Destroy();
+        SettingsAuthority = null;
+        if (Configuration?.RunIntegrationTests == true)
+        {
+            SettingsStorage?.DeleteOwnedFiles();
+        }
+        SettingsStorage = null;
     }
 
     private IReadOnlyList<BootStageDefinition> CreateInitialStages()
@@ -155,6 +178,35 @@ public partial class CompositionRoot : Node
                 CapabilityReport = new DesktopCapabilityChecker(SessionScene).Check();
                 CapabilityReport.AssertCompatible(BootStageIds.CapabilityChecks, capabilityLabel);
                 return ValueTask.FromResult<object?>(CapabilityReport);
+            }),
+            new(BootStageIds.SettingsBootstrap, "Loading settings and input bindings", (_, _) =>
+            {
+                RuntimeConfiguration configuration = Configuration
+                    ?? throw new InvalidOperationException("Runtime configuration must precede settings bootstrap.");
+                string settingsPath = configuration.RunIntegrationTests
+                    ? $"user://integration/settings-{OS.GetProcessId()}.json"
+                    : GodotSettingsStorage.ProductionPath;
+                SettingsStorage = new GodotSettingsStorage(settingsPath);
+                SettingsAuthority = new SettingsStore(
+                    SettingsStorage,
+                    onListenerError: error => AppLog.Write(new StructuredLogEvent(
+                        LogCategory.Application,
+                        LogSeverity.Error,
+                        "settings.listener_failed",
+                        error.Message)));
+                SettingsLoadResult result = SettingsAuthority.Load();
+                foreach (string warning in result.Warnings)
+                {
+                    AppLog.Write(new StructuredLogEvent(
+                        LogCategory.Boot,
+                        LogSeverity.Warning,
+                        "settings.load_warning",
+                        warning));
+                }
+
+                InputMapAdapter = new GodotInputMapAdapter(SettingsAuthority);
+                InputMapAdapter.Start();
+                return ValueTask.FromResult<object?>(result);
             }),
             new(BootStageIds.ContentValidation, "Validating canonical content", (_, _) =>
             {
