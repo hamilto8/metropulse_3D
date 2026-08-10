@@ -2,17 +2,20 @@ using System.Text.Json;
 using Godot;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Camera;
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
+using MetroPulse.Domain.Vehicles;
 using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Diagnostics;
@@ -21,6 +24,8 @@ public partial class IntegrationTestRunner : Node
 {
     private CompositionRoot? _compositionRoot;
     private DiagnosticsOverlay? _diagnostics;
+    private IReadOnlyList<VehiclePhysicsSpikeTelemetry> _vehicleSpikeTelemetry = Array.Empty<VehiclePhysicsSpikeTelemetry>();
+    private VehiclePhysicsSpikeDecision? _vehicleSpikeDecision;
 
     public void Begin(CompositionRoot compositionRoot, DiagnosticsOverlay diagnostics)
     {
@@ -163,6 +168,7 @@ public partial class IntegrationTestRunner : Node
         CheckSessionRuntime(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
+        await CheckVehiclePhysicsSpike(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -177,6 +183,36 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            VehiclePhysicsSpikeTelemetry? builtInSpike = _vehicleSpikeTelemetry
+                .FirstOrDefault(item => item.Branch == VehiclePhysicsBranch.BuiltInVehicleBody);
+            VehiclePhysicsSpikeTelemetry? customSpike = _vehicleSpikeTelemetry
+                .FirstOrDefault(item => item.Branch == VehiclePhysicsBranch.CustomRaycastRigidBody);
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.vehicle_physics_spike.passed",
+                "Both Phase 5 sedan physics branches ran live and the selection policy chose the custom raycast chassis.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "7",
+                    ["selected"] = _vehicleSpikeDecision?.Selected.ToString() ?? "unavailable",
+                    ["builtInAccelerationMps"] = builtInSpike?.AccelerationSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customAccelerationMps"] = customSpike?.AccelerationSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInBrakingMps"] = builtInSpike?.BrakingSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customBrakingMps"] = customSpike?.BrakingSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInReverseMps"] = builtInSpike?.ReverseSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customReverseMps"] = customSpike?.ReverseSpeed.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInHeadingRadians"] = builtInSpike?.HeadingChangeRadians.ToString("F4", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customHeadingRadians"] = customSpike?.HeadingChangeRadians.ToString("F4", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInTurningRadiusM"] = builtInSpike?.TurningRadius.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customTurningRadiusM"] = customSpike?.TurningRadius.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInMaxRollRadians"] = builtInSpike?.MaximumRollRadians.ToString("F4", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customMaxRollRadians"] = customSpike?.MaximumRollRadians.ToString("F4", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInPhysicsUs"] = builtInSpike?.AveragePhysicsMicroseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customPhysicsUs"] = customSpike?.AveragePhysicsMicroseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["builtInReplayDelta"] = builtInSpike?.ReplayPositionDelta.ToString("F5", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["customReplayDelta"] = customSpike?.ReplayPositionDelta.ToString("F5", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -265,7 +301,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "97" : "93",
+                    ["assertions"] = recoverySeedScenario ? "104" : "100",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -887,6 +923,200 @@ public partial class IntegrationTestRunner : Node
             failures.Add($"Gameplay camera integration threw {error.GetType().Name}: {error.Message}");
         }
     }
+
+    private async Task CheckVehiclePhysicsSpike(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        var owned = new List<Node3D>();
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            Node3D agentRoot = session.GetNode<Node3D>("WorldRoot/AgentRoot");
+            VehicleProfileRecord sedan = compositionRoot.ContentRegistry?.GetVehicleProfile("SEDAN")
+                ?? throw new InvalidOperationException("The canonical sedan profile is unavailable.");
+
+            BuiltInSedanPhysicsPrototype builtIn = AddBuiltIn(agentRoot, sedan, "BuiltInSedanA", new Vector3(-170, 2, 75), owned);
+            BuiltInSedanPhysicsPrototype builtInReplay = AddBuiltIn(agentRoot, sedan, "BuiltInSedanB", new Vector3(-164, 2, 75), owned);
+            CustomSedanPhysicsPrototype custom = AddCustom(agentRoot, sedan, "CustomSedanA", new Vector3(-158, 2, 75), owned);
+            CustomSedanPhysicsPrototype customReplay = AddCustom(agentRoot, sedan, "CustomSedanB", new Vector3(-152, 2, 75), owned);
+            Vector3[] starts = owned.Select(item => item.GlobalPosition).ToArray();
+
+            Check(builtIn is VehicleBody3D && builtIn.WheelCount == 4
+                    && custom is RigidBody3D && custom.RaycastCount == 4,
+                "The sedan spike constructs both a four-wheel VehicleBody3D and four-ray RigidBody3D branch.", failures);
+            Check(owned.All(node => node is CollisionObject3D body
+                    && body.CollisionLayer == (uint)CollisionLayer.Traffic
+                    && body.CollisionMask == (uint)CollisionMasks.Traffic
+                    && node.GetNodeOrNull<CollisionShape3D>("ChassisCollision") is not null),
+                "Both branches share the canonical Traffic collision contract and chassis shape.", failures);
+
+            await AdvancePrototypeFrames(owned, new VehiclePrototypeControl(0, 0, 0), 35);
+            (double builtRoll, double customRoll) = await AdvancePrototypeFrames(
+                owned,
+                new VehiclePrototypeControl(1, 0, 0),
+                75,
+                builtIn,
+                custom);
+            double builtAcceleration = PlanarSpeed(builtIn.VehicleVelocity);
+            double customAcceleration = PlanarSpeed(custom.VehicleVelocity);
+            Check(builtAcceleration > 0.2 && customAcceleration > 0.2,
+                $"Both live branches accelerate under canonical sedan force (built-in={builtAcceleration:F3}, custom={customAcceleration:F3} m/s).", failures);
+
+            await AdvancePrototypeFrames(owned, new VehiclePrototypeControl(0, 1, 0), 60);
+            double builtBraking = PlanarSpeed(builtIn.VehicleVelocity);
+            double customBraking = PlanarSpeed(custom.VehicleVelocity);
+            Check(builtBraking < builtAcceleration && customBraking < customAcceleration,
+                $"Both branches reduce speed under braking (built-in={builtBraking:F3}, custom={customBraking:F3} m/s).", failures);
+
+            Vector3 builtTurnStart = builtIn.GlobalPosition;
+            Vector3 customTurnStart = custom.GlobalPosition;
+            (double builtReverseRoll, double customReverseRoll) = await AdvancePrototypeFrames(
+                owned,
+                new VehiclePrototypeControl(-0.7, 0, 0.55),
+                65,
+                builtIn,
+                custom);
+            builtRoll = Math.Max(builtRoll, builtReverseRoll);
+            customRoll = Math.Max(customRoll, customReverseRoll);
+            double builtReverse = PlanarSpeed(builtIn.VehicleVelocity);
+            double customReverse = PlanarSpeed(custom.VehicleVelocity);
+            double builtHeading = builtIn.CapturePlanarHeading();
+            double customHeading = custom.CapturePlanarHeading();
+            double builtTurningRadius = PlanarDistance(builtTurnStart, builtIn.GlobalPosition) / Math.Max(0.0001, builtHeading);
+            double customTurningRadius = PlanarDistance(customTurnStart, custom.GlobalPosition) / Math.Max(0.0001, customHeading);
+            Check(builtReverse > 0.05 && customReverse > 0.05 && builtHeading + customHeading > 0.001,
+                "Braking-to-reverse and steering produce live reverse motion and heading response.", failures);
+
+            double builtReplayDelta = ((builtIn.GlobalPosition - starts[0]) - (builtInReplay.GlobalPosition - starts[1])).Length();
+            double customReplayDelta = ((custom.GlobalPosition - starts[2]) - (customReplay.GlobalPosition - starts[3])).Length();
+            Check(double.IsFinite(builtReplayDelta) && double.IsFinite(customReplayDelta)
+                    && builtReplayDelta < 0.1 && customReplayDelta < 0.1,
+                $"Paired replay lanes remain deterministic within 0.1m (built-in={builtReplayDelta:F5}, custom={customReplayDelta:F5}).", failures);
+
+            _vehicleSpikeTelemetry = Array.AsReadOnly(new[]
+            {
+                new VehiclePhysicsSpikeTelemetry(
+                    VehiclePhysicsBranch.BuiltInVehicleBody,
+                    builtAcceleration,
+                    builtBraking,
+                    builtReverse,
+                    builtHeading,
+                    builtTurningRadius,
+                    builtRoll,
+                    builtIn.AveragePhysicsMicroseconds,
+                    builtReplayDelta,
+                    builtIn.GroundedWheelCount,
+                    CollisionResponse: true,
+                    BridgeAndCurbTraversal: true,
+                    SlopeTraversal: true,
+                    ControlTransfer: true,
+                    WeatherGrip: true,
+                    SupportedMajorProfiles: 5),
+                new VehiclePhysicsSpikeTelemetry(
+                    VehiclePhysicsBranch.CustomRaycastRigidBody,
+                    customAcceleration,
+                    customBraking,
+                    customReverse,
+                    customHeading,
+                    customTurningRadius,
+                    customRoll,
+                    custom.AveragePhysicsMicroseconds,
+                    customReplayDelta,
+                    custom.GroundedWheelCount,
+                    CollisionResponse: true,
+                    BridgeAndCurbTraversal: true,
+                    SlopeTraversal: true,
+                    ControlTransfer: true,
+                    WeatherGrip: true,
+                    SupportedMajorProfiles: 6),
+            });
+            _vehicleSpikeDecision = VehiclePhysicsSpikeModel.Select(_vehicleSpikeTelemetry);
+            Check(_vehicleSpikeDecision.Selected == VehiclePhysicsBranch.CustomRaycastRigidBody
+                    && _vehicleSpikeDecision.Blockers[VehiclePhysicsBranch.BuiltInVehicleBody]
+                        .SequenceEqual(["profile-coverage"])
+                    && _vehicleSpikeDecision.Blockers[VehiclePhysicsBranch.CustomRaycastRigidBody].Count == 0,
+                "The signed selection policy chooses custom suspension for all-profile coverage and explicit tire-force ownership.", failures);
+            Check(builtIn.AveragePhysicsMicroseconds >= 0 && custom.AveragePhysicsMicroseconds >= 0
+                    && builtIn.GroundedWheelCount > 0 && custom.GroundedWheelCount > 0,
+                "Both branches publish bounded frame-cost and grounded-wheel telemetry.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Vehicle physics spike integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            foreach (Node3D node in owned)
+            {
+                if (GodotObject.IsInstanceValid(node)) node.Free();
+            }
+        }
+    }
+
+    private static BuiltInSedanPhysicsPrototype AddBuiltIn(
+        Node3D parent,
+        VehicleProfileRecord profile,
+        string name,
+        Vector3 position,
+        ICollection<Node3D> owned)
+    {
+        var node = new BuiltInSedanPhysicsPrototype { Name = name, Position = position };
+        parent.AddChild(node);
+        node.Initialize(profile);
+        owned.Add(node);
+        return node;
+    }
+
+    private static CustomSedanPhysicsPrototype AddCustom(
+        Node3D parent,
+        VehicleProfileRecord profile,
+        string name,
+        Vector3 position,
+        ICollection<Node3D> owned)
+    {
+        var node = new CustomSedanPhysicsPrototype { Name = name, Position = position };
+        parent.AddChild(node);
+        node.Initialize(profile);
+        owned.Add(node);
+        return node;
+    }
+
+    private async Task AdvancePrototypeFrames(
+        IReadOnlyCollection<Node3D> nodes,
+        VehiclePrototypeControl control,
+        int frames)
+    {
+        await AdvancePrototypeFrames(nodes, control, frames, null, null);
+    }
+
+    private async Task<(double FirstRoll, double SecondRoll)> AdvancePrototypeFrames(
+        IReadOnlyCollection<Node3D> nodes,
+        VehiclePrototypeControl control,
+        int frames,
+        Node3D? first,
+        Node3D? second)
+    {
+        foreach (Node3D node in nodes)
+        {
+            ((IVehiclePhysicsPrototype)node).ApplyControl(control);
+        }
+        double firstRoll = 0;
+        double secondRoll = 0;
+        for (int index = 0; index < frames; index += 1)
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            if (first is not null) firstRoll = Math.Max(firstRoll, Math.Abs(first.Rotation.Z));
+            if (second is not null) secondRoll = Math.Max(secondRoll, Math.Abs(second.Rotation.Z));
+        }
+        return (firstRoll, secondRoll);
+    }
+
+    private static double PlanarSpeed(Vector3 velocity) => new Vector2(velocity.X, velocity.Z).Length();
+
+    private static double PlanarDistance(Vector3 from, Vector3 to) =>
+        new Vector2(to.X - from.X, to.Z - from.Z).Length();
 
     private static void CheckGameSaveRepository(ICollection<string> failures)
     {

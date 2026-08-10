@@ -1156,7 +1156,15 @@ bridge/curb traversal, slopes, collisions, frame cost, control transfer,
 determinism, and support for bus/truck/motorbike profiles. Select one in an ADR.
 The provisional recommendation is the custom rigid-body implementation because
 the source has profile-specific raycast suspension and Godot documents built-in
-vehicle limitations.
+vehicle limitations. *(complete: live four-wheel `VehicleBody3D` and four-ray
+`RigidBody3D` sedan prototypes consume the same canonical profile/control
+contract; headless paired-lane telemetry covers acceleration, braking/reverse,
+steering, roll, grounded wheels, callback cost, collision masks, and replay
+delta, while a reviewed capability matrix covers bridge/curb/slope geometry,
+control transfer, weather grip, and six-profile extensibility. ADR
+`docs/adr/0001-select-custom-raycast-vehicle-physics.md` selects the custom
+raycast chassis; full traversal/tuning acceptance remains the selected-branch
+work in items 5.5–5.7.)*
 
 5.5 Port the complete vehicle profile contract and implement sedan, sports,
 bus, truck, emergency, and motorbike test fixtures. Separate physics chassis,
