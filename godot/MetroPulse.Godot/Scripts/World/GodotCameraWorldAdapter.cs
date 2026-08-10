@@ -9,6 +9,7 @@ public partial class GodotCameraWorldAdapter : Node3D
     private static readonly IReadOnlyList<string> ProductionPresetIds = Array.AsReadOnly(
         new[] { "management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free" });
     private Camera3D? camera;
+    private MvpWorldGenerator? world;
     private CameraPresetModel? presets;
     private CameraClearanceQuery? clearance;
 
@@ -20,6 +21,8 @@ public partial class GodotCameraWorldAdapter : Node3D
 
     public CameraClearanceInspection? CurrentInspection { get; private set; }
 
+    public Vector3 CurrentTarget { get; private set; }
+
     public void Initialize(MvpWorldGenerator world, GameContentRegistry content)
     {
         ArgumentNullException.ThrowIfNull(world);
@@ -28,6 +31,7 @@ public partial class GodotCameraWorldAdapter : Node3D
         {
             throw new InvalidOperationException("Camera world adapter is already initialized.");
         }
+        this.world = world;
         camera = GetNode<Camera3D>("MainCamera");
         camera.Far = (float)MetroPulse.Domain.TimeWeather.CelestialOrbitModel.DefaultConfig.CameraFarPlane;
         camera.Fov = 60;
@@ -72,7 +76,8 @@ public partial class GodotCameraWorldAdapter : Node3D
             return false;
         }
         camera.GlobalPosition = ToVector(position);
-        camera.LookAt(ToVector(pose.LookAt), Vector3.Up);
+        CurrentTarget = ToVector(pose.LookAt);
+        camera.LookAt(CurrentTarget, Vector3.Up);
         ActivePresetId = id;
         CurrentInspection = clearance.Inspect(position, options);
         return CurrentInspection.Clear;
@@ -82,6 +87,31 @@ public partial class GodotCameraWorldAdapter : Node3D
     {
         CameraClearanceQuery query = clearance ?? throw new InvalidOperationException("Camera world adapter is not initialized.");
         return query.Inspect(new CameraVector3(position.X, position.Y, position.Z));
+    }
+
+    public double GetSurfaceHeight(double x, double z)
+    {
+        MvpWorldGenerator owner = world ?? throw new InvalidOperationException("Camera world adapter is not initialized.");
+        return Math.Max(0, owner.Surface.GetTerrainHeight(x, z));
+    }
+
+    public bool TryResolve(
+        Vector3 desired,
+        CameraClearanceOptions? options,
+        out Vector3 resolved)
+    {
+        CameraClearanceQuery query = clearance ?? throw new InvalidOperationException("Camera world adapter is not initialized.");
+        try
+        {
+            resolved = ToVector(query.Resolve(new CameraVector3(desired.X, desired.Y, desired.Z), options));
+            CurrentInspection = query.Inspect(new CameraVector3(resolved.X, resolved.Y, resolved.Z), options);
+            return CurrentInspection.Clear;
+        }
+        catch (InvalidOperationException)
+        {
+            resolved = desired;
+            return false;
+        }
     }
 
     private static Vector3 ToVector(CameraVector3 value) => new((float)value.X, (float)value.Y, (float)value.Z);

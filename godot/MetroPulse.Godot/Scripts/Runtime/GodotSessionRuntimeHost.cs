@@ -1,8 +1,8 @@
 using Godot;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
-using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Runtime;
 
@@ -13,6 +13,7 @@ namespace MetroPulse.Godot.Runtime;
 public partial class GodotSessionRuntimeHost : Node
 {
     private Func<bool>? unsubscribeTransitions;
+    private Func<bool>? unregisterCameraTask;
 
     public bool Initialized { get; private set; }
 
@@ -28,7 +29,9 @@ public partial class GodotSessionRuntimeHost : Node
 
     public long AdvancedFrames { get; private set; }
 
-    public void Initialize(RuntimeInputHost input, GodotCameraWorldAdapter camera)
+    public void Initialize(
+        RuntimeInputHost input,
+        GameplayCameraRig gameplayCamera)
     {
         if (Initialized)
         {
@@ -36,11 +39,17 @@ public partial class GodotSessionRuntimeHost : Node
         }
 
         Scheduler = new SimulationScheduler(initialClockPolicy: ClockPolicy.City);
-        Runtime = new GodotTransitionRuntime(input, camera, Scheduler);
+        Runtime = new GodotTransitionRuntime(input, gameplayCamera, Scheduler);
         StateMachine = new GameStateMachine(GameState.Management, Runtime.SnapshotContext);
         Transitions = new GameTransitionCoordinator(StateMachine, Runtime);
         Pause = new PauseManager(Transitions, input.ClearAndQuarantine);
         unsubscribeTransitions = Transitions.Subscribe(LogTransition);
+        unregisterCameraTask = Scheduler.RegisterTask(
+            "camera.gameplay",
+            SimulationStage.Camera,
+            (delta, context) => gameplayCamera.Advance(
+                delta,
+                context.ClockPolicy is ClockPolicy.City or ClockPolicy.Builder or ClockPolicy.Street));
         ProcessMode = ProcessModeEnum.Always;
         SetProcess(true);
         Initialized = true;
@@ -70,6 +79,8 @@ public partial class GodotSessionRuntimeHost : Node
         if (!Initialized) return;
         _ = unsubscribeTransitions?.Invoke();
         unsubscribeTransitions = null;
+        _ = unregisterCameraTask?.Invoke();
+        unregisterCameraTask = null;
         SetProcess(false);
         Initialized = false;
     }

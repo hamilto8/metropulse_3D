@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Godot;
 using MetroPulse.Domain.Boot;
+using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
@@ -9,6 +10,7 @@ using MetroPulse.Domain.Simulation;
 using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
+using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
 
@@ -158,6 +160,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
+        CheckGameplayCamera(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -170,6 +173,20 @@ public partial class IntegrationTestRunner : Node
         {
             MvpWorldGenerator world = compositionRoot.CurrentSession?.World
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.gameplay_camera.passed",
+                "Phase 5 gameplay camera integration checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "17",
+                    ["modes"] = Enum.GetValues<GameplayCameraMode>().Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["followStarts"] = session.GameplayCamera?.FollowStartCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["followReleases"] = session.GameplayCamera?.FollowReleaseCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -190,8 +207,6 @@ public partial class IntegrationTestRunner : Node
                     ["chunkInstances"] = string.Join(';', world.Layout.ChunkIds.Select(id => $"{id}:{world.Layout.InstanceGroups.Where(item => item.ChunkId == id).Sum(item => item.Instances.Count)}")),
                     ["chunkSegments"] = string.Join(';', world.Layout.ChunkIds.Select(id => $"{id}:{world.Layout.SegmentGroups.Where(item => item.ChunkId == id).Sum(item => item.Segments.Count)}")),
                 }));
-            SessionShell session = compositionRoot.CurrentSession
-                ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -681,6 +696,105 @@ public partial class IntegrationTestRunner : Node
         }
     }
 
+    private static void CheckGameplayCamera(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GameplayCameraRig rig = session.GameplayCamera
+                ?? throw new InvalidOperationException("Gameplay camera rig is unavailable.");
+            Camera3D camera = session.GetNode<Camera3D>("CameraRig/MainCamera");
+            GodotCameraWorldAdapter worldCamera = session.CameraAdapter
+                ?? throw new InvalidOperationException("Camera world adapter is unavailable.");
+
+            Check(rig.Initialized
+                    && rig.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true,
+                "The disposable session owns one initialized gameplay camera rig.", failures);
+            GameplayCameraSnapshot management = rig.CaptureSnapshot();
+            Check(management is { Mode: GameplayCameraMode.OrbitMacro, ActivePresetId: "management" },
+                "The gameplay camera adopts the authoritative Management preset on boot.", failures);
+
+            Vector3 orbitStart = camera.GlobalPosition;
+            rig.ApplyLookInput(0.35, -0.08);
+            Check(!camera.GlobalPosition.IsEqualApprox(orbitStart) && worldCamera.Inspect(camera.GlobalPosition).Clear,
+                "Macro orbit rotates around its pivot and resolves a clear origin.", failures);
+            Vector3 panStart = camera.GlobalPosition;
+            rig.Pan(new Vector3(1, 1, 1), 0.1, fast: true);
+            Check(!camera.GlobalPosition.IsEqualApprox(panStart) && worldCamera.Inspect(camera.GlobalPosition).Clear,
+                "Macro pan moves horizontally/vertically at the fast profile without violating clearance.", failures);
+
+            Check(rig.TransitionToPreset("street", 0.1), "Known presets begin bounded camera transitions.", failures);
+            rig.Advance(0.05);
+            Check(rig.Mode == GameplayCameraMode.PresetTransition, "Preset transition remains active before its duration elapses.", failures);
+            rig.Advance(0.05);
+            Check(rig.Mode == GameplayCameraMode.StreetLook && rig.ActivePresetId == "street",
+                "Street preset completes into local street-look mode.", failures);
+            Vector3 streetLook = rig.LookAt;
+            rig.ApplyLookInput(0.4, 0.25);
+            Check(!rig.LookAt.IsEqualApprox(streetLook)
+                    && Math.Abs(rig.LookAt.DistanceTo(camera.GlobalPosition) - StreetCameraModel.PivotDistance) < 0.001,
+                "Street look owns an independent bounded yaw/pitch pivot.", failures);
+
+            var target = new IntegrationCameraTarget(new GameplayCameraTargetSnapshot(
+                "camera-fixture-sedan",
+                CameraTargetTypes.Vehicle,
+                new Vector3(0, 1.2f, 0),
+                0,
+                40,
+                HasPhysicsVehicle: true,
+                UserControlled: true));
+            Check(rig.StartFollow(target, 0.1), "A valid controlled entity starts one chase swoop.", failures);
+            rig.Advance(0.05);
+            Check(rig.Mode == GameplayCameraMode.SwoopToStreet, "Entity follow uses quintic swoop before chase ownership.", failures);
+            rig.ApplyLookInput(0.5, 0.2);
+            Check(Math.Abs(rig.ChaseYaw - 0.5) < 1e-9 && Math.Abs(rig.ChasePitch - 0.2) < 1e-9,
+                "Chase yaw and pitch remain independent from the target heading.", failures);
+            rig.Advance(0.05);
+            Check(rig.Mode == GameplayCameraMode.ChaseMicro && worldCamera.Inspect(camera.GlobalPosition).Clear,
+                "Completed swoop enters a clearance-checked chase pose.", failures);
+            Vector3 chaseStart = camera.GlobalPosition;
+            target.Snapshot = target.Snapshot with { Position = new Vector3(8, 1.2f, -4) };
+            rig.Advance(0.1);
+            Check(!camera.GlobalPosition.IsEqualApprox(chaseStart) && camera.Fov > ChaseCameraModel.DefaultFieldOfView,
+                "Chase follows target motion and widens FOV from objective speed telemetry.", failures);
+
+            rig.TriggerShake(0.5);
+            rig.Advance(1d / 60);
+            Check(!rig.AppliedShakeOffset.IsZeroApprox(), "Camera shake publishes a temporary render-only offset.", failures);
+            GameplayCameraSnapshot unshaken = rig.CaptureSnapshot();
+            Check(rig.AppliedShakeOffset.IsZeroApprox()
+                    && unshaken.CameraTransform.Origin.Y >= worldCamera.GetSurfaceHeight(
+                        unshaken.CameraTransform.Origin.X,
+                        unshaken.CameraTransform.Origin.Z) + CameraGroundConstraintModel.GroundClearance - 0.001,
+                "Snapshot capture removes shake and retains terrain clearance in the persistent pose.", failures);
+            Check(rig.ReleaseFollow()
+                    && rig.Mode == GameplayCameraMode.OrbitMacro
+                    && Math.Abs(camera.Fov - ChaseCameraModel.DefaultFieldOfView) < 0.001,
+                "Follow release preserves the local pose and restores the ordinary lens.", failures);
+            Check(!rig.ReleaseFollow(), "Repeated follow release is idempotent.", failures);
+
+            rig.RestoreSnapshot(management);
+            Check(camera.GlobalTransform.IsEqualApprox(management.CameraTransform)
+                    && rig.LookAt.IsEqualApprox(management.LookAt)
+                    && rig.Mode == GameplayCameraMode.OrbitMacro,
+                "Camera snapshots restore transform, pivot, lens, mode, and ownership.", failures);
+            GameplayCameraSnapshot beforeRejectedPreset = rig.CaptureSnapshot();
+            Check(!rig.TransitionToPreset("airfield", 0.1)
+                    && rig.CaptureSnapshot() == beforeRejectedPreset,
+                "Feature-gated camera presets fail atomically.", failures);
+            var invalidTarget = new IntegrationCameraTarget(target.Snapshot with { Position = new Vector3(float.NaN, 0, 0) });
+            Check(!rig.StartFollow(invalidTarget), "Malformed follow targets fail closed without changing camera authority.", failures);
+            rig.ApplyPresetImmediate("management");
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Gameplay camera integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
     private static void CheckGameSaveRepository(ICollection<string> failures)
     {
         string directory = $"user://integration/save-repository-{OS.GetProcessId()}";
@@ -909,6 +1023,13 @@ public partial class IntegrationTestRunner : Node
                 throw new InvalidDataException("The integration save fixture is not valid JSON.", error);
             }
         }
+    }
+
+    private sealed class IntegrationCameraTarget(GameplayCameraTargetSnapshot snapshot) : IGameplayCameraTarget
+    {
+        public GameplayCameraTargetSnapshot Snapshot { get; set; } = snapshot;
+
+        public GameplayCameraTargetSnapshot CaptureCameraTarget() => Snapshot;
     }
 
     private static void CheckCapabilityFailureContract(

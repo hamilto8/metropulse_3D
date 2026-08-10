@@ -2,6 +2,7 @@ using Godot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
+using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
@@ -26,6 +27,8 @@ public partial class SessionShell : Node
 
     public GodotSessionRuntimeHost? RuntimeHost { get; private set; }
 
+    public GameplayCameraRig? GameplayCamera { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -47,9 +50,12 @@ public partial class SessionShell : Node
         runtimeServices.AddChild(InputHost);
         InputHost.Initialize(settings);
         CameraAdapter ??= GetNode<GodotCameraWorldAdapter>("CameraRig");
+        GameplayCamera = new GameplayCameraRig { Name = "GameplayCamera" };
+        runtimeServices.AddChild(GameplayCamera);
+        GameplayCamera.Initialize(InputHost, settings, CameraAdapter);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
-        RuntimeHost.Initialize(InputHost, CameraAdapter);
+        RuntimeHost.Initialize(InputHost, GameplayCamera);
     }
 
     public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
@@ -80,6 +86,7 @@ public partial class SessionShell : Node
 
         IsShutDown = true;
         RuntimeHost?.Shutdown();
+        GameplayCamera?.Shutdown();
         InputHost?.Shutdown();
         Environment?.Shutdown();
         Billboards?.Shutdown();
@@ -102,6 +109,7 @@ public partial class SessionShell : Node
             || GetNodeOrNull<Node3D>("WorldRoot") is null
             || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
             || InputHost?.Initialized != true
+            || GameplayCamera?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

@@ -1,4 +1,5 @@
 using MetroPulse.Domain.Core;
+using MetroPulse.Godot.Camera;
 
 namespace MetroPulse.Godot.Runtime;
 
@@ -8,6 +9,8 @@ namespace MetroPulse.Godot.Runtime;
 /// </summary>
 public interface IPlayerControlTransitionBridge
 {
+    IGameplayCameraTarget? ControlledCameraTarget { get; }
+
     TransitionContext SnapshotContext();
 
     object? CaptureSourceState();

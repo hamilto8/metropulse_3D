@@ -1,27 +1,24 @@
-using Godot;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Settings;
-using MetroPulse.Godot.World;
+using MetroPulse.Godot.Camera;
 
 namespace MetroPulse.Godot.Runtime;
 
 public sealed class GodotTransitionRuntime : ITransitionRuntime
 {
     private readonly RuntimeInputHost input;
-    private readonly GodotCameraWorldAdapter cameraAdapter;
-    private readonly Camera3D camera;
+    private readonly GameplayCameraRig gameplayCamera;
     private readonly SimulationScheduler scheduler;
     private IPlayerControlTransitionBridge? controlBridge;
 
     public GodotTransitionRuntime(
         RuntimeInputHost input,
-        GodotCameraWorldAdapter cameraAdapter,
+        GameplayCameraRig gameplayCamera,
         SimulationScheduler scheduler)
     {
         this.input = input ?? throw new ArgumentNullException(nameof(input));
-        this.cameraAdapter = cameraAdapter ?? throw new ArgumentNullException(nameof(cameraAdapter));
         this.scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
-        camera = cameraAdapter.GetNode<Camera3D>("MainCamera");
+        this.gameplayCamera = gameplayCamera ?? throw new ArgumentNullException(nameof(gameplayCamera));
     }
 
     public int SourceRestoreCount { get; private set; }
@@ -46,7 +43,7 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
             TransitionPhase.HandoffEntity => HandoffEntity(context),
             TransitionPhase.PositionCamera => PositionCamera(context),
             TransitionPhase.ConfigureSimulation => ConfigureSimulation(context),
-            TransitionPhase.ConfigurePresentation => new TransitionPhaseResult(),
+            TransitionPhase.ConfigurePresentation => ConfigurePresentation(context),
             TransitionPhase.ValidateDestination => ValidateDestination(context),
             _ => new TransitionPhaseResult(
                 false,
@@ -64,12 +61,8 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
 
         controlBridge?.RestoreSourceState(source.ControlState);
         scheduler.SetClockPolicy(source.ClockPolicy);
-        if (source.PresetId is not null)
-        {
-            _ = cameraAdapter.ApplyPreset(source.PresetId);
-        }
-        camera.GlobalTransform = source.CameraTransform;
-        camera.ResetPhysicsInterpolation();
+        gameplayCamera.RestoreSnapshot(source.CameraState);
+        ApplyInputContext(context.From);
         SourceRestoreCount++;
     }
 
@@ -88,8 +81,7 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
     private TransitionPhaseResult CaptureSource() => new(
         SourceState: new RuntimeSourceState(
             scheduler.ClockPolicy,
-            camera.GlobalTransform,
-            cameraAdapter.ActivePresetId,
+            gameplayCamera.CaptureSnapshot(),
             controlBridge?.CaptureSourceState()));
 
     private TransitionPhaseResult HandoffEntity(TransitionRuntimeContext context)
@@ -109,31 +101,39 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
 
     private TransitionPhaseResult PositionCamera(TransitionRuntimeContext context)
     {
-        string? preset = context.To switch
-        {
-            GameState.Management => "management",
-            GameState.Builder => "birdseye",
-            GameState.Load => "management",
-            GameState.Menu => "management",
-            GameState.StreetOnFoot or GameState.StreetVehicle => "street",
-            _ => null,
-        };
-        if (preset is null)
+        if (context.To is GameState.Paused or GameState.Result)
         {
             return new TransitionPhaseResult();
         }
-        return cameraAdapter.ApplyPreset(preset)
+        return gameplayCamera.ApplyTransitionState(context.To, controlBridge?.ControlledCameraTarget)
             ? new TransitionPhaseResult()
             : new TransitionPhaseResult(
                 false,
                 "CAMERA_PLACEMENT_FAILED",
-                $"The {preset} camera could not resolve a safe pose.");
+                $"The {context.To.ToToken()} camera could not resolve a safe pose or follow target.");
     }
 
     private TransitionPhaseResult ConfigureSimulation(TransitionRuntimeContext context)
     {
         scheduler.SetClockPolicy(GameStateCatalog.Policies[context.To].Clock);
         return new TransitionPhaseResult();
+    }
+
+    private TransitionPhaseResult ConfigurePresentation(TransitionRuntimeContext context)
+    {
+        ApplyInputContext(context.To);
+        return new TransitionPhaseResult();
+    }
+
+    private void ApplyInputContext(GameState state)
+    {
+        TransitionContext ownership = SnapshotContext();
+        input.SetContextSignals(new ControlContextSignals(
+            PauseOpen: state == GameState.Paused,
+            BuilderActive: state == GameState.Builder,
+            VehicleControlled: ownership.ControlledEntityKind == ControlKind.Vehicle,
+            AircraftControlled: ownership.ControlledEntityKind == ControlKind.Aircraft,
+            PedestrianControlled: ownership.ControlledEntityKind == ControlKind.Pedestrian));
     }
 
     private TransitionPhaseResult ValidateDestination(TransitionRuntimeContext context)
@@ -148,7 +148,6 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
 
     private sealed record RuntimeSourceState(
         ClockPolicy ClockPolicy,
-        Transform3D CameraTransform,
-        string? PresetId,
+        GameplayCameraSnapshot CameraState,
         object? ControlState);
 }

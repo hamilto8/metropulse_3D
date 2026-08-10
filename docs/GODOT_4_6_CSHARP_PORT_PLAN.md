@@ -1124,7 +1124,12 @@ checks cover Management/Builder/pause/resume plus failed Street compensation.)*
 
 5.2 Implement the camera rig: orbit/pan, street look pivot, pedestrian chase,
 vehicle chase, independent yaw/pitch, clearance correction, shake as a
-render-only offset, follow release, and preset transitions.
+render-only offset, follow release, and preset transitions. *(complete: the
+session-owned `GameplayCameraRig` consumes the canonical camera scheduler stage
+and runtime input snapshots, drives five explicit macro/street/chase/transition
+modes, resolves every persistent origin through the Phase 4 world query, keeps
+shake removable and terrain-safe, captures/restores full transaction state,
+and accepts entity follow data only through `IGameplayCameraTarget`.)*
 
 5.3 Build a `CharacterBody3D` pedestrian controller with walk, sprint, jump,
 slope/step behavior, sliding collision, collision layers, water/out-of-bounds
