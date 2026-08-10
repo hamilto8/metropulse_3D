@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "capture": "Godot 4.6 debug session after fixed noon/clear presentation initialization",
+  "chunks": {
+    "WestCore": { "objects": 38, "colliders": 20, "instances": 800, "segments": 0 },
+    "RiverCorridor": { "objects": 4, "colliders": 3, "instances": 0, "segments": 0 },
+    "PrimaryBridge": { "objects": 22, "colliders": 19, "instances": 0, "segments": 234 },
+    "CentralPark": { "objects": 14, "colliders": 11, "instances": 16, "segments": 0 },
+    "BuildingPlots": { "objects": 24, "colliders": 24, "instances": 0, "segments": 0 },
+    "StreetFurniture": { "objects": 158, "colliders": 158, "instances": 292, "segments": 0 },
+    "InitialSkyline": { "objects": 23, "colliders": 23, "instances": 4392, "segments": 0 }
+  },
+  "totals": {
+    "objects": 283,
+    "colliders": 258,
+    "instances": 5500,
+    "segments": 234,
+    "multiMeshGroups": 87,
+    "cachedMeshes": 58,
+    "cachedMaterials": 51,
+    "cachedShapes": 44
+  },
+  "budgets": {
+    "objects": 350,
+    "colliders": 300,
+    "multiMeshGroups": 100,
+    "cachedMeshes": 64,
+    "cachedMaterials": 56,
+    "cachedShapes": 48
+  },
+  "afterShutdown": {
+    "ownedNodes": 0,
+    "colliders": 0,
+    "cachedMeshes": 0,
+    "cachedMaterials": 0,
+    "cachedShapes": 0
+  }
+}

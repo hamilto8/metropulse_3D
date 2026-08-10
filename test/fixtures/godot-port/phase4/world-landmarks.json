@@ -1,0 +1,457 @@
+{
+  "bridge": {
+    "barriers": [
+      {
+        "position": [
+          160,
+          1.1,
+          -8.7
+        ],
+        "size": [
+          100,
+          2.2,
+          0.6
+        ]
+      },
+      {
+        "position": [
+          160,
+          1.1,
+          8.7
+        ],
+        "size": [
+          100,
+          2.2,
+          0.6
+        ]
+      }
+    ],
+    "cableSamples": [
+      {
+        "height": 3.2,
+        "x": 110
+      },
+      {
+        "height": 26.1,
+        "x": 124
+      },
+      {
+        "height": 62,
+        "x": 138
+      },
+      {
+        "height": 23.91735537190083,
+        "x": 150
+      },
+      {
+        "height": 14,
+        "x": 160
+      },
+      {
+        "height": 23.91735537190083,
+        "x": 170
+      },
+      {
+        "height": 62,
+        "x": 182
+      },
+      {
+        "height": 26.1,
+        "x": 196
+      },
+      {
+        "height": 3.2,
+        "x": 210
+      }
+    ],
+    "deck": {
+      "position": [
+        160,
+        -0.45,
+        0
+      ],
+      "size": [
+        100,
+        1,
+        18
+      ]
+    }
+  },
+  "cameraPresets": {
+    "birdseye": {
+      "pos": [
+        80,
+        320,
+        15
+      ],
+      "target": [
+        80,
+        0,
+        0
+      ]
+    },
+    "bridge": {
+      "pos": [
+        160,
+        28,
+        65
+      ],
+      "target": [
+        160,
+        8,
+        -15
+      ]
+    },
+    "downtown": {
+      "pos": [
+        122,
+        64,
+        0
+      ],
+      "target": [
+        5,
+        19,
+        0
+      ]
+    },
+    "free": {
+      "pos": [
+        160,
+        95,
+        130
+      ],
+      "target": [
+        80,
+        0,
+        0
+      ]
+    },
+    "ground": {
+      "pos": [
+        3.5,
+        0.75,
+        92
+      ],
+      "target": [
+        3.5,
+        0.75,
+        -28
+      ]
+    },
+    "management": {
+      "pos": [
+        80,
+        320,
+        15
+      ],
+      "target": [
+        80,
+        0,
+        0
+      ]
+    },
+    "park": {
+      "pos": [
+        -45,
+        12,
+        -45
+      ],
+      "target": [
+        -60,
+        4,
+        -60
+      ]
+    },
+    "street": {
+      "pos": [
+        3.5,
+        3.6,
+        92
+      ],
+      "target": [
+        3.5,
+        2.1,
+        -28
+      ]
+    }
+  },
+  "districtBounds": [
+    {
+      "id": "WEST_CORE",
+      "maxX": 105,
+      "maxZ": 150,
+      "minX": -190,
+      "minZ": -150
+    },
+    {
+      "id": "CENTRAL_PARK",
+      "maxX": -45,
+      "maxZ": -45,
+      "minX": -105,
+      "minZ": -105
+    },
+    {
+      "id": "PRIMARY_BRIDGE_CORRIDOR",
+      "maxX": 330,
+      "maxZ": 150,
+      "minX": 105,
+      "minZ": -150
+    }
+  ],
+  "missionPickups": [
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_executive",
+      "x": 0,
+      "z": 30
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_scientist",
+      "x": -50,
+      "z": -80
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_police_robbery",
+      "x": 0,
+      "z": 0
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_police_park",
+      "x": -100,
+      "z": -50
+    },
+    {
+      "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+      "id": "mission_sports_trial",
+      "x": 210,
+      "z": 0
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_sports_smuggle",
+      "x": 50,
+      "z": -50
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_bus_loop",
+      "x": 0,
+      "z": 100
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_truck_delivery",
+      "x": -50,
+      "z": 100
+    },
+    {
+      "districtId": "WEST_CORE",
+      "id": "mission_sedan_grocery",
+      "x": 100,
+      "z": 0
+    },
+    {
+      "districtId": "PRIMARY_BRIDGE_CORRIDOR",
+      "id": "mission_mayhem_escape",
+      "x": 210,
+      "z": -50
+    }
+  ],
+  "park": {
+    "center": [
+      -75,
+      0.45,
+      -75
+    ],
+    "size": [
+      32,
+      0.5,
+      32
+    ]
+  },
+  "plotCenters": [
+    {
+      "id": "plot-surface--75--25",
+      "x": -75,
+      "z": -25
+    },
+    {
+      "id": "plot-surface--75-25",
+      "x": -75,
+      "z": 25
+    },
+    {
+      "id": "plot-surface--75-75",
+      "x": -75,
+      "z": 75
+    },
+    {
+      "id": "plot-surface--25--75",
+      "x": -25,
+      "z": -75
+    },
+    {
+      "id": "plot-surface--25--25",
+      "x": -25,
+      "z": -25
+    },
+    {
+      "id": "plot-surface--25-25",
+      "x": -25,
+      "z": 25
+    },
+    {
+      "id": "plot-surface--25-75",
+      "x": -25,
+      "z": 75
+    },
+    {
+      "id": "plot-surface-25--75",
+      "x": 25,
+      "z": -75
+    },
+    {
+      "id": "plot-surface-25--25",
+      "x": 25,
+      "z": -25
+    },
+    {
+      "id": "plot-surface-25-25",
+      "x": 25,
+      "z": 25
+    },
+    {
+      "id": "plot-surface-25-75",
+      "x": 25,
+      "z": 75
+    },
+    {
+      "id": "plot-surface-75--75",
+      "x": 75,
+      "z": -75
+    },
+    {
+      "id": "plot-surface-75--25",
+      "x": 75,
+      "z": -25
+    },
+    {
+      "id": "plot-surface-75-25",
+      "x": 75,
+      "z": 25
+    },
+    {
+      "id": "plot-surface-75-75",
+      "x": 75,
+      "z": 75
+    },
+    {
+      "id": "plot-surface-235--75",
+      "x": 235,
+      "z": -75
+    },
+    {
+      "id": "plot-surface-235--25",
+      "x": 235,
+      "z": -25
+    },
+    {
+      "id": "plot-surface-235-25",
+      "x": 235,
+      "z": 25
+    },
+    {
+      "id": "plot-surface-235-75",
+      "x": 235,
+      "z": 75
+    },
+    {
+      "id": "plot-surface-285--75",
+      "x": 285,
+      "z": -75
+    },
+    {
+      "id": "plot-surface-285--25",
+      "x": 285,
+      "z": -25
+    },
+    {
+      "id": "plot-surface-285-25",
+      "x": 285,
+      "z": 25
+    },
+    {
+      "id": "plot-surface-285-75",
+      "x": 285,
+      "z": 75
+    }
+  ],
+  "positionToleranceMeters": 0.01,
+  "roads": {
+    "width": 14,
+    "x": [
+      -100,
+      -50,
+      0,
+      50,
+      100,
+      210,
+      260,
+      310
+    ],
+    "z": [
+      -100,
+      -50,
+      0,
+      50,
+      100
+    ]
+  },
+  "schemaVersion": 1,
+  "sourceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "terrainSamples": [
+    {
+      "height": 0,
+      "x": -190,
+      "z": -390
+    },
+    {
+      "height": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "height": 0,
+      "x": 160,
+      "z": 0
+    },
+    {
+      "height": 0,
+      "x": 420,
+      "z": -100
+    },
+    {
+      "height": -1.3157162478518685,
+      "x": 500,
+      "z": 75
+    },
+    {
+      "height": 3.019534687593074,
+      "x": 650,
+      "z": 0
+    },
+    {
+      "height": 2.462891042268442,
+      "x": 700,
+      "z": -200
+    },
+    {
+      "height": -2.2042048759675565,
+      "x": 810,
+      "z": 390
+    }
+  ]
+}

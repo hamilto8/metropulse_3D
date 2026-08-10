@@ -985,6 +985,10 @@ handoffs and `phase-3-exit-audit.md`; no schema change was introduced)*
 
 ## 12. Phase 4 — Rebuild the procedural world and rendering baseline
 
+> **Status:** Phase 4 complete as of 2026-08-09. Four published slices cover
+> the surface kernel, generated MVP world, environment/billboard/camera
+> adapters, and executable landmark/physical/visual/lifecycle exit audit.
+
 ### Objective
 
 Reproduce the navigable MVP world, visual identity, surface queries, collision
@@ -1068,22 +1072,36 @@ the 2,200-unit celestial far plane, and rejects airfield/rocket presets.)*
 4.10 Add golden landmark tests: plot centers, roads, bridge deck/barriers,
 mission pickup coordinates, Central Park, camera presets, terrain samples, and
 district bounds. Add reference/Godot screenshot pairs at fixed seed/time/weather.
+*(complete: the source-generated golden fixture covers 23 plot centers, the
+road grid, bridge deck/barriers/cables, ten MVP mission pickups, Central Park,
+eight production cameras, eight terrain samples, and three MVP district bounds;
+three 1280×720 seed-424242 browser/Godot pairs cover day/clear, dusk/rain, and
+night/clear with accepted geometry, palette, lighting, and readability review.)*
 
 ### Exit gate
 
-- The entire MVP world is traversable by a debug capsule and camera.
+- The entire MVP world is traversable by a debug capsule and camera. *(complete:
+  a 14-waypoint route is sampled every 2.5 metres against live support and
+  static-obstacle physics, and all eight production cameras resolve clear.)*
 - Terrain/water/bridge/collider queries match fixtures within tolerance.
+  *(complete: 7,979 grid, 26 boundary/deck, and golden landmark comparisons pass.)*
 - No visible collider mismatch exists at sampled buildings, furniture, roads,
-  bridge, or slopes.
+  bridge, or slopes. *(complete: live rays resolve sampled skyline, cafe, road,
+  bridge, and park visuals to the same stable collider owners; terrain slope
+  samples retain the frozen browser values.)*
 - Fixed screenshots are recognizable and signed off for geometry, palette,
-  lighting, and readability; pixel identity is not required.
+  lighting, and readability; pixel identity is not required. *(complete: three
+  fixed pairs and their hashes/signoff fields are audit-validated.)*
 - World construction/destruction returns owned node/resource counts to baseline.
+  *(complete: the live lifecycle probe returns child, collider, mesh, material,
+  and shape counts to zero; per-chunk totals remain within recorded budgets.)*
 
 ### Handoff
 
 Provide the world scene tree, generator APIs, coordinate conversion rules,
 collision metadata schema, mesh/material caches, landmark fixture report,
-visual deviations, and performance counts by world chunk.
+visual deviations, and performance counts by world chunk. *(complete across
+the four Phase 4 handoffs, ending with `phase-4-exit-audit.md`.)*
 
 ## 13. Phase 5 — Camera, player control, pedestrians, and vehicle physics slice
 

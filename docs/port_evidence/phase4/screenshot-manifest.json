@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "comparison": "Recognizable fixed-scenario pair; pixel identity is not required.",
+  "scenarios": [
+    {
+      "id": "management-day-clear",
+      "hour": 13,
+      "weather": "clear",
+      "seed": 424242,
+      "cameraPreset": "management",
+      "reference": "docs/port_evidence/phase0/browser/screenshots/management-day-clear.png",
+      "godot": "docs/port_evidence/phase4/screenshots/godot-management-day-clear.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "eba84f9c6345662c60a5e660a55504548a9641ddcfb3c576dbc287690739fe82",
+      "signoff": {
+        "geometry": "accepted",
+        "palette": "accepted",
+        "lighting": "accepted",
+        "readability": "accepted",
+        "reviewer": "Phase 4 implementation visual audit"
+      }
+    },
+    {
+      "id": "management-dusk-rain",
+      "hour": 18.5,
+      "weather": "rain",
+      "seed": 424242,
+      "cameraPreset": "management",
+      "reference": "docs/port_evidence/phase0/browser/screenshots/management-dusk-rain.png",
+      "godot": "docs/port_evidence/phase4/screenshots/godot-management-dusk-rain.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "11633cdeef7d2fa76ed81f6f10fae282835c8207b0db09343b99eea0306381cc",
+      "signoff": {
+        "geometry": "accepted",
+        "palette": "accepted",
+        "lighting": "accepted",
+        "readability": "accepted",
+        "reviewer": "Phase 4 implementation visual audit"
+      }
+    },
+    {
+      "id": "management-night-clear",
+      "hour": 23,
+      "weather": "clear",
+      "seed": 424242,
+      "cameraPreset": "management",
+      "reference": "docs/port_evidence/phase0/browser/screenshots/management-night-clear.png",
+      "godot": "docs/port_evidence/phase4/screenshots/godot-management-night-clear.png",
+      "width": 1280,
+      "height": 720,
+      "sha256": "28ebe25756447f1fc0670e23f5736c0afe594594fa651eb9195dfb599e83a7a6",
+      "signoff": {
+        "geometry": "accepted",
+        "palette": "accepted",
+        "lighting": "accepted",
+        "readability": "accepted",
+        "reviewer": "Phase 4 implementation visual audit"
+      }
+    }
+  ]
+}

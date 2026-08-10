@@ -111,6 +111,15 @@ public partial class CompositionRoot : Node
                 AddChild(runner);
                 runner.Begin(this, diagnostics);
             }
+            else if (CaptureOutputPath(OS.GetCmdlineUserArgs()) is string captureOutputPath)
+            {
+                Phase4ScreenshotCapture capture = new();
+                AddChild(capture);
+                capture.Begin(
+                    CurrentSession ?? throw new InvalidOperationException("Screenshot capture requires a ready session."),
+                    diagnostics,
+                    captureOutputPath);
+            }
             else if (Configuration.SmokeBoot)
             {
                 GetTree().Quit(0);
@@ -182,6 +191,26 @@ public partial class CompositionRoot : Node
         DisposeSession();
         DisposeSettingsRuntime();
         DisposePersistenceRuntime();
+    }
+
+    private static string? CaptureOutputPath(IEnumerable<string> arguments)
+    {
+        const string prefix = "--capture-phase4-screenshots=";
+        string? argument = arguments.SingleOrDefault(item => item.StartsWith(prefix, StringComparison.Ordinal));
+        if (argument is null)
+        {
+            return null;
+        }
+        if (!OS.IsDebugBuild())
+        {
+            throw new InvalidOperationException("Phase 4 screenshot capture is disabled in release builds.");
+        }
+        string path = argument[prefix.Length..];
+        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+        {
+            throw new ArgumentException("The Phase 4 screenshot output path must be absolute.", nameof(arguments));
+        }
+        return path;
     }
 
     private void DisposeSettingsRuntime()

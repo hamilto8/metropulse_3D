@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "phase": 4,
+  "status": "complete",
+  "auditedOn": "2026-08-09",
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "requirements": [
+    { "id": "4.1", "status": "complete", "owner": "WorldSurfaceModel", "evidence": ["godot/MetroPulse.Domain/World/WorldSurfaceModel.cs", "test/fixtures/godot-port/phase4/world-surface-grid.json", "godot/MetroPulse.Domain.Tests/World/WorldSurfaceModelTests.cs"] },
+    { "id": "4.2", "status": "complete", "owner": "MvpWorldLayout and MvpWorldGenerator", "evidence": ["godot/MetroPulse.Domain/World/MvpWorldLayout.cs", "godot/MetroPulse.Godot/Scripts/World/MvpWorldGenerator.cs"] },
+    { "id": "4.3", "status": "complete", "owner": "MvpWorldGenerator and WorldResourceCache", "evidence": ["godot/MetroPulse.Godot/Scripts/World/MvpWorldGenerator.cs", "godot/MetroPulse.Godot/Scripts/World/WorldResourceCache.cs", "docs/port_evidence/phase4/world-performance.json"] },
+    { "id": "4.4", "status": "complete", "owner": "MvpWorldLayout spatial instance groups", "evidence": ["godot/MetroPulse.Domain/World/MvpWorldLayout.cs", "godot/MetroPulse.Domain.Tests/World/MvpWorldLayoutTests.cs"] },
+    { "id": "4.5", "status": "complete", "owner": "MvpWorldLayout and WorldCollisionRegistry", "evidence": ["godot/MetroPulse.Godot/Scripts/World/WorldCollisionRegistry.cs", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] },
+    { "id": "4.6", "status": "complete", "owner": "SuspensionBridgeLayout and MvpWorldLayout", "evidence": ["godot/MetroPulse.Domain/World/MvpWorldLayout.cs", "godot/MetroPulse.Domain.Tests/World/MvpWorldLayoutTests.cs", "test/fixtures/godot-port/phase4/world-landmarks.json"] },
+    { "id": "4.7", "status": "complete", "owner": "EnvironmentPresentationModel and WorldEnvironmentController", "evidence": ["godot/MetroPulse.Domain/TimeWeather/EnvironmentPresentationModel.cs", "godot/MetroPulse.Godot/Scripts/World/WorldEnvironmentController.cs", "godot/MetroPulse.Domain.Tests/TimeWeather/EnvironmentPresentationModelTests.cs"] },
+    { "id": "4.8", "status": "complete", "owner": "CachedBillboardSystem", "evidence": ["godot/MetroPulse.Godot/Scripts/World/CachedBillboardSystem.cs", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] },
+    { "id": "4.9", "status": "complete", "owner": "GodotCameraWorldAdapter and CameraClearanceQuery", "evidence": ["godot/MetroPulse.Godot/Scripts/World/GodotCameraWorldAdapter.cs", "godot/MetroPulse.Domain/Camera/CameraClearanceQuery.cs", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] },
+    { "id": "4.10", "status": "complete", "owner": "Phase4LandmarkTests and Phase4ScreenshotCapture", "evidence": ["Tools/Phase4WorldFixtures/capture-landmarks.mjs", "godot/MetroPulse.Domain.Tests/World/Phase4LandmarkTests.cs", "docs/port_evidence/phase4/screenshot-manifest.json"] }
+  ],
+  "exitGates": [
+    { "id": "traversal-camera", "status": "complete", "evidence": ["godot/MetroPulse.Godot/Scripts/World/WorldDebugTraversalCapsule.cs", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] },
+    { "id": "query-parity", "status": "complete", "evidence": ["test/fixtures/godot-port/phase4/world-surface-grid.json", "test/fixtures/godot-port/phase4/world-landmarks.json", "godot/MetroPulse.Domain.Tests/World/Phase4LandmarkTests.cs"] },
+    { "id": "collider-alignment", "status": "complete", "evidence": ["godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs", "godot/MetroPulse.Domain/World/MvpWorldLayout.cs"] },
+    { "id": "visual-signoff", "status": "complete", "evidence": ["docs/port_evidence/phase4/screenshot-manifest.json", "godot/scripts/capture-phase4-screenshots.sh"] },
+    { "id": "lifecycle-baseline", "status": "complete", "evidence": ["docs/port_evidence/phase4/world-performance.json", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] }
+  ],
+  "deferredBoundaries": [
+    { "owner": "Traffic, pedestrians, player bodies, and gameplay camera transitions", "phases": [5, 6, 7], "reason": "Phase 4 proves static navigation/camera safety; dynamic-agent ownership begins in later slices." },
+    { "owner": "Simulation-driven weather/clock consumers and mission presentation", "phases": [6, 8, 9], "reason": "Phase 4 owns render application while later runtime systems own advancement and product UI." },
+    { "owner": "Post-MVP districts, countryside gameplay, airfield, and rocket", "phases": [7, 8, 11], "reason": "The MVP scope keeps these features disabled and their camera presets gated." }
+  ],
+  "lastVerified": {
+    "browserTests": 391,
+    "domainTests": 232,
+    "successfulHeadlessAssertions": [84, 84, 88],
+    "phase4Assertions": { "world": 12, "presentation": 15, "exit": 5 },
+    "screenshotPairs": 3
+  }
+}

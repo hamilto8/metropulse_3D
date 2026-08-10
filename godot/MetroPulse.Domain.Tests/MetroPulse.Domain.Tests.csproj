@@ -71,5 +71,11 @@
     <EmbeddedResource Include="../../test/fixtures/godot-port/phase4/world-surface-grid.json"
                       Link="Fixtures/world-surface-grid.json"
                       LogicalName="MetroPulse.Domain.Tests.Fixtures.world-surface-grid.json" />
+    <EmbeddedResource Include="../../test/fixtures/godot-port/phase4/world-landmarks.json"
+                      Link="Fixtures/phase4-world-landmarks.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.phase4-world-landmarks.json" />
+    <EmbeddedResource Include="../../docs/port_evidence/phase4/world-performance.json"
+                      Link="Fixtures/phase4-world-performance.json"
+                      LogicalName="MetroPulse.Domain.Tests.Fixtures.phase4-world-performance.json" />
   </ItemGroup>
 </Project>

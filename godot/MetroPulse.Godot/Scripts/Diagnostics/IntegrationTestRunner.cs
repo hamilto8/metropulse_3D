@@ -4,6 +4,8 @@ using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
+using MetroPulse.Domain.Simulation;
+using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Runtime;
@@ -156,6 +158,7 @@ public partial class IntegrationTestRunner : Node
         CheckRuntimeInput(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
+        await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
         CheckGameSaveRepository(failures);
         CheckImportBackupStore(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
@@ -180,6 +183,10 @@ public partial class IntegrationTestRunner : Node
                     ["cachedMeshes"] = world.Resources.MeshCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["cachedMaterials"] = world.Resources.MaterialCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["cachedShapes"] = world.Resources.ShapeCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["chunkObjects"] = string.Join(';', world.Layout!.ChunkIds.Select(id => $"{id}:{world.Layout.Objects.Count(item => item.ChunkId == id)}")),
+                    ["chunkColliders"] = string.Join(';', world.Layout.ChunkIds.Select(id => $"{id}:{world.Colliders.Snapshot.Count(item => item.ChunkId == id)}")),
+                    ["chunkInstances"] = string.Join(';', world.Layout.ChunkIds.Select(id => $"{id}:{world.Layout.InstanceGroups.Where(item => item.ChunkId == id).Sum(item => item.Instances.Count)}")),
+                    ["chunkSegments"] = string.Join(';', world.Layout.ChunkIds.Select(id => $"{id}:{world.Layout.SegmentGroups.Where(item => item.ChunkId == id).Sum(item => item.Segments.Count)}")),
                 }));
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
@@ -194,6 +201,18 @@ public partial class IntegrationTestRunner : Node
                     ["billboardTextures"] = session.Billboards?.TextureCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["cameraPresets"] = session.CameraAdapter?.AvailablePresetIds.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["weather"] = session.Environment?.Current?.WeatherMode ?? "unavailable",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase4.exit.passed",
+                "Phase 4 physical traversal, collider alignment, and lifecycle checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "5",
+                    ["traversalWaypoints"] = world.DebugTraversalCapsule?.TraversalWaypoints.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["sampledColliders"] = "5",
+                    ["ownedResourcesAfterShutdown"] = "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -246,7 +265,7 @@ public partial class IntegrationTestRunner : Node
         Check(world?.Colliders.Snapshot.Count(item => item.Kind == "bridge-barrier") == 2, "The bridge publishes two continuous safety barriers.", failures);
         Check(world?.MultiMeshGroupCount > 20, "Repeated props are spatially partitioned into MultiMesh cells.", failures);
         Check(world is not null && world.Layout is not null && world.Resources.MaterialCount < world.Layout.Objects.Count, "World materials are cached rather than duplicated per object.", failures);
-        Check(world?.DebugTraversalCapsule?.TraversalWaypoints.Count == 8, "Debug builds include the MVP traversal capsule route.", failures);
+        Check(world?.DebugTraversalCapsule?.TraversalWaypoints.Count == 14, "Debug builds include the MVP traversal capsule route.", failures);
         Check(world is not null && world.Surface.GetTerrainHeight(160, 0) == 0 && world.Surface.IsWater(160, 0, 25), "Godot world queries retain bridge-over-water precedence.", failures);
     }
 
@@ -281,6 +300,105 @@ public partial class IntegrationTestRunner : Node
         Check(camera?.ApplyPreset("airfield") == false && camera.ApplyPreset("rocket") == false, "Optional airfield and rocket presets remain feature-gated.", failures);
         environment?.SetState(12, "clear", 320);
         billboards?.ApplyStatus(12, "clear");
+    }
+
+    private async ValueTask CheckPhysicalWorldAndLifecycle(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        MvpWorldGenerator world = compositionRoot.CurrentSession?.World
+            ?? throw new InvalidOperationException("The Phase 4 world is unavailable for physics validation.");
+        WorldDebugTraversalCapsule capsule = world.DebugTraversalCapsule
+            ?? throw new InvalidOperationException("The debug traversal capsule is unavailable.");
+        await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+        PhysicsDirectSpaceState3D space = world.GetWorld3D().DirectSpaceState;
+        CapsuleShape3D shape = new() { Radius = 0.45f, Height = 1.8f };
+        bool supported = true;
+        bool obstacleFree = true;
+        IReadOnlyList<Vector3> route = capsule.TraversalWaypoints;
+        for (int segment = 0; segment < route.Count - 1; segment++)
+        {
+            Vector3 start = route[segment];
+            Vector3 end = route[segment + 1];
+            int steps = Math.Max(1, (int)Math.Ceiling(start.DistanceTo(end) / 2.5));
+            for (int step = 0; step <= steps; step++)
+            {
+                Vector3 position = start.Lerp(end, (float)step / steps);
+                PhysicsRayQueryParameters3D ray = PhysicsRayQueryParameters3D.Create(
+                    position + (Vector3.Up * 8),
+                    position + (Vector3.Down * 8),
+                    (uint)CollisionLayer.Surface);
+                supported &= space.IntersectRay(ray).Count > 0;
+                PhysicsShapeQueryParameters3D overlap = new()
+                {
+                    Shape = shape,
+                    Transform = new Transform3D(Basis.Identity, position),
+                    CollisionMask = (uint)CollisionLayer.StaticObstacle,
+                    CollideWithBodies = true,
+                    CollideWithAreas = false,
+                };
+                obstacleFree &= space.IntersectShape(overlap, 1).Count == 0;
+            }
+        }
+        Check(supported, "Every sampled segment of the capsule route has a physical surface.", failures);
+        Check(obstacleFree, "The capsule can traverse the full MVP route without intersecting a static obstacle.", failures);
+
+        (string Id, Vector2? SamplePoint)[] colliderSamples =
+        [
+            ("building-apex_bank", null),
+            ("cafe-table-0", null),
+            ("road-west-z-50", null),
+            ("grand-suspension-deck", null),
+            ("central-park-grass", new Vector2(-60, -60)),
+        ];
+        List<string> misaligned = [];
+        foreach ((string id, Vector2? samplePoint) in colliderSamples)
+        {
+            WorldObjectDefinition definition = world.Layout?.Objects.Single(item => item.Id == id)
+                ?? throw new InvalidOperationException($"Missing collider landmark {id}.");
+            Vector3 center = new(
+                samplePoint?.X ?? (float)definition.Position.X,
+                (float)definition.Position.Y,
+                samplePoint?.Y ?? (float)definition.Position.Z);
+            PhysicsRayQueryParameters3D ray = PhysicsRayQueryParameters3D.Create(
+                center + (Vector3.Up * (float)(definition.Size.Y + 8)),
+                center + (Vector3.Down * (float)(definition.Size.Y + 8)),
+                (uint)(CollisionLayer.Surface | CollisionLayer.StaticObstacle));
+            global::Godot.Collections.Dictionary hit = space.IntersectRay(ray);
+            string? hitId = hit.TryGetValue("collider", out Variant colliderVariant)
+                ? StableId(colliderVariant.AsGodotObject() as Node)
+                : null;
+            if (hitId != id)
+            {
+                misaligned.Add($"{id}->{hitId ?? "none"}");
+            }
+        }
+        Check(misaligned.Count == 0, $"Sampled buildings, furniture, roads, bridge, and park visuals resolve to their same-source colliders. Mismatches: {string.Join(", ", misaligned)}", failures);
+
+        MvpWorldGenerator isolated = new() { Name = "LifecycleProbeWorld" };
+        AddChild(isolated);
+        isolated.Initialize(compositionRoot.ContentRegistry
+            ?? throw new InvalidOperationException("Content is unavailable for lifecycle validation."));
+        Check(isolated.IsBuilt && isolated.GetChildCount() > 0 && isolated.Resources.MeshCount > 0 && isolated.Colliders.Count > 0,
+            "A standalone world lifecycle probe constructs owned nodes, resources, and colliders.", failures);
+        isolated.ShutdownWorld();
+        Check(!isolated.IsBuilt && isolated.GetChildCount() == 0 && isolated.Layout is null
+            && isolated.Resources.MeshCount == 0 && isolated.Resources.MaterialCount == 0 && isolated.Resources.ShapeCount == 0
+            && isolated.Colliders.Count == 0, "World destruction returns all owned node, resource-cache, and collider counts to baseline.", failures);
+        RemoveChild(isolated);
+        isolated.QueueFree();
+    }
+
+    private static string? StableId(Node? node)
+    {
+        for (Node? current = node; current is not null; current = current.GetParent())
+        {
+            if (current.HasMeta("stable_id"))
+            {
+                return current.GetMeta("stable_id").AsString();
+            }
+        }
+        return null;
     }
 
     private async ValueTask CheckBootActionPresentation(

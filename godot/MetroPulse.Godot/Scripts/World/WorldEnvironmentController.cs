@@ -8,6 +8,9 @@ namespace MetroPulse.Godot.World;
 
 public partial class WorldEnvironmentController : Node3D
 {
+    // Godot's exponential depth fog accumulates more strongly than the browser
+    // scene fog at the same nominal scalar, so this is the renderer-unit adapter.
+    private const double GodotFogDensityScale = 0.18;
     private static readonly string[] WetMaterialIds = ["ground", "road", "bridge-deck", "bridge-sidewalk", "sidewalk"];
     private EnvironmentPresentationModel? model;
     private GameContentRegistry? content;
@@ -188,7 +191,10 @@ public partial class WorldEnvironmentController : Node3D
         skyMaterial.GroundBottomColor = ToColor(PresentationColor.Lerp(snapshot.SkyTop, PresentationColor.FromRgb(0x05070f), 0.7));
         environment.AmbientLightColor = ToColor(snapshot.SkyHorizon);
         environment.AmbientLightEnergy = (float)snapshot.AmbientEnergy;
-        environment.FogDensity = (float)snapshot.FogDensity;
+        environment.FogDensity = (float)(snapshot.FogDensity * GodotFogDensityScale);
+        environment.FogLightColor = ToColor(snapshot.SkyHorizon);
+        environment.FogLightEnergy = 0.35f;
+        environment.FogSkyAffect = 0.5f;
         environment.TonemapExposure = (float)snapshot.Exposure;
         environment.GlowIntensity = (float)snapshot.BloomStrength;
         environment.GlowHdrThreshold = (float)snapshot.BloomThreshold;

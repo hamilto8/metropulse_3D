@@ -8,13 +8,19 @@ public partial class WorldDebugTraversalCapsule : CharacterBody3D
     private static readonly Vector3[] Waypoints =
     [
         new(-100, 2, 100),
-        new(0, 2, 100),
         new(100, 2, 100),
-        new(115, 2, 0),
+        new(100, 2, 0),
+        new(110, 2, 0),
         new(160, 2, 0),
-        new(205, 2, 0),
+        new(210, 2, 0),
         new(310, 2, 0),
-        new(-75, 2, -75),
+        new(210, 2, 0),
+        new(160, 2, 0),
+        new(110, 2, 0),
+        new(100, 2, 0),
+        new(100, 2, -50),
+        new(-50, 2, -50),
+        new(-60, 2, -60),
     ];
 
     public IReadOnlyList<Vector3> TraversalWaypoints => Array.AsReadOnly(Waypoints);
