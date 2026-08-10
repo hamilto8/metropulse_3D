@@ -1136,7 +1136,14 @@ slope/step behavior, sliding collision, collision layers, water/out-of-bounds
 recovery, and animations. Godot's
 [CharacterBody3D reference](https://docs.godotengine.org/en/stable/classes/class_characterbody3d.html)
 requires velocity in meters/second and `MoveAndSlide()` during physics ticks;
-do not multiply velocity by delta before assigning it.
+do not multiply velocity by delta before assigning it. *(complete: the lazy,
+session-owned player avatar is a `CharacterBody3D` under `AgentRoot`; it reads
+the one frozen input snapshot after sampling, assigns canonical walk/sprint/
+jump/gravity velocity in metres per second, uses `MoveAndSlide()` with explicit
+slope, floor-snap, step-assist, sliding, layer/mask, and animation policies,
+recovers water/out-of-bounds poses to its last supported transform, publishes
+only an immutable chase target, and is suspended/reused transactionally without
+body growth.)*
 
 5.4 Implement a representative sedan vehicle physics spike with two branches:
 

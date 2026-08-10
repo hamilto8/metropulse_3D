@@ -11,6 +11,7 @@ using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
 
@@ -160,6 +161,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
+        await CheckPedestrianControl(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
@@ -175,6 +177,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.pedestrian_controller.passed",
+                "Phase 5 pedestrian controller and transactional handoff checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "11",
+                    ["handoffs"] = session.PlayerControl?.HandoffCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["recoveries"] = session.PlayerControl?.Pedestrian?.RecoveryCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["bodies"] = session.GetNode<Node3D>("WorldRoot/AgentRoot").GetChildCount().ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -251,7 +265,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "88" : "84",
+                    ["assertions"] = recoverySeedScenario ? "97" : "93",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -637,6 +651,8 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Session runtime owner is unavailable.");
             RuntimeInputHost input = session.InputHost
                 ?? throw new InvalidOperationException("Runtime input owner is unavailable.");
+            PlayerControlRuntime playerControl = session.PlayerControl
+                ?? throw new InvalidOperationException("Player control owner is unavailable.");
 
             Check(runtime.Initialized, "SessionRoot initializes one game-state/scheduler runtime owner.", failures);
             Check(runtime.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true,
@@ -665,6 +681,7 @@ public partial class IntegrationTestRunner : Node
             int restoresBefore = runtime.Runtime.SourceRestoreCount;
             Transform3D cameraBefore = session.GetNode<Camera3D>("CameraRig/MainCamera").GlobalTransform;
             GameTransitionException error = null!;
+            runtime.SetControlBridge(null);
             try
             {
                 runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("fault-injection", "phase5"));
@@ -673,6 +690,7 @@ public partial class IntegrationTestRunner : Node
             {
                 error = caught;
             }
+            runtime.SetControlBridge(playerControl);
             Check(error?.Code == "CONTROL_RUNTIME_UNAVAILABLE", "Street entry fails closed until an entity control owner is registered.", failures);
             Check(runtime.StateMachine.State == GameState.Management
                     && runtime.Scheduler.ClockPolicy == ClockPolicy.City
@@ -693,6 +711,81 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Session runtime integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async Task CheckPedestrianControl(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime owner is unavailable.");
+            PlayerControlRuntime playerControl = session.PlayerControl
+                ?? throw new InvalidOperationException("Player control owner is unavailable.");
+            RuntimeInputHost input = session.InputHost
+                ?? throw new InvalidOperationException("Runtime input owner is unavailable.");
+
+            Check(playerControl.Initialized
+                    && playerControl.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true
+                    && playerControl.Pedestrian is null,
+                "The session owns one lazy player-control authority without a Management body.", failures);
+
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-pedestrian"));
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            PlayerPedestrianController pedestrian = playerControl.Pedestrian
+                ?? throw new InvalidOperationException("Street entry did not construct the player pedestrian.");
+            Check(runtime.StateMachine.State == GameState.StreetOnFoot
+                    && runtime.Scheduler.ClockPolicy == ClockPolicy.Street
+                    && playerControl.ControlledKind == ControlKind.Pedestrian
+                    && pedestrian.Controlled,
+                "Management to on-foot commits exactly one pedestrian and the Street clock.", failures);
+            Check(pedestrian is CharacterBody3D
+                    && pedestrian.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/WorldRoot/AgentRoot", StringComparison.Ordinal) == true
+                    && pedestrian.ProcessPhysicsPriority > RuntimeInputHost.InputPhysicsPriority,
+                "The controlled pedestrian is an AgentRoot CharacterBody3D that consumes frozen input after sampling.", failures);
+            uint expectedLayers = (uint)(CollisionLayer.Player | CollisionLayer.Pedestrian);
+            Check(pedestrian.CollisionLayer == expectedLayers
+                    && pedestrian.CollisionMask == (uint)CollisionMasks.Pedestrian
+                    && Math.Abs(pedestrian.FloorSnapLength - pedestrian.MaximumStepHeight) < 0.001
+                    && pedestrian.MaxSlides >= 8,
+                "Pedestrian collision, floor snap, step height, slope, and sliding policies are explicit.", failures);
+            Check(input.LatestSnapshot.Context == ControlContexts.Pedestrian
+                    && pedestrian.PhysicsMoveCount > 0
+                    && ReferenceEquals(session.GameplayCamera?.FollowTarget, pedestrian),
+                "Physics ticks consume the Pedestrian snapshot while the chase camera follows the same authority.", failures);
+            Check(new[] { "idle", "walk", "sprint", "jump", "fall" }
+                    .All(name => pedestrian.AnimationAuthority.HasAnimation(name)),
+                "The pedestrian owns idle, walk, sprint, jump, and fall animation clips.", failures);
+
+            Vector3 supported = pedestrian.LastSupportedPosition;
+            pedestrian.GlobalPosition = new Vector3(160, -2, 50);
+            bool recovered = pedestrian.RecoverIfUnsafe();
+            Check(recovered, "Water entry is classified as an unsafe pedestrian pose.", failures);
+            Check(pedestrian.GlobalPosition.IsEqualApprox(supported),
+                $"Water recovery returns to the last supported pose ({supported}).", failures);
+            Check(pedestrian.Velocity.IsZeroApprox() && pedestrian.RecoveryCount == 1,
+                $"Water recovery clears velocity and counts once (count={pedestrian.RecoveryCount}, velocity={pedestrian.Velocity}).", failures);
+
+            ulong bodyId = pedestrian.GetInstanceId();
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-pedestrian"));
+            Check(runtime.StateMachine.State == GameState.Management
+                    && playerControl.ControlledKind == ControlKind.None
+                    && !pedestrian.Controlled
+                    && session.GameplayCamera?.FollowTarget is null,
+                "On-foot to Management releases body and camera authority transactionally.", failures);
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-pedestrian-reuse"));
+            Check(playerControl.Pedestrian?.GetInstanceId() == bodyId,
+                "Repeated street entry reuses the suspended pedestrian instead of growing the scene tree.", failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-pedestrian-reuse"));
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Pedestrian controller integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

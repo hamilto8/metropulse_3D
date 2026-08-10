@@ -4,6 +4,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
 
@@ -29,6 +30,8 @@ public partial class SessionShell : Node
 
     public GameplayCameraRig? GameplayCamera { get; private set; }
 
+    public PlayerControlRuntime? PlayerControl { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -53,9 +56,17 @@ public partial class SessionShell : Node
         GameplayCamera = new GameplayCameraRig { Name = "GameplayCamera" };
         runtimeServices.AddChild(GameplayCamera);
         GameplayCamera.Initialize(InputHost, settings, CameraAdapter);
+        PlayerControl = new PlayerControlRuntime { Name = "PlayerControl" };
+        runtimeServices.AddChild(PlayerControl);
+        PlayerControl.Initialize(
+            InputHost,
+            World ?? throw new InvalidOperationException("The world must exist before player control is initialized."),
+            GetNode<Node3D>("WorldRoot/AgentRoot"),
+            CameraAdapter);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
         RuntimeHost.Initialize(InputHost, GameplayCamera);
+        RuntimeHost.SetControlBridge(PlayerControl);
     }
 
     public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
@@ -86,6 +97,7 @@ public partial class SessionShell : Node
 
         IsShutDown = true;
         RuntimeHost?.Shutdown();
+        PlayerControl?.Shutdown();
         GameplayCamera?.Shutdown();
         InputHost?.Shutdown();
         Environment?.Shutdown();
@@ -110,6 +122,7 @@ public partial class SessionShell : Node
             || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
             || InputHost?.Initialized != true
             || GameplayCamera?.Initialized != true
+            || PlayerControl?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

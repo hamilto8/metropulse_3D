@@ -6,6 +6,57 @@ namespace MetroPulse.Domain.Tests.Pedestrians;
 public sealed class PedestrianModelTests
 {
     [Fact]
+    public void PlayerLocomotionUsesMetersPerSecondAndBoundedAcceleration()
+    {
+        PedestrianPlanarVelocity velocity = PedestrianPlanarVelocity.Zero;
+        for (int index = 0; index < 120; index += 1)
+        {
+            velocity = PedestrianLocomotionModel.AdvancePlanarVelocity(
+                velocity,
+                new PedestrianPlanarVelocity(3, 4),
+                sprint: false,
+                grounded: true,
+                1d / 120);
+        }
+
+        Assert.Equal(PedestrianLocomotionModel.DefaultConfig.WalkSpeed, velocity.Length, 10);
+        PedestrianPlanarVelocity sprint = PedestrianLocomotionModel.AdvancePlanarVelocity(
+            velocity,
+            new PedestrianPlanarVelocity(3, 4),
+            sprint: true,
+            grounded: true,
+            1d / 120);
+        Assert.True(sprint.Length > velocity.Length);
+        Assert.True(sprint.Length <= PedestrianLocomotionModel.DefaultConfig.SprintSpeed);
+    }
+
+    [Fact]
+    public void PlayerJumpGravityAnimationAndRecoveryAreExplicit()
+    {
+        double jump = PedestrianLocomotionModel.AdvanceVerticalVelocity(0, grounded: true, jumpPressed: true, 1d / 120);
+        Assert.Equal(PedestrianLocomotionModel.DefaultConfig.JumpSpeed, jump);
+        Assert.Equal(PedestrianAnimationState.Jump,
+            PedestrianLocomotionModel.ClassifyAnimation(4, jump, grounded: false, sprint: false));
+        double falling = PedestrianLocomotionModel.AdvanceVerticalVelocity(jump, grounded: false, jumpPressed: false, 0.1);
+        Assert.True(falling < jump);
+        Assert.Equal(PedestrianAnimationState.Sprint,
+            PedestrianLocomotionModel.ClassifyAnimation(6, 0, grounded: true, sprint: true));
+
+        Assert.True(PedestrianLocomotionModel.RequiresRecovery(
+            new PedestrianVector3(150, -2, 20),
+            (_, _) => true,
+            (x, _, _) => x is >= 135 and <= 185));
+        Assert.True(PedestrianLocomotionModel.RequiresRecovery(
+            new PedestrianVector3(9999, 1, 0),
+            (x, _) => x < 800,
+            (_, _, _) => false));
+        Assert.False(PedestrianLocomotionModel.RequiresRecovery(
+            new PedestrianVector3(0, 1, 0),
+            (_, _) => true,
+            (_, _, _) => false));
+    }
+
+    [Fact]
     public void SweepCannotTunnelThroughStaticBuildingCollider()
     {
         PedestrianMovementResult movement = PedestrianCollisionModel.Move(
