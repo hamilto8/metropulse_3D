@@ -323,8 +323,9 @@ public partial class CompositionRoot : Node
             new(BootStageIds.SessionConstruction, "Constructing empty Management session", (_, _) =>
             {
                 SessionShell session = StartSession();
-                session.InitializeWorld(ContentRegistry
-                    ?? throw new InvalidOperationException("Content validation must precede session construction."));
+                session.InitializeWorld(
+                    ContentRegistry ?? throw new InvalidOperationException("Content validation must precede session construction."),
+                    SettingsAuthority ?? throw new InvalidOperationException("Settings authority must precede session construction."));
                 session.InitializeRuntimeInput(SettingsAuthority
                     ?? throw new InvalidOperationException("Settings authority must precede session construction."));
                 return ValueTask.FromResult<object?>(session);

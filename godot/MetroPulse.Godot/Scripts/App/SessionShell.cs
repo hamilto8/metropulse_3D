@@ -18,6 +18,12 @@ public partial class SessionShell : Node
 
     public MvpWorldGenerator? World { get; private set; }
 
+    public WorldEnvironmentController? Environment { get; private set; }
+
+    public CachedBillboardSystem? Billboards { get; private set; }
+
+    public GodotCameraWorldAdapter? CameraAdapter { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -40,7 +46,7 @@ public partial class SessionShell : Node
         InputHost.Initialize(settings);
     }
 
-    public void InitializeWorld(GameContentRegistry content)
+    public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
     {
         if (World is not null)
         {
@@ -48,6 +54,15 @@ public partial class SessionShell : Node
         }
         World = GetNode<MvpWorldGenerator>("WorldRoot/AuthoredWorld");
         World.Initialize(content);
+        CameraAdapter = GetNode<GodotCameraWorldAdapter>("CameraRig");
+        CameraAdapter.Initialize(World, content);
+        Environment = new WorldEnvironmentController { Name = "WorldPresentation" };
+        GetNode<Node>("RuntimeServices").AddChild(Environment);
+        Environment.Initialize(content, settings, World);
+        Billboards = new CachedBillboardSystem { Name = "BillboardSystem" };
+        GetNode<Node>("RuntimeServices").AddChild(Billboards);
+        Billboards.Initialize(World);
+        Billboards.ApplyStatus(Environment.Current?.Hour ?? 12, Environment.Current?.WeatherMode ?? content.DefaultWeatherMode);
     }
 
     public void Shutdown()
@@ -59,6 +74,8 @@ public partial class SessionShell : Node
 
         IsShutDown = true;
         InputHost?.Shutdown();
+        Environment?.Shutdown();
+        Billboards?.Shutdown();
         World?.ShutdownWorld();
         AppLog.Write(new StructuredLogEvent(
             LogCategory.Session,

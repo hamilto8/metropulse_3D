@@ -1047,14 +1047,23 @@ pure and live Godot assertions pass.)*
 4.7 Rebuild sky, sun/moon orbit, environment lighting, fog/mist/rain/storm
 presentation, emissive windows/lights, tone mapping, shadows, glow/bloom, and
 quality profiles. Preserve the existing accessibility switches for bloom,
-flash, and camera shake.
+flash, and camera shake. *(complete: `EnvironmentPresentationModel` preserves
+the frozen sky/weather/celestial formulas and the session-owned
+`WorldEnvironmentController` applies them to procedural sky, sun/moon bodies
+and lights, reusable rain, fog, wet/emissive materials, filmic tone mapping,
+shadows, quality profiles, and live bloom/flash/camera-shake preferences.)*
 
 4.8 Rebuild billboards using `SubViewport`/`ViewportTexture` or cached generated
-textures. Update text only when content changes, not every frame.
+textures. Update text only when content changes, not every frame. *(complete:
+three skyline signs use session-owned cached `SubViewport` textures; identical
+content performs no work and changed status requests exactly one redraw.)*
 
 4.9 Implement camera surface and clearance queries against terrain, water, and
 registered obstacle shapes. Port Management, ground, street, bird's-eye, park,
 downtown, bridge, and free-orbit presets. Optional presets remain feature-gated.
+*(complete: `GodotCameraWorldAdapter` consumes the pure surface/clearance model
+and live collider registry, applies all eight production poses safely, retains
+the 2,200-unit celestial far plane, and rejects airfield/rocket presets.)*
 
 4.10 Add golden landmark tests: plot centers, roads, bridge deck/barriers,
 mission pickup coordinates, Central Park, camera presets, terrain samples, and

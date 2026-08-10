@@ -70,6 +70,8 @@ public sealed class WorldResourceCache
         return material;
     }
 
+    public bool TryGetMaterial(string id, out StandardMaterial3D? material) => materials.TryGetValue(id, out material);
+
     public Shape3D GetShape(WorldPrimitiveKind kind, WorldVector3 size)
     {
         string key = $"{kind}:{size.X:R}:{size.Y:R}:{size.Z:R}";

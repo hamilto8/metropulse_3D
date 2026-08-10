@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://Scripts/App/SessionShell.cs" id="1_session"]
 [ext_resource type="Script" path="res://Scripts/World/MvpWorldGenerator.cs" id="2_world"]
+[ext_resource type="Script" path="res://Scripts/World/GodotCameraWorldAdapter.cs" id="3_camera"]
 
 [node name="SessionRoot" type="Node"]
 script = ExtResource("1_session")
@@ -22,6 +23,7 @@ script = ExtResource("2_world")
 [node name="RuntimeServices" type="Node" parent="."]
 
 [node name="CameraRig" type="Node3D" parent="."]
+script = ExtResource("3_camera")
 
 [node name="MainCamera" type="Camera3D" parent="CameraRig"]
 transform = Transform3D(1, 0, 0, 0, 0.92388, 0.382683, 0, -0.382683, 0.92388, 0, 8, 14)

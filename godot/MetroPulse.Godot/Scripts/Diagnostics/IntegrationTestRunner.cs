@@ -155,6 +155,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
+        CheckWorldPresentation(compositionRoot, failures);
         CheckGameSaveRepository(failures);
         CheckImportBackupStore(compositionRoot, failures);
         CheckCapabilityFailureContract(compositionRoot, failures);
@@ -179,6 +180,20 @@ public partial class IntegrationTestRunner : Node
                     ["cachedMeshes"] = world.Resources.MeshCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["cachedMaterials"] = world.Resources.MaterialCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["cachedShapes"] = world.Resources.ShapeCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }));
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase4.presentation.passed",
+                "Phase 4 environment, billboard, and camera integration checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "15",
+                    ["billboardTextures"] = session.Billboards?.TextureCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["cameraPresets"] = session.CameraAdapter?.AvailablePresetIds.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["weather"] = session.Environment?.Current?.WeatherMode ?? "unavailable",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -233,6 +248,39 @@ public partial class IntegrationTestRunner : Node
         Check(world is not null && world.Layout is not null && world.Resources.MaterialCount < world.Layout.Objects.Count, "World materials are cached rather than duplicated per object.", failures);
         Check(world?.DebugTraversalCapsule?.TraversalWaypoints.Count == 8, "Debug builds include the MVP traversal capsule route.", failures);
         Check(world is not null && world.Surface.GetTerrainHeight(160, 0) == 0 && world.Surface.IsWater(160, 0, 25), "Godot world queries retain bridge-over-water precedence.", failures);
+    }
+
+    private static void CheckWorldPresentation(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell? session = compositionRoot.CurrentSession;
+        WorldEnvironmentController? environment = session?.Environment;
+        CachedBillboardSystem? billboards = session?.Billboards;
+        GodotCameraWorldAdapter? camera = session?.CameraAdapter;
+        Check(environment?.Initialized == true && environment.Current is { Hour: 12, WeatherMode: "clear" }, "The world environment initializes to canonical noon/clear presentation.", failures);
+        Check(session?.GetNodeOrNull<WorldEnvironment>("RuntimeServices/WorldPresentation/WorldEnvironment") is not null, "The session owns one configured Godot WorldEnvironment.", failures);
+        Check(session?.GetNodeOrNull<DirectionalLight3D>("RuntimeServices/WorldPresentation/SunLight") is not null
+            && session.GetNodeOrNull<DirectionalLight3D>("RuntimeServices/WorldPresentation/MoonLight") is not null, "The presentation owner creates distinct sun and moon lights.", failures);
+        Check(session?.GetNodeOrNull<GpuParticles3D>("RuntimeServices/WorldPresentation/Rain") is not null, "The presentation owner creates one reusable rain emitter.", failures);
+        Check(environment?.SetState(0, "thunderstorm", 320) is { WeatherMode: "thunderstorm", RainOpacity: > 0, MoonEnergy: > 0 }, "Fixed night/storm state drives weather and celestial presentation.", failures);
+        Check(environment?.Current is { FogDensity: > 0, Wetness: > 0 }, "Storm presentation applies altitude-aware fog and wetness.", failures);
+        Check(environment?.ApplyLightningFlash(1) == 1, "Lightning flash intensity honors the full-effect preference.", failures);
+        environment?.ClearLightningFlash();
+        environment?.SetQualityProfile("LOW");
+        Check(environment is { QualityProfile: "LOW", BloomEnabled: false }, "Low quality disables bloom and expensive environment effects.", failures);
+        environment?.SetQualityProfile("HIGH");
+        Check(environment is { QualityProfile: "HIGH", BloomEnabled: true }, "High quality restores preference-allowed bloom.", failures);
+        Check(billboards is { TextureCount: 3, RedrawCount: 3 }, "Three skyline billboards render through cached SubViewport textures exactly once.", failures);
+        int redraws = billboards?.RedrawCount ?? -1;
+        Check(billboards?.UpdateContent("metro-news", "METRO NEWS LIVE\n12:00  •  CLEAR") == false
+            && billboards.RedrawCount == redraws, "Unchanged billboard content does not redraw its viewport.", failures);
+        Check(billboards?.UpdateContent("metro-news", "METRO NEWS LIVE\n00:00  •  THUNDERSTORM") == true
+            && billboards.RedrawCount == redraws + 1, "Changed billboard content requests exactly one redraw.", failures);
+        Check(camera?.AvailablePresetIds.SequenceEqual(["management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free"]) == true, "Camera adapter exposes only the eight production Phase 4 presets.", failures);
+        string[] unavailablePresets = camera?.AvailablePresetIds.Where(id => !camera.ApplyPreset(id)).ToArray() ?? ["adapter-unavailable"];
+        Check(unavailablePresets.Length == 0, $"Every production camera preset resolves against terrain, water, and obstacle clearance. Failed: {string.Join(", ", unavailablePresets)}", failures);
+        Check(camera?.ApplyPreset("airfield") == false && camera.ApplyPreset("rocket") == false, "Optional airfield and rocket presets remain feature-gated.", failures);
+        environment?.SetState(12, "clear", 320);
+        billboards?.ApplyStatus(12, "clear");
     }
 
     private async ValueTask CheckBootActionPresentation(
