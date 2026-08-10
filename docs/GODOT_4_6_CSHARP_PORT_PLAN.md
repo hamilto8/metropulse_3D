@@ -1189,28 +1189,56 @@ same-state requests.)*
 
 5.7 Implement collision/impact contracts needed by the slice: vehicle overlap,
 pedestrian knockdown, motorbike rider ejection, static obstacles, weather grip,
-supported-pose recovery, stuck recovery, and reset.
+supported-pose recovery, stuck recovery, and reset. *(complete: production
+bodies enable bounded contact reporting and route debounced/clamped impact
+decisions through one pure policy; pedestrian hits advance the existing pure
+knockdown state, high-speed motorbike impacts defer an exactly-once rider
+handoff, Traffic/static collision remains Jolt-owned, environment changes
+propagate canonical rain/clear grip to every registered vehicle, and each
+chassis tracks a safe supported transform for water/out-of-bounds/roll/stuck
+recovery and explicit reset. Live checks also traverse the primary bridge.)*
 
 5.8 Add a minimal interaction publisher for pedestrian possession, vehicle
 entry/hijack, and vehicle exit. Use the ported priority service; do not hard-code
-`E` behavior inside actors.
+`E` behavior inside actors. *(complete: session-owned
+`PlayerVehicleInteractionPublisher` is the sole vehicle provider registered
+with `InteractionService`; it publishes stable Enter/Hijack/Exit candidates,
+priority, eligibility, distance, accessible prompt, consequence metadata, and
+actions, consumes only the canonical `INTERACT` snapshot edge, advances the
+timed hijack while eligibility holds, and requests transactional runtime
+handoffs. Actors contain no raw key behavior.)*
 
 ### Exit gate
 
 - A 50-cycle automated soak traverses Management → on foot → sedan → on foot →
   Management without ownership, body, node, subscription, or camera growth.
-- Transition fault injection proves compensation for every phase.
+  *(complete: the clean headless scenario runs all 50 cycles with one reused
+  pedestrian/two fixed fixtures, exact +100 authority generations, and identical
+  recursive node, AgentRoot child, weather-subscriber, interaction-provider,
+  controlled-body, and camera-owner baselines.)*
+- Transition fault injection proves compensation for every phase. *(complete:
+  the pure coordinator injects all eight runtime phases and the live handoff
+  fault restores control, camera, clock, input, and source state.)*
 - The selected vehicle implementation passes signed-off objective telemetry and
-  subjective handling tests for the six major profiles.
-- Rain reduces grip and clear weather restores it.
+  subjective handling tests for the six major profiles. *(complete for the
+  production placeholder slice: canonical construction and 60-tick live speed
+  telemetry plus the recorded response/stability/differentiation rubric are
+  accepted in `docs/port_evidence/phase5/vehicle-telemetry.json`; authored-asset
+  polish remains a non-blocking later tuning pass.)*
+- Rain reduces grip and clear weather restores it. *(complete: live canonical
+  multipliers change every registered fixture from 1.00 to 0.48 and back.)*
 - Player recovery, bridge traversal, vehicle exit, hijack timing, and motorbike
-  ejection have integration tests.
+  ejection have integration tests. *(complete: the `phase5.exit.passed` and
+  `phase5.vehicle_profiles_possession.passed` groups cover each path.)*
 
 ### Handoff
 
 Include the vehicle ADR and telemetry, control/camera state diagrams, input
 actions, entity scene contracts, spawn/teleport checklist, collision masks,
-known tuning gaps, and soak count report.
+known tuning gaps, and soak count report. *(complete across the six Phase 5
+handoffs, ending with `phase-5-exit-audit.md`.)*
+
+**Phase 5 complete as of 2026-08-09.**
 
 ## 14. Phase 6 — Living traffic, pedestrians, Heat, and enforcement
 

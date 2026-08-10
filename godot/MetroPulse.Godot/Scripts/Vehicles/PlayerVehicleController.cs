@@ -3,7 +3,9 @@ using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
+using MetroPulse.Domain.Vehicles;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
 
@@ -20,7 +22,12 @@ public sealed record PlayerVehicleSnapshot(
     bool AiActive,
     long AuthorityGeneration,
     int AiHandoffs,
-    double GripMultiplier);
+    double GripMultiplier,
+    Transform3D LastSupportedTransform,
+    double StuckDuration,
+    int RecoveryCount,
+    int ImpactCount,
+    bool RiderEjected);
 
 /// <summary>Production profile-driven custom raycast chassis selected by ADR 0001.</summary>
 public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarget
@@ -35,8 +42,12 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
     private VehiclePrototypeControl control = new(0, 0, 0);
     private Vector3 suspendedLinearVelocity;
     private Vector3 suspendedAngularVelocity;
+    private Vector3 prePhysicsVelocity;
     private double gripMultiplier = 1;
+    private double secondsSinceImpact = VehicleImpactRecoveryModel.DefaultConfig.ImpactDebounceSeconds;
+    private double stuckDuration;
     private int groundedWheelCount;
+    private Transform3D lastSupportedTransform;
 
     public bool Initialized { get; private set; }
 
@@ -53,6 +64,20 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
     public int WheelCount => wheels.Count;
 
     public double GripMultiplier => gripMultiplier;
+
+    public double StuckDuration => stuckDuration;
+
+    public int RecoveryCount { get; private set; }
+
+    public int ImpactCount { get; private set; }
+
+    public double LastImpactSpeed { get; private set; }
+
+    public string? LastRecoveryCode { get; private set; }
+
+    public Transform3D LastSupportedTransform => lastSupportedTransform;
+
+    public event Action<PlayerVehicleController, VehicleImpactDecision, Vector3>? ImpactReported;
 
     public VehicleVisualComponent Visual { get; private set; } = null!;
 
@@ -95,6 +120,8 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         CollisionMask = (uint)CollisionMasks.Traffic;
         ContinuousCd = true;
         CanSleep = false;
+        ContactMonitor = true;
+        MaxContactsReported = 8;
         AngularDamp = (float)dynamics.AngularDamping;
         AxisLockAngularX = dynamics.AngularFactor?.X == 0;
         AxisLockAngularY = dynamics.AngularFactor?.Y == 0;
@@ -125,6 +152,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         Gameplay = new VehicleGameplayStateComponent { Name = "GameplayState" };
         AddChild(Gameplay);
         Gameplay.Initialize(authorized, occupied);
+        BodyEntered += OnBodyEntered;
         SetPhysicsProcess(true);
         Initialized = true;
     }
@@ -137,6 +165,9 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         Rotation = new Vector3(0, float.IsFinite(yaw) ? yaw : 0, 0);
         LinearVelocity = Vector3.Zero;
         AngularVelocity = Vector3.Zero;
+        stuckDuration = 0;
+        lastSupportedTransform = GlobalTransform;
+        LastRecoveryCode = null;
         ResetPhysicsInterpolation();
     }
 
@@ -199,7 +230,12 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         Gameplay.AiActive,
         Gameplay.AuthorityGeneration,
         Gameplay.AiHandoffCount,
-        gripMultiplier);
+        gripMultiplier,
+        lastSupportedTransform,
+        stuckDuration,
+        RecoveryCount,
+        ImpactCount,
+        Occupant.RiderEjected);
 
     public void RestoreState(PlayerVehicleSnapshot snapshot)
     {
@@ -210,6 +246,11 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         LinearVelocity = snapshot.LinearVelocity;
         AngularVelocity = snapshot.AngularVelocity;
         gripMultiplier = snapshot.GripMultiplier;
+        lastSupportedTransform = snapshot.LastSupportedTransform;
+        stuckDuration = snapshot.StuckDuration;
+        RecoveryCount = snapshot.RecoveryCount;
+        ImpactCount = snapshot.ImpactCount;
+        Occupant.SetRiderEjected(snapshot.RiderEjected);
         Gameplay.Restore(
             snapshot.Authorized,
             snapshot.Occupied,
@@ -247,28 +288,140 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         return safe;
     }
 
+    public bool TryGetRecoveryExitPose(out Vector3 pose)
+    {
+        EnsureInitialized();
+        Vector3 supported = lastSupportedTransform.Origin;
+        Vector3 right = lastSupportedTransform.Basis.X.Normalized();
+        Vector3 candidate = supported + (right * (float)(Profile.Width * 0.5 + 1));
+        double terrain = world!.Surface.GetTerrainHeight(candidate.X, candidate.Z);
+        candidate.Y = (float)terrain + 0.95f;
+        bool safe = world.Surface.IsWithinWorldBounds(candidate.X, candidate.Z)
+            && !world.Surface.IsWater(candidate.X, terrain, candidate.Z);
+        pose = candidate;
+        return safe;
+    }
+
+    public VehicleImpactDecision ReportImpact(Node3D? other, double relativeSpeed, Vector3? direction = null)
+    {
+        EnsureInitialized();
+        bool hitPedestrian = other is PlayerPedestrianController;
+        VehicleImpactDecision decision = VehicleImpactRecoveryModel.EvaluateImpact(
+            relativeSpeed,
+            secondsSinceImpact,
+            hitPedestrian,
+            TypeId == "MOTORBIKE");
+        if (!decision.Reported) return decision;
+
+        secondsSinceImpact = 0;
+        ImpactCount++;
+        LastImpactSpeed = Math.Abs(double.IsFinite(relativeSpeed) ? relativeSpeed : 0);
+        Vector3 knockDirection = direction ?? new Vector3(LinearVelocity.X, 0, LinearVelocity.Z);
+        if (knockDirection.IsZeroApprox()) knockDirection = -GlobalBasis.Z;
+        knockDirection = knockDirection.Normalized();
+        if (decision.KnockdownPedestrian && other is PlayerPedestrianController pedestrian)
+        {
+            pedestrian.ApplyVehicleImpact(knockDirection, LastImpactSpeed);
+        }
+        if (decision.EjectRider && !Occupant.RiderEjected)
+        {
+            Occupant.SetRiderEjected(true);
+            ImpactReported?.Invoke(this, decision, knockDirection);
+        }
+        if (!LinearVelocity.IsZeroApprox())
+        {
+            Vector3 response = -LinearVelocity.Normalized() * (float)(decision.ResponseImpulse * Mass);
+            ApplyCentralImpulse(response);
+        }
+        return decision;
+    }
+
+    public bool RecoverIfUnsafe(bool forced = false)
+    {
+        EnsureInitialized();
+        Vector3 position = GlobalPosition;
+        double surface = world!.Surface.GetTerrainHeight(position.X, position.Z);
+        VehicleRecoveryDecision decision = VehicleImpactRecoveryModel.EvaluateRecovery(
+            position.Y,
+            surface,
+            world.Surface.IsWithinWorldBounds(position.X, position.Z),
+            world.Surface.IsWater(position.X, surface, position.Z),
+            Rotation.X,
+            Rotation.Z,
+            groundedWheelCount > 0,
+            stuckDuration,
+            forced);
+        if (!decision.Recover) return false;
+        Freeze = false;
+        GlobalTransform = lastSupportedTransform;
+        LinearVelocity = Vector3.Zero;
+        AngularVelocity = Vector3.Zero;
+        stuckDuration = 0;
+        LastRecoveryCode = decision.Code;
+        RecoveryCount++;
+        ResetPhysicsInterpolation();
+        return true;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
-        _ = delta;
         if (!Initialized || SimulationSuspended) return;
+        prePhysicsVelocity = LinearVelocity;
+        secondsSinceImpact = Math.Min(60, secondsSinceImpact + Math.Max(0, delta));
         if (Controlled && input is not null)
         {
             RuntimeInputSnapshot snapshot = input.LatestSnapshot;
             if (!snapshot.Suspended && snapshot.Context == ControlContexts.Vehicle)
             {
+                if (snapshot.JustPressed.Contains("VEHICLE_RESET"))
+                {
+                    _ = RecoverIfUnsafe(forced: true);
+                }
                 control = ReadControl(snapshot) with { GripMultiplier = gripMultiplier };
             }
         }
         ApplyVehicleForces();
+        UpdateSupportedPoseAndRecovery(delta);
     }
 
     public override void _ExitTree()
     {
+        BodyEntered -= OnBodyEntered;
         SetPhysicsProcess(false);
         input = null;
         world = null;
         cameraOrigin = null;
         Initialized = false;
+    }
+
+    private void OnBodyEntered(Node body)
+    {
+        Vector3 otherVelocity = body is RigidBody3D rigid ? rigid.LinearVelocity : Vector3.Zero;
+        _ = ReportImpact(body as Node3D, (prePhysicsVelocity - otherVelocity).Length());
+    }
+
+    private void UpdateSupportedPoseAndRecovery(double delta)
+    {
+        double speed = new Vector2(LinearVelocity.X, LinearVelocity.Z).Length();
+        if (Controlled && Math.Abs(control.Throttle) > 0.55 && speed < 0.15 && groundedWheelCount > 0)
+        {
+            stuckDuration += Math.Max(0, delta);
+        }
+        else
+        {
+            stuckDuration = 0;
+        }
+        Vector3 position = GlobalPosition;
+        double surface = world!.Surface.GetTerrainHeight(position.X, position.Z);
+        if (groundedWheelCount > 0
+            && world.Surface.IsWithinWorldBounds(position.X, position.Z)
+            && !world.Surface.IsWater(position.X, surface, position.Z)
+            && Math.Abs(Rotation.X) <= VehicleImpactRecoveryModel.DefaultConfig.MaximumSupportedPitchRadians
+            && Math.Abs(Rotation.Z) <= VehicleImpactRecoveryModel.DefaultConfig.MaximumSupportedRollRadians)
+        {
+            lastSupportedTransform = GlobalTransform;
+        }
+        _ = RecoverIfUnsafe();
     }
 
     private void BuildWheels(PlayerVehicleDynamics dynamics)

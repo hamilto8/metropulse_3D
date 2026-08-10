@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "phase": 5,
+  "status": "complete",
+  "completedOn": "2026-08-09",
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "lastVerified": {
+    "browserTests": 391,
+    "domainTests": 255,
+    "successfulHeadlessAssertions": [134, 134, 138],
+    "phase5Assertions": {
+      "sessionRuntime": 12,
+      "gameplayCamera": 17,
+      "pedestrianController": 11,
+      "vehiclePhysicsSpike": 7,
+      "vehicleProfilesPossession": 19,
+      "exit": 15
+    },
+    "soakCycles": 50
+  },
+  "requirements": [
+    { "id": "5.1", "status": "complete", "owner": "GodotSessionRuntimeHost", "evidence": ["docs/port_handoffs/phase-5-session-runtime.md"] },
+    { "id": "5.2", "status": "complete", "owner": "GameplayCameraRig", "evidence": ["docs/port_handoffs/phase-5-gameplay-camera.md"] },
+    { "id": "5.3", "status": "complete", "owner": "PlayerPedestrianController", "evidence": ["docs/port_handoffs/phase-5-pedestrian-controller.md"] },
+    { "id": "5.4", "status": "complete", "owner": "VehiclePhysicsSpikeModel", "evidence": ["docs/port_handoffs/phase-5-vehicle-physics-spike.md", "docs/adr/0001-select-custom-raycast-vehicle-physics.md"] },
+    { "id": "5.5", "status": "complete", "owner": "PlayerVehicleController", "evidence": ["docs/port_handoffs/phase-5-vehicle-profiles-possession.md", "docs/port_evidence/phase5/vehicle-telemetry.json"] },
+    { "id": "5.6", "status": "complete", "owner": "PlayerControlRuntime", "evidence": ["docs/port_handoffs/phase-5-vehicle-profiles-possession.md"] },
+    { "id": "5.7", "status": "complete", "owner": "VehicleImpactRecoveryModel", "evidence": ["docs/port_handoffs/phase-5-exit-audit.md", "docs/port_evidence/phase5/vehicle-telemetry.json"] },
+    { "id": "5.8", "status": "complete", "owner": "PlayerVehicleInteractionPublisher", "evidence": ["docs/port_handoffs/phase-5-exit-audit.md"] }
+  ],
+  "exitGates": [
+    { "id": "ownership-soak", "status": "complete", "evidence": ["godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs", "docs/port_handoffs/phase-5-exit-audit.md"] },
+    { "id": "transition-compensation", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Core/GameTransitionCoordinatorTests.cs", "godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs"] },
+    { "id": "vehicle-telemetry-handling", "status": "complete", "evidence": ["docs/port_evidence/phase5/vehicle-telemetry.json", "docs/adr/0001-select-custom-raycast-vehicle-physics.md"] },
+    { "id": "weather-grip-restoration", "status": "complete", "evidence": ["godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs", "docs/port_evidence/phase5/vehicle-telemetry.json"] },
+    { "id": "recovery-traversal-exit-hijack-ejection", "status": "complete", "evidence": ["godot/MetroPulse.Godot/Scripts/Diagnostics/IntegrationTestRunner.cs", "docs/port_handoffs/phase-5-exit-audit.md"] }
+  ],
+  "deferredBoundaries": [
+    { "owner": "Traffic and ambient agents", "phases": [6], "reason": "Phase 5 owns only player fixtures; population floors, navigation, pursuit, and ambient simulation remain Phase 6." },
+    { "owner": "Missions, Heat, combat, and consequences", "phases": [6, 8, 9], "reason": "Possession exposes consequence metadata but does not invent Heat, mission, damage economy, combat, or HUD authority." },
+    { "owner": "Authored assets and release handling", "phases": [9, 10, 11], "reason": "Placeholder meshes/audio and deterministic handling acceptance do not replace authored presentation, hardware, accessibility, or release signoff." }
+  ]
+}

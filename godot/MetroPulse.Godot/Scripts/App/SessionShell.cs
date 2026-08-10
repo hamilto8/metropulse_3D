@@ -1,17 +1,20 @@
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.App;
 
 public partial class SessionShell : Node
 {
+    private Func<bool>? unsubscribeWeatherGrip;
     public bool IsShutDown { get; private set; }
 
     public bool IsInteractiveReleased { get; private set; }
@@ -33,6 +36,8 @@ public partial class SessionShell : Node
     public GameplayCameraRig? GameplayCamera { get; private set; }
 
     public PlayerControlRuntime? PlayerControl { get; private set; }
+
+    public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
     public override void _Ready()
     {
@@ -70,6 +75,13 @@ public partial class SessionShell : Node
         runtimeServices.AddChild(RuntimeHost);
         RuntimeHost.Initialize(InputHost, GameplayCamera);
         RuntimeHost.SetControlBridge(PlayerControl);
+        VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
+        runtimeServices.AddChild(VehicleInteractions);
+        VehicleInteractions.Initialize(PlayerControl, RuntimeHost, InputHost);
+        PlayerControl.RiderEjectionPrepared += OnRiderEjectionPrepared;
+        unsubscribeWeatherGrip = Environment?.SubscribeState(
+            snapshot => PlayerControl.ApplyWeatherGrip(snapshot.WeatherMode),
+            emitCurrent: true);
     }
 
     public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
@@ -100,6 +112,10 @@ public partial class SessionShell : Node
         }
 
         IsShutDown = true;
+        _ = unsubscribeWeatherGrip?.Invoke();
+        unsubscribeWeatherGrip = null;
+        if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
+        VehicleInteractions?.Shutdown();
         RuntimeHost?.Shutdown();
         PlayerControl?.Shutdown();
         GameplayCamera?.Shutdown();
@@ -140,5 +156,19 @@ public partial class SessionShell : Node
     public override void _ExitTree()
     {
         Shutdown();
+    }
+
+    private void OnRiderEjectionPrepared(PlayerVehicleController vehicle)
+    {
+        Callable.From(() => CompleteRiderEjection(vehicle)).CallDeferred();
+    }
+
+    private void CompleteRiderEjection(PlayerVehicleController vehicle)
+    {
+        if (IsShutDown || RuntimeHost?.StateMachine.State != GameState.StreetVehicle
+            || !ReferenceEquals(PlayerControl?.ControlledVehicle, vehicle)) return;
+        RuntimeHost.TransitionTo(
+            GameState.StreetOnFoot,
+            new TransitionRequestOptions("impact:rider-ejection", Name));
     }
 }

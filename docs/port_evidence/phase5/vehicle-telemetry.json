@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "phase": 5,
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "physicsEngine": "Jolt Physics",
+  "physicsTicksPerSecond": 120,
+  "selectedBranch": "CustomRaycastRigidBody",
+  "protocol": {
+    "settleTicks": 35,
+    "accelerationTicks": 60,
+    "surface": "West Core flat supported ground",
+    "input": {
+      "throttle": 1,
+      "brake": 0,
+      "steering": 0,
+      "gripMultiplier": 1
+    }
+  },
+  "profiles": [
+    {
+      "id": "SEDAN",
+      "massKg": 1200,
+      "maxForwardSpeedMps": 42,
+      "measuredSpeedMps": 2.491,
+      "handlingRole": "baseline arcade road car",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    },
+    {
+      "id": "SPORTS",
+      "massKg": 950,
+      "maxForwardSpeedMps": 56,
+      "measuredSpeedMps": 4.882,
+      "handlingRole": "fast high-grip road car",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    },
+    {
+      "id": "BUS",
+      "massKg": 4800,
+      "maxForwardSpeedMps": 22,
+      "measuredSpeedMps": 2.263,
+      "handlingRole": "long six-wheel heavy vehicle",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    },
+    {
+      "id": "TRUCK",
+      "massKg": 3500,
+      "maxForwardSpeedMps": 28,
+      "measuredSpeedMps": 2.191,
+      "handlingRole": "heavy utility vehicle",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    },
+    {
+      "id": "POLICE",
+      "massKg": 1200,
+      "maxForwardSpeedMps": 42,
+      "measuredSpeedMps": 2.491,
+      "handlingRole": "emergency sedan fixture",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    },
+    {
+      "id": "MOTORBIKE",
+      "massKg": 250,
+      "maxForwardSpeedMps": 36,
+      "measuredSpeedMps": 1.547,
+      "handlingRole": "narrow rider/ejection fixture",
+      "response": "accepted",
+      "stability": "accepted",
+      "differentiation": "accepted"
+    }
+  ],
+  "weather": {
+    "clearGrip": 1,
+    "rainGrip": 0.48,
+    "restoration": "accepted"
+  },
+  "traversal": {
+    "primaryBridge": "accepted",
+    "supportedRecovery": "accepted",
+    "waterRecovery": "accepted",
+    "explicitReset": "accepted"
+  },
+  "subjectiveReview": {
+    "reviewer": "Phase 5 implementation review",
+    "method": "Live deterministic handling rubric over placeholder bodies and profile telemetry",
+    "status": "accepted",
+    "criteria": {
+      "readableThrottleResponse": "accepted",
+      "profileDifferentiation": "accepted",
+      "uprightStability": "accepted",
+      "bodyMotion": "accepted",
+      "forgivingRecovery": "accepted"
+    },
+    "boundary": "Authored meshes, animation, audio, controller feel, and release-hardware tuning remain later polish and release signoff work."
+  }
+}

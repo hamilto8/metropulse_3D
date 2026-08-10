@@ -25,6 +25,7 @@ public partial class WorldEnvironmentController : Node3D
     private GpuParticles3D? rain;
     private Func<bool>? unsubscribeSettings;
     private SettingsPreferences? preferences;
+    private readonly List<Action<EnvironmentPresentationSnapshot>> stateListeners = [];
 
     public bool Initialized { get; private set; }
 
@@ -37,6 +38,8 @@ public partial class WorldEnvironmentController : Node3D
     public double CameraShakeScale { get; private set; } = 1;
 
     public bool BloomEnabled => environment?.GlowEnabled == true;
+
+    public int StateSubscriberCount => stateListeners.Count;
 
     public void Initialize(GameContentRegistry registry, SettingsStore settings, MvpWorldGenerator world)
     {
@@ -64,7 +67,22 @@ public partial class WorldEnvironmentController : Node3D
         EnvironmentPresentationModel presentation = model ?? throw new InvalidOperationException("World environment is not initialized.");
         Current = presentation.Evaluate(time, weatherMode, cameraHeight);
         Apply(Current);
+        foreach (Action<EnvironmentPresentationSnapshot> listener in stateListeners.ToArray()) listener(Current);
         return Current;
+    }
+
+    public Func<bool> SubscribeState(Action<EnvironmentPresentationSnapshot> listener, bool emitCurrent = false)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+        stateListeners.Add(listener);
+        if (emitCurrent && Current is not null) listener(Current);
+        bool active = true;
+        return () =>
+        {
+            if (!active) return false;
+            active = false;
+            return stateListeners.Remove(listener);
+        };
     }
 
     public void SetQualityProfile(string? profile)
@@ -106,6 +124,7 @@ public partial class WorldEnvironmentController : Node3D
     {
         unsubscribeSettings?.Invoke();
         unsubscribeSettings = null;
+        stateListeners.Clear();
         Initialized = false;
     }
 

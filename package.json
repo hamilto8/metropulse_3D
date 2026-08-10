@@ -15,6 +15,7 @@
     "godot:phase2:audit": "node Tools/Phase2Audit/validate-audit.mjs",
     "godot:phase3:audit": "node Tools/Phase3Audit/validate-audit.mjs",
     "godot:phase4:audit": "node Tools/Phase4Audit/validate-audit.mjs",
+    "godot:phase5:audit": "node Tools/Phase5Audit/validate-audit.mjs",
     "godot:phase4:surface:capture": "node Tools/Phase4WorldFixtures/capture-world-surface.mjs",
     "godot:phase4:surface:check": "node Tools/Phase4WorldFixtures/capture-world-surface.mjs --check",
     "godot:phase4:landmarks:capture": "node Tools/Phase4WorldFixtures/capture-landmarks.mjs",

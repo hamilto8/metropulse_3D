@@ -15,7 +15,9 @@ public sealed record PlayerPedestrianSnapshot(
     float Heading,
     Vector3 LastSupportedPosition,
     PedestrianAnimationState AnimationState,
-    bool Controlled);
+    bool Controlled,
+    PedestrianKnockdownState? KnockdownState,
+    int KnockdownCount);
 
 /// <summary>Session-owned player avatar. Velocity remains meters/second and MoveAndSlide owns integration.</summary>
 public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCameraTarget
@@ -34,6 +36,7 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
     private AnimationPlayer? animationPlayer;
     private Vector3 lastSupportedPosition;
     private float heading;
+    private PedestrianKnockdownState? knockdownState;
 
     public bool Initialized { get; private set; }
 
@@ -44,6 +47,10 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
     public long PhysicsMoveCount { get; private set; }
 
     public int RecoveryCount { get; private set; }
+
+    public int KnockdownCount { get; private set; }
+
+    public bool KnockedDown => knockdownState?.Active == true;
 
     public Vector3 LastSupportedPosition => lastSupportedPosition;
 
@@ -89,6 +96,8 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
         heading = float.IsFinite(desiredHeading) ? desiredHeading : 0;
         visualRoot!.Rotation = new Vector3(0, heading, 0);
         Velocity = Vector3.Zero;
+        knockdownState = null;
+        visualRoot!.Rotation = new Vector3(0, heading, 0);
         ResetPhysicsInterpolation();
     }
 
@@ -111,7 +120,9 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
         heading,
         lastSupportedPosition,
         AnimationState,
-        Controlled);
+        Controlled,
+        knockdownState,
+        KnockdownCount);
 
     public void RestoreState(PlayerPedestrianSnapshot snapshot)
     {
@@ -121,10 +132,26 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
         Velocity = snapshot.Velocity;
         heading = snapshot.Heading;
         lastSupportedPosition = snapshot.LastSupportedPosition;
+        knockdownState = snapshot.KnockdownState;
+        KnockdownCount = snapshot.KnockdownCount;
         visualRoot!.Rotation = new Vector3(0, heading, 0);
         SetControlled(snapshot.Controlled);
         SetAnimation(snapshot.AnimationState);
         ResetPhysicsInterpolation();
+    }
+
+    public void ApplyVehicleImpact(Vector3 direction, double impactSpeed)
+    {
+        EnsureInitialized();
+        knockdownState = PedestrianKnockdownModel.Start(
+            ToPedestrianVector(GlobalPosition),
+            ToPedestrianVector(direction),
+            impactSpeed,
+            fallSideSample: 0.25,
+            tumbleSample: 0.5);
+        KnockdownCount++;
+        Velocity = Vector3.Zero;
+        SetAnimation(PedestrianAnimationState.Fall);
     }
 
     public GameplayCameraTargetSnapshot CaptureCameraTarget()
@@ -145,6 +172,11 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
         if (!Initialized || !Controlled || input is null || world is null) return;
         RuntimeInputSnapshot snapshot = input.LatestSnapshot;
         if (snapshot.Suspended || snapshot.Context != ControlContexts.Pedestrian) return;
+        if (knockdownState?.Active == true)
+        {
+            AdvanceKnockdown(delta);
+            return;
+        }
 
         bool groundedBeforeMove = IsOnFloor();
         Vector2 inputVector = ReadMovement(snapshot);
@@ -317,6 +349,29 @@ public partial class PlayerPedestrianController : CharacterBody3D, IGameplayCame
             || world.Surface.IsWater(position.X, position.Y - SupportedPoseClearance, position.Z)) return;
         lastSupportedPosition = position;
     }
+
+    private void AdvanceKnockdown(double delta)
+    {
+        PedestrianKnockdownState state = PedestrianKnockdownModel.Update(
+            knockdownState!,
+            delta,
+            (x, z) => world!.Surface.GetTerrainHeight(x, z) + SupportedPoseClearance);
+        knockdownState = state;
+        GlobalPosition = ToGodotVector(state.Position);
+        Velocity = ToGodotVector(state.Velocity);
+        visualRoot!.Rotation = new Vector3((float)state.RotationX, heading, (float)state.RotationZ);
+        PhysicsMoveCount++;
+        if (state.Active) return;
+        Velocity = Vector3.Zero;
+        visualRoot.Rotation = new Vector3(0, heading, 0);
+        lastSupportedPosition = GlobalPosition;
+        SetAnimation(PedestrianAnimationState.Idle);
+        ResetPhysicsInterpolation();
+    }
+
+    private static PedestrianVector3 ToPedestrianVector(Vector3 value) => new(value.X, value.Y, value.Z);
+
+    private static Vector3 ToGodotVector(PedestrianVector3 value) => new((float)value.X, (float)value.Y, (float)value.Z);
 
     private static double Slot(RuntimeInputSnapshot snapshot, int index) =>
         snapshot.Actions.GetValueOrDefault(RuntimeInputActionIds.Slot("MOVE", index));

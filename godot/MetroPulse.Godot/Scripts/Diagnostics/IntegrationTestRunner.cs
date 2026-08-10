@@ -5,6 +5,7 @@ using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
@@ -27,6 +28,7 @@ public partial class IntegrationTestRunner : Node
     private IReadOnlyList<VehiclePhysicsSpikeTelemetry> _vehicleSpikeTelemetry = Array.Empty<VehiclePhysicsSpikeTelemetry>();
     private VehiclePhysicsSpikeDecision? _vehicleSpikeDecision;
     private IReadOnlyDictionary<string, double> _vehicleProfileSpeeds = new Dictionary<string, double>();
+    private int _phase5SoakCycles;
 
     public void Begin(CompositionRoot compositionRoot, DiagnosticsOverlay diagnostics)
     {
@@ -171,6 +173,7 @@ public partial class IntegrationTestRunner : Node
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
+        await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -185,6 +188,19 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.exit.passed",
+                "Phase 5 impact, knockdown, ejection, weather, recovery, interaction, bridge, and ownership-soak checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "15",
+                    ["soakCycles"] = _phase5SoakCycles.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["weatherGrip"] = session.Content?.GetWeather(session.Environment?.Current?.WeatherMode ?? string.Empty)?.GripMultiplier.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["interactionProviders"] = session.VehicleInteractions?.Service.ProviderCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["retainedVehicles"] = session.PlayerControl?.Vehicles.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -315,7 +331,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "123" : "119",
+                    ["assertions"] = recoverySeedScenario ? "138" : "134",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -1281,6 +1297,253 @@ public partial class IntegrationTestRunner : Node
                 foreach (string stableId in stableIds) _ = playerControl.RemoveVehicle(stableId);
             }
         }
+    }
+
+    private async Task CheckVehicleImpactsRecoveryAndExit(
+        CompositionRoot compositionRoot,
+        bool fullSoak,
+        ICollection<string> failures)
+    {
+        string[] stableIds = ["phase5-exit-sedan", "phase5-exit-motorbike"];
+        StaticBody3D? impactObstacle = null;
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime owner is unavailable.");
+            PlayerControlRuntime playerControl = session.PlayerControl
+                ?? throw new InvalidOperationException("Player control owner is unavailable.");
+            PlayerVehicleInteractionPublisher interactions = session.VehicleInteractions
+                ?? throw new InvalidOperationException("Vehicle interaction publisher is unavailable.");
+            WorldEnvironmentController environment = session.Environment
+                ?? throw new InvalidOperationException("Environment owner is unavailable.");
+            Node3D agentRoot = session.GetNode<Node3D>("WorldRoot/AgentRoot");
+
+            PlayerVehicleController sedan = playerControl.SpawnVehicle(
+                stableIds[0], "SEDAN", new Vector3(2, 0, 0), authorized: true, occupied: false);
+            PlayerVehicleController motorbike = playerControl.SpawnVehicle(
+                stableIds[1], "MOTORBIKE", new Vector3(12, 0, 0), authorized: true, occupied: false);
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            Check(interactions.Initialized
+                    && interactions.Service.ProviderCount == 1
+                    && environment.StateSubscriberCount == 1
+                    && sedan.ContactMonitor
+                    && sedan.MaxContactsReported == 8,
+                "The session owns one priority publisher, one weather-grip subscriber, and contact-reporting production bodies.", failures);
+
+            environment.SetState(12, "rain");
+            Check(Math.Abs(sedan.GripMultiplier - 0.48) < 0.0001
+                    && Math.Abs(motorbike.GripMultiplier - 0.48) < 0.0001,
+                "Rain propagates the canonical reduced grip to every registered vehicle immediately.", failures);
+            environment.SetState(12, "clear");
+            Check(Math.Abs(sedan.GripMultiplier - 1) < 0.0001
+                    && Math.Abs(motorbike.GripMultiplier - 1) < 0.0001,
+                "Clear weather restores full canonical grip without respawning vehicles.", failures);
+
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-interactions"));
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            PlayerPedestrianController pedestrian = playerControl.Pedestrian
+                ?? throw new InvalidOperationException("Interaction checks require the player pedestrian.");
+            sedan.SpawnAt(pedestrian.GlobalPosition + new Vector3(2, 0, 0));
+            motorbike.SpawnAt(pedestrian.GlobalPosition + new Vector3(12, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            InteractionSnapshot entrySnapshot = interactions.Refresh();
+            Check(entrySnapshot.Primary is { Kind: "VEHICLE_ENTER", Priority: InteractionPriorities.VehicleHijack }
+                    && entrySnapshot.Primary.Id == $"vehicle-enter:{sedan.StableId}"
+                    && entrySnapshot.Primary.Metadata?.ContainsKey("consequence") == true,
+                "The shared priority service selects the nearest eligible possession candidate with consequence metadata.", failures);
+            InteractionResolution entryResolution = interactions.ResolvePrimary();
+            Check(entryResolution.Status == InteractionResolutionStatuses.Completed
+                    && runtime.StateMachine.State == GameState.StreetVehicle
+                    && ReferenceEquals(playerControl.ControlledVehicle, sedan),
+                "Resolving the publisher's Enter candidate performs the prepared transactional handoff.", failures);
+
+            sedan.LinearVelocity = Vector3.Zero;
+            sedan.AngularVelocity = Vector3.Zero;
+            InteractionSnapshot exitSnapshot = interactions.Refresh();
+            Check(exitSnapshot.Primary is { Kind: "VEHICLE_EXIT", Priority: InteractionPriorities.ControlledEntityExit }
+                    && exitSnapshot.Primary.Id == $"vehicle-exit:{sedan.StableId}",
+                "Vehicle control publishes one priority-service exit candidate instead of actor-owned key behavior.", failures);
+            InteractionResolution exitResolution = interactions.ResolvePrimary();
+            Check(exitResolution.Status == InteractionResolutionStatuses.Completed
+                    && runtime.StateMachine.State == GameState.StreetOnFoot
+                    && playerControl.ControlledKind == ControlKind.Pedestrian,
+                "Resolving the Exit candidate restores pedestrian ownership and returns the vehicle to AI.", failures);
+
+            PlayerPedestrianSnapshot beforeKnockdown = pedestrian.CaptureState();
+            VehicleImpactDecision pedestrianImpact = sedan.ReportImpact(pedestrian, 6, Vector3.Right);
+            Check(pedestrianImpact is { Reported: true, KnockdownPedestrian: true, EjectRider: false }
+                    && pedestrian.KnockedDown
+                    && pedestrian.KnockdownCount == beforeKnockdown.KnockdownCount + 1,
+                "A bounded vehicle impact starts the pure pedestrian knockdown response.", failures);
+            VehicleImpactDecision duplicateImpact = sedan.ReportImpact(pedestrian, 12, Vector3.Right);
+            Check(!duplicateImpact.Reported && duplicateImpact.Code == "IMPACT_DEBOUNCED"
+                    && pedestrian.KnockdownCount == beforeKnockdown.KnockdownCount + 1,
+                "Impact debouncing prevents duplicate knockdown and consequence publication.", failures);
+            pedestrian.RestoreState(beforeKnockdown);
+
+            impactObstacle = new StaticBody3D
+            {
+                Name = "Phase5ImpactObstacle",
+                Position = new Vector3(-170, 1, 194),
+                CollisionLayer = (uint)CollisionLayer.StaticObstacle,
+                CollisionMask = (uint)CollisionMasks.StaticObstacle,
+            };
+            impactObstacle.AddChild(new CollisionShape3D
+            {
+                Shape = new BoxShape3D { Size = new Vector3(3, 2, 2) },
+            });
+            agentRoot.AddChild(impactObstacle);
+            sedan.SpawnAt(new Vector3(-170, 0, 200));
+            sedan.LinearVelocity = Vector3.Forward * 8;
+            int impactsBeforeObstacle = sedan.ImpactCount;
+            for (int frame = 0; frame < 120; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            Check(sedan.ImpactCount > impactsBeforeObstacle
+                    && sedan.GlobalPosition.Z > impactObstacle.GlobalPosition.Z + 1,
+                $"Jolt resolves a live Traffic-to-StaticObstacle overlap and routes the contact through the bounded impact contract (impacts={impactsBeforeObstacle}->{sedan.ImpactCount}, vehicleZ={sedan.GlobalPosition.Z:F3}, obstacleZ={impactObstacle.GlobalPosition.Z:F3}).", failures);
+            impactObstacle.Free();
+            impactObstacle = null;
+
+            sedan.SpawnAt(new Vector3(115, 0, 0), -Mathf.Pi / 2);
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            Vector3 bridgeStart = sedan.GlobalPosition;
+            sedan.LinearVelocity = Vector3.Right * 8;
+            sedan.ApplyControl(new VehiclePrototypeControl(0.35, 0, 0));
+            for (int frame = 0; frame < 120; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            Check(sedan.GroundedWheelCount > 0
+                    && sedan.GlobalPosition.X > bridgeStart.X + 2
+                    && Math.Abs(sedan.GlobalPosition.Z) < 8
+                    && !session.World!.Surface.IsWater(sedan.GlobalPosition.X, 0, sedan.GlobalPosition.Z),
+                "The selected production chassis traverses the supported primary bridge deck without entering river classification.", failures);
+
+            sedan.ApplyControl(new VehiclePrototypeControl(0, 1, 0));
+            Transform3D supportedPose = sedan.LastSupportedTransform;
+            sedan.GlobalPosition = new Vector3(160, -3, 25);
+            bool recovered = sedan.RecoverIfUnsafe();
+            sedan.GlobalPosition += new Vector3(4, 0, 0);
+            bool reset = sedan.RecoverIfUnsafe(forced: true);
+            Check(recovered
+                    && reset
+                    && sedan.LastRecoveryCode == "VEHICLE_RESET_REQUESTED"
+                    && sedan.GlobalTransform.IsEqualApprox(supportedPose)
+                    && sedan.LinearVelocity.IsZeroApprox()
+                    && sedan.AngularVelocity.IsZeroApprox()
+                    && sedan.RecoveryCount == 2,
+                "Water recovery and explicit reset return to the last supported transform with cleared motion.", failures);
+
+            sedan.SpawnAt(pedestrian.GlobalPosition + new Vector3(12, 0, 0));
+            motorbike.SpawnAt(pedestrian.GlobalPosition + new Vector3(2, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            VehicleEntryRequestResult bikeEntry = playerControl.BeginVehicleEntry(motorbike);
+            if (!bikeEntry.ReadyForTransition)
+            {
+                throw new InvalidOperationException($"Motorbike ejection fixture could not prepare entry: {bikeEntry.Code}");
+            }
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("integration", "phase5-ejection"));
+            VehicleImpactDecision ejection = motorbike.ReportImpact(null, 10, Vector3.Right);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(ejection is { Reported: true, EjectRider: true }
+                    && motorbike.Occupant.RiderEjected
+                    && !motorbike.Controlled
+                    && motorbike.Gameplay.AiActive
+                    && runtime.StateMachine.State == GameState.StreetOnFoot
+                    && playerControl.ControlledKind == ControlKind.Pedestrian
+                    && pedestrian.KnockedDown
+                    && ReferenceEquals(session.GameplayCamera?.FollowTarget, pedestrian),
+                "A high-speed motorbike impact ejects the rider and transactionally returns body, AI, camera, and pedestrian authority.", failures);
+            pedestrian.SpawnAt(pedestrian.GlobalPosition);
+
+            sedan.SpawnAt(pedestrian.GlobalPosition + new Vector3(2, 0, 0));
+            motorbike.SpawnAt(pedestrian.GlobalPosition + new Vector3(12, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-soak-baseline"));
+            int baselineNodes = CountNodes(session);
+            int baselineAgentChildren = agentRoot.GetChildCount();
+            int baselineEnvironmentSubscribers = environment.StateSubscriberCount;
+            int baselineInteractionProviders = interactions.Service.ProviderCount;
+            ulong pedestrianId = pedestrian.GetInstanceId();
+            long authorityBeforeSoak = playerControl.AuthorityGeneration;
+            int cycles = fullSoak ? 50 : 1;
+            for (int cycle = 0; cycle < cycles; cycle += 1)
+            {
+                runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions($"soak:{cycle}:foot", "phase5-exit"));
+                VehicleEntryRequestResult entry = playerControl.BeginVehicleEntry(sedan);
+                if (!entry.ReadyForTransition) throw new InvalidOperationException($"Soak cycle {cycle} entry failed: {entry.Code}");
+                runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions($"soak:{cycle}:vehicle", "phase5-exit"));
+                sedan.LinearVelocity = Vector3.Zero;
+                sedan.AngularVelocity = Vector3.Zero;
+                VehicleExitRequestResult exit = playerControl.RequestVehicleExit();
+                if (!exit.Allowed) throw new InvalidOperationException($"Soak cycle {cycle} exit failed: {exit.Code}");
+                runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions($"soak:{cycle}:exit", "phase5-exit"));
+                runtime.TransitionTo(GameState.Management, new TransitionRequestOptions($"soak:{cycle}:management", "phase5-exit"));
+            }
+            _phase5SoakCycles = cycles;
+            Check(runtime.StateMachine.State == GameState.Management
+                    && playerControl.ControlledKind == ControlKind.None
+                    && playerControl.Pedestrian?.GetInstanceId() == pedestrianId
+                    && playerControl.AuthorityGeneration == authorityBeforeSoak + (cycles * 2)
+                    && CountNodes(session) == baselineNodes
+                    && agentRoot.GetChildCount() == baselineAgentChildren
+                    && environment.StateSubscriberCount == baselineEnvironmentSubscribers
+                    && interactions.Service.ProviderCount == baselineInteractionProviders
+                    && session.GameplayCamera?.FollowTarget is null,
+                $"The {cycles}-cycle Management/on-foot/sedan/on-foot soak preserves nodes, bodies, subscriptions, camera, and exactly-once authority.", failures);
+
+            Check(stableIds.All(playerControl.RemoveVehicle)
+                    && playerControl.Vehicles.Count == 0
+                    && agentRoot.GetChildren().OfType<PlayerVehicleController>().Count() == 0,
+                "Phase 5 impact and soak fixtures release every registered vehicle body.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Vehicle impact/recovery/exit integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            SessionShell? session = compositionRoot.CurrentSession;
+            GodotSessionRuntimeHost? runtime = session?.RuntimeHost;
+            PlayerControlRuntime? playerControl = session?.PlayerControl;
+            if (runtime?.StateMachine.State is GameState.StreetOnFoot or GameState.StreetVehicle)
+            {
+                runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-exit-cleanup"));
+            }
+            if (playerControl is not null)
+            {
+                foreach (string stableId in stableIds) _ = playerControl.RemoveVehicle(stableId);
+            }
+            if (impactObstacle is not null && GodotObject.IsInstanceValid(impactObstacle)) impactObstacle.Free();
+            session?.Environment?.SetState(12, "clear");
+        }
+    }
+
+    private static int CountNodes(Node node)
+    {
+        int count = 1;
+        foreach (Node child in node.GetChildren()) count += CountNodes(child);
+        return count;
     }
 
     private static BuiltInSedanPhysicsPrototype AddBuiltIn(

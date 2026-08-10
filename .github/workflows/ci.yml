@@ -86,6 +86,9 @@ jobs:
           npm run godot:phase4:screenshots:check
           npm run godot:phase4:audit
 
+      - name: Validate Phase 5 exit evidence
+        run: npm run godot:phase5:audit
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:

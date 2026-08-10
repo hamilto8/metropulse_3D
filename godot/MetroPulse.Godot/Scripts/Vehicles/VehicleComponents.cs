@@ -122,6 +122,8 @@ public partial class VehicleOccupantComponent : Node3D
 
     public bool RiderLayout { get; private set; }
 
+    public bool RiderEjected { get; private set; }
+
     public void Initialize(string typeId, VehicleProfile profile)
     {
         RiderLayout = typeId == "MOTORBIKE";
@@ -137,6 +139,12 @@ public partial class VehicleOccupantComponent : Node3D
             MaterialOverride = new StandardMaterial3D { AlbedoColor = Color.FromHtml("fde68a"), Roughness = 0.8f },
         };
         AddChild(OccupantVisual);
+    }
+
+    public void SetRiderEjected(bool ejected)
+    {
+        RiderEjected = RiderLayout && ejected;
+        OccupantVisual.Visible = !RiderEjected;
     }
 }
 

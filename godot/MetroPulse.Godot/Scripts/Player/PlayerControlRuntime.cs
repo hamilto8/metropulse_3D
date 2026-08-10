@@ -17,6 +17,8 @@ public sealed record PlayerControlSnapshot(
     string? ControlledVehicleId,
     string? PendingVehicleId,
     Vector3? PendingExitPose,
+    Vector3? PendingEjectionDirection,
+    double? PendingEjectionSpeed,
     IReadOnlyDictionary<string, PlayerVehicleSnapshot> VehicleStates,
     long AuthorityGeneration);
 
@@ -43,6 +45,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     private PlayerVehicleController? pendingVehicle;
     private PlayerPedestrianSnapshot? suspendedPedestrianState;
     private Vector3? pendingExitPose;
+    private Vector3? pendingEjectionDirection;
+    private double? pendingEjectionSpeed;
     private (PlayerVehicleController Vehicle, VehicleHijackProgress Progress)? hijack;
 
     public bool Initialized { get; private set; }
@@ -62,6 +66,10 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     public IReadOnlyCollection<PlayerVehicleController> Vehicles => Array.AsReadOnly(vehicles.Values.ToArray());
 
     public VehicleHijackProgress? HijackProgress => hijack?.Progress;
+
+    public PlayerVehicleController? HijackTarget => hijack?.Vehicle;
+
+    public event Action<PlayerVehicleController>? RiderEjectionPrepared;
 
     public IGameplayCameraTarget? ControlledCameraTarget => ControlledKind switch
     {
@@ -104,6 +112,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         var vehicle = new PlayerVehicleController { Name = $"Vehicle_{stableId}" };
         agentRoot!.AddChild(vehicle);
         vehicle.Initialize(stableId, typeId, profile, input!, world!, cameraOrigin!, authorized, occupied);
+        vehicle.ImpactReported += OnVehicleImpactReported;
         vehicle.SpawnAt(position, yaw);
         vehicles.Add(stableId, vehicle);
         return vehicle;
@@ -117,6 +126,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             || ReferenceEquals(vehicle, pendingVehicle)
             || ReferenceEquals(vehicle, hijack?.Vehicle)) return false;
         vehicles.Remove(stableId);
+        vehicle.ImpactReported -= OnVehicleImpactReported;
         vehicle.Free();
         return true;
     }
@@ -176,6 +186,23 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             Math.Max(0, VehiclePossessionModel.DefaultConfig.HijackDuration - progress.Elapsed));
     }
 
+    public bool IsHijackEligible()
+    {
+        if (hijack is not { } active || ControlledKind != ControlKind.Pedestrian || pedestrian is null) return false;
+        return pedestrian.GlobalPosition.DistanceTo(active.Vehicle.GlobalPosition)
+                <= VehiclePossessionModel.DefaultConfig.MaximumEntryDistance
+            && active.Vehicle.GroundedWheelCount > 0;
+    }
+
+    public void ApplyWeatherGrip(string? weatherMode)
+    {
+        EnsureInitialized();
+        double grip = content!.GetWeather(weatherMode ?? string.Empty)?.GripMultiplier
+            ?? content.GetWeather(content.DefaultWeatherMode)?.GripMultiplier
+            ?? 1;
+        foreach (PlayerVehicleController vehicle in vehicles.Values) vehicle.SetGripMultiplier(grip);
+    }
+
     public VehicleExitRequestResult RequestVehicleExit()
     {
         EnsureInitialized();
@@ -207,6 +234,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         controlledVehicle?.StableId,
         pendingVehicle?.StableId,
         pendingExitPose,
+        pendingEjectionDirection,
+        pendingEjectionSpeed,
         vehicles.ToDictionary(pair => pair.Key, pair => pair.Value.CaptureState(), StringComparer.Ordinal),
         AuthorityGeneration);
 
@@ -272,6 +301,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         controlledVehicle = ResolveVehicle(snapshot.ControlledVehicleId);
         pendingVehicle = ResolveVehicle(snapshot.PendingVehicleId);
         pendingExitPose = snapshot.PendingExitPose;
+        pendingEjectionDirection = snapshot.PendingEjectionDirection;
+        pendingEjectionSpeed = snapshot.PendingEjectionSpeed;
         AuthorityGeneration = snapshot.AuthorityGeneration;
         RestoreCount++;
     }
@@ -286,6 +317,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         }
         foreach (PlayerVehicleController vehicle in vehicles.Values)
         {
+            vehicle.ImpactReported -= OnVehicleImpactReported;
             if (GodotObject.IsInstanceValid(vehicle)) vehicle.Free();
         }
         vehicles.Clear();
@@ -293,6 +325,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         pendingVehicle = null;
         suspendedPedestrianState = null;
         pendingExitPose = null;
+        pendingEjectionDirection = null;
+        pendingEjectionSpeed = null;
         hijack = null;
         ControlledKind = ControlKind.None;
         input = null;
@@ -319,8 +353,14 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             controlledVehicle = null;
             if (suspendedPedestrianState is not null) avatar.RestoreState(suspendedPedestrianState);
             avatar.SpawnAt(exitPose, suspendedPedestrianState?.Heading ?? 0);
+            if (pendingEjectionDirection is Vector3 direction && pendingEjectionSpeed is double speed)
+            {
+                avatar.ApplyVehicleImpact(direction, speed);
+            }
             suspendedPedestrianState = null;
             pendingExitPose = null;
+            pendingEjectionDirection = null;
+            pendingEjectionSpeed = null;
         }
         avatar.SetControlled(true);
         ControlledKind = ControlKind.Pedestrian;
@@ -364,6 +404,20 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
 
     private PlayerVehicleController? ResolveVehicle(string? id) =>
         id is not null && vehicles.TryGetValue(id, out PlayerVehicleController? vehicle) ? vehicle : null;
+
+    private void OnVehicleImpactReported(
+        PlayerVehicleController vehicle,
+        VehicleImpactDecision decision,
+        Vector3 direction)
+    {
+        if (!decision.EjectRider || ControlledKind != ControlKind.Vehicle
+            || !ReferenceEquals(vehicle, controlledVehicle)
+            || !vehicle.TryGetRecoveryExitPose(out Vector3 pose)) return;
+        pendingExitPose = pose;
+        pendingEjectionDirection = direction;
+        pendingEjectionSpeed = vehicle.LastImpactSpeed;
+        RiderEjectionPrepared?.Invoke(vehicle);
+    }
 
     private void EnsureInitialized()
     {

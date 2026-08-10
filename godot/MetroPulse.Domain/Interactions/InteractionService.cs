@@ -123,6 +123,10 @@ public sealed class InteractionService
 
     public InteractionCandidate? Primary => Snapshot.Primary;
 
+    public int ProviderCount => providers.Count;
+
+    public int SubscriberCount => listeners.Count;
+
     public Func<bool> RegisterProvider(
         string id,
         Func<IReadOnlyDictionary<string, object?>, IEnumerable<InteractionCandidateInput>?> getCandidates)
