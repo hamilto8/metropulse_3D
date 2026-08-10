@@ -26,6 +26,7 @@ public partial class IntegrationTestRunner : Node
     private DiagnosticsOverlay? _diagnostics;
     private IReadOnlyList<VehiclePhysicsSpikeTelemetry> _vehicleSpikeTelemetry = Array.Empty<VehiclePhysicsSpikeTelemetry>();
     private VehiclePhysicsSpikeDecision? _vehicleSpikeDecision;
+    private IReadOnlyDictionary<string, double> _vehicleProfileSpeeds = new Dictionary<string, double>();
 
     public void Begin(CompositionRoot compositionRoot, DiagnosticsOverlay diagnostics)
     {
@@ -169,6 +170,7 @@ public partial class IntegrationTestRunner : Node
         await CheckPedestrianControl(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
+        await CheckVehicleProfilesAndPossession(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -183,6 +185,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.vehicle_profiles_possession.passed",
+                "Six production vehicle fixtures and transactional entry, hijack, exit, pause, camera, and AI handoff checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "19",
+                    ["profiles"] = string.Join(';', _vehicleProfileSpeeds.Select(pair => $"{pair.Key}:{pair.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)}")),
+                    ["authorityGeneration"] = session.PlayerControl?.AuthorityGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["retainedVehicles"] = session.PlayerControl?.Vehicles.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             VehiclePhysicsSpikeTelemetry? builtInSpike = _vehicleSpikeTelemetry
                 .FirstOrDefault(item => item.Branch == VehiclePhysicsBranch.BuiltInVehicleBody);
             VehiclePhysicsSpikeTelemetry? customSpike = _vehicleSpikeTelemetry
@@ -301,7 +315,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "104" : "100",
+                    ["assertions"] = recoverySeedScenario ? "123" : "119",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -1051,6 +1065,220 @@ public partial class IntegrationTestRunner : Node
             foreach (Node3D node in owned)
             {
                 if (GodotObject.IsInstanceValid(node)) node.Free();
+            }
+        }
+    }
+
+    private async Task CheckVehicleProfilesAndPossession(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        string[] profileIds = ["SEDAN", "SPORTS", "BUS", "TRUCK", "POLICE", "MOTORBIKE"];
+        var stableIds = new List<string>();
+        PauseHold? pause = null;
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime owner is unavailable.");
+            PlayerControlRuntime playerControl = session.PlayerControl
+                ?? throw new InvalidOperationException("Player control owner is unavailable.");
+            RuntimeInputHost input = session.InputHost
+                ?? throw new InvalidOperationException("Runtime input owner is unavailable.");
+            GameContentRegistry content = compositionRoot.ContentRegistry
+                ?? throw new InvalidOperationException("Canonical content is unavailable.");
+
+            var fixtures = new List<PlayerVehicleController>();
+            for (int index = 0; index < profileIds.Length; index += 1)
+            {
+                string typeId = profileIds[index];
+                string stableId = $"integration-{typeId.ToLowerInvariant()}";
+                stableIds.Add(stableId);
+                fixtures.Add(playerControl.SpawnVehicle(
+                    stableId,
+                    typeId,
+                    new Vector3(-175 + (index * 10), 0, 160),
+                    authorized: typeId != "SPORTS",
+                    occupied: typeId == "SPORTS"));
+            }
+
+            Check(fixtures.Count == 6
+                    && playerControl.Vehicles.Count == 6
+                    && fixtures.Select(vehicle => vehicle.TypeId).SequenceEqual(profileIds),
+                "All six Phase 5 production profiles spawn through the session vehicle registry with stable identity.", failures);
+            Check(fixtures.All(vehicle =>
+                {
+                    VehicleProfile expected = content.GetVehicleProfile(vehicle.TypeId)?.Profile
+                        ?? throw new InvalidOperationException($"Profile {vehicle.TypeId} disappeared.");
+                    return Math.Abs(vehicle.Mass - expected.Mass) < 0.01
+                        && vehicle.Profile.Width == expected.Width
+                        && vehicle.Profile.Height == expected.Height
+                        && vehicle.Profile.Length == expected.Length
+                        && vehicle.WheelCount == expected.WheelCount;
+                }),
+                "Every production chassis consumes its canonical mass, dimensions, and wheel layout.", failures);
+            Check(fixtures.All(vehicle => vehicle.Visual.Body is not null
+                    && vehicle.Lights.LightCount == 4
+                    && vehicle.Occupant.OccupantVisual is not null
+                    && vehicle.Audio.Engine is not null
+                    && vehicle.Audio.Impact is not null
+                    && vehicle.Gameplay is not null)
+                    && fixtures.Single(vehicle => vehicle.TypeId == "MOTORBIKE").Occupant.RiderLayout,
+                "Visuals, wheels, lights, driver/rider, audio, and gameplay state remain separate profile components.", failures);
+
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            fixtures.ForEach(vehicle => vehicle.ApplyControl(new VehiclePrototypeControl(1, 0, 0)));
+            for (int frame = 0; frame < 60; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            _vehicleProfileSpeeds = fixtures.ToDictionary(
+                vehicle => vehicle.TypeId,
+                vehicle => PlanarSpeed(vehicle.LinearVelocity),
+                StringComparer.Ordinal);
+            Check(fixtures.All(vehicle => _vehicleProfileSpeeds[vehicle.TypeId] > 0.05
+                    && _vehicleProfileSpeeds[vehicle.TypeId] <= vehicle.Profile.Drive!.MaxForwardSpeed + 0.1),
+                "All six live profile fixtures accelerate within their canonical forward-speed limits.", failures);
+
+            fixtures.ForEach(vehicle => vehicle.ApplyControl(new VehiclePrototypeControl(0, 1, 0)));
+            PlayerVehicleController sedan = fixtures.Single(vehicle => vehicle.TypeId == "SEDAN");
+            PlayerVehicleController sports = fixtures.Single(vehicle => vehicle.TypeId == "SPORTS");
+            sedan.SpawnAt(new Vector3(2, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-vehicle-entry"));
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            PlayerPedestrianController pedestrian = playerControl.Pedestrian
+                ?? throw new InvalidOperationException("Vehicle entry requires a pedestrian.");
+            PlayerPedestrianSnapshot pedestrianBeforeEntry = pedestrian.CaptureState();
+            VehicleEntryRequestResult sedanEntry = playerControl.BeginVehicleEntry(sedan);
+            Check(sedanEntry is { Allowed: true, ReadyForTransition: true, HijackInProgress: false },
+                "A nearby supported authorized sedan prepares immediate entry.", failures);
+            long authorityBeforeSedan = playerControl.AuthorityGeneration;
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("integration", "phase5-vehicle-entry"));
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(runtime.StateMachine.State == GameState.StreetVehicle
+                    && playerControl.ControlledKind == ControlKind.Vehicle
+                    && ReferenceEquals(playerControl.ControlledVehicle, sedan)
+                    && sedan.Controlled
+                    && !pedestrian.Controlled
+                    && ReferenceEquals(session.GameplayCamera?.FollowTarget, sedan)
+                    && input.LatestSnapshot.Context == ControlContexts.Vehicle,
+                "Entry transfers body, camera, and input ownership to the selected vehicle atomically.", failures);
+            Check(playerControl.AuthorityGeneration == authorityBeforeSedan + 1,
+                "Vehicle entry changes gameplay authority exactly once.", failures);
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("integration", "phase5-vehicle-idempotence"));
+            Check(playerControl.AuthorityGeneration == authorityBeforeSedan + 1,
+                "A same-state vehicle request cannot duplicate the control handoff.", failures);
+
+            pause = runtime.Pause.OpenMenu("phase5-vehicle-pause");
+            Check(sedan.SimulationSuspended && sedan.Freeze,
+                "Pausing a driven vehicle freezes its physics body under the retained StreetVehicle resume state.", failures);
+            Check(runtime.Pause.Release(pause, "phase5-vehicle-pause")
+                    && !sedan.SimulationSuspended
+                    && !sedan.Freeze
+                    && runtime.StateMachine.State == GameState.StreetVehicle,
+                "Pause release restores the same controlled vehicle without another authority transfer.", failures);
+            pause = null;
+
+            sedan.LinearVelocity = -sedan.GlobalBasis.Z * 3;
+            VehicleExitRequestResult movingExit = playerControl.RequestVehicleExit();
+            Check(!movingExit.Allowed && movingExit.Code == "VEHICLE_EXIT_MOVING",
+                "Unsafe exit is rejected while the vehicle exceeds the configured speed threshold.", failures);
+            sedan.LinearVelocity = Vector3.Zero;
+            sedan.AngularVelocity = Vector3.Zero;
+            VehicleExitRequestResult safeSedanExit = playerControl.RequestVehicleExit();
+            Check(safeSedanExit is { Allowed: true, ExitPose: not null },
+                "A supported stationary vehicle publishes a terrain-safe exit pose.", failures);
+            long authorityBeforeSedanExit = playerControl.AuthorityGeneration;
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-vehicle-exit"));
+            Check(playerControl.ControlledKind == ControlKind.Pedestrian
+                    && ReferenceEquals(playerControl.Pedestrian, pedestrian)
+                    && pedestrian.Controlled
+                    && pedestrian.CaptureState().Heading == pedestrianBeforeEntry.Heading
+                    && safeSedanExit.ExitPose is Vector3 sedanExitPose
+                    && pedestrian.GlobalPosition.IsEqualApprox(sedanExitPose)
+                    && !sedan.Controlled
+                    && sedan.Gameplay.AiActive
+                    && sedan.Gameplay.AiHandoffCount == 1
+                    && playerControl.AuthorityGeneration == authorityBeforeSedanExit + 1
+                    && ReferenceEquals(session.GameplayCamera?.FollowTarget, pedestrian),
+                "Exit restores the suspended pedestrian at the accepted pose and hands the vehicle back to AI exactly once.", failures);
+
+            sports.ApplyControl(new VehiclePrototypeControl(0, 1, 0));
+            sports.SpawnAt(pedestrian.GlobalPosition + new Vector3(2, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            VehicleEntryRequestResult hijackStart = playerControl.BeginVehicleEntry(sports);
+            VehicleEntryRequestResult hijackProgress = hijackStart;
+            for (int step = 0; step < 5; step += 1)
+            {
+                hijackProgress = playerControl.AdvanceHijack(0.25, remainsEligible: true);
+            }
+            Check(hijackStart is { Allowed: true, ReadyForTransition: false, HijackInProgress: true }
+                    && hijackStart.RemainingDuration == VehiclePossessionModel.DefaultConfig.HijackDuration
+                    && hijackProgress is { Allowed: true, ReadyForTransition: true, HijackInProgress: false }
+                    && sports.Gameplay.Authorized,
+                "Unauthorized occupied entry completes only after the full bounded hijack duration.", failures);
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("integration", "phase5-vehicle-hijack"));
+            Check(ReferenceEquals(playerControl.ControlledVehicle, sports)
+                    && sports.Controlled
+                    && ReferenceEquals(session.GameplayCamera?.FollowTarget, sports),
+                "Completed hijack transfers the same transactional vehicle and camera authority.", failures);
+
+            sports.LinearVelocity = Vector3.Zero;
+            sports.AngularVelocity = Vector3.Zero;
+            sports.Rotation = new Vector3(0, sports.Rotation.Y, 1);
+            VehicleExitRequestResult rolledExit = playerControl.RequestVehicleExit();
+            Check(!rolledExit.Allowed && rolledExit.Code == "VEHICLE_EXIT_AIRBORNE_OR_ROLLED",
+                "Unsafe exit is rejected for a rolled or unsupported vehicle.", failures);
+            sports.SpawnAt(sports.GlobalPosition);
+            for (int frame = 0; frame < 35; frame += 1)
+            {
+                await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            }
+            VehicleExitRequestResult safeSportsExit = playerControl.RequestVehicleExit();
+            Check(safeSportsExit.Allowed, "A recovered hijacked vehicle can prepare a safe exit.", failures);
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-hijack-exit"));
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-vehicle-cleanup"));
+            Check(playerControl.ControlledKind == ControlKind.None
+                    && sports.Gameplay.AiActive
+                    && session.GameplayCamera?.FollowTarget is null,
+                "Returning to Management releases vehicle, pedestrian, camera, and input gameplay authority.", failures);
+
+            Check(stableIds.All(playerControl.RemoveVehicle) && playerControl.Vehicles.Count == 0,
+                "Removing all six fixtures returns the session vehicle registry to its exact baseline.", failures);
+            stableIds.Clear();
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Vehicle profile/possession integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            SessionShell? session = compositionRoot.CurrentSession;
+            GodotSessionRuntimeHost? runtime = session?.RuntimeHost;
+            PlayerControlRuntime? playerControl = session?.PlayerControl;
+            if (pause is not null && runtime?.Pause.Paused == true)
+            {
+                _ = runtime.Pause.Release(pause, "phase5-vehicle-cleanup");
+            }
+            if (runtime?.StateMachine.State is GameState.StreetOnFoot or GameState.StreetVehicle)
+            {
+                runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5-vehicle-cleanup"));
+            }
+            if (playerControl is not null)
+            {
+                foreach (string stableId in stableIds) _ = playerControl.RemoveVehicle(stableId);
             }
         }
     }

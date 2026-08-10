@@ -20,6 +20,8 @@ public partial class SessionShell : Node
 
     public MvpWorldGenerator? World { get; private set; }
 
+    public GameContentRegistry? Content { get; private set; }
+
     public WorldEnvironmentController? Environment { get; private set; }
 
     public CachedBillboardSystem? Billboards { get; private set; }
@@ -61,6 +63,7 @@ public partial class SessionShell : Node
         PlayerControl.Initialize(
             InputHost,
             World ?? throw new InvalidOperationException("The world must exist before player control is initialized."),
+            Content ?? throw new InvalidOperationException("Content must exist before player control is initialized."),
             GetNode<Node3D>("WorldRoot/AgentRoot"),
             CameraAdapter);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
@@ -76,6 +79,7 @@ public partial class SessionShell : Node
             throw new InvalidOperationException("The session world owner already exists.");
         }
         World = GetNode<MvpWorldGenerator>("WorldRoot/AuthoredWorld");
+        Content = content;
         World.Initialize(content);
         CameraAdapter = GetNode<GodotCameraWorldAdapter>("CameraRig");
         CameraAdapter.Initialize(World, content);
@@ -103,6 +107,7 @@ public partial class SessionShell : Node
         Environment?.Shutdown();
         Billboards?.Shutdown();
         World?.ShutdownWorld();
+        Content = null;
         AppLog.Write(new StructuredLogEvent(
             LogCategory.Session,
             LogSeverity.Information,

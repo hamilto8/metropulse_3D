@@ -1169,10 +1169,23 @@ work in items 5.5–5.7.)*
 5.5 Port the complete vehicle profile contract and implement sedan, sports,
 bus, truck, emergency, and motorbike test fixtures. Separate physics chassis,
 visual body, wheels, lights, driver/rider, audio emitters, and gameplay state.
+*(complete: one production `PlayerVehicleController` applies the ADR-selected
+custom raycast chassis to canonical SEDAN, SPORTS, BUS, TRUCK, POLICE, and
+MOTORBIKE records; each live fixture retains its own mass, dimensions, drive,
+suspension, tire, steering, and lean data while visual body, wheel probes,
+lights, occupant, audio, and gameplay authority remain separate components.
+Headless telemetry proves all six accelerate within their profile speed cap.)*
 
 5.6 Implement possession, timed hijack approach, camera-origin control, vehicle
 exit, pedestrian suspend/restore, pose-preserving AI handoff, airborne/unsafe
-exit rejection, and exactly-once authority changes.
+exit rejection, and exactly-once authority changes. *(complete: the session
+player-control registry prepares entry before transition, advances unauthorized
+occupied hijacks through a bounded 1.25-second pure model, suspends and restores
+the same pedestrian, transfers the shared chase camera and frozen input context,
+requires a supported terrain-safe exit pose, rejects moving/rolled/unsupported
+exits, and hands the released body to AI. Runtime and per-vehicle generations
+prove entry and exit authority changes occur exactly once, including pause and
+same-state requests.)*
 
 5.7 Implement collision/impact contracts needed by the slice: vehicle overlap,
 pedestrian knockdown, motorbike rider ejection, static obstacles, weather grip,
