@@ -1,0 +1,107 @@
+using Godot;
+using MetroPulse.Domain.Core;
+using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.World;
+
+namespace MetroPulse.Godot.Runtime;
+
+/// <summary>
+/// Live session owner for game state, coordinated transitions, pause intent,
+/// and the canonical multi-clock scheduler.
+/// </summary>
+public partial class GodotSessionRuntimeHost : Node
+{
+    private Func<bool>? unsubscribeTransitions;
+
+    public bool Initialized { get; private set; }
+
+    public SimulationScheduler Scheduler { get; private set; } = null!;
+
+    public GameStateMachine StateMachine { get; private set; } = null!;
+
+    public GameTransitionCoordinator Transitions { get; private set; } = null!;
+
+    public PauseManager Pause { get; private set; } = null!;
+
+    public GodotTransitionRuntime Runtime { get; private set; } = null!;
+
+    public long AdvancedFrames { get; private set; }
+
+    public void Initialize(RuntimeInputHost input, GodotCameraWorldAdapter camera)
+    {
+        if (Initialized)
+        {
+            throw new InvalidOperationException("The Godot session runtime is already initialized.");
+        }
+
+        Scheduler = new SimulationScheduler(initialClockPolicy: ClockPolicy.City);
+        Runtime = new GodotTransitionRuntime(input, camera, Scheduler);
+        StateMachine = new GameStateMachine(GameState.Management, Runtime.SnapshotContext);
+        Transitions = new GameTransitionCoordinator(StateMachine, Runtime);
+        Pause = new PauseManager(Transitions, input.ClearAndQuarantine);
+        unsubscribeTransitions = Transitions.Subscribe(LogTransition);
+        ProcessMode = ProcessModeEnum.Always;
+        SetProcess(true);
+        Initialized = true;
+    }
+
+    public void SetControlBridge(IPlayerControlTransitionBridge? bridge)
+    {
+        EnsureInitialized();
+        Runtime.SetControlBridge(bridge);
+    }
+
+    public void TransitionTo(GameState destination, TransitionRequestOptions? options = null)
+    {
+        EnsureInitialized();
+        Transitions.TransitionTo(destination, options);
+    }
+
+    public override void _Process(double delta)
+    {
+        if (!Initialized) return;
+        Scheduler.AdvanceFrame(Math.Max(0, delta));
+        AdvancedFrames++;
+    }
+
+    public void Shutdown()
+    {
+        if (!Initialized) return;
+        _ = unsubscribeTransitions?.Invoke();
+        unsubscribeTransitions = null;
+        SetProcess(false);
+        Initialized = false;
+    }
+
+    public override void _ExitTree() => Shutdown();
+
+    private void EnsureInitialized()
+    {
+        if (!Initialized)
+        {
+            throw new InvalidOperationException("The Godot session runtime is not initialized.");
+        }
+    }
+
+    private static void LogTransition(TransitionCoordinatorEvent transitionEvent)
+    {
+        LogSeverity severity = transitionEvent.Type == TransitionCoordinatorEventType.Failed
+            ? LogSeverity.Error
+            : LogSeverity.Information;
+        AppLog.Write(new StructuredLogEvent(
+            LogCategory.Session,
+            severity,
+            $"session.transition.{transitionEvent.Type.ToString().ToLowerInvariant()}",
+            $"{transitionEvent.Transition.From.ToToken()} -> {transitionEvent.Transition.To.ToToken()} "
+                + $"{transitionEvent.Type.ToString().ToLowerInvariant()} at {transitionEvent.Phase.ToToken()}.",
+            new Dictionary<string, string>
+            {
+                ["transitionId"] = transitionEvent.Transition.Id,
+                ["phase"] = transitionEvent.Phase.ToToken(),
+                ["from"] = transitionEvent.Transition.From.ToToken(),
+                ["to"] = transitionEvent.Transition.To.ToToken(),
+                ["errorCode"] = (transitionEvent.Error as GameTransitionException)?.Code ?? string.Empty,
+            }));
+    }
+}

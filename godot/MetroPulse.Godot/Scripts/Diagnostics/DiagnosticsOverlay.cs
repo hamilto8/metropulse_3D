@@ -2,9 +2,11 @@ using System.Reflection;
 using System.Text.Json;
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Godot.App;
+using MetroPulse.Godot.Runtime;
 
 namespace MetroPulse.Godot.Diagnostics;
 
@@ -74,6 +76,7 @@ public partial class DiagnosticsOverlay : CanvasLayer
         DiagnosticSaveData saveData = ReadSaveData();
         GameSaveDiscoveryReport? discovery = _compositionRoot?.SaveDiscoveryReport;
         DeferredGameSaveDescriptor? pendingRuntime = _compositionRoot?.SaveRestoreCoordinator?.PendingRuntime;
+        GodotSessionRuntimeHost? sessionRuntime = _compositionRoot?.CurrentSession?.RuntimeHost;
         string action = _compositionRoot?.PreparedSave?.Action ?? _configuration?.BootAction ?? "UNSELECTED";
         string saveStatus = _fatalErrorCode is not null
             ? "ERROR"
@@ -94,9 +97,15 @@ public partial class DiagnosticsOverlay : CanvasLayer
             _sessionLoaded,
             _fatalErrorCode,
             new DiagnosticRuntimeState(
-                saveData.GameState ?? "MANAGEMENT",
-                pendingRuntime is null ? "EMPTY_SESSION_NO_SIMULATION_CLOCK" : "DEFERRED_RESTORE",
-                pendingRuntime is null ? "STABLE" : "RUNTIME_RESTORE_PENDING",
+                pendingRuntime is not null
+                    ? saveData.GameState ?? "MANAGEMENT"
+                    : sessionRuntime?.StateMachine.State.ToToken() ?? saveData.GameState ?? "MANAGEMENT",
+                pendingRuntime is not null
+                    ? "DEFERRED_RESTORE"
+                    : sessionRuntime?.Scheduler.ClockPolicy.ToToken() ?? "EMPTY_SESSION_NO_SIMULATION_CLOCK",
+                pendingRuntime is not null
+                    ? "RUNTIME_RESTORE_PENDING"
+                    : sessionRuntime?.Transitions.ActivePhase?.ToToken() ?? "STABLE",
                 saveData.MayhemEnabled),
             saveData.ControlledEntity,
             new DiagnosticMissionState(saveData.MissionId, saveData.MissionPhase, saveData.Checkpoint),

@@ -1114,7 +1114,13 @@ Deliver the first end-to-end controllable slice: Management → on foot → vehi
 
 5.1 Connect the pure game-state machine, scheduler, pause manager, and transition
 coordinator to the Godot session. Implement `GodotTransitionRuntime` phases in
-the same order as the browser and compensate in reverse on failure.
+the same order as the browser and compensate in reverse on failure. *(complete:
+the disposable session now owns one mutable `GameStateMachine`, transactional
+`GameTransitionCoordinator`, `PauseManager`, and live `SimulationScheduler`;
+the Godot runtime executes all eight engine phases in canonical order, restores
+captured control/camera/clock state on failure, and always releases its opaque
+input suspension. Pure fault injection covers every phase and live headless
+checks cover Management/Builder/pause/resume plus failed Street compensation.)*
 
 5.2 Implement the camera rig: orbit/pan, street look pivot, pedestrian chase,
 vehicle chase, independent yaw/pitch, clearance correction, shake as a

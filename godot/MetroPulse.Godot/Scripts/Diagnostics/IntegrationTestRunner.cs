@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Godot;
 using MetroPulse.Domain.Boot;
+using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
@@ -156,6 +157,7 @@ public partial class IntegrationTestRunner : Node
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
+        CheckSessionRuntime(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -213,6 +215,19 @@ public partial class IntegrationTestRunner : Node
                     ["traversalWaypoints"] = world.DebugTraversalCapsule?.TraversalWaypoints.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["sampledColliders"] = "5",
                     ["ownedResourcesAfterShutdown"] = "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase5.session_runtime.passed",
+                "Phase 5 session transition, pause, scheduler, and compensation checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "12",
+                    ["state"] = session.RuntimeHost?.StateMachine.State.ToToken() ?? "unavailable",
+                    ["clockPolicy"] = session.RuntimeHost?.Scheduler.ClockPolicy.ToToken() ?? "unavailable",
+                    ["transitionPhases"] = TransitionPhaseCatalog.ExecutionOrder.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["sourceRestores"] = session.RuntimeHost?.Runtime.SourceRestoreCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -592,6 +607,77 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Runtime input integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckSessionRuntime(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime owner is unavailable.");
+            RuntimeInputHost input = session.InputHost
+                ?? throw new InvalidOperationException("Runtime input owner is unavailable.");
+
+            Check(runtime.Initialized, "SessionRoot initializes one game-state/scheduler runtime owner.", failures);
+            Check(runtime.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true,
+                "The session runtime is lifecycle-owned by SessionRoot/RuntimeServices.", failures);
+            Check(runtime.StateMachine.State == GameState.Management && runtime.Scheduler.ClockPolicy == ClockPolicy.City,
+                "Interactive release starts in authoritative Management/City policy.", failures);
+            Check(runtime.AdvancedFrames > 0 && runtime.Scheduler.Frame > 0,
+                "The live Godot process loop advances the canonical scheduler.", failures);
+
+            runtime.TransitionTo(GameState.Builder, new TransitionRequestOptions("integration", "phase5"));
+            Check(runtime.StateMachine.State == GameState.Builder && runtime.Scheduler.ClockPolicy == ClockPolicy.Builder,
+                "Management to Builder commits camera and builder clock policy transactionally.", failures);
+            PauseHold pause = runtime.Pause.OpenMenu("phase5-integration");
+            Check(runtime.StateMachine.State == GameState.Paused
+                    && runtime.StateMachine.ResumeState == GameState.Builder
+                    && runtime.Scheduler.ClockPolicy == ClockPolicy.Paused,
+                "Pause holds retain the exact Builder resume state and stop gameplay clocks.", failures);
+            Check(runtime.Pause.Release(pause, "phase5-integration")
+                    && runtime.StateMachine.State == GameState.Builder
+                    && runtime.Scheduler.ClockPolicy == ClockPolicy.Builder,
+                "Final pause release resumes the exact source through the coordinator.", failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase5"));
+            Check(runtime.StateMachine.State == GameState.Management && runtime.Scheduler.ClockPolicy == ClockPolicy.City,
+                "Builder to Management restores the city simulation policy.", failures);
+
+            int restoresBefore = runtime.Runtime.SourceRestoreCount;
+            Transform3D cameraBefore = session.GetNode<Camera3D>("CameraRig/MainCamera").GlobalTransform;
+            GameTransitionException error = null!;
+            try
+            {
+                runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("fault-injection", "phase5"));
+            }
+            catch (GameTransitionException caught)
+            {
+                error = caught;
+            }
+            Check(error?.Code == "CONTROL_RUNTIME_UNAVAILABLE", "Street entry fails closed until an entity control owner is registered.", failures);
+            Check(runtime.StateMachine.State == GameState.Management
+                    && runtime.Scheduler.ClockPolicy == ClockPolicy.City
+                    && runtime.Runtime.SourceRestoreCount == restoresBefore + 1,
+                "Failed live handoff compensates source ownership and clock policy before recovery.", failures);
+            Check(session.GetNode<Camera3D>("CameraRig/MainCamera").GlobalTransform.IsEqualApprox(cameraBefore),
+                "Failed live handoff restores the captured camera transform exactly.", failures);
+            Check(!input.LatestSnapshot.Suspended, "Transition cleanup leaves no input suspension active.", failures);
+
+            TransitionPhase[] finalAttempt = runtime.Runtime.PhaseHistory.TakeLast(4).ToArray();
+            Check(finalAttempt.SequenceEqual([
+                    TransitionPhase.SuspendInput,
+                TransitionPhase.ClearHeldActions,
+                TransitionPhase.CaptureSource,
+                TransitionPhase.HandoffEntity]),
+                "Live fault injection exposes canonical phase order through the failing handoff.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Session runtime integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

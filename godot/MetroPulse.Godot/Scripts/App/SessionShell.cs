@@ -24,6 +24,8 @@ public partial class SessionShell : Node
 
     public GodotCameraWorldAdapter? CameraAdapter { get; private set; }
 
+    public GodotSessionRuntimeHost? RuntimeHost { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -44,6 +46,10 @@ public partial class SessionShell : Node
         InputHost = new RuntimeInputHost { Name = "RuntimeInputHost" };
         runtimeServices.AddChild(InputHost);
         InputHost.Initialize(settings);
+        CameraAdapter ??= GetNode<GodotCameraWorldAdapter>("CameraRig");
+        RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
+        runtimeServices.AddChild(RuntimeHost);
+        RuntimeHost.Initialize(InputHost, CameraAdapter);
     }
 
     public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
@@ -73,6 +79,7 @@ public partial class SessionShell : Node
         }
 
         IsShutDown = true;
+        RuntimeHost?.Shutdown();
         InputHost?.Shutdown();
         Environment?.Shutdown();
         Billboards?.Shutdown();
@@ -94,7 +101,8 @@ public partial class SessionShell : Node
         if (!IsInsideTree()
             || GetNodeOrNull<Node3D>("WorldRoot") is null
             || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
-            || InputHost?.Initialized != true)
+            || InputHost?.Initialized != true
+            || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");
         }

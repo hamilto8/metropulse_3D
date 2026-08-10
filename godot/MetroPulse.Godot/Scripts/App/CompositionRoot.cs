@@ -385,13 +385,14 @@ public partial class CompositionRoot : Node
                     || session.GetNodeOrNull<Node3D>("WorldRoot") is null
                     || session.World?.IsBuilt != true
                     || session.GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
-                    || session.InputHost?.Initialized != true)
+                    || session.InputHost?.Initialized != true
+                    || session.RuntimeHost?.Initialized != true)
                 {
                     throw new BootStageException(
                         BootStageIds.FinalReadiness,
                         "Verifying session readiness",
                         "SESSION_NOT_READY",
-                        "The Management session did not construct its required world, camera, and input owners.",
+                        "The Management session did not construct its required world, camera, input, and runtime owners.",
                         ["Repair or reinstall MetroPulse, then retry."]);
                 }
 
