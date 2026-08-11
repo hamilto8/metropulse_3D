@@ -1389,12 +1389,23 @@ the already functioning world and street simulation.
 7.1 Bind the pure `EconomySystem` to a view model and city tick. Register the
 authored skyline through one building adapter and prove that initial treasury,
 population, happiness, land value, service state, income, and upkeep match the
-reference.
+reference. *(complete: session-owned `CityEconomyRuntime` binds the sole
+`EconomyLedger` to the canonical one-second city stage, republishes immutable
+`CityEconomyViewModel` snapshots, and registers all 23 authored skyline nodes
+through `BuildingEconomyAdapter`. Frozen Phase 0 values for 650,000 Capital,
+1,200 population, 70 happiness, 100 land value, adequate zero-demand services,
+8 credits/second gross/net income, and zero upkeep are asserted before skyline
+registration; the financially neutral skyline preserves those scalars.)*
 
 7.2 Port the building catalog and construction vocabulary exactly. Implement
 catalog disclosure/progression locks, zoning, cost/upkeep/income preview,
 capacity/demand, road access, services, community impact, risk, and fiscal
-recovery restrictions.
+recovery restrictions. *(catalog/vocabulary portion complete:
+`ConstructionVocabulary` preserves the three development zones, compatibility
+aliases, five construction categories, six-item starter disclosure, explicit
+advanced disclosure, and Operator/Broker/Magnate enforcement against all 19
+canonical building records. The remaining live preview, zoning, road/service,
+impact/risk, and fiscal-restriction work is owned by the editor slice.)*
 
 7.3 Recreate editor tools: aim/reticle, grid snap, catalog selection, place,
 zone, select, move, rotate, demolish, cancel, and controller navigation.

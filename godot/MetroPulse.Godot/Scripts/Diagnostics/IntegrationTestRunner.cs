@@ -17,6 +17,7 @@ using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
@@ -175,6 +176,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
+        CheckCityEconomyRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
         await CheckLivingPedestrians(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
@@ -197,6 +199,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase7.economy_catalog.passed",
+                "Phase 7 frozen economy baseline, skyline adapter, city tick, view model, and catalog checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "5",
+                    ["authoredBuildings"] = session.Economy?.AuthoredBuildingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["catalogBuildings"] = session.Content?.BuildingRecords.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["cityTicks"] = session.Economy?.CityTickCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -377,7 +391,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "159" : "155",
+                    ["assertions"] = recoverySeedScenario ? "164" : "160",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -402,6 +416,46 @@ public partial class IntegrationTestRunner : Node
         {
             failures.Add(assertion);
         }
+    }
+
+    private static void CheckCityEconomyRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell? session = compositionRoot.CurrentSession;
+        CityEconomyRuntime? economy = session?.Economy;
+        Check(economy?.Initialized == true,
+            "The session owns one initialized city-economy authority.", failures);
+        Check(economy?.ReferenceBaseline is
+        {
+            Treasury: 650_000,
+            Population: 1_200,
+            Happiness: 70,
+            LandValue: 100,
+            GrossIncomeRate: 8,
+            UpkeepRate: 0,
+            EnergyCoverage: 1,
+            WaterCoverage: 1,
+            SafetyCoverage: 1,
+        }, "The live economy baseline matches every frozen Phase 0 scalar.", failures);
+        Check(economy is { AuthoredBuildingCount: 23, Current.AssetCount: 23 }
+                && economy.Ledger.Snapshot().Buildings.All(item => item.Position is not null),
+            "All 23 authored skyline buildings register through the canonical economy adapter.", failures);
+        Check(economy?.Current is { Treasury: 650_000, Population: 1_200, Happiness: 70, LandValue: 100, NetIncomeRate: 8 },
+            "Authored skyline registration preserves the reference treasury, population, happiness, land value, and recurring balance.", failures);
+
+        if (economy is null || session?.RuntimeHost is null) return;
+        double before = economy.Ledger.Treasury;
+        int ticksBefore = economy.CityTickCount;
+        for (int index = 0; index < 12 && economy.CityTickCount == ticksBefore; index++)
+        {
+            session.RuntimeHost.Scheduler.AdvanceFrame(0.25);
+        }
+        Check(economy.CityTickCount == ticksBefore + 1
+                && economy.Ledger.Treasury == before + 8
+                && economy.Current.Treasury == economy.Ledger.Treasury
+                && economy.PublishedViewCount > 0,
+            $"The canonical scheduler city tick advances Capital and republishes the immutable view model exactly once per second. "
+                + $"ticks={ticksBefore}->{economy.CityTickCount}; treasury={before}->{economy.Ledger.Treasury}; "
+                + $"view={economy.Current.Treasury}; published={economy.PublishedViewCount}.", failures);
     }
 
     private async Task CheckLivingTraffic(CompositionRoot compositionRoot, ICollection<string> failures)

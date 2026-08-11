@@ -5,6 +5,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
@@ -47,6 +48,8 @@ public partial class SessionShell : Node
     public LivingPedestrianRuntime? LivingPedestrians { get; private set; }
 
     public EnforcementRuntime? Enforcement { get; private set; }
+
+    public CityEconomyRuntime? Economy { get; private set; }
 
     public override void _Ready()
     {
@@ -102,6 +105,12 @@ public partial class SessionShell : Node
         runtimeServices.AddChild(RuntimeHost);
         RuntimeHost.Initialize(InputHost, GameplayCamera);
         RuntimeHost.SetControlBridge(PlayerControl);
+        Economy = new CityEconomyRuntime { Name = "CityEconomy" };
+        runtimeServices.AddChild(Economy);
+        Economy.Initialize(
+            Content ?? throw new InvalidOperationException("Content must exist before economy is initialized."),
+            World?.Layout ?? throw new InvalidOperationException("The authored world layout must exist before economy is initialized."),
+            RuntimeHost.Scheduler);
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);
         VehicleInteractions.Initialize(PlayerControl, RuntimeHost, InputHost);
@@ -152,6 +161,7 @@ public partial class SessionShell : Node
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
+        Economy?.Shutdown();
         RuntimeHost?.Shutdown();
         LivingPedestrians?.Shutdown();
         LivingTraffic?.Shutdown();
@@ -185,6 +195,7 @@ public partial class SessionShell : Node
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true
+            || Economy?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");
