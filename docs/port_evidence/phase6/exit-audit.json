@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "phase": 6,
+  "status": "complete",
+  "completedOn": "2026-08-11",
+  "referenceRevision": "44a286a74557adfe4fabd3a6e16b9006079eba32",
+  "godotVersion": "4.6.stable.mono.official.89cea1439",
+  "lastVerified": {
+    "browserTests": 391,
+    "domainTests": 280,
+    "successfulHeadlessAssertions": [155, 155, 159],
+    "phase6Assertions": {
+      "traffic": 8,
+      "pedestrians": 7,
+      "enforcement": 6
+    }
+  },
+  "soak": {
+    "seeds": {
+      "traffic": "phase6-soak-traffic",
+      "pedestrians": "phase6-soak-pedestrians"
+    },
+    "durationSeconds": 1800,
+    "stepSeconds": 0.1,
+    "steps": 18000,
+    "movingVehicles": { "minimum": 48, "maximum": 48 },
+    "parkedVehicles": { "minimum": 12, "maximum": 12 },
+    "citizens": { "minimum": 60, "maximum": 60 },
+    "trafficCulls": 10,
+    "pedestrianCulls": 15,
+    "possessionCycles": 12,
+    "hitAndRunCycles": 10,
+    "enforcementCycles": 10,
+    "finalActiveResponses": 0,
+    "finalActiveKnockdowns": 0
+  },
+  "queryProfile": {
+    "routineTrafficMaximumCandidates": 6,
+    "routinePedestrianMaximumCandidates": 4,
+    "initialEnforcementMaximumCandidates": 35,
+    "trafficPopulation": 48,
+    "pedestrianPopulation": 60
+  },
+  "requirements": [
+    { "id": "6.1", "status": "complete", "owner": "TrafficRoadGraph", "evidence": ["docs/port_handoffs/phase-6-road-graph-spatial.md"] },
+    { "id": "6.2", "status": "complete", "owner": "TrafficPopulationSimulation", "evidence": ["docs/port_handoffs/phase-6-living-traffic.md"] },
+    { "id": "6.3", "status": "complete", "owner": "TrafficPopulationSimulation", "evidence": ["docs/port_handoffs/phase-6-living-traffic.md", "docs/port_handoffs/phase-6-living-pedestrians.md"] },
+    { "id": "6.4", "status": "complete", "owner": "TrafficControlCoordinator", "evidence": ["docs/port_handoffs/phase-6-living-traffic.md"] },
+    { "id": "6.5", "status": "complete", "owner": "PedestrianPopulationSimulation", "evidence": ["docs/port_handoffs/phase-6-living-pedestrians.md"] },
+    { "id": "6.6", "status": "complete", "owner": "HitAndRunPursuitModel", "evidence": ["docs/port_handoffs/phase-6-living-pedestrians.md"] },
+    { "id": "6.7", "status": "complete", "owner": "HeatEnforcementModel", "evidence": ["docs/port_handoffs/phase-6-heat-enforcement.md"] },
+    { "id": "6.8", "status": "complete", "owner": "SpatialHashGrid", "evidence": ["docs/port_handoffs/phase-6-road-graph-spatial.md", "docs/port_evidence/phase6/exit-audit.json"] },
+    { "id": "6.9", "status": "complete", "owner": "LivingTrafficRuntime and LivingPedestrianRuntime", "evidence": ["docs/port_handoffs/phase-6-living-traffic.md", "docs/port_handoffs/phase-6-living-pedestrians.md"] }
+  ],
+  "exitGates": [
+    { "id": "lane-corridors", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Simulation/Phase6LivingCitySoakTests.cs", "godot/MetroPulse.Domain.Tests/Traffic/TrafficRoadGraphTests.cs"] },
+    { "id": "population-lifecycle", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Simulation/Phase6LivingCitySoakTests.cs"] },
+    { "id": "behavior-reference-metrics", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Traffic/TrafficPopulationSimulationTests.cs", "godot/MetroPulse.Domain.Tests/Pedestrians/PedestrianPopulationSimulationTests.cs", "docs/port_handoffs/phase-6-living-pedestrians.md"] },
+    { "id": "bounded-routine-queries", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Simulation/Phase6LivingCitySoakTests.cs", "godot/MetroPulse.Domain.Tests/Simulation/SpatialHashGridTests.cs"] },
+    { "id": "thirty-minute-soak", "status": "complete", "evidence": ["godot/MetroPulse.Domain.Tests/Simulation/Phase6LivingCitySoakTests.cs", "docs/port_handoffs/phase-6-exit-audit.md"] }
+  ],
+  "remainingPlaceholders": [
+    { "owner": "Vehicle and pedestrian art", "phase": 9, "reason": "Primitive full/low meshes remain deliberate render-only proxies." },
+    { "owner": "Traffic, horn, siren, and citizen audio", "phase": 10, "reason": "Audio players and response state are live but authored streams remain presentation work." },
+    { "owner": "Heat and enforcement HUD", "phase": 9, "reason": "The authoritative state and diagnostics are live; final UI is not a Phase 6 owner." },
+    { "owner": "Aggregate condition density", "phase": 7, "reason": "Visible seeded populations must not become the economy congestion authority." }
+  ]
+}

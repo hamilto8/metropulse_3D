@@ -1345,20 +1345,37 @@ and low capsule proxies at 120/320 metres. All tiers retain stable identity.)*
 
 ### Exit gate
 
-- Traffic remains in lane corridors through turns and the bridge.
+- Traffic remains in lane corridors through turns and the bridge. *(complete:
+  route advancement and player release clamp immediately against the selected
+  edge; the deterministic soak observes turn and primary-bridge traversal while
+  enforcing the bounded corridor/intersection envelope.)*
 - Population floors survive culling, impacts, player possession, ejection, and
-  recovery.
+  recovery. *(complete: the soak retains exactly 48 moving vehicles, 12 separate
+  parked vehicles, and 60 citizens through 10 traffic culls, 15 citizen culls,
+  12 possession/ejection cycles, 10 impacts, and final cleanup.)*
 - Pedestrian yielding distribution, stop controls, pursuits, and congestion
-  metrics match reference scenarios.
+  metrics match reference scenarios. *(complete: focused fixtures retain the
+  canonical 39/48 compliance, 20% impatience, 9/2/1 signals, four-way arrival,
+  speed-aware yielding/horns, archetype mix, and bounded pursuit cleanup; the
+  soak observes bridge, turn, and stop/congestion samples.)*
 - At target counts, no routine update performs an unbounded all-agent scan.
+  *(complete: the shared grid records live routine maxima of six traffic and
+  four pedestrian candidates; initial enforcement dispatch is a separately
+  bounded non-routine query and subsequent updates touch assigned responders.)*
 - A 30-minute headless living-city soak has stable counts and no unhandled
-  errors.
+  errors. *(complete: `Phase6LivingCitySoakTests` runs 18,000 deterministic
+  0.1-second steps/1,800 simulated seconds with stable identities, finite state,
+  lifecycle stress, response cleanup, and no unhandled error.)*
 
 ### Handoff
 
 Publish road graph schema, agent lifecycle diagrams, behavior cadence/LOD table,
 random stream use, population invariants, traffic rule fixtures, pursuit cleanup
-rules, profiler captures, and remaining visual/audio placeholders.
+rules, profiler captures, and remaining visual/audio placeholders. *(complete
+across the five Phase 6 handoffs, ending with `phase-6-exit-audit.md`, and the
+machine-checked `docs/port_evidence/phase6/exit-audit.json`.)*
+
+**Phase 6 complete as of 2026-08-11.**
 
 ## 15. Phase 7 — Economy, builder, services, incidents, and world editing
 

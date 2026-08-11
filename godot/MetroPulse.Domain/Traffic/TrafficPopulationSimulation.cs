@@ -199,6 +199,8 @@ public sealed class TrafficPopulationSimulation
             RoadGraphNodeSnapshot node = graphNodes[nearest];
             agent.CurrentNodeId = nearest;
             agent.TargetNodeId = node.NextNodeIds[0];
+            agent.Position = graph.EnforceLaneCorridor(
+                agent.Position, agent.CurrentNodeId, agent.TargetNodeId, ProfileWidth(agent.TypeId)).Position;
             agent.Speed = Math.Max(5, agent.Speed);
         }
         return true;
@@ -462,6 +464,9 @@ public sealed class TrafficPopulationSimulation
                     .ThenBy(id => id, StringComparer.Ordinal)
                     .First();
             }
+            LaneCorridorResult nextCorridor = graph.EnforceLaneCorridor(
+                agent.Position, agent.CurrentNodeId, agent.TargetNodeId, ProfileWidth(agent.TypeId));
+            agent.Position = nextCorridor.Position;
             agent.StuckElapsed = 0;
         }
         else if (agent.Speed < 0.1 && targetSpeed > 1)
