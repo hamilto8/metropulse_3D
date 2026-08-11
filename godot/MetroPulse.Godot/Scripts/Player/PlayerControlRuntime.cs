@@ -71,6 +71,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
 
     public event Action<PlayerVehicleController>? RiderEjectionPrepared;
 
+    public event Action<PlayerVehicleController>? VehicleHijacked;
+
     public IGameplayCameraTarget? ControlledCameraTarget => ControlledKind switch
     {
         ControlKind.Pedestrian => pedestrian,
@@ -177,6 +179,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             active.Vehicle.MarkHijacked();
             pendingVehicle = active.Vehicle;
             hijack = null;
+            VehicleHijacked?.Invoke(active.Vehicle);
             return new VehicleEntryRequestResult(true, true, false, 0);
         }
         return new VehicleEntryRequestResult(

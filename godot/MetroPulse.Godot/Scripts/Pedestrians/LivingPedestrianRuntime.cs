@@ -29,6 +29,8 @@ public partial class LivingPedestrianRuntime : Node
 
     public int CollisionActorCount => actors.Values.Count(actor => actor.CollisionActive);
 
+    public event Action<TrafficAgentSnapshot, PedestrianAgentSnapshot>? PlayerVehiclePedestrianHit;
+
     public void Initialize(
         GameContentRegistry content,
         MvpWorldGenerator worldOwner,
@@ -100,10 +102,12 @@ public partial class LivingPedestrianRuntime : Node
                 detection);
             TrafficPedestrianInteraction action = traffic.Simulation.UpdatePedestrianEncounter(vehicle.Id, contact, delta);
             if (!action.ShouldKnockDown || contact is null) continue;
+            PedestrianAgentSnapshot pedestrian = Simulation.GetSnapshot(contact.PedestrianId);
             _ = Simulation.KnockDown(
                 contact.PedestrianId,
                 new PedestrianVector3(Math.Sin(vehicle.Heading), 0.25, Math.Cos(vehicle.Heading)),
                 vehicle.Speed);
+            if (vehicle.PlayerControlled) PlayerVehiclePedestrianHit?.Invoke(vehicle, pedestrian);
         }
     }
 

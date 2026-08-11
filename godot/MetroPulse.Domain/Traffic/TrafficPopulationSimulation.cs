@@ -59,7 +59,13 @@ public sealed record TrafficAgentSnapshot(
     int HornCount,
     bool HitAndRunOffender,
     string? PursuitTargetId,
+    string? EnforcementTargetId,
     bool SirenActive);
+
+public sealed record EnforcementResponseSnapshot(
+    string TargetId,
+    IReadOnlyList<string> ResponderIds,
+    double NearestDistance);
 
 public sealed record TrafficPedestrianInteraction(
     bool ShouldYield,
@@ -110,6 +116,7 @@ public sealed class TrafficPopulationSimulation
         vehicleGrid = new SpatialHashGrid<Agent>(24, agent => agent.Id, agent => new SpatialPoint(agent.Position.X, agent.Position.Z));
         EnsurePopulationFloor();
         while (parked.Count < this.config.ParkedVehicleCount) SpawnParked();
+        vehicleGrid.Rebuild(moving.Values);
     }
 
     public TrafficControlCoordinator Controls { get; }
@@ -288,6 +295,82 @@ public sealed class TrafficPopulationSimulation
             action.ShouldYield, action.ShouldHonk, false, false, kinematics.DetectionDistance, []);
     }
 
+    public EnforcementResponseSnapshot DispatchOrUpdateEnforcement(
+        string targetId,
+        TrafficPoint targetPosition,
+        int requestedResponders)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetId);
+        if (!double.IsFinite(targetPosition.X) || !double.IsFinite(targetPosition.Z))
+        {
+            throw new ArgumentOutOfRangeException(nameof(targetPosition));
+        }
+        int maximum = Math.Clamp(requestedResponders, 1, 4);
+        foreach (Agent unavailable in moving.Values.Where(agent => agent.EnforcementTargetId == targetId
+            && (agent.PlayerControlled
+                || agent.DamageState is TrafficDamageStates.Disabled or TrafficDamageStates.OnFire)))
+        {
+            unavailable.EnforcementTargetId = null;
+            unavailable.EnforcementTargetPosition = null;
+            unavailable.SirenActive = unavailable.PursuitTargetId is not null;
+        }
+        Agent[] assigned = moving.Values
+            .Where(agent => agent.EnforcementTargetId == targetId
+                && agent.DamageState is not TrafficDamageStates.Disabled and not TrafficDamageStates.OnFire)
+            .OrderBy(agent => DistanceSquared(agent.Position, targetPosition))
+            .ThenBy(agent => agent.Id, StringComparer.Ordinal)
+            .Take(maximum)
+            .ToArray();
+        if (assigned.Length < maximum)
+        {
+            SpatialQueryResult<Agent> nearby = vehicleGrid.Query(
+                new SpatialPoint(targetPosition.X, targetPosition.Z), 500);
+            maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
+            HashSet<string> assignedIds = assigned.Select(agent => agent.Id).ToHashSet(StringComparer.Ordinal);
+            Agent[] additions = nearby.Items
+                .Where(agent => agent.TypeId == "POLICE"
+                    && !agent.PlayerControlled
+                    && agent.PursuitTargetId is null
+                    && agent.EnforcementTargetId is null
+                    && agent.DamageState is not TrafficDamageStates.Disabled and not TrafficDamageStates.OnFire
+                    && !assignedIds.Contains(agent.Id))
+                .OrderBy(agent => DistanceSquared(agent.Position, targetPosition))
+                .ThenBy(agent => agent.Id, StringComparer.Ordinal)
+                .Take(maximum - assigned.Length)
+                .ToArray();
+            foreach (Agent police in additions)
+            {
+                police.EnforcementTargetId = targetId;
+                police.EnforcementTargetPosition = targetPosition;
+                police.SirenActive = true;
+            }
+            assigned = assigned.Concat(additions).ToArray();
+        }
+        foreach (Agent police in assigned)
+        {
+            police.EnforcementTargetPosition = targetPosition;
+            police.SirenActive = true;
+        }
+        double nearest = assigned.Length == 0
+            ? double.PositiveInfinity
+            : Math.Sqrt(assigned.Min(agent => DistanceSquared(agent.Position, targetPosition)));
+        return new EnforcementResponseSnapshot(targetId, assigned.Select(agent => agent.Id).ToArray(), nearest);
+    }
+
+    public bool ClearEnforcement(string targetId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetId);
+        bool cleared = false;
+        foreach (Agent police in moving.Values.Where(agent => agent.EnforcementTargetId == targetId))
+        {
+            police.EnforcementTargetId = null;
+            police.EnforcementTargetPosition = null;
+            police.SirenActive = police.PursuitTargetId is not null;
+            cleared = true;
+        }
+        return cleared;
+    }
+
     private void AdvanceAgent(Agent agent, double delta, bool bridgePriorityEnabled)
     {
         if (agent.DamageState == TrafficDamageStates.OnFire)
@@ -368,6 +451,14 @@ public sealed class TrafficPopulationSimulation
             {
                 agent.TargetNodeId = graphNodes[agent.CurrentNodeId].NextNodeIds
                     .OrderBy(id => DistanceSquared(graphNodes[id].Position, offender.Position))
+                    .ThenBy(id => id, StringComparer.Ordinal)
+                    .First();
+            }
+            else if (agent.EnforcementTargetPosition is not null)
+            {
+                TrafficPoint enforcementTarget = agent.EnforcementTargetPosition;
+                agent.TargetNodeId = graphNodes[agent.CurrentNodeId].NextNodeIds
+                    .OrderBy(id => DistanceSquared(graphNodes[id].Position, enforcementTarget))
                     .ThenBy(id => id, StringComparer.Ordinal)
                     .First();
             }
@@ -551,6 +642,7 @@ public sealed class TrafficPopulationSimulation
         agent.HornCount,
         agent.HitAndRun is not null,
         agent.PursuitTargetId,
+        agent.EnforcementTargetId,
         agent.SirenActive);
 
     private IReadOnlyList<string> BeginHitAndRun(Agent offender, TrafficPoint origin)
@@ -567,7 +659,7 @@ public sealed class TrafficPopulationSimulation
                 candidate.PlayerControlled,
                 candidate.DamageState is TrafficDamageStates.Disabled or TrafficDamageStates.OnFire,
                 candidate.Parked,
-                candidate.PursuitTargetId is not null)).ToArray(),
+                candidate.PursuitTargetId is not null || candidate.EnforcementTargetId is not null)).ToArray(),
             origin);
         offender.HitAndRun = HitAndRunPursuitModel.Create(
             offender.Id, ProfileMaximumSpeed(offender.TypeId), responders);
@@ -601,7 +693,7 @@ public sealed class TrafficPopulationSimulation
             if (!moving.TryGetValue(responderId, out Agent? police)
                 || police.PursuitTargetId != offender.Id) continue;
             police.PursuitTargetId = null;
-            police.SirenActive = false;
+            police.SirenActive = police.EnforcementTargetId is not null;
         }
         offender.HitAndRun = null;
     }
@@ -614,6 +706,10 @@ public sealed class TrafficPopulationSimulation
             double distance = Math.Sqrt(DistanceSquared(agent.Position, offender.Position));
             return HitAndRunPursuitModel.GetPoliceSpeed(
                 ProfileMaximumSpeed(agent.TypeId), offender.Speed, distance);
+        }
+        if (agent.EnforcementTargetPosition is not null)
+        {
+            return HitAndRunPursuitModel.DefaultConfig.PoliceMaximumSpeed;
         }
         return ProfileMaximumSpeed(agent.TypeId) * (agent.Emergency ? 1.12 : 1);
     }
@@ -702,6 +798,8 @@ public sealed class TrafficPopulationSimulation
         public bool PedestrianEmergencyStop { get; set; }
         public HitAndRunPursuitState? HitAndRun { get; set; }
         public string? PursuitTargetId { get; set; }
+        public string? EnforcementTargetId { get; set; }
+        public TrafficPoint? EnforcementTargetPosition { get; set; }
         public bool SirenActive { get; set; }
     }
 }

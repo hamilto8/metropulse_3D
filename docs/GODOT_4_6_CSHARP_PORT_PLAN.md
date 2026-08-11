@@ -1312,6 +1312,14 @@ before siren/pursuit state is cleared back to patrol.)*
 
 6.7 Port crime reporting, wanted state, police dispatch, pursuit across player
 vehicle switches, escape timer, arrest, one macro incident, and safe recovery.
+*(complete: `HeatEnforcementModel` scores witnessed/unwitnessed crime through
+severity, local security, and bounded repetition; publishes four wanted tiers;
+and decays only while the player is safe, unseen, and beyond 35 metres. The
+session owner retains one player target across pedestrian/vehicle switches,
+creates one macro incident per response, dispatches up to four road-aware police,
+clears after eight safe seconds, and uses 3/4.5-metre on-foot/vehicle arrest
+thresholds. Arrest clears Heat and returns the controlled pedestrian to the
+supported park recovery point; hijack and player hit-and-run are live reporters.)*
 
 6.8 Rebuild `SpatialHashGrid` or an equivalent deterministic grid for local
 queries. Do not use full-population scans in routine per-agent updates.
@@ -1320,8 +1328,9 @@ orders publications deterministically, handles negative cell boundaries,
 rejects duplicate IDs, skips nonfinite entities, and reports visited cells and
 candidates. Traffic obstacle, vehicle-neighbor, police-response, criminal-target,
 and vehicle-to-pedestrian queries all consume the same bounded-query contract;
-live integration currently measures maxima of six traffic and four pedestrian
-candidates.)*
+routine neighbor/interaction integration measures six traffic and four pedestrian
+candidates, while the non-routine initial enforcement dispatch inspects 35 of 48
+through an explicitly bounded 500-metre grid query.)*
 
 6.9 Implement simulation LOD separately from render LOD. Near agents receive
 full collision/behavior; medium agents reduce animation/query cadence; far

@@ -90,6 +90,29 @@ public sealed class TrafficPopulationSimulationTests
         Assert.Throws<ArgumentOutOfRangeException>(() => simulation.SyncPlayerPose(id, new TrafficPoint(double.NaN, 0), 0, 0));
     }
 
+    [Fact]
+    public void EnforcementDispatchTracksPlayerAcrossControlSwitchesAndClearsPatrolState()
+    {
+        TrafficPopulationSimulation simulation = Create("enforcement-dispatch");
+        TrafficAgentSnapshot nearbyPolice = simulation.Snapshot().Moving.First(agent => agent.TypeId == "POLICE");
+        EnforcementResponseSnapshot first = simulation.DispatchOrUpdateEnforcement(
+            "player", nearbyPolice.Position, 2);
+        Assert.InRange(first.ResponderIds.Count, 1, 2);
+        Assert.All(first.ResponderIds, id =>
+        {
+            TrafficAgentSnapshot responder = simulation.GetSnapshot(id);
+            Assert.Equal("player", responder.EnforcementTargetId);
+            Assert.True(responder.SirenActive);
+        });
+
+        EnforcementResponseSnapshot switched = simulation.DispatchOrUpdateEnforcement(
+            "player", new TrafficPoint(nearbyPolice.Position.X + 20, nearbyPolice.Position.Z), 2);
+        Assert.Equal(first.ResponderIds, switched.ResponderIds);
+        Assert.True(simulation.ClearEnforcement("player"));
+        Assert.DoesNotContain(simulation.Snapshot().Moving,
+            agent => agent.EnforcementTargetId == "player" || agent.SirenActive);
+    }
+
     private static TrafficPopulationSimulation Create(string seed) => new(
         TrafficRoadGraph.CreateProduction(),
         new RandomStreamRegistry(seed));

@@ -5,6 +5,7 @@ using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Enforcement;
 using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
@@ -16,6 +17,7 @@ using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
@@ -179,6 +181,7 @@ public partial class IntegrationTestRunner : Node
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
+        await CheckLivingEnforcement(compositionRoot, failures);
         await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
@@ -194,6 +197,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase6.enforcement.passed",
+                "Phase 6 player Heat, macro incident, vehicle-switch pursuit, dispatch, and cleanup checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "6",
+                    ["crimeReports"] = session.Enforcement?.CrimeReportCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["incidents"] = session.Enforcement?.IncidentCreateCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["maximumLocalCandidates"] = session.LivingTraffic?.Simulation.MaximumLocalCandidates.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -362,7 +377,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "153" : "149",
+                    ["assertions"] = recoverySeedScenario ? "159" : "155",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -476,6 +491,66 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Living pedestrian integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async Task CheckLivingEnforcement(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Enforcement integration requires a session.");
+            EnforcementRuntime enforcement = session.Enforcement
+                ?? throw new InvalidOperationException("The enforcement runtime is unavailable.");
+            Check(enforcement.Initialized && enforcement.CrimeReportCount == 1 && enforcement.State.Wanted,
+                "A completed unauthorized hijack reports one witnessed player crime to live Heat.", failures);
+            Check(enforcement.IncidentCreateCount == 1 && enforcement.State.ActiveIncidentId is not null,
+                "The first live crime creates exactly one active macro incident.", failures);
+            Check(enforcement.Response is { TargetId: EnforcementRuntime.PlayerResponseTargetId }
+                    && enforcement.Response.ResponderIds.Count is >= 1 and <= 4
+                    && enforcement.Response.ResponderIds.All(id =>
+                        session.LivingTraffic?.Simulation.GetSnapshot(id).SirenActive == true),
+                "Bounded police responders pursue the player target independently of the controlled body.", failures);
+
+            string incidentId = enforcement.State.ActiveIncidentId!;
+            _ = enforcement.ReportCrime(new Vector3(-75, 0, -75), "Repeated witnessed offense", 3, true, 0.8);
+            Check(enforcement.IncidentCreateCount == 1
+                    && enforcement.State.ActiveIncidentId == incidentId
+                    && enforcement.State.Repetition == 2,
+                "Repeated crime increases Heat while retaining the single macro incident.", failures);
+            Check(enforcement.ClearResponse()
+                    && !enforcement.State.Wanted
+                    && !session.LivingTraffic!.Simulation.Snapshot().Moving.Any(
+                        agent => agent.EnforcementTargetId == EnforcementRuntime.PlayerResponseTargetId),
+                "Resolving player Heat clears every assigned police unit back to patrol.", failures);
+
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Enforcement recovery requires the session runtime.");
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase6-arrest"));
+            PlayerPedestrianController controlled = session.PlayerControl?.Pedestrian
+                ?? throw new InvalidOperationException("Enforcement recovery requires the player pedestrian.");
+            _ = enforcement.ReportCrime(controlled.GlobalPosition, "Arrest fixture", 2, true, 0.5);
+            EnforcementAdvanceResult arrest = enforcement.AdvanceObservation(
+                new EnforcementObservation(
+                    EnforcementRuntime.PlayerResponseTargetId,
+                    new TrafficPoint(controlled.GlobalPosition.X, controlled.GlobalPosition.Z),
+                    false,
+                    2,
+                    true,
+                    true),
+                0.1);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            Check(arrest.Outcome == EnforcementOutcomes.Arrested
+                    && enforcement.ArrestCount == 1
+                    && !enforcement.State.Wanted
+                    && runtime.StateMachine.State == GameState.StreetOnFoot
+                    && controlled.GlobalPosition.DistanceTo(new Vector3(-75, controlled.GlobalPosition.Y, -75)) < 0.1,
+                "Arrest clears immediate Heat and returns the controlled player to the supported recovery point.", failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase6-arrest-cleanup"));
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Living enforcement integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

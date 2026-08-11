@@ -5,6 +5,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
@@ -44,6 +45,8 @@ public partial class SessionShell : Node
     public LivingTrafficRuntime? LivingTraffic { get; private set; }
 
     public LivingPedestrianRuntime? LivingPedestrians { get; private set; }
+
+    public EnforcementRuntime? Enforcement { get; private set; }
 
     public override void _Ready()
     {
@@ -102,6 +105,14 @@ public partial class SessionShell : Node
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);
         VehicleInteractions.Initialize(PlayerControl, RuntimeHost, InputHost);
+        Enforcement = new EnforcementRuntime { Name = "Enforcement" };
+        runtimeServices.AddChild(Enforcement);
+        Enforcement.Initialize(
+            PlayerControl,
+            LivingTraffic,
+            LivingPedestrians,
+            RuntimeHost,
+            World ?? throw new InvalidOperationException("The world must exist before enforcement is initialized."));
         PlayerControl.RiderEjectionPrepared += OnRiderEjectionPrepared;
         unsubscribeWeatherGrip = Environment?.SubscribeState(
             snapshot => PlayerControl.ApplyWeatherGrip(snapshot.WeatherMode),
@@ -140,6 +151,7 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         VehicleInteractions?.Shutdown();
+        Enforcement?.Shutdown();
         RuntimeHost?.Shutdown();
         LivingPedestrians?.Shutdown();
         LivingTraffic?.Shutdown();
@@ -172,6 +184,7 @@ public partial class SessionShell : Node
             || PlayerControl?.Initialized != true
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
+            || Enforcement?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");
