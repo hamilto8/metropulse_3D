@@ -1252,7 +1252,13 @@ authoritative control slice.
 6.1 Port the one authoritative road graph, including authored nodes/edges,
 bridge routes, user-road registration interfaces, projection, corridor
 enforcement, turn-aware speed limits, overshoot-safe advancement, obstacle
-detection, and bridge priority metadata.
+detection, and bridge priority metadata. *(complete: `TrafficRoadGraph` owns a
+deterministically published 480-node authored graph, the primary-bridge-only
+river crossing, countryside links, no-dead-end fallbacks, validated and
+reversible user-road registration, nearest-route recovery, seeded overshoot-safe
+advancement, lane-corridor correction, and explicit bridge-priority edges. The
+existing projection/turn model and new spatially bounded oriented-obstacle index
+complete the navigation contract.)*
 
 6.2 Implement traffic spawn/despawn and the 48-moving-vehicle floor. Spawned
 agents use stable runtime IDs and seeded profiles. Parked vehicles are separate
@@ -1280,6 +1286,11 @@ vehicle switches, escape timer, arrest, one macro incident, and safe recovery.
 
 6.8 Rebuild `SpatialHashGrid` or an equivalent deterministic grid for local
 queries. Do not use full-population scans in routine per-agent updates.
+*(complete: the generic XZ `SpatialHashGrid<T>` rebuilds by stable runtime ID,
+orders publications deterministically, handles negative cell boundaries,
+rejects duplicate IDs, skips nonfinite entities, and reports visited cells and
+candidates. Traffic obstacle queries already consume it; both living-agent
+registries must consume the same bounded-query contract in the next slices.)*
 
 6.9 Implement simulation LOD separately from render LOD. Near agents receive
 full collision/behavior; medium agents reduce animation/query cadence; far
