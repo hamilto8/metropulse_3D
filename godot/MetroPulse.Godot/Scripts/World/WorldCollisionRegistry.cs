@@ -34,6 +34,8 @@ public sealed class WorldCollisionRegistry
 
     public bool TryGet(string stableId, out WorldColliderMetadata? metadata) => colliders.TryGetValue(stableId, out metadata);
 
+    public bool Unregister(string stableId) => colliders.Remove(stableId);
+
     public IReadOnlyList<CameraObstacle> CameraObstacles() => colliders.Values
         .Where(item => item.Layer == CollisionLayer.StaticObstacle)
         .Select(item => new CameraObstacle(

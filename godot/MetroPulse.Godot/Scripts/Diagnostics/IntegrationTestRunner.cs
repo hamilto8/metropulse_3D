@@ -9,14 +9,17 @@ using MetroPulse.Domain.Enforcement;
 using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
+using MetroPulse.Domain.Placement;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
 using MetroPulse.Domain.Traffic;
 using MetroPulse.Domain.Vehicles;
 using MetroPulse.Domain.World;
+using MetroPulse.Domain.WorldEditing;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
@@ -177,6 +180,7 @@ public partial class IntegrationTestRunner : Node
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
+        CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
         await CheckLivingPedestrians(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
@@ -210,6 +214,18 @@ public partial class IntegrationTestRunner : Node
                     ["authoredBuildings"] = session.Economy?.AuthoredBuildingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["catalogBuildings"] = session.Content?.BuildingRecords.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["cityTicks"] = session.Economy?.CityTickCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase7.editor_transactions.passed",
+                "Phase 7 editor commands, previews, zoning, and eight-participant world-edit transactions passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "10",
+                    ["participants"] = WorldEditParticipantIds.RequiredOrder.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["remainingBuildings"] = session.Editor?.Records.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["zones"] = session.Editor?.Zones.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -391,7 +407,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "164" : "160",
+                    ["assertions"] = recoverySeedScenario ? "174" : "170",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -456,6 +472,111 @@ public partial class IntegrationTestRunner : Node
             $"The canonical scheduler city tick advances Capital and republishes the immutable view model exactly once per second. "
                 + $"ticks={ticksBefore}->{economy.CityTickCount}; treasury={before}->{economy.Ledger.Treasury}; "
                 + $"view={economy.Current.Treasury}; published={economy.PublishedViewCount}.", failures);
+    }
+
+    private static void CheckCityEditorRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Editor integration requires a session.");
+            CityEditorRuntime editor = session.Editor
+                ?? throw new InvalidOperationException("The city editor runtime is unavailable.");
+            CityEconomyRuntime economy = session.Economy
+                ?? throw new InvalidOperationException("Editor integration requires the economy.");
+            MvpWorldGenerator world = session.World
+                ?? throw new InvalidOperationException("Editor integration requires the world.");
+            int authoredColliders = world.Colliders.Count;
+            int authoredEconomyRecords = economy.Ledger.Snapshot().Buildings.Count;
+            double treasuryBefore = economy.Ledger.Treasury;
+
+            Check(editor.Initialized
+                    && editor.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true
+                    && editor.GetParent()?.GetChildren().Count(node => node.Name == "CityEditor") == 1,
+                "The session owns one initialized editor authority under RuntimeServices.", failures);
+            Check(editor.GetCatalog(includeAdvanced: false).Count == 6
+                    && editor.GetCatalog(includeAdvanced: true).Count == 19
+                    && editor.GetCatalog(includeAdvanced: true).Count(spec =>
+                        ConstructionVocabulary.GetCatalogAccess(spec, [ProgressionTiers.Operator]).Unlocked) == 8,
+                "Catalog disclosure and Operator-tier locks use the canonical 8/19 content projection.", failures);
+
+            editor.SetActive(true);
+            editor.SelectCatalog("ROAD_STRAIGHT");
+            editor.ToggleGridSnap();
+            PlacementDecision placement = editor.SetAim(-125, -75);
+            Check(placement.Valid
+                    && placement.Preview?.Summary.Cost == "$25,000"
+                    && session.GetNode<Node3D>("WorldRoot/UserWorld/EditorPresentation").Visible,
+                "Free aim drives a terrain-conforming valid ghost and canonical preview.", failures);
+            WorldEditReceipt placed = editor.Place();
+            string placedId = placed.Current!.Id;
+            Check(placed.Participants.SequenceEqual(WorldEditParticipantIds.RequiredOrder)
+                    && editor.Records.Count == 1
+                    && editor.VisualCount == 1
+                    && editor.ColliderCount == 1
+                    && editor.RoadMetadataCount == 1
+                    && editor.OccupancyCount == 1
+                    && editor.ZoningMetadataCount == 1
+                    && editor.ServiceMetadataCount == 1
+                    && editor.PersistenceCount == 1
+                    && world.Colliders.Count == authoredColliders + 1
+                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords + 1,
+                "Placement commits visual, collider, road, economy, occupancy, zoning, service, and persistence participants together.", failures);
+
+            PlacementVector3 beforeNavigation = editor.Aim;
+            _ = editor.ControllerNavigate(1, 0, 0.5);
+            Check(editor.Aim.X == beforeNavigation.X + 12,
+                "Controller navigation advances the same free-aim authority as pointer input.", failures);
+            _ = editor.SetAim(-125, -25);
+            WorldEditReceipt moved = editor.MoveSelected();
+            WorldEditReceipt rotated = editor.RotateSelected();
+            editor.Cancel();
+            _ = editor.SetAim(-125, -25);
+            WorldEditRecord? selected = editor.SelectAtAim();
+            Check(moved.Previous?.Position != moved.Current?.Position
+                    && rotated.Current?.RotationY == Math.PI / 2
+                    && selected?.Id == placedId
+                    && editor.Records.Single().Position == new PlacementVector3(-125, editor.Aim.Y, -25),
+                "Move, rotate, cancel, and selection all reuse the transactional placed-record lifecycle.", failures);
+
+            WorldEditReceipt demolished = editor.DemolishSelected();
+            Check(demolished.Current is null
+                    && editor.Records.Count == 0
+                    && editor.VisualCount == 0
+                    && editor.ColliderCount == 0
+                    && editor.RoadMetadataCount == 0
+                    && editor.OccupancyCount == 0
+                    && editor.ZoningMetadataCount == 0
+                    && editor.ServiceMetadataCount == 0
+                    && editor.PersistenceCount == 0
+                    && world.Colliders.Count == authoredColliders
+                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords,
+                "Demolition removes every participant and restores authored collider/economy cardinality.", failures);
+
+            _ = editor.SetAim(-120, -150);
+            PlacementZoneParcel parcel = editor.ApplyZone("RES");
+            Check(parcel.ZoneType == ConstructionCategories.Residential
+                    && editor.Zones.Count == 1
+                    && economy.Ledger.GetZoneEffect($"USER_ZONE_{parcel.Id}")?.Type == ConstructionCategories.Residential
+                    && economy.Ledger.Treasury == treasuryBefore - 12_500 - session.Content!.EconomyBalance.Construction!.ZoningCost,
+                "Residential zoning commits its overlay, persistence record, economy effect, and exact treasury charge.", failures);
+
+            editor.SelectCatalog("ROAD_STRAIGHT");
+            PlacementDecision blocked = editor.SetAim(160, 0);
+            Check(!blocked.Valid
+                    && blocked.Blockers.Any(item => item.Code == PlacementBlockerCodes.Water)
+                    && editor.Records.Count == 0,
+                "Invalid terrain publishes structured blockers without mutating editor participants.", failures);
+            editor.Cancel();
+            editor.SetActive(false);
+            Check(!editor.Active
+                    && !session.GetNode<Node3D>("WorldRoot/UserWorld/EditorPresentation").Visible,
+                "Cancel and editor deactivation leave no active selection or preview presentation.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"City editor integration threw {error.GetType().Name}: {error.Message}");
+        }
     }
 
     private async Task CheckLivingTraffic(CompositionRoot compositionRoot, ICollection<string> failures)

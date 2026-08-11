@@ -20,6 +20,14 @@ public sealed record PlacementRect(double MinX, double MaxX, double MinZ, double
     public double Width => MaxX - MinX;
 
     public double Depth => MaxZ - MinZ;
+
+    public bool Contains(double x, double z) => IsFinite
+        && double.IsFinite(x)
+        && double.IsFinite(z)
+        && x >= MinX
+        && x <= MaxX
+        && z >= MinZ
+        && z <= MaxZ;
 }
 
 public sealed record PlacementTerrainHeights(

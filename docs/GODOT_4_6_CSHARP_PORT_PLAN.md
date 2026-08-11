@@ -1400,24 +1400,39 @@ registration; the financially neutral skyline preserves those scalars.)*
 7.2 Port the building catalog and construction vocabulary exactly. Implement
 catalog disclosure/progression locks, zoning, cost/upkeep/income preview,
 capacity/demand, road access, services, community impact, risk, and fiscal
-recovery restrictions. *(catalog/vocabulary portion complete:
+recovery restrictions. *(complete:
 `ConstructionVocabulary` preserves the three development zones, compatibility
 aliases, five construction categories, six-item starter disclosure, explicit
 advanced disclosure, and Operator/Broker/Magnate enforcement against all 19
-canonical building records. The remaining live preview, zoning, road/service,
-impact/risk, and fiscal-restriction work is owned by the editor slice.)*
+canonical building records. `CityEditorRuntime` projects the same pure preview
+and prioritized decision for the live ghost and commit path, including zoning,
+capacity/demand, road/service access, community effects, risks, and fiscal
+restrictions.)*
 
 7.3 Recreate editor tools: aim/reticle, grid snap, catalog selection, place,
 zone, select, move, rotate, demolish, cancel, and controller navigation.
+*(complete: the session-owned editor exposes each command through one API,
+owns a terrain-conforming reticle/ghost under `UserWorld`, supports free or
+10-metre grid aim and controller navigation, and keeps selection/rotation/tool
+state out of the scene nodes.)*
 
 7.4 Use the existing transaction model for every world edit. Participants must
 include visual node, collider, road graph, economy record, occupancy, zoning,
 service metadata, and persistence record. Roll back in reverse order on any
-failure.
+failure. *(complete: `WorldEditTransaction` registers compensation before each
+possibly-partial apply and executes strict LIFO rollback. `WorldEditCoordinator`
+enforces the exact eight-participant order for place/move/rotate/demolish;
+failure injection at every placement participant plus a late move failure
+prove exact treasury and record restoration.)*
 
 7.5 Rebuild terrain-conforming previews and precise placement blockers for
 roads, water, core landmarks, occupied plots, scenery, services, zoning, funds,
-and district locks. Display the highest-priority blocker and remedy.
+and district locks. Display the highest-priority blocker and remedy. *(complete:
+`PlacementWorldRules` samples the canonical surface and authored/user collision
+registries, protected envelopes, authored/connected road rectangles, zoning,
+player occupancy, catalog/district/fiscal access, and feeds one sorted
+`PlacementDecision`; the Godot ghost renders its valid/invalid state while the
+public primary blocker carries the exact message and remedy.)*
 
 7.6 Connect placed roads and bridges to traffic routing. An intact custom bridge
 must publish a deck and remove river hazard inside its footprint; destruction
