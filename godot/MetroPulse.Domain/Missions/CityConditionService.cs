@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Economy;
+using MetroPulse.Domain.Services;
 
 namespace MetroPulse.Domain.Missions;
 
@@ -53,6 +54,7 @@ public sealed class CityConditionService
     private readonly Func<TrafficConditionMetrics?>? trafficProvider;
     private readonly Func<string, BridgeConditionState?>? bridgeProvider;
     private readonly Func<WeatherConditionState?>? weatherProvider;
+    private readonly CityServiceModel? serviceModel;
     private readonly IReadOnlyList<DistrictDefinition> districts;
     private readonly IReadOnlyDictionary<string, DistrictDefinition> districtsById;
     private readonly Dictionary<string, Func<CityConditionRequest, CityConditionContext, CityConditionResult>> customResolvers =
@@ -64,13 +66,15 @@ public sealed class CityConditionService
         Func<TrafficConditionMetrics?>? trafficProvider = null,
         Func<string, BridgeConditionState?>? bridgeProvider = null,
         Func<WeatherConditionState?>? weatherProvider = null,
-        IReadOnlyList<DistrictDefinition>? districtDefinitions = null)
+        IReadOnlyList<DistrictDefinition>? districtDefinitions = null,
+        CityServiceModel? serviceModel = null)
     {
         this.economy = economy ?? throw new ArgumentNullException(nameof(economy));
         this.outcomes = outcomes;
         this.trafficProvider = trafficProvider;
         this.bridgeProvider = bridgeProvider;
         this.weatherProvider = weatherProvider;
+        this.serviceModel = serviceModel;
         districts = Array.AsReadOnly((districtDefinitions ?? ContentDefinitions.Districts).ToArray());
         districtsById = new ReadOnlyDictionary<string, DistrictDefinition>(
             districts.ToDictionary(item => item.Id, StringComparer.Ordinal));
@@ -95,7 +99,7 @@ public sealed class CityConditionService
         {
             CityConditionTypes.Traffic => GetTraffic(request.ScopeId, request.DistrictId),
             CityConditionTypes.Bridge => GetBridge(request.BridgeId),
-            CityConditionTypes.ServiceCoverage => GetServiceCoverage(request.Service, request.DistrictId),
+            CityConditionTypes.ServiceCoverage => GetServiceCoverage(request.Service, request.DistrictId, request.X, request.Z),
             CityConditionTypes.Safety => GetSafety(request.DistrictId),
             CityConditionTypes.Repair => GetRepair(request.TargetId),
             CityConditionTypes.LandValue => GetLandValue(request.X, request.Z, request.DistrictId),
@@ -231,10 +235,41 @@ public sealed class CityConditionService
             Revision());
     }
 
-    public CityConditionResult GetServiceCoverage(string? service, string? districtId = null)
+    public CityConditionResult GetServiceCoverage(
+        string? service,
+        string? districtId = null,
+        double? x = null,
+        double? z = null)
     {
         string normalizedService = NormalizeService(service);
         if (districtId is not null) KnownDistrict(districtId);
+        if ((x is null) != (z is null)) throw new ArgumentException("Service queries require both x and z.");
+        if (serviceModel is not null)
+        {
+            ServiceCoverageReading reading = serviceModel.GetCoverage(
+                normalizedService,
+                new ServiceCoverageSelector(
+                    districtId,
+                    x is null ? null : new OutcomePosition(x.Value, z!.Value)));
+            return Result(
+                CityConditionTypes.ServiceCoverage,
+                districtId is null ? normalizedService : $"{districtId}:{normalizedService}",
+                new
+                {
+                    service = normalizedService,
+                    reading.DistrictId,
+                    reading.Position,
+                    reading.Coverage,
+                    reading.CoveragePercent,
+                    reading.Adequate,
+                    reading.Health,
+                    reading.OutageActive,
+                    reading.Explanation,
+                },
+                reading.Facts,
+                Sources(reading.Facts.Outages.Select(outage => outage.State)),
+                serviceModel.Snapshot().Revision);
+        }
         EconomyLedgerSnapshot economySnapshot = economy.Snapshot();
         EconomyServiceState baseline = economySnapshot.Services.Get(normalizedService);
         KeyValuePair<string, OutcomeServiceOutageState>[] outages = OutcomeSnapshot().State.ServiceOutages

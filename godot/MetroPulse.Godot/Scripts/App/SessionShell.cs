@@ -11,6 +11,7 @@ using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
@@ -53,6 +54,8 @@ public partial class SessionShell : Node
     public CityEconomyRuntime? Economy { get; private set; }
 
     public CityEditorRuntime? Editor { get; private set; }
+
+    public CityServicesRuntime? Services { get; private set; }
 
     public override void _Ready()
     {
@@ -131,6 +134,17 @@ public partial class SessionShell : Node
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);
         VehicleInteractions.Initialize(PlayerControl, RuntimeHost, InputHost);
+        Services = new CityServicesRuntime { Name = "CityServices" };
+        runtimeServices.AddChild(Services);
+        Services.Initialize(
+            Content,
+            Economy,
+            LivingTraffic.Alerts ?? throw new InvalidOperationException("The shared alert authority is unavailable."),
+            PlayerControl,
+            RuntimeHost,
+            VehicleInteractions.Service,
+            World ?? throw new InvalidOperationException("The world must exist before city services are initialized."),
+            GetNode<Node3D>("WorldRoot/EffectRoot"));
         Enforcement = new EnforcementRuntime { Name = "Enforcement" };
         runtimeServices.AddChild(Enforcement);
         Enforcement.Initialize(
@@ -176,6 +190,7 @@ public partial class SessionShell : Node
         _ = unsubscribeWeatherGrip?.Invoke();
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
+        Services?.Shutdown();
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
         Editor?.Shutdown();
@@ -215,6 +230,7 @@ public partial class SessionShell : Node
             || Enforcement?.Initialized != true
             || Economy?.Initialized != true
             || Editor?.Initialized != true
+            || Services?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

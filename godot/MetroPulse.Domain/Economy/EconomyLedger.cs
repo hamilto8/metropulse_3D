@@ -266,6 +266,8 @@ public sealed class EconomyLedger
 
     public EconomyRecoveryState Recovery => recovery;
 
+    public EconomyBalanceDefinition Balance => balance;
+
     public EconomyServicesSnapshot GetServiceState()
     {
         var totals = ServiceTypes.All.ToDictionary(

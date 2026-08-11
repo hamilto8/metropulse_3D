@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Godot;
+using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
@@ -8,9 +9,11 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Economy;
 using MetroPulse.Domain.Enforcement;
 using MetroPulse.Domain.Interactions;
+using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Placement;
+using MetroPulse.Domain.Services;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
 using MetroPulse.Domain.Traffic;
@@ -26,6 +29,7 @@ using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
@@ -185,6 +189,7 @@ public partial class IntegrationTestRunner : Node
         await CheckLivingTraffic(compositionRoot, failures);
         await CheckLivingPedestrians(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
+        CheckCityServicesRuntime(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
@@ -239,6 +244,19 @@ public partial class IntegrationTestRunner : Node
                     ["surfaceDecks"] = session.World?.Surface.Decks.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["mobilityRevision"] = session.LivingTraffic?.Productivity?.Snapshot().Revision.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["bridgePolicy"] = session.LivingTraffic?.Productivity?.BridgePolicy ?? "unavailable",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase7.services_incidents.passed",
+                "Phase 7 local services, incident funding, Street work, markers, alerts, resolution, and domain restore passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "4",
+                    ["outcomeTransactions"] = session.Services?.Outcomes.Snapshot().Transactions.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["streetActions"] = session.Services?.CompletedStreetActions.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["remainingMarkers"] = session.Services?.Markers.MarkerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["activeIncidents"] = session.Services?.Model.Snapshot().ActiveIncidentCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -420,7 +438,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "178" : "174",
+                    ["assertions"] = recoverySeedScenario ? "182" : "178",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -638,6 +656,133 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"City editor integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckCityServicesRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Service integration requires a session.");
+            CityServicesRuntime services = session.Services
+                ?? throw new InvalidOperationException("The city services runtime is unavailable.");
+            CityEconomyRuntime economy = session.Economy
+                ?? throw new InvalidOperationException("Service integration requires the economy.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Service integration requires the runtime host.");
+            PlayerVehicleInteractionPublisher interactions = session.VehicleInteractions
+                ?? throw new InvalidOperationException("Service integration requires shared interactions.");
+            MvpWorldGenerator world = session.World
+                ?? throw new InvalidOperationException("Service integration requires the world.");
+            var definition = new IncidentDefinition
+            {
+                Id = "integration-bridge-relay",
+                Type = "ENERGY_RELAY_DAMAGE",
+                Title = "Bridge relay damaged",
+                Cause = "A transformer strike scattered debris across the service bay.",
+                TargetId = "bridge-relay",
+                InfrastructureId = "bridge-relay",
+                DistrictId = "PRIMARY_BRIDGE_CORRIDOR",
+                Service = ServiceTypes.Power,
+                Severity = 5,
+                CleanupCost = 1_500,
+                RepairCost = 4_500,
+                CoverageMultiplier = 0.4,
+                Position = new OutcomePosition(205, 18),
+                InfluenceRadius = 90,
+            };
+
+            IncidentReportResult reported = services.Response.ReportIncident(definition);
+            ServiceCoverageReading outageReading = services.Model.GetCoverage(
+                ServiceTypes.Power,
+                new ServiceCoverageSelector(Position: definition.Position));
+            Check(services.Initialized
+                    && reported.Incident.Active
+                    && services.Markers.MarkerCount == 2
+                    && services.Outcomes.Snapshot().State.Infrastructure["bridge-relay"].State == "DAMAGED"
+                    && outageReading.OutageActive
+                    && outageReading.Coverage < 0.4
+                    && services.Alerts.Snapshot().Active.Any(alert =>
+                        alert.DedupeKey == "service-incident:integration-bridge-relay"
+                        && alert.FocusAction.Type == AlertFocusActions.ManagementCamera),
+                "A live report atomically publishes local damage, outage falloff, cleanup/repair markers, and its Management alert.", failures);
+
+            double beforeFunding = economy.Ledger.Treasury;
+            IncidentFundingResult funded = services.Response.ScheduleResponse(definition.Id);
+            IncidentFundingResult duplicateFunding = services.Response.ScheduleResponse(definition.Id);
+            Check(economy.Ledger.Treasury == beforeFunding - 6_000
+                    && funded.WorkOrders.All(order => order.Status == RepairStatuses.Scheduled)
+                    && duplicateFunding.Duplicate
+                    && services.Alerts.Snapshot().Active.Any(alert =>
+                        alert.DedupeKey == "service-incident:integration-bridge-relay"
+                        && alert.FocusAction.Type == AlertFocusActions.StreetWaypoint),
+                "Management funding atomically debits the exact response cost, schedules both orders, updates the alert, and is idempotent.", failures);
+
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration:service-work", nameof(IntegrationTestRunner)));
+            PlayerPedestrianController pedestrian = session.PlayerControl?.Pedestrian
+                ?? throw new InvalidOperationException("Street service work requires the player pedestrian.");
+            Vector3 originalPedestrianPosition = pedestrian.GlobalPosition;
+            Vector3 serviceSite = new(
+                (float)definition.Position.X,
+                (float)world.Surface.GetTerrainHeight(definition.Position.X, definition.Position.Z),
+                (float)definition.Position.Z);
+            pedestrian.GlobalPosition = serviceSite;
+            InteractionSnapshot cleanupPrompt = services.RefreshInteractions();
+            InteractionResolution cleanupProgress = interactions.ResolvePrimary();
+            EconomyLedgerState economyState = economy.Ledger.Serialize();
+            CityServicesRuntimeState serviceState = services.CaptureState();
+            services.Response.PerformStreetWork("work:integration-bridge-relay:cleanup");
+            economy.Ledger.Restore(economyState);
+            CityServiceSnapshot restored = services.RestoreState(serviceState);
+            Check(cleanupPrompt.Primary is { Kind: "SERVICE_WORK", Eligibility.Allowed: true }
+                    && cleanupProgress.Status == InteractionResolutionStatuses.Completed
+                    && services.Response.GetWorkOrder("work:integration-bridge-relay:cleanup")?.Progress == 0.5
+                    && economy.Ledger.Treasury == beforeFunding - 6_000
+                    && restored.OpenWorkOrderCount == 2
+                    && services.Markers.MarkerCount == 2,
+                "Street interaction advances nearby cleanup and the existing economy/missions/alerts domains restore the partial response exactly.", failures);
+
+            pedestrian.GlobalPosition = serviceSite;
+            InteractionResolution cleanupComplete = interactions.ResolvePrimary();
+            pedestrian.GlobalPosition = serviceSite;
+            InteractionSnapshot repairPrompt = services.RefreshInteractions();
+            InteractionResolution repairProgress = interactions.ResolvePrimary();
+            pedestrian.GlobalPosition = serviceSite;
+            InteractionResolution repairComplete = interactions.ResolvePrimary();
+            ServiceCoverageReading resolvedReading = services.Model.GetCoverage(
+                ServiceTypes.Power,
+                new ServiceCoverageSelector(Position: definition.Position));
+            Check(cleanupComplete.Status == InteractionResolutionStatuses.Completed
+                    && repairPrompt.Primary is { Kind: "SERVICE_WORK", Eligibility.Allowed: true }
+                    && repairProgress.Status == InteractionResolutionStatuses.Completed
+                    && repairComplete.Status == InteractionResolutionStatuses.Completed
+                    && services.Response.GetIncident(definition.Id).Active == false
+                    && services.Outcomes.Snapshot().State.ServiceOutages[$"outage:{definition.Id}"].Active == false
+                    && services.Outcomes.Snapshot().State.Infrastructure["bridge-relay"] is { State: "ACTIVE", Condition: 1 }
+                    && services.Markers.MarkerCount == 0
+                    && !resolvedReading.OutageActive
+                    && services.Alerts.Snapshot().Items.Any(alert =>
+                        alert.DedupeKey == "service-incident:integration-bridge-relay"
+                        && alert.State == AlertStates.Resolved)
+                    && services.Alerts.Snapshot().Active.Any(alert => alert.Severity == AlertSeverities.Success),
+                "Cleanup gates repair; final Street work closes the outage, restores infrastructure, resolves the alert/incident, and removes derived markers. "
+                    + $"statuses={cleanupComplete.Status}/{repairProgress.Status}/{repairComplete.Status}; "
+                    + $"incidentActive={services.Response.GetIncident(definition.Id).Active}; "
+                    + $"outageActive={services.Outcomes.Snapshot().State.ServiceOutages[$"outage:{definition.Id}"].Active}; "
+                    + $"infrastructure={services.Outcomes.Snapshot().State.Infrastructure["bridge-relay"].State}/"
+                    + $"{services.Outcomes.Snapshot().State.Infrastructure["bridge-relay"].Condition}; "
+                    + $"markers={services.Markers.MarkerCount}; localOutage={resolvedReading.OutageActive}; "
+                    + $"repairPrompt={repairPrompt.Candidates.Count}/{repairPrompt.Primary?.Id ?? "none"}; "
+                    + $"runtime={runtime.StateMachine.State}; control={session.PlayerControl?.ControlledKind}; "
+                    + $"position={pedestrian.GlobalPosition}; orders={string.Join('|', services.Response.GetWorkOrders().Select(order => $"{order.Id}:{order.Status}:{order.PrerequisiteMet}:{order.Actionable}"))}.", failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration:service-work-complete", nameof(IntegrationTestRunner)));
+            pedestrian.GlobalPosition = originalPedestrianPosition;
+            session.LivingTraffic?.RefreshProductivity("SERVICE_RESTORE_REPUBLISH");
+        }
+        catch (Exception error)
+        {
+            failures.Add($"City service integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 
@@ -1762,11 +1907,11 @@ public partial class IntegrationTestRunner : Node
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
             }
             Check(interactions.Initialized
-                    && interactions.Service.ProviderCount == 1
+                    && interactions.Service.ProviderCount == 2
                     && environment.StateSubscriberCount == 1
                     && sedan.ContactMonitor
                     && sedan.MaxContactsReported == 8,
-                "The session owns one priority publisher, one weather-grip subscriber, and contact-reporting production bodies.", failures);
+                "The session owns vehicle and service-work priority providers, one weather-grip subscriber, and contact-reporting production bodies.", failures);
 
             environment.SetState(12, "rain");
             Check(Math.Abs(sedan.GripMultiplier - 0.48) < 0.0001

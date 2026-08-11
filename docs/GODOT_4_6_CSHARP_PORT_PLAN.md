@@ -1458,6 +1458,15 @@ and the same snapshot retains mission impact and persistence contracts.)*
 7.8 Port CityServiceModel and IncidentResponseService: energy/safety, local
 facility reach, spatial outage falloff, damage, cleanup-before-repair, funding,
 street work interactions, markers, alerts, resolution, and persistence.
+*(complete: the read-only `CityServiceModel` composes the sole economy and
+mission-outcome authorities for aggregate capacity, district backbone access,
+strongest-facility reach, and radius-based outage falloff. The session-owned
+`IncidentResponseService` reports damage/outages/work atomically, funds cleanup
+and repair through one idempotent Capital transaction, publishes the canonical
+Management/Street alerts and priority interactions, enforces cleanup before
+repair, and resolves infrastructure/outage/incident state together. Derived
+Godot markers rebuild from restored mission contracts; a live mid-cleanup
+economy/missions/alerts restore resumes at the same treasury and progress.)*
 
 7.9 Port fiscal balance/recovery and deterministic economy scenarios. Preserve
 pre-spend reserve rules, bounded fines, assistance idempotency, recovery exit,
