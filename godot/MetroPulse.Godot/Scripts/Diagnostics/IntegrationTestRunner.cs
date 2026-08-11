@@ -228,7 +228,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 7 editor commands, previews, zoning, and eight-participant world-edit transactions passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = "13",
+                    ["assertions"] = "14",
                     ["participants"] = WorldEditParticipantIds.RequiredOrder.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["remainingBuildings"] = session.Editor?.Records.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["zones"] = session.Editor?.Zones.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
@@ -257,6 +257,18 @@ public partial class IntegrationTestRunner : Node
                     ["streetActions"] = session.Services?.CompletedStreetActions.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["remainingMarkers"] = session.Services?.Markers.MarkerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["activeIncidents"] = session.Services?.Model.Snapshot().ActiveIncidentCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase7.exit.passed",
+                "Phase 7 clean editor lifecycle and fresh-session world restore contracts passed.",
+                new Dictionary<string, string>
+                {
+                    ["worldEditParticipants"] = WorldEditParticipantIds.RequiredOrder.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["restoredBuildings"] = "1",
+                    ["restoredZones"] = "1",
+                    ["restoredWorldDuplicates"] = "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -438,7 +450,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "182" : "178",
+                    ["assertions"] = recoverySeedScenario ? "183" : "179",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -583,6 +595,17 @@ public partial class IntegrationTestRunner : Node
                     && editor.Records.Single().Position == new PlacementVector3(-125, editor.Aim.Y, -25),
                 "Move, rotate, cancel, and selection all reuse the transactional placed-record lifecycle.", failures);
 
+            _ = editor.SetAim(-120, -150);
+            PlacementZoneParcel parcel = editor.ApplyZone("RES");
+            Check(parcel.ZoneType == ConstructionCategories.Residential
+                    && editor.Zones.Count == 1
+                    && economy.Ledger.GetZoneEffect($"USER_ZONE_{parcel.Id}")?.Type == ConstructionCategories.Residential
+                    && economy.Ledger.Treasury == treasuryBefore - 25_000 - session.Content!.EconomyBalance.Construction!.ZoningCost,
+                "Residential zoning commits its overlay, persistence record, economy effect, and exact treasury charge.", failures);
+            CityEditorState savedEditor = editor.CaptureState();
+            EconomyLedgerState savedEconomy = economy.Ledger.Serialize();
+            CheckRestoredCityEditorSession(compositionRoot, savedEditor, savedEconomy, placedId, parcel.Id, failures);
+
             WorldEditReceipt demolished = editor.DemolishSelected();
             Check(demolished.Current is null
                     && editor.Records.Count == 0
@@ -596,16 +619,9 @@ public partial class IntegrationTestRunner : Node
                     && editor.PersistenceCount == 0
                     && world.Colliders.Count == authoredColliders
                     && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords
+                    && economy.Ledger.Treasury == treasuryBefore - 12_500 - session.Content!.EconomyBalance.Construction!.ZoningCost
                     && traffic.Productivity.Snapshot().Network.Capacity == baseRoadCapacity,
                 "Demolition removes every participant and restores authored collider/economy cardinality.", failures);
-
-            _ = editor.SetAim(-120, -150);
-            PlacementZoneParcel parcel = editor.ApplyZone("RES");
-            Check(parcel.ZoneType == ConstructionCategories.Residential
-                    && editor.Zones.Count == 1
-                    && economy.Ledger.GetZoneEffect($"USER_ZONE_{parcel.Id}")?.Type == ConstructionCategories.Residential
-                    && economy.Ledger.Treasury == treasuryBefore - 12_500 - session.Content!.EconomyBalance.Construction!.ZoningCost,
-                "Residential zoning commits its overlay, persistence record, economy effect, and exact treasury charge.", failures);
 
             editor.SelectCatalog("ROAD_STRAIGHT");
             PlacementDecision blocked = editor.SetAim(160, 0);
@@ -656,6 +672,55 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"City editor integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckRestoredCityEditorSession(
+        CompositionRoot compositionRoot,
+        CityEditorState editorState,
+        EconomyLedgerState economyState,
+        string buildingId,
+        string zoneId,
+        ICollection<string> failures)
+    {
+        SessionShell? restored = null;
+        try
+        {
+            restored = (compositionRoot.SessionScene
+                ?? throw new InvalidOperationException("The session scene is unavailable for restore verification."))
+                .Instantiate<SessionShell>();
+            restored.Name = "Phase7RestoredSession";
+            restored.ProcessMode = ProcessModeEnum.Disabled;
+            compositionRoot.GetParent().AddChild(restored);
+            GameContentRegistry content = compositionRoot.ContentRegistry
+                ?? throw new InvalidOperationException("Content is unavailable for restore verification.");
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings are unavailable for restore verification.");
+            restored.InitializeWorld(content, settings);
+            restored.InitializeRuntimeInput(settings);
+            restored.Economy!.Ledger.Restore(economyState);
+            CityEditorState applied = restored.Editor!.RestoreState(editorState);
+
+            Check(applied.Buildings.Count == 1
+                    && applied.Zones.Count == 1
+                    && restored.Editor.Records.Single().Id == buildingId
+                    && restored.Editor.Zones.Single().Id == zoneId
+                    && restored.Editor.VisualCount == 1
+                    && restored.Editor.ColliderCount == 1
+                    && restored.Editor.RoadMetadataCount == 1
+                    && restored.Editor.ConnectedRoadCount == 1
+                    && restored.Editor.OccupancyCount == 1
+                    && restored.Editor.ZoningMetadataCount == 1
+                    && restored.Editor.ServiceMetadataCount == 1
+                    && restored.Editor.PersistenceCount == 1
+                    && restored.Economy.Ledger.GetBuilding(buildingId) is not null
+                    && restored.Economy.Ledger.GetZoneEffect($"USER_ZONE_{zoneId}") is not null,
+                "A fresh session restores the browser-compatible world/economy payload into every runtime participant without duplicate records.", failures);
+        }
+        finally
+        {
+            restored?.Shutdown();
+            if (restored is not null && GodotObject.IsInstanceValid(restored)) restored.Free();
         }
     }
 

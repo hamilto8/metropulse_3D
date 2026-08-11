@@ -41,6 +41,8 @@ public partial class CityServicesRuntime : Node
 
     public AlertService Alerts { get; private set; } = null!;
 
+    public EconomyAlertAdapter FiscalAlerts { get; private set; } = null!;
+
     public CityServiceMarkerPresenter Markers { get; private set; } = null!;
 
     public int CompletedStreetActions { get; private set; }
@@ -70,6 +72,7 @@ public partial class CityServicesRuntime : Node
         Outcomes = new MissionOutcomeService(economy.Ledger, content);
         Model = new CityServiceModel(economy.Ledger, Outcomes);
         Response = new IncidentResponseService(Outcomes, economy.Ledger, Alerts);
+        FiscalAlerts = new EconomyAlertAdapter(economy.Ledger, Alerts);
         Markers = new CityServiceMarkerPresenter { Name = "CityServiceMarkers" };
         effectRoot.AddChild(Markers);
         Markers.Initialize(Model, world);
@@ -123,6 +126,7 @@ public partial class CityServicesRuntime : Node
         if (!Initialized) return;
         _ = unregisterInteractionProvider?.Invoke();
         unregisterInteractionProvider = null;
+        FiscalAlerts.Dispose();
         Markers.Shutdown();
         if (GodotObject.IsInstanceValid(Markers)) Markers.Free();
         Model.Destroy();

@@ -50,6 +50,38 @@ public sealed record WorldEditReceipt(
     double TreasuryDelta,
     IReadOnlyList<string> Participants);
 
+public sealed record WorldEditPlot(
+    double X,
+    double Y,
+    double Z,
+    double Width,
+    double Depth);
+
+public sealed record WorldEditBuildingState(
+    string EconomyId,
+    string SpecId,
+    WorldEditPlot Plot,
+    double RotationY,
+    string? ZoneType = null);
+
+public sealed record WorldEditZoneState(
+    string Key,
+    double X,
+    double Z,
+    string ZoneType,
+    double HappinessModifier,
+    double LandValueModifier);
+
+/// <summary>Browser-compatible versioned payload stored under save.data.world.</summary>
+public sealed record CityEditorState
+{
+    public int Version { get; init; } = 1;
+
+    public required IReadOnlyList<WorldEditBuildingState> Buildings { get; init; }
+
+    public required IReadOnlyList<WorldEditZoneState> Zones { get; init; }
+}
+
 public interface IWorldEditParticipant
 {
     string Id { get; }

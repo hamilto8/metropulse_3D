@@ -144,6 +144,80 @@ public sealed class WorldEditTransactionTests
         }
     }
 
+    [Fact]
+    public void BrowserCompatibleWorldStateRestoresParticipantsAndReseedsStableIds()
+    {
+        GameContentRegistry content = GameContentRegistry.LoadProduction();
+        EconomyLedger sourceEconomy = CreateEconomy(content);
+        WorldEditCoordinator source = Coordinator(content, sourceEconomy, out _);
+        WorldEditRecord savedRecord = source.Place("ROAD_STRAIGHT", ValidDecision(-125, -75)).Current!;
+        IReadOnlyList<WorldEditBuildingState> savedWorld = source.Serialize();
+        EconomyLedgerState savedEconomy = sourceEconomy.Serialize();
+
+        EconomyLedger restoredEconomy = CreateEconomy(content);
+        restoredEconomy.Restore(savedEconomy);
+        WorldEditCoordinator restored = Coordinator(content, restoredEconomy, out List<MemoryWorldEditParticipant> stores);
+        IReadOnlyList<WorldEditRecord> records = restored.Restore(savedWorld);
+
+        Assert.Equal(savedRecord, Assert.Single(records));
+        Assert.Equal(savedRecord.EconomyRecord, restoredEconomy.GetBuilding(savedRecord.Id));
+        Assert.All(stores, store => Assert.Equal(savedRecord, store.Records[savedRecord.Id]));
+        WorldEditRecord next = restored.Place("ROAD_STRAIGHT", ValidDecision(-125, -25)).Current!;
+        Assert.Equal("USER_BUILDING_2", next.Id);
+    }
+
+    [Fact]
+    public void RestoreFailureCompensatesRuntimeParticipantsWithoutRemovingStaticEconomy()
+    {
+        GameContentRegistry content = GameContentRegistry.LoadProduction();
+        EconomyLedger sourceEconomy = CreateEconomy(content);
+        WorldEditCoordinator source = Coordinator(content, sourceEconomy, out _);
+        WorldEditRecord savedRecord = source.Place("ROAD_STRAIGHT", ValidDecision(-125, -75)).Current!;
+        IReadOnlyList<WorldEditBuildingState> savedWorld = source.Serialize();
+
+        EconomyLedger restoredEconomy = CreateEconomy(content);
+        restoredEconomy.Restore(sourceEconomy.Serialize());
+        var stores = new List<MemoryWorldEditParticipant>();
+        IWorldEditParticipant[] participants = WorldEditParticipantIds.RequiredOrder.Select(id =>
+        {
+            if (id == WorldEditParticipantIds.Economy) return (IWorldEditParticipant)new EconomyWorldEditParticipant(restoredEconomy);
+            var store = new MemoryWorldEditParticipant(
+                id,
+                (operation, _) => !(id == WorldEditParticipantIds.Service && operation == "ATTACH"));
+            stores.Add(store);
+            return store;
+        }).ToArray();
+        var restored = new WorldEditCoordinator(content, restoredEconomy, participants);
+
+        Assert.Throws<WorldEditTransactionException>(() => restored.Restore(savedWorld));
+        Assert.Empty(restored.Records);
+        Assert.All(stores, store => Assert.Empty(store.Records));
+        Assert.Equal(savedRecord.EconomyRecord, restoredEconomy.GetBuilding(savedRecord.Id));
+    }
+
+    private static WorldEditCoordinator Coordinator(
+        GameContentRegistry content,
+        EconomyLedger economy,
+        out List<MemoryWorldEditParticipant> stores)
+    {
+        stores = [];
+        var participants = new List<IWorldEditParticipant>();
+        foreach (string id in WorldEditParticipantIds.RequiredOrder)
+        {
+            if (id == WorldEditParticipantIds.Economy)
+            {
+                participants.Add(new EconomyWorldEditParticipant(economy));
+            }
+            else
+            {
+                var store = new MemoryWorldEditParticipant(id);
+                stores.Add(store);
+                participants.Add(store);
+            }
+        }
+        return new WorldEditCoordinator(content, economy, participants);
+    }
+
     private static EconomyLedger CreateEconomy(GameContentRegistry content) => new(
         content.EconomyBalance,
         content.EconomyBalance.StartingTreasury,

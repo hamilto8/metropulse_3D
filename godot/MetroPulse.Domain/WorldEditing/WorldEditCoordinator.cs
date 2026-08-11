@@ -37,6 +37,86 @@ public sealed class WorldEditCoordinator
 
     public WorldEditRecord? Get(string id) => records.GetValueOrDefault(RequireId(id));
 
+    public IReadOnlyList<WorldEditBuildingState> Serialize() => Array.AsReadOnly(records.Values
+        .OrderBy(item => item.Id, StringComparer.Ordinal)
+        .Select(record => new WorldEditBuildingState(
+            record.Id,
+            record.SpecId,
+            new WorldEditPlot(
+                record.Position.X,
+                record.Position.Y,
+                record.Position.Z,
+                record.Footprint.Width,
+                record.Footprint.Depth),
+            record.RotationY,
+            record.ZoneType))
+        .ToArray());
+
+    public IReadOnlyList<WorldEditRecord> Restore(IReadOnlyList<WorldEditBuildingState> saved)
+    {
+        ArgumentNullException.ThrowIfNull(saved);
+        if (records.Count > 0) throw new InvalidOperationException("World edits can only restore into an empty coordinator.");
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        WorldEditRecord[] restored = saved.Select((item, index) =>
+        {
+            ArgumentNullException.ThrowIfNull(item);
+            string id = RequireId(item.EconomyId);
+            if (!ids.Add(id)) throw new InvalidOperationException($"Duplicate restored world-edit ID: {id}");
+            ArgumentNullException.ThrowIfNull(item.Plot);
+            if (!double.IsFinite(item.Plot.X) || !double.IsFinite(item.Plot.Y) || !double.IsFinite(item.Plot.Z)
+                || !double.IsFinite(item.Plot.Width) || !double.IsFinite(item.Plot.Depth)
+                || item.Plot.Width <= 0 || item.Plot.Depth <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(saved), $"Restored world edit {index} has an invalid plot.");
+            }
+            BuildingDefinition spec = GetSpec(item.SpecId);
+            double rotation = NormalizeRotation(item.RotationY);
+            PlacementFootprint expected = PlacementGeometry.GetOrientedFootprint(
+                spec.Footprint!.Width,
+                spec.Footprint.Depth,
+                rotation);
+            if (Math.Abs(item.Plot.Width - expected.Width) > 0.001
+                || Math.Abs(item.Plot.Depth - expected.Depth) > 0.001)
+            {
+                throw new InvalidOperationException($"Restored world edit {id} does not match the canonical {item.SpecId} footprint.");
+            }
+            return CreateRecord(
+                id,
+                spec,
+                new PlacementVector3(item.Plot.X, item.Plot.Y, item.Plot.Z),
+                rotation,
+                item.ZoneType);
+        }).ToArray();
+
+        _ = WorldEditTransaction.Run("world-edit-restore", transaction =>
+        {
+            foreach (WorldEditRecord record in restored)
+            {
+                foreach (IWorldEditParticipant participant in participants)
+                {
+                    if (participant.Id == WorldEditParticipantIds.Economy
+                        && economy.GetBuilding(record.Id) is EconomyBuilding existing)
+                    {
+                        if (existing != record.EconomyRecord)
+                        {
+                            throw new InvalidOperationException($"Restored economy record conflicts with world edit {record.Id}.");
+                        }
+                        continue;
+                    }
+                    transaction.Step(
+                        $"restore {participant.Id} {record.Id}",
+                        () => participant.Attach(record),
+                        (_, _) => RequireCompensation(participant.Detach(record), participant.Id, "detach restored record"));
+                }
+            }
+            return true;
+        });
+        foreach (WorldEditRecord record in restored) records.Add(record.Id, record);
+        nextBuildingId = Math.Max(1, restored.Select(record => UserBuildingOrdinal(record.Id) + 1).DefaultIfEmpty(1).Max());
+        transactionSerial = 0;
+        return Records;
+    }
+
     public WorldEditReceipt Place(
         string specId,
         PlacementDecision decision,
@@ -238,6 +318,16 @@ public sealed class WorldEditCoordinator
     private static string RequireId(string id) => string.IsNullOrWhiteSpace(id)
         ? throw new ArgumentException("A stable ID is required.", nameof(id))
         : id.Trim();
+
+    private static int UserBuildingOrdinal(string id)
+    {
+        const string prefix = "USER_BUILDING_";
+        return id.StartsWith(prefix, StringComparison.Ordinal)
+            && int.TryParse(id[prefix.Length..], out int ordinal)
+            && ordinal >= 0
+                ? ordinal
+                : 0;
+    }
 
     private static double NormalizeRotation(double rotationY)
     {

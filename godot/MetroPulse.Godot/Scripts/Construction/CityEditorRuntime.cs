@@ -89,6 +89,88 @@ public partial class CityEditorRuntime : Node
 
     public int ServiceMetadataCount => serviceParticipant.Records.Count;
 
+    public CityEditorState CaptureState()
+    {
+        EnsureInitialized();
+        return new CityEditorState
+        {
+            Buildings = coordinator.Serialize(),
+            Zones = Array.AsReadOnly(zones.Values
+                .OrderBy(item => item.Id, StringComparer.Ordinal)
+                .Select(parcel => new WorldEditZoneState(
+                    parcel.Id,
+                    parcel.X,
+                    parcel.Z,
+                    parcel.ZoneType,
+                    parcel.HappinessModifier,
+                    parcel.LandValueModifier))
+                .ToArray()),
+        };
+    }
+
+    public CityEditorState RestoreState(CityEditorState state)
+    {
+        EnsureInitialized();
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.Version != 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(state), $"Unsupported city editor state version: {state.Version}");
+        }
+        if (Records.Count > 0 || zones.Count > 0)
+        {
+            throw new InvalidOperationException("City editor state can only restore into an empty runtime.");
+        }
+        ArgumentNullException.ThrowIfNull(state.Buildings);
+        ArgumentNullException.ThrowIfNull(state.Zones);
+        PlacementZoneParcel[] restoredZones = state.Zones.Select((saved, index) =>
+        {
+            ArgumentNullException.ThrowIfNull(saved);
+            PlacementZoneParcel expected = PlacementWorldRules.CreateZoneParcel(saved.ZoneType, saved.X, saved.Z);
+            if (expected.Id != saved.Key
+                || Math.Abs(expected.HappinessModifier - saved.HappinessModifier) > 0.001
+                || Math.Abs(expected.LandValueModifier - saved.LandValueModifier) > 0.001)
+            {
+                throw new InvalidOperationException($"Restored zone {index} does not match canonical parcel {saved.Key}.");
+            }
+            return expected;
+        }).ToArray();
+        if (restoredZones.Select(parcel => parcel.Id).Distinct(StringComparer.Ordinal).Count() != restoredZones.Length)
+        {
+            throw new InvalidOperationException("Restored city editor state contains duplicate zone parcels.");
+        }
+
+        _ = coordinator.Restore(state.Buildings);
+        foreach (PlacementZoneParcel parcel in restoredZones)
+        {
+            EconomyZoneEffect expected = new(
+                $"USER_ZONE_{parcel.Id}",
+                parcel.ZoneType,
+                parcel.HappinessModifier,
+                parcel.LandValueModifier,
+                new EconomyPoint(parcel.X, parcel.Z));
+            EconomyZoneEffect? existing = economy.Ledger.GetZoneEffect(expected.Id);
+            if (existing is not null && existing != expected)
+            {
+                throw new InvalidOperationException($"Restored economy zone conflicts with parcel {parcel.Id}.");
+            }
+            MeshInstance3D overlay = CreateZoneVisual(parcel);
+            if (!AttachZoneVisual(parcel.Id, overlay))
+            {
+                overlay.Free();
+                throw new InvalidOperationException($"Could not restore zone parcel {parcel.Id}.");
+            }
+            if (!zones.TryAdd(parcel.Id, parcel))
+            {
+                _ = DetachZoneVisual(parcel.Id);
+                throw new InvalidOperationException($"Could not restore zone parcel {parcel.Id}.");
+            }
+            if (existing is null) economy.Ledger.SetZoneEffect(expected);
+        }
+        _ = traffic.RefreshProductivity("WORLD_EDIT_RESTORED");
+        RefreshPreview();
+        return CaptureState();
+    }
+
     public void Initialize(
         GameContentRegistry contentRegistry,
         CityEconomyRuntime economyRuntime,

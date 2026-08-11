@@ -1379,6 +1379,12 @@ machine-checked `docs/port_evidence/phase6/exit-audit.json`.)*
 
 ## 15. Phase 7 — Economy, builder, services, incidents, and world editing
 
+**Status: complete.** The five committed Phase 7 slices restore the live
+economy/catalog, transactional editor, custom roads and traffic productivity,
+services and incident response, fiscal recovery parity, and versioned
+building/zone restoration. The exit matrix and final handoff are recorded in
+`docs/port_handoffs/phase-7-complete.md`.
+
 ### Objective
 
 Restore the complete Management/Builder loop and connect player decisions to
@@ -1470,19 +1476,34 @@ economy/missions/alerts restore resumes at the same treasury and progress.)*
 
 7.9 Port fiscal balance/recovery and deterministic economy scenarios. Preserve
 pre-spend reserve rules, bounded fines, assistance idempotency, recovery exit,
-and explanation strings.
+and explanation strings. *(complete: focused C# parity fixtures mirror the four
+browser recovery scenarios, including exact runway/insolvency explanations,
+cash-positive recovery investment, reserve-floor rejection, bounded fines,
+assistance exhaustion/idempotency, recovery exit, and fiscal alerts. A
+50-cycle world-edit and incident-management soak retains exact treasury,
+300 stable outcome transactions, and zero runtime residue.)*
 
 ### Exit gate
 
 - A clean session completes zone → preview → place → earn/upkeep tick → move →
   rotate → demolish with consistent visuals, collisions, roads, economy, and
-  save state.
+  save state. *(complete: the live sequence also captures a moved/rotated road
+  and zone, restores economy then the versioned editor payload into a fresh
+  session, and proves exact participant, visual, collider, road, zone, and
+  economy cardinalities with no duplicates.)*
 - All world-edit failure points compensate completely.
+  *(complete: every placement participant, a late move failure, and a restore
+  failure after a statically restored economy record leave exact prior state.)*
 - Browser and C# economy scenarios match within declared tolerance.
+  *(complete: 23 relevant browser cases and the mirrored C# fiscal fixtures
+  pass; monetary/explanation assertions are exact and scalar comparison
+  tolerance is 0.001.)*
 - Custom roads affect live routing; custom bridges are physically safe and
-  hazard-correct.
+  hazard-correct. *(complete: live add/remove checks cover route revision,
+  connected capacity, deck support, and restored river hazard.)*
 - Incident funding, cleanup, repair, and resolution work across Management and
-  Street and survive save/reload.
+  Street and survive save/reload. *(complete: the live partial-cleanup restore
+  resumes the same Capital, work progress, alerts, markers, and resolution.)*
 
 ### Handoff
 
