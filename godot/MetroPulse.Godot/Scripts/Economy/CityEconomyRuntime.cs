@@ -20,6 +20,8 @@ public partial class CityEconomyRuntime : Node
 
     public CityEconomyViewModel ReferenceBaseline { get; private set; } = null!;
 
+    public CityEconomyViewModel AuthoredBaseline { get; private set; } = null!;
+
     public CityEconomyViewModel Current { get; private set; } = null!;
 
     public int PublishedViewCount { get; private set; }
@@ -55,7 +57,8 @@ public partial class CityEconomyRuntime : Node
             AuthoredBuildingCount++;
         }
 
-        Current = CityEconomyViewModel.FromSnapshot(Ledger.Snapshot());
+        AuthoredBaseline = CityEconomyViewModel.FromSnapshot(Ledger.Snapshot());
+        Current = AuthoredBaseline;
         unsubscribeEconomy = Ledger.Subscribe(economyEvent => Publish(economyEvent.Current));
         unregisterCityTick = scheduler.RegisterTask(
             "economy.city-tick",

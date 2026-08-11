@@ -39,7 +39,8 @@ public sealed record UserRoadSegmentDefinition(
     double Width,
     double Depth,
     double RotationY,
-    bool IsIntersection);
+    bool IsIntersection,
+    bool IsBridge = false);
 
 public sealed record UserRoadRegistration(
     string Id,
@@ -127,6 +128,20 @@ public sealed class TrafficRoadGraph
             new ReadOnlyCollection<string>(userRoads.Keys.Order(StringComparer.Ordinal).ToArray()));
     }
 
+    public RoadNetworkSnapshot GetRoadNetworkSnapshot()
+    {
+        RoadNetworkSegment[] segments = userRoads.Values
+            .OrderBy(road => road.Definition.Id, StringComparer.Ordinal)
+            .Select(road =>
+            {
+                HashSet<string> ownNodes = road.NodeIds.ToHashSet(StringComparer.Ordinal);
+                bool connected = road.NodeIds.Any(nodeId => nodes[nodeId].NextNodeIds.Any(nextId => !ownNodes.Contains(nextId)));
+                return new RoadNetworkSegment(road.Definition.Id, connected, road.Definition.Center);
+            })
+            .ToArray();
+        return new RoadNetworkSnapshot(Array.AsReadOnly(segments), baseNodeCount);
+    }
+
     public UserRoadRegistration RegisterUserRoad(UserRoadSegmentDefinition definition)
     {
         ValidateUserRoad(definition);
@@ -159,12 +174,13 @@ public sealed class TrafficRoadGraph
         }
 
         var roadNodeIds = roadNodes.Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
+        double connectionRadius = definition.IsBridge ? 80 : UserRoadConnectionRadius;
         foreach (Node endpoint in roadNodes.Skip(1))
         {
             Node[] nearest = nodes.Values
                 .Where(candidate => !roadNodeIds.Contains(candidate.Id))
                 .Select(candidate => (Node: candidate, Distance: Distance(endpoint.Position, candidate.Position)))
-                .Where(candidate => candidate.Distance <= UserRoadConnectionRadius)
+                .Where(candidate => candidate.Distance <= connectionRadius)
                 .OrderBy(candidate => candidate.Distance)
                 .ThenBy(candidate => candidate.Node.Id, StringComparer.Ordinal)
                 .Take(2)

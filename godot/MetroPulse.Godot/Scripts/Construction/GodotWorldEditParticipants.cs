@@ -1,6 +1,8 @@
 using Godot;
 using MetroPulse.Domain.Placement;
 using MetroPulse.Domain.Simulation;
+using MetroPulse.Domain.Traffic;
+using MetroPulse.Domain.World;
 using MetroPulse.Domain.WorldEditing;
 using MetroPulse.Godot.World;
 
@@ -193,4 +195,179 @@ internal sealed class OccupancyWorldEditParticipant : IWorldEditParticipant
     public bool Attach(WorldEditRecord record) => records.TryAdd(record.Id, record);
 
     public bool Detach(WorldEditRecord record) => records.Remove(record.Id);
+}
+
+internal sealed class TrafficRoadWorldEditParticipant : IWorldEditParticipant
+{
+    private readonly TrafficRoadGraph graph;
+    private readonly WorldSurfaceModel surface;
+    private readonly Node3D owner;
+    private readonly Action topologyChanged;
+    private readonly Dictionary<string, WorldEditRecord> records = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, UserRoadRegistration> registrations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MeshInstance3D> directives = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, MeshInstance3D> detachedDirectives = new(StringComparer.Ordinal);
+
+    public TrafficRoadWorldEditParticipant(
+        TrafficRoadGraph graph,
+        WorldSurfaceModel surface,
+        Node3D owner,
+        Action topologyChanged)
+    {
+        this.graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        this.surface = surface ?? throw new ArgumentNullException(nameof(surface));
+        this.owner = owner ?? throw new ArgumentNullException(nameof(owner));
+        this.topologyChanged = topologyChanged ?? throw new ArgumentNullException(nameof(topologyChanged));
+    }
+
+    public string Id => WorldEditParticipantIds.RoadGraph;
+
+    public IReadOnlyDictionary<string, WorldEditRecord> Records => records;
+
+    public RoadNetworkSnapshot NetworkSnapshot => graph.GetRoadNetworkSnapshot();
+
+    public int RoadCount => registrations.Count;
+
+    public bool Attach(WorldEditRecord record)
+    {
+        if (!records.TryAdd(record.Id, record)) return false;
+        if (record.GeneratorType != "ROAD_SEGMENT") return true;
+        bool bridge = record.SpecId == "BRIDGE_DECK";
+        UserRoadRegistration? registration = null;
+        bool deckAdded = false;
+        MeshInstance3D? directive = null;
+        try
+        {
+            registration = graph.RegisterUserRoad(new UserRoadSegmentDefinition(
+                record.Id,
+                new TrafficPoint(record.Position.X, record.Position.Z),
+                record.Footprint.Width,
+                record.Footprint.Depth,
+                record.RotationY,
+                record.SpecId == "ROAD_INTERSECTION",
+                bridge));
+            registrations.Add(record.Id, registration);
+            if (bridge)
+            {
+                deckAdded = surface.RegisterDeck(ToSurfaceDeck(record));
+                if (!deckAdded) throw new InvalidOperationException($"Bridge deck {record.Id} is already registered.");
+            }
+            if (!detachedDirectives.Remove(record.Id, out directive)) directive = CreateDirective(record, registration.Connected);
+            ConfigureDirective(directive, record, registration.Connected);
+            owner.AddChild(directive);
+            directives.Add(record.Id, directive);
+            topologyChanged();
+            return true;
+        }
+        catch
+        {
+            if (directive?.GetParent() is Node parent) parent.RemoveChild(directive);
+            if (directive is not null) detachedDirectives[record.Id] = directive;
+            if (deckAdded) _ = surface.UnregisterDeck(record.Id);
+            if (registration is not null)
+            {
+                _ = graph.UnregisterUserRoad(record.Id);
+                registrations.Remove(record.Id);
+            }
+            records.Remove(record.Id);
+            throw;
+        }
+    }
+
+    public bool Detach(WorldEditRecord record)
+    {
+        if (!records.ContainsKey(record.Id)) return false;
+        if (record.GeneratorType != "ROAD_SEGMENT") return records.Remove(record.Id);
+        UserRoadRegistration registration = registrations[record.Id];
+        bool bridge = record.SpecId == "BRIDGE_DECK";
+        if (bridge && !surface.UnregisterDeck(record.Id))
+        {
+            throw new InvalidOperationException($"Bridge deck {record.Id} was not registered.");
+        }
+        if (!graph.UnregisterUserRoad(record.Id))
+        {
+            if (bridge) _ = surface.RegisterDeck(ToSurfaceDeck(record));
+            throw new InvalidOperationException($"Traffic road {record.Id} was not registered.");
+        }
+        registrations.Remove(record.Id);
+        if (directives.Remove(record.Id, out MeshInstance3D? directive))
+        {
+            owner.RemoveChild(directive);
+            detachedDirectives[record.Id] = directive;
+        }
+        records.Remove(record.Id);
+        try
+        {
+            topologyChanged();
+        }
+        catch
+        {
+            // Derived mobility refresh cannot invalidate a completed topology mutation.
+        }
+        _ = registration;
+        return true;
+    }
+
+    public void FinalizeDetach(WorldEditRecord record)
+    {
+        if (detachedDirectives.Remove(record.Id, out MeshInstance3D? directive)) directive.QueueFree();
+    }
+
+    public void Shutdown()
+    {
+        foreach (WorldEditRecord record in records.Values.Where(item => item.GeneratorType == "ROAD_SEGMENT").ToArray())
+        {
+            if (record.SpecId == "BRIDGE_DECK") _ = surface.UnregisterDeck(record.Id);
+            _ = graph.UnregisterUserRoad(record.Id);
+        }
+        foreach (MeshInstance3D directive in directives.Values.Concat(detachedDirectives.Values).Distinct())
+        {
+            if (directive.GetParent() is Node parent) parent.RemoveChild(directive);
+            directive.QueueFree();
+        }
+        records.Clear();
+        registrations.Clear();
+        directives.Clear();
+        detachedDirectives.Clear();
+    }
+
+    private static SurfaceDeck ToSurfaceDeck(WorldEditRecord record) => new(
+        record.Id,
+        record.Position.X - record.Footprint.Width / 2,
+        record.Position.X + record.Footprint.Width / 2,
+        record.Position.Z - record.Footprint.Depth / 2,
+        record.Position.Z + record.Footprint.Depth / 2,
+        record.Position.Y + record.Height);
+
+    private static MeshInstance3D CreateDirective(WorldEditRecord record, bool connected) => new()
+    {
+        Name = $"{record.Id}-TrafficDirective",
+        Mesh = new CylinderMesh
+        {
+            Height = 0.08f,
+            TopRadius = 12.5f,
+            BottomRadius = 12.5f,
+            RadialSegments = 32,
+        },
+        CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+    };
+
+    private static void ConfigureDirective(MeshInstance3D directive, WorldEditRecord record, bool connected)
+    {
+        directive.Position = new Vector3(
+            (float)record.Position.X,
+            (float)(record.Position.Y + record.Height + 0.05),
+            (float)record.Position.Z);
+        Color color = record.SpecId == "BRIDGE_DECK"
+            ? new Color(0.1f, 0.9f, 1, 0.24f)
+            : connected
+                ? new Color(0.15f, 1, 0.45f, 0.2f)
+                : new Color(1, 0.58f, 0.1f, 0.28f);
+        directive.MaterialOverride = new StandardMaterial3D
+        {
+            AlbedoColor = color,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+        };
+    }
 }

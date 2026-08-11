@@ -99,6 +99,36 @@ public sealed class PlacementWorldRulesTests
             PlacementWorldRules.CreateZoneParcel("POWER", 0, 0));
     }
 
+    [Fact]
+    public void BridgeDeckIsTheOnlyCatalogRoadAllowedToReplaceRiverHazard()
+    {
+        GameContentRegistry content = GameContentRegistry.LoadProduction();
+        EconomyLedger economy = CreateEconomy(content);
+        WorldSurfaceModel surface = new();
+        BuildingDefinition bridge = content.GetBuilding("BRIDGE_DECK")!;
+        BuildingDefinition road = content.GetBuilding("ROAD_STRAIGHT")!;
+
+        PlacementDecision bridgeDecision = PlacementWorldRules.Evaluate(new PlacementWorldEvaluationInput
+        {
+            Spec = PlacementSpec.FromBuilding(bridge),
+            Position = new PlacementVector3(160, 0, 150),
+            CatalogAccess = ConstructionVocabulary.GetCatalogAccess(bridge, [ProgressionTiers.Magnate]),
+            Economy = economy,
+            Surface = surface,
+        });
+        PlacementDecision roadDecision = PlacementWorldRules.Evaluate(new PlacementWorldEvaluationInput
+        {
+            Spec = PlacementSpec.FromBuilding(road),
+            Position = new PlacementVector3(160, 0, 150),
+            CatalogAccess = ConstructionVocabulary.GetCatalogAccess(road, [ProgressionTiers.Magnate]),
+            Economy = economy,
+            Surface = surface,
+        });
+
+        Assert.True(bridgeDecision.Valid);
+        Assert.Contains(roadDecision.Blockers, blocker => blocker.Code == PlacementBlockerCodes.Water);
+    }
+
     private static EconomyLedger CreateEconomy(GameContentRegistry content, bool eastUnlocked = false) => new(
         content.EconomyBalance,
         content.EconomyBalance.StartingTreasury,

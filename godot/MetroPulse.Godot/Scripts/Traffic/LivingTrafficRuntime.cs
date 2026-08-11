@@ -1,5 +1,8 @@
 using Godot;
+using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Core;
+using MetroPulse.Domain.Economy;
 using MetroPulse.Domain.Randomness;
 using MetroPulse.Domain.Traffic;
 using MetroPulse.Godot.Player;
@@ -20,12 +23,20 @@ public partial class LivingTrafficRuntime : Node
     private Node3D? cameraOrigin;
     private Node3D? trafficRoot;
     private Node3D? controlRoot;
+    private Func<bool>? unregisterProductivityTick;
+    private TrafficAlertAdapter? trafficAlerts;
 
     public bool Initialized { get; private set; }
 
     public TrafficRoadGraph RoadGraph { get; private set; } = null!;
 
     public TrafficPopulationSimulation Simulation { get; private set; } = null!;
+
+    public TrafficProductivityModel? Productivity { get; private set; }
+
+    public AlertService? Alerts { get; private set; }
+
+    public TrafficProductivityPresenter? ProductivityPresentation { get; private set; }
 
     public int ActorCount => actors.Count;
 
@@ -62,6 +73,33 @@ public partial class LivingTrafficRuntime : Node
         ProcessPhysicsPriority = -780;
         SetPhysicsProcess(true);
         Initialized = true;
+    }
+
+    public void InitializeEconomy(EconomyLedger economy, PolicyBalanceDefinition policyBalance, SimulationScheduler scheduler)
+    {
+        EnsureInitialized();
+        if (Productivity is not null) throw new InvalidOperationException("Traffic productivity is already initialized.");
+        Productivity = new TrafficProductivityModel(
+            economy ?? throw new ArgumentNullException(nameof(economy)),
+            policyBalance ?? throw new ArgumentNullException(nameof(policyBalance)),
+            roadProvider: RoadGraph.GetRoadNetworkSnapshot,
+            presentationVehicleCap: Simulation.MovingCount);
+        Alerts = new AlertService();
+        trafficAlerts = new TrafficAlertAdapter(Productivity, Alerts);
+        ProductivityPresentation = new TrafficProductivityPresenter { Name = "TrafficProductivityPresentation" };
+        controlRoot!.AddChild(ProductivityPresentation);
+        ProductivityPresentation.Initialize(Productivity);
+        unregisterProductivityTick = (scheduler ?? throw new ArgumentNullException(nameof(scheduler))).RegisterTask(
+            "traffic.productivity",
+            SimulationStage.City,
+            (_, _) => Productivity.Update());
+    }
+
+    public TrafficProductivitySnapshot RefreshProductivity(string reason = "ROAD_GRAPH_CHANGED")
+    {
+        EnsureInitialized();
+        return Productivity?.Update(force: true, reason)
+            ?? throw new InvalidOperationException("Traffic productivity is not initialized.");
     }
 
     public PlayerVehicleController PromoteForPlayerControl(string agentId)
@@ -115,7 +153,13 @@ public partial class LivingTrafficRuntime : Node
         Vector3 focus = playerControl?.ControlledCameraTarget?.CaptureCameraTarget().Position
             ?? cameraOrigin?.GlobalPosition
             ?? Vector3.Zero;
-        Simulation.Advance(delta, new TrafficPoint(focus.X, focus.Z));
+        TrafficProductivitySnapshot? productivity = Productivity?.Snapshot();
+        Simulation.Advance(
+            delta,
+            new TrafficPoint(focus.X, focus.Z),
+            bridgePriorityEnabled: Productivity?.BridgePolicy == BridgePolicies.FreightPriority,
+            speedMultiplier: productivity?.Presentation.SpeedMultiplier ?? 1,
+            bridgeSpeedMultiplier: productivity?.Presentation.BridgeSpeedMultiplier ?? 1);
         ReconcileActors(Simulation.Snapshot(), focus);
         ApplyControlSignals();
     }
@@ -124,6 +168,11 @@ public partial class LivingTrafficRuntime : Node
     {
         if (!Initialized) return;
         SetPhysicsProcess(false);
+        _ = unregisterProductivityTick?.Invoke();
+        unregisterProductivityTick = null;
+        trafficAlerts?.Dispose();
+        trafficAlerts = null;
+        ProductivityPresentation?.Shutdown();
         foreach ((string id, PlayerVehicleController vehicle) in promoted.ToArray())
         {
             if (!vehicle.Controlled) _ = playerControl?.RemoveVehicle(id);
@@ -139,6 +188,9 @@ public partial class LivingTrafficRuntime : Node
         world = null;
         playerControl = null;
         cameraOrigin = null;
+        Productivity = null;
+        Alerts = null;
+        ProductivityPresentation = null;
         Initialized = false;
     }
 

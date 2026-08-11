@@ -70,4 +70,22 @@ public sealed class WorldSurfaceModelTests
         Assert.Throws<NotSupportedException>(() =>
             ((IList<SurfaceDeck>)custom.Decks).Add(new("duplicate", 0, 1, 0, 1, 0)));
     }
+
+    [Fact]
+    public void RuntimeDeckRegistrationRemovesAndRestoresRiverHazardWithoutDuplicates()
+    {
+        WorldSurfaceModel surface = new();
+        var deck = new SurfaceDeck("USER_BRIDGE_1", 145, 175, 135, 165, 2);
+        Assert.True(surface.IsWater(160, 2, 150));
+
+        Assert.True(surface.RegisterDeck(deck));
+        Assert.False(surface.RegisterDeck(deck));
+        Assert.Equal(2, surface.GetTerrainHeight(160, 150));
+        Assert.False(surface.IsWater(160, 2, 150));
+
+        Assert.True(surface.UnregisterDeck(deck.Id));
+        Assert.False(surface.UnregisterDeck(deck.Id));
+        Assert.Equal(-4, surface.GetTerrainHeight(160, 150));
+        Assert.True(surface.IsWater(160, 2, 150));
+    }
 }

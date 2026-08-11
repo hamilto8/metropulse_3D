@@ -89,6 +89,26 @@ public sealed class TrafficRoadGraphTests
     }
 
     [Fact]
+    public void CustomBridgePublishesConnectedCapacityAndDynamicSimulationTopology()
+    {
+        TrafficRoadGraph graph = TrafficRoadGraph.CreateProduction();
+        var simulation = new TrafficPopulationSimulation(graph, new RandomStreamRegistry("bridge-topology"));
+        UserRoadRegistration registration = graph.RegisterUserRoad(new UserRoadSegmentDefinition(
+            "smart-bridge", new TrafficPoint(160, 150), 30, 30, Math.PI / 2, false, IsBridge: true));
+
+        Assert.True(registration.Connected);
+        RoadNetworkSegment bridge = Assert.Single(graph.GetRoadNetworkSnapshot().Segments);
+        Assert.True(bridge.Connected);
+        Assert.Equal(new TrafficPoint(160, 150), bridge.Position);
+        simulation.Advance(1d / 60, new TrafficPoint(160, 150));
+
+        Assert.True(graph.UnregisterUserRoad("smart-bridge"));
+        simulation.Advance(1d / 60, new TrafficPoint(160, 150));
+        Assert.Empty(graph.GetRoadNetworkSnapshot().Segments);
+        Assert.Equal(48, simulation.MovingCount);
+    }
+
+    [Fact]
     public void ObstacleIndexReturnsClosestLaneBlockerWithoutScanningFarPopulation()
     {
         var index = new TrafficObstacleIndex(20);

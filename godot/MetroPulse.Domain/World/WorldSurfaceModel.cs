@@ -33,16 +33,39 @@ public sealed class WorldSurfaceModel
     private static readonly double[] BlockCentersZ = [-75, -25, 25, 75];
     private static readonly double[] CountrysideRoadX = [450, 550, 650, 700, 750];
     private static readonly double[] CountrysideRoadZ = [-100, -50, 0, 50, 100];
-    private readonly IReadOnlyList<SurfaceDeck> decks;
+    private readonly Dictionary<string, SurfaceDeck> decks;
 
     public WorldSurfaceModel(IEnumerable<SurfaceDeck>? decks = null)
     {
-        this.decks = Array.AsReadOnly((decks ?? CreateProductionDecks()).ToArray());
+        this.decks = (decks ?? CreateProductionDecks()).ToDictionary(deck => deck.Id, StringComparer.Ordinal);
     }
 
     public static SurfaceBounds DrivableBounds { get; } = new(-498, 818, -398, 398);
 
-    public IReadOnlyList<SurfaceDeck> Decks => decks;
+    public IReadOnlyList<SurfaceDeck> Decks => Array.AsReadOnly(decks.Values.ToArray());
+
+    public bool RegisterDeck(SurfaceDeck deck)
+    {
+        ArgumentNullException.ThrowIfNull(deck);
+        if (string.IsNullOrWhiteSpace(deck.Id)
+            || !double.IsFinite(deck.MinX)
+            || !double.IsFinite(deck.MaxX)
+            || !double.IsFinite(deck.MinZ)
+            || !double.IsFinite(deck.MaxZ)
+            || !double.IsFinite(deck.Height)
+            || deck.MinX >= deck.MaxX
+            || deck.MinZ >= deck.MaxZ)
+        {
+            throw new ArgumentException("Surface deck geometry must have a stable ID and finite positive bounds.", nameof(deck));
+        }
+        return decks.TryAdd(deck.Id, deck);
+    }
+
+    public bool UnregisterDeck(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        return decks.Remove(id);
+    }
 
     public static IReadOnlyList<SurfaceDeck> CreateProductionDecks()
     {
@@ -72,7 +95,7 @@ public sealed class WorldSurfaceModel
         {
             return null;
         }
-        foreach (SurfaceDeck deck in decks)
+        foreach (SurfaceDeck deck in decks.Values)
         {
             if (deck.Contains(x, z))
             {

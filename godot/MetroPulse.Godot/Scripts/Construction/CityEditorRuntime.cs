@@ -7,6 +7,7 @@ using MetroPulse.Domain.WorldEditing;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Player;
+using MetroPulse.Godot.Traffic;
 using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Construction;
@@ -31,6 +32,7 @@ public partial class CityEditorRuntime : Node
     private CityEconomyRuntime economy = null!;
     private MvpWorldGenerator world = null!;
     private PlayerControlRuntime playerControl = null!;
+    private LivingTrafficRuntime traffic = null!;
     private Node3D userWorld = null!;
     private Node3D presentation = null!;
     private MeshInstance3D ghost = null!;
@@ -39,7 +41,7 @@ public partial class CityEditorRuntime : Node
     private GodotVisualWorldEditParticipant visualParticipant = null!;
     private GodotColliderWorldEditParticipant colliderParticipant = null!;
     private OccupancyWorldEditParticipant occupancyParticipant = null!;
-    private MemoryWorldEditParticipant roadParticipant = null!;
+    private TrafficRoadWorldEditParticipant roadParticipant = null!;
     private MemoryWorldEditParticipant zoningParticipant = null!;
     private MemoryWorldEditParticipant serviceParticipant = null!;
     private MemoryWorldEditParticipant persistenceParticipant = null!;
@@ -79,6 +81,8 @@ public partial class CityEditorRuntime : Node
 
     public int RoadMetadataCount => roadParticipant.Records.Count;
 
+    public int ConnectedRoadCount => roadParticipant.NetworkSnapshot.Segments.Count(segment => segment.Connected);
+
     public int OccupancyCount => occupancyParticipant.Records.Count;
 
     public int ZoningMetadataCount => zoningParticipant.Records.Count;
@@ -90,6 +94,7 @@ public partial class CityEditorRuntime : Node
         CityEconomyRuntime economyRuntime,
         MvpWorldGenerator worldOwner,
         PlayerControlRuntime playerControlRuntime,
+        LivingTrafficRuntime trafficRuntime,
         Node3D userWorldOwner)
     {
         if (Initialized) throw new InvalidOperationException("The city editor runtime is already initialized.");
@@ -97,6 +102,7 @@ public partial class CityEditorRuntime : Node
         economy = economyRuntime ?? throw new ArgumentNullException(nameof(economyRuntime));
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
         playerControl = playerControlRuntime ?? throw new ArgumentNullException(nameof(playerControlRuntime));
+        traffic = trafficRuntime ?? throw new ArgumentNullException(nameof(trafficRuntime));
         userWorld = userWorldOwner ?? throw new ArgumentNullException(nameof(userWorldOwner));
 
         presentation = new Node3D { Name = "EditorPresentation" };
@@ -105,7 +111,11 @@ public partial class CityEditorRuntime : Node
 
         visualParticipant = new GodotVisualWorldEditParticipant(userWorld);
         colliderParticipant = new GodotColliderWorldEditParticipant(userWorld, world.Colliders);
-        roadParticipant = new MemoryWorldEditParticipant(WorldEditParticipantIds.RoadGraph);
+        roadParticipant = new TrafficRoadWorldEditParticipant(
+            trafficRuntime.RoadGraph,
+            world.Surface,
+            userWorld,
+            () => trafficRuntime.RefreshProductivity());
         occupancyParticipant = new OccupancyWorldEditParticipant();
         zoningParticipant = new MemoryWorldEditParticipant(WorldEditParticipantIds.Zoning);
         serviceParticipant = new MemoryWorldEditParticipant(WorldEditParticipantIds.Service);
@@ -167,13 +177,14 @@ public partial class CityEditorRuntime : Node
         SelectedRecordId = null;
         Tool = CityEditorTool.Place;
         rotationY = 0;
+        aim = ConformAim(aim.X, aim.Z);
         RefreshPreview();
     }
 
     public PlacementDecision SetAim(double x, double z)
     {
         EnsureInitialized();
-        aim = PlacementWorldRules.SnapAim(x, z, world.Surface, GridSnapEnabled);
+        aim = ConformAim(x, z);
         RefreshPreview();
         return CurrentDecision;
     }
@@ -204,6 +215,7 @@ public partial class CityEditorRuntime : Node
     {
         EnsureInitialized();
         WorldEditReceipt receipt = coordinator.Place(selectedSpec.Id!, CurrentDecision, rotationY, ZoneAt(aim)?.ZoneType);
+        _ = traffic.RefreshProductivity("WORLD_EDIT_COMMITTED");
         SelectedRecordId = receipt.Current!.Id;
         RefreshPreview();
         return receipt;
@@ -237,6 +249,7 @@ public partial class CityEditorRuntime : Node
         EnsureInitialized();
         string id = RequireSelection();
         WorldEditReceipt receipt = coordinator.Move(id, Evaluate(selectedSpec, id));
+        _ = traffic.RefreshProductivity("WORLD_EDIT_COMMITTED");
         RefreshPreview();
         return receipt;
     }
@@ -248,6 +261,7 @@ public partial class CityEditorRuntime : Node
         rotationY = NormalizeRotation(rotationY + quarterTurns * Math.PI / 2);
         PlacementDecision decision = Evaluate(selectedSpec, id);
         WorldEditReceipt receipt = coordinator.Rotate(id, decision, rotationY);
+        _ = traffic.RefreshProductivity("WORLD_EDIT_COMMITTED");
         RefreshPreview();
         return receipt;
     }
@@ -256,6 +270,7 @@ public partial class CityEditorRuntime : Node
     {
         EnsureInitialized();
         WorldEditReceipt receipt = coordinator.Demolish(RequireSelection());
+        _ = traffic.RefreshProductivity("WORLD_EDIT_COMMITTED");
         SelectedRecordId = null;
         RefreshPreview();
         return receipt;
@@ -329,6 +344,7 @@ public partial class CityEditorRuntime : Node
             _ = DetachZoneVisual(id);
         }
         zones.Clear();
+        roadParticipant.Shutdown();
         visualParticipant.Shutdown();
         colliderParticipant.Shutdown();
         if (presentation.GetParent() is Node parent) parent.RemoveChild(presentation);
@@ -372,6 +388,14 @@ public partial class CityEditorRuntime : Node
                 : new PlacementVector3(target.Position.X, target.Position.Y, target.Position.Z),
             IgnoreOccupantId = ignoreOccupantId,
         });
+    }
+
+    private PlacementVector3 ConformAim(double x, double z)
+    {
+        PlacementVector3 snapped = PlacementWorldRules.SnapAim(x, z, world.Surface, GridSnapEnabled);
+        return selectedSpec?.RoadType == "BRIDGE" && world.Surface.IsWater(snapped.X, 0, snapped.Z)
+            ? snapped with { Y = 0 }
+            : snapped;
     }
 
     private void RefreshPreview()

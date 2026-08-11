@@ -89,7 +89,8 @@ public static class PlacementWorldRules
             0);
         ProtectedLandmarkEnvelope? landmark = ProtectedLandmarks.FirstOrDefault(item =>
             PlacementGeometry.Overlaps(placementRect, item.Bounds));
-        bool water = PlacementGeometry.GetWaterSamplePoints(collisionRect, input.Position.Y)
+        bool bridgeDeck = string.Equals(spec.RoadType, "BRIDGE", StringComparison.Ordinal);
+        bool water = !bridgeDeck && PlacementGeometry.GetWaterSamplePoints(collisionRect, input.Position.Y)
             .Any(point => input.Surface.IsWater(point.X, point.Y, point.Z));
         var heights = new PlacementTerrainHeights(
             input.Surface.GetTerrainHeight(collisionRect.MinX, collisionRect.MinZ),

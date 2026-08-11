@@ -96,7 +96,8 @@ public sealed class TrafficPopulationSimulation
     private readonly Dictionary<string, Agent> moving = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Agent> parked = new(StringComparer.Ordinal);
     private readonly SpatialHashGrid<Agent> vehicleGrid;
-    private readonly Dictionary<string, RoadGraphNodeSnapshot> graphNodes;
+    private readonly Dictionary<string, RoadGraphNodeSnapshot> graphNodes = new(StringComparer.Ordinal);
+    private long graphRevision = -1;
     private long nextMovingSerial;
     private long nextParkedSerial;
     private long frame;
@@ -112,7 +113,7 @@ public sealed class TrafficPopulationSimulation
         this.config = config ?? new TrafficPopulationConfig();
         ValidateConfig(this.config);
         Controls = new TrafficControlCoordinator();
-        graphNodes = graph.Snapshot().Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
+        RefreshGraphNodes();
         vehicleGrid = new SpatialHashGrid<Agent>(24, agent => agent.Id, agent => new SpatialPoint(agent.Position.X, agent.Position.Z));
         EnsurePopulationFloor();
         while (parked.Count < this.config.ParkedVehicleCount) SpawnParked();
@@ -141,12 +142,20 @@ public sealed class TrafficPopulationSimulation
         moving.Values.Sum(agent => agent.RecoveryCount),
         moving.Values.Sum(agent => agent.HornCount));
 
-    public void Advance(double delta, TrafficPoint focus, bool bridgePriorityEnabled = false)
+    public void Advance(
+        double delta,
+        TrafficPoint focus,
+        bool bridgePriorityEnabled = false,
+        double speedMultiplier = 1,
+        double bridgeSpeedMultiplier = 1)
     {
-        if (!double.IsFinite(delta) || delta < 0 || !double.IsFinite(focus.X) || !double.IsFinite(focus.Z))
+        if (!double.IsFinite(delta) || delta < 0 || !double.IsFinite(focus.X) || !double.IsFinite(focus.Z)
+            || !double.IsFinite(speedMultiplier) || speedMultiplier < 0
+            || !double.IsFinite(bridgeSpeedMultiplier) || bridgeSpeedMultiplier < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(delta));
         }
+        RefreshGraphNodes();
         frame += 1;
         Controls.Advance(delta);
         vehicleGrid.Rebuild(moving.Values);
@@ -156,7 +165,12 @@ public sealed class TrafficPopulationSimulation
             UpdateTier(agent, focus);
             if (agent.PlayerControlled) continue;
             if ((frame + agent.Serial) % agent.SimulationCadence != 0) continue;
-            AdvanceAgent(agent, delta * agent.SimulationCadence, bridgePriorityEnabled);
+            AdvanceAgent(
+                agent,
+                delta * agent.SimulationCadence,
+                bridgePriorityEnabled,
+                speedMultiplier,
+                bridgeSpeedMultiplier);
         }
         EnsurePopulationFloor();
     }
@@ -373,7 +387,12 @@ public sealed class TrafficPopulationSimulation
         return cleared;
     }
 
-    private void AdvanceAgent(Agent agent, double delta, bool bridgePriorityEnabled)
+    private void AdvanceAgent(
+        Agent agent,
+        double delta,
+        bool bridgePriorityEnabled,
+        double speedMultiplier,
+        double bridgeSpeedMultiplier)
     {
         if (agent.DamageState == TrafficDamageStates.OnFire)
         {
@@ -393,7 +412,17 @@ public sealed class TrafficPopulationSimulation
         double offsetZ = target.Position.Z - agent.Position.Z;
         double distance = Math.Sqrt(offsetX * offsetX + offsetZ * offsetZ);
         double desiredHeading = distance > 1e-6 ? Math.Atan2(offsetX, offsetZ) : agent.Heading;
-        double maximumSpeed = MaximumSpeedFor(agent);
+        bool onPrimaryBridge = agent.Position.X >= TrafficProductivityModel.BridgeMinimumX
+            && agent.Position.X <= TrafficProductivityModel.BridgeMaximumX
+            && Math.Abs(agent.Position.Z) <= 18;
+        bool ordinaryTraffic = !agent.Emergency
+            && agent.HitAndRun is null
+            && agent.PursuitTargetId is null
+            && agent.EnforcementTargetPosition is null;
+        double directiveMultiplier = ordinaryTraffic
+            ? onPrimaryBridge ? bridgeSpeedMultiplier : speedMultiplier
+            : 1;
+        double maximumSpeed = MaximumSpeedFor(agent) * directiveMultiplier;
         double turnLimit = TrafficNavigationModel.GetTurnSpeedLimit(
             agent.Position, target.Position, agent.Heading, maximumSpeed);
         double targetSpeed = Math.Min(maximumSpeed, turnLimit);
@@ -624,6 +653,24 @@ public sealed class TrafficPopulationSimulation
     private Agent GetMoving(string id) => moving.TryGetValue(id, out Agent? agent)
         ? agent
         : throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown moving traffic agent.");
+
+    private void RefreshGraphNodes()
+    {
+        TrafficRoadGraphSnapshot graphSnapshot = graph.Snapshot();
+        if (graphSnapshot.Revision == graphRevision) return;
+        graphNodes.Clear();
+        foreach (RoadGraphNodeSnapshot node in graphSnapshot.Nodes) graphNodes.Add(node.Id, node);
+        foreach (Agent agent in moving.Values)
+        {
+            if (graphNodes.ContainsKey(agent.CurrentNodeId) && graphNodes.ContainsKey(agent.TargetNodeId)) continue;
+            string nearest = graph.FindNearestRoutableNode(agent.Position);
+            RoadGraphNodeSnapshot node = graphNodes[nearest];
+            agent.CurrentNodeId = nearest;
+            agent.TargetNodeId = node.NextNodeIds[0];
+            agent.StuckElapsed = 0;
+        }
+        graphRevision = graphSnapshot.Revision;
+    }
 
     private static TrafficAgentSnapshot ToSnapshot(Agent agent) => new(
         agent.Id,

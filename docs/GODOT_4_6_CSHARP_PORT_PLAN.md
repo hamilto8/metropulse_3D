@@ -1437,10 +1437,23 @@ public primary blocker carries the exact message and remedy.)*
 7.6 Connect placed roads and bridges to traffic routing. An intact custom bridge
 must publish a deck and remove river hazard inside its footprint; destruction
 must unregister the route/deck and restore the hazard without duplication.
+*(complete: `TrafficRoadWorldEditParticipant` replaces the metadata placeholder,
+registers all placed road variants in the sole live `TrafficRoadGraph`, and
+publishes dynamic `SurfaceDeck` support for Smart Bridge Deck segments. Traffic
+agents refresh graph revisions without losing population; live placement and
+demolition prove +3/−3 route nodes, 11/10 surface decks, safe/hazardous river
+classification, and no duplicate residue.)*
 
 7.7 Port aggregate traffic productivity, connected-road capacity, freight
 priority tradeoff, bridge metrics, congestion feedback, alerts, visible street
-directives, and mission modifiers.
+directives, and mission modifiers. *(complete: the existing frozen-formula
+`TrafficProductivityModel` is now session-owned by `LivingTrafficRuntime`, reads
+the live road graph on the city clock, publishes one economy mobility feedback
+record, owns its structured traffic alerts, supplies policy/bridge speed
+directives to ambient simulation, and drives Godot freight chevrons/disruption
+beacons. Connected roads add the canonical 12 capacity, Freight Priority adds
+28% bridge capacity and reliability for 2 credits/second and −2 satisfaction,
+and the same snapshot retains mission impact and persistence contracts.)*
 
 7.8 Port CityServiceModel and IncidentResponseService: energy/safety, local
 facility reach, spatial outage falloff, damage, cleanup-before-repair, funding,

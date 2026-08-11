@@ -114,6 +114,11 @@ public partial class SessionShell : Node
             Content ?? throw new InvalidOperationException("Content must exist before economy is initialized."),
             World?.Layout ?? throw new InvalidOperationException("The authored world layout must exist before economy is initialized."),
             RuntimeHost.Scheduler);
+        LivingTraffic.InitializeEconomy(
+            Economy.Ledger,
+            Content.EconomyBalance.Policies
+                ?? throw new InvalidOperationException("Traffic productivity policy balance is unavailable."),
+            RuntimeHost.Scheduler);
         Editor = new CityEditorRuntime { Name = "CityEditor" };
         runtimeServices.AddChild(Editor);
         Editor.Initialize(
@@ -121,6 +126,7 @@ public partial class SessionShell : Node
             Economy,
             World ?? throw new InvalidOperationException("The world must exist before the editor is initialized."),
             PlayerControl,
+            LivingTraffic,
             GetNode<Node3D>("WorldRoot/UserWorld"));
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);

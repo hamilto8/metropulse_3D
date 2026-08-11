@@ -5,6 +5,7 @@ using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Economy;
 using MetroPulse.Domain.Enforcement;
 using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Pedestrians;
@@ -210,7 +211,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 7 frozen economy baseline, skyline adapter, city tick, view model, and catalog checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = "5",
+                    ["assertions"] = "6",
                     ["authoredBuildings"] = session.Economy?.AuthoredBuildingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["catalogBuildings"] = session.Content?.BuildingRecords.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["cityTicks"] = session.Economy?.CityTickCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
@@ -222,10 +223,22 @@ public partial class IntegrationTestRunner : Node
                 "Phase 7 editor commands, previews, zoning, and eight-participant world-edit transactions passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = "10",
+                    ["assertions"] = "13",
                     ["participants"] = WorldEditParticipantIds.RequiredOrder.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["remainingBuildings"] = session.Editor?.Records.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["zones"] = session.Editor?.Zones.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase7.roads_productivity.passed",
+                "Phase 7 custom road/bridge topology, river safety, mobility feedback, policy, alerts, and street directives passed.",
+                new Dictionary<string, string>
+                {
+                    ["baseRoadNodes"] = session.LivingTraffic?.RoadGraph.BaseNodeCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["surfaceDecks"] = session.World?.Surface.Decks.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["mobilityRevision"] = session.LivingTraffic?.Productivity?.Snapshot().Revision.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["bridgePolicy"] = session.LivingTraffic?.Productivity?.BridgePolicy ?? "unavailable",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -407,7 +420,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "174" : "170",
+                    ["assertions"] = recoverySeedScenario ? "178" : "174",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -455,22 +468,29 @@ public partial class IntegrationTestRunner : Node
         Check(economy is { AuthoredBuildingCount: 23, Current.AssetCount: 23 }
                 && economy.Ledger.Snapshot().Buildings.All(item => item.Position is not null),
             "All 23 authored skyline buildings register through the canonical economy adapter.", failures);
-        Check(economy?.Current is { Treasury: 650_000, Population: 1_200, Happiness: 70, LandValue: 100, NetIncomeRate: 8 },
+        Check(economy?.AuthoredBaseline is { Treasury: 650_000, Population: 1_200, Happiness: 70, LandValue: 100, NetIncomeRate: 8 },
             "Authored skyline registration preserves the reference treasury, population, happiness, land value, and recurring balance.", failures);
 
-        if (economy is null || session?.RuntimeHost is null) return;
+        if (economy is null || session?.RuntimeHost is null || session.LivingTraffic?.Productivity is null) return;
+        TrafficProductivitySnapshot mobility = session.LivingTraffic.Productivity.Snapshot();
+        EconomyMobilityFeedback feedback = economy.Ledger.Snapshot().Mobility;
+        Check(feedback.Congestion == mobility.Network.Congestion
+                && feedback.ProductivityMultiplier == mobility.Productivity.Multiplier
+                && feedback.DeliveryReliability == mobility.Deliveries.Reliability,
+            "Live traffic productivity publishes through the economy mobility feedback authority.", failures);
         double before = economy.Ledger.Treasury;
+        double expectedRate = economy.Current.NetIncomeRate;
         int ticksBefore = economy.CityTickCount;
         for (int index = 0; index < 12 && economy.CityTickCount == ticksBefore; index++)
         {
             session.RuntimeHost.Scheduler.AdvanceFrame(0.25);
         }
         Check(economy.CityTickCount == ticksBefore + 1
-                && economy.Ledger.Treasury == before + 8
+                && Math.Abs(economy.Ledger.Treasury - (before + expectedRate)) < 0.001
                 && economy.Current.Treasury == economy.Ledger.Treasury
                 && economy.PublishedViewCount > 0,
             $"The canonical scheduler city tick advances Capital and republishes the immutable view model exactly once per second. "
-                + $"ticks={ticksBefore}->{economy.CityTickCount}; treasury={before}->{economy.Ledger.Treasury}; "
+                + $"ticks={ticksBefore}->{economy.CityTickCount}; treasury={before}->{economy.Ledger.Treasury}; expectedRate={expectedRate}; "
                 + $"view={economy.Current.Treasury}; published={economy.PublishedViewCount}.", failures);
     }
 
@@ -486,8 +506,11 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Editor integration requires the economy.");
             MvpWorldGenerator world = session.World
                 ?? throw new InvalidOperationException("Editor integration requires the world.");
+            LivingTrafficRuntime traffic = session.LivingTraffic
+                ?? throw new InvalidOperationException("Editor integration requires traffic.");
             int authoredColliders = world.Colliders.Count;
             int authoredEconomyRecords = economy.Ledger.Snapshot().Buildings.Count;
+            int baseRoadCapacity = traffic.Productivity!.Snapshot().Network.Capacity;
             double treasuryBefore = economy.Ledger.Treasury;
 
             Check(editor.Initialized
@@ -515,12 +538,15 @@ public partial class IntegrationTestRunner : Node
                     && editor.VisualCount == 1
                     && editor.ColliderCount == 1
                     && editor.RoadMetadataCount == 1
+                    && editor.ConnectedRoadCount == 1
                     && editor.OccupancyCount == 1
                     && editor.ZoningMetadataCount == 1
                     && editor.ServiceMetadataCount == 1
                     && editor.PersistenceCount == 1
                     && world.Colliders.Count == authoredColliders + 1
-                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords + 1,
+                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords + 1
+                    && traffic.Productivity.Snapshot().Network.ConnectedRoadSegments == 1
+                    && traffic.Productivity.Snapshot().Network.Capacity == baseRoadCapacity + 12,
                 "Placement commits visual, collider, road, economy, occupancy, zoning, service, and persistence participants together.", failures);
 
             PlacementVector3 beforeNavigation = editor.Aim;
@@ -545,12 +571,14 @@ public partial class IntegrationTestRunner : Node
                     && editor.VisualCount == 0
                     && editor.ColliderCount == 0
                     && editor.RoadMetadataCount == 0
+                    && editor.ConnectedRoadCount == 0
                     && editor.OccupancyCount == 0
                     && editor.ZoningMetadataCount == 0
                     && editor.ServiceMetadataCount == 0
                     && editor.PersistenceCount == 0
                     && world.Colliders.Count == authoredColliders
-                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords,
+                    && economy.Ledger.Snapshot().Buildings.Count == authoredEconomyRecords
+                    && traffic.Productivity.Snapshot().Network.Capacity == baseRoadCapacity,
                 "Demolition removes every participant and restores authored collider/economy cardinality.", failures);
 
             _ = editor.SetAim(-120, -150);
@@ -567,6 +595,40 @@ public partial class IntegrationTestRunner : Node
                     && blocked.Blockers.Any(item => item.Code == PlacementBlockerCodes.Water)
                     && editor.Records.Count == 0,
                 "Invalid terrain publishes structured blockers without mutating editor participants.", failures);
+
+            int baseNodes = traffic.RoadGraph.NodeCount;
+            editor.UnlockTier(ProgressionTiers.Magnate);
+            editor.SelectCatalog("BRIDGE_DECK");
+            _ = editor.RotateBlueprint();
+            PlacementDecision bridgeDecision = editor.SetAim(160, 150);
+            WorldEditReceipt bridgePlaced = editor.Place();
+            Check(bridgeDecision.Valid
+                    && bridgePlaced.Current?.SpecId == "BRIDGE_DECK"
+                    && traffic.RoadGraph.NodeCount == baseNodes + 3
+                    && editor.ConnectedRoadCount == 1
+                    && world.Surface.Decks.Count == 11
+                    && !world.Surface.IsWater(160, 2, 150),
+                "A custom bridge atomically publishes a connected route and supported deck that suppresses river hazard inside its footprint.", failures);
+            _ = editor.DemolishSelected();
+            Check(traffic.RoadGraph.NodeCount == baseNodes
+                    && editor.ConnectedRoadCount == 0
+                    && world.Surface.Decks.Count == 10
+                    && world.Surface.IsWater(160, 2, 150),
+                "Custom-bridge demolition unregisters route and deck exactly once and restores river hazard.", failures);
+
+            TrafficProductivitySnapshot balanced = traffic.Productivity.Snapshot();
+            TrafficProductivitySnapshot priority = traffic.Productivity.SetBridgePolicy(BridgePolicies.FreightPriority);
+            TrafficStreetDirective directive = traffic.Productivity.GetStreetDirective(new TrafficPoint(155, 0));
+            Check(priority.Bridge.Capacity > balanced.Bridge.Capacity
+                    && priority.Deliveries.Reliability > balanced.Deliveries.Reliability
+                    && priority.Policy.OperatingCostRate == 2
+                    && economy.Ledger.Snapshot().BudgetBreakdown.ManagementCostRate == 2
+                    && directive is { OnBridge: true, PriorityActive: true }
+                    && traffic.Alerts is not null
+                    && traffic.ProductivityPresentation is { PriorityVisible: true, DisruptionVisible: false }
+                    && traffic.ProductivityPresentation.AppliedRevision == priority.Revision,
+                "Freight priority drives economy cost, bridge capacity/reliability, alerts, and the visible street directive from one snapshot.", failures);
+            traffic.Productivity.SetBridgePolicy(BridgePolicies.Balanced);
             editor.Cancel();
             editor.SetActive(false);
             Check(!editor.Active
