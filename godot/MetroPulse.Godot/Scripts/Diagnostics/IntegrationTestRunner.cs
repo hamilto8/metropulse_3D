@@ -9,6 +9,7 @@ using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
+using MetroPulse.Domain.Traffic;
 using MetroPulse.Domain.Vehicles;
 using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
@@ -16,6 +17,7 @@ using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Traffic;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
@@ -169,6 +171,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
+        await CheckLivingTraffic(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
@@ -188,6 +191,19 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase6.traffic.passed",
+                "Phase 6 seeded traffic population, controls, spatial cadence, and player handoff checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "8",
+                    ["movingVehicles"] = session.LivingTraffic?.Simulation.MovingCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["parkedVehicles"] = session.LivingTraffic?.Simulation.ParkedCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["controlPosts"] = session.LivingTraffic?.PhysicalControlPostCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["maximumLocalCandidates"] = session.LivingTraffic?.Simulation.MaximumLocalCandidates.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -331,7 +347,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "138" : "134",
+                    ["assertions"] = recoverySeedScenario ? "146" : "142",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -355,6 +371,49 @@ public partial class IntegrationTestRunner : Node
         if (!condition)
         {
             failures.Add(assertion);
+        }
+    }
+
+    private async Task CheckLivingTraffic(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Traffic integration requires a session.");
+            LivingTrafficRuntime traffic = session.LivingTraffic
+                ?? throw new InvalidOperationException("The living traffic runtime is unavailable.");
+            TrafficPopulationSnapshot snapshot = traffic.Simulation.Snapshot();
+            Check(traffic.Initialized && snapshot.Moving.Count == 48 && snapshot.Parked.Count == 12,
+                "The session owns the seeded 48-moving/12-parked traffic population.", failures);
+            Check(traffic.ActorCount == 60 && traffic.MovingActorCount == 48 && traffic.ParkedActorCount == 12,
+                "Moving and parked traffic use separate lightweight actors.", failures);
+            Check(snapshot.Moving.Count(agent => agent.Driver.Compliant) == 39,
+                "Exactly four fifths of the first 48 seeded traffic drivers follow rules.", failures);
+            Check(traffic.Simulation.Controls.Controls.Count == 60 && traffic.PhysicalControlPostCount == 240,
+                "All authored intersections own live controls and four physical posts.", failures);
+            Check(snapshot.Moving.Select(agent => agent.Id).Distinct(StringComparer.Ordinal).Count() == 48
+                    && snapshot.Moving.All(agent => agent.Id.StartsWith("traffic-moving-", StringComparison.Ordinal)),
+                "Traffic actors publish unique stable runtime IDs.", failures);
+
+            string promotedId = snapshot.Moving[0].Id;
+            PlayerVehicleController promoted = traffic.PromoteForPlayerControl(promotedId);
+            Check(traffic.PromotedCount == 1 && promoted.StableId == promotedId
+                    && traffic.Simulation.GetSnapshot(promotedId).PlayerControlled,
+                "A traffic proxy promotes into the Phase 5 player-physics registry without changing identity.", failures);
+            Check(traffic.ResumeAiFromPlayerControl(promotedId)
+                    && traffic.PromotedCount == 0
+                    && !traffic.Simulation.GetSnapshot(promotedId).PlayerControlled,
+                "Player release restores the same traffic identity to seeded AI authority.", failures);
+
+            _ = traffic.Simulation.Cull(promotedId);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(traffic.Simulation.MovingCount == 48 && traffic.ActorCount == 60
+                    && !traffic.Simulation.Snapshot().Moving.Any(agent => agent.Id == promotedId),
+                "Traffic culling immediately restores the moving floor without reusing a retired ID.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Living traffic integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

@@ -7,6 +7,7 @@ using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
+using MetroPulse.Godot.Traffic;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
@@ -39,6 +40,8 @@ public partial class SessionShell : Node
 
     public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
+    public LivingTrafficRuntime? LivingTraffic { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -70,6 +73,15 @@ public partial class SessionShell : Node
             World ?? throw new InvalidOperationException("The world must exist before player control is initialized."),
             Content ?? throw new InvalidOperationException("Content must exist before player control is initialized."),
             GetNode<Node3D>("WorldRoot/AgentRoot"),
+            CameraAdapter);
+        LivingTraffic = new LivingTrafficRuntime { Name = "LivingTraffic" };
+        runtimeServices.AddChild(LivingTraffic);
+        LivingTraffic.Initialize(
+            Content ?? throw new InvalidOperationException("Content must exist before traffic is initialized."),
+            World ?? throw new InvalidOperationException("The world must exist before traffic is initialized."),
+            PlayerControl,
+            GetNode<Node3D>("WorldRoot/AgentRoot"),
+            GetNode<Node3D>("WorldRoot/NavigationRoot"),
             CameraAdapter);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
@@ -117,6 +129,7 @@ public partial class SessionShell : Node
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         VehicleInteractions?.Shutdown();
         RuntimeHost?.Shutdown();
+        LivingTraffic?.Shutdown();
         PlayerControl?.Shutdown();
         GameplayCamera?.Shutdown();
         InputHost?.Shutdown();
@@ -144,6 +157,7 @@ public partial class SessionShell : Node
             || InputHost?.Initialized != true
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true
+            || LivingTraffic?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

@@ -1262,16 +1262,30 @@ complete the navigation contract.)*
 
 6.2 Implement traffic spawn/despawn and the 48-moving-vehicle floor. Spawned
 agents use stable runtime IDs and seeded profiles. Parked vehicles are separate
-and excluded from moving congestion.
+and excluded from moving congestion. *(complete: the session-owned
+`TrafficPopulationSimulation` maintains exactly 48 moving agents with monotonic
+`traffic-moving-*` IDs and named-stream profile/route/disposition draws; culling
+immediately replaces a retired ID. Twelve separately published parked proxies
+never enter moving counts, route advancement, or congestion samples.)*
 
 6.3 Split traffic behavior into route following, intersection rules, obstacle
 avoidance, pedestrian yielding, disposition/impatience, stuck recovery,
 emergency behavior, player-control adapter, damage/fire state, and visual/audio
-presentation.
+presentation. *(traffic-side complete: route/corridor following, local-grid
+vehicle avoidance, compliant/reckless and patient/impatient profiles, one-shot
+horns, bounded stuck recovery, emergency priority, healthy/damaged/on-fire/
+disabled state, and exact-ID promotion into and out of the Phase 5 player
+physics registry are independent publications/adapters. Lightweight Godot
+visual/collision/audio actors are not simulation authorities. Pedestrian
+yielding is deliberately completed with item 6.6 in the next slice.)*
 
 6.4 Port traffic controls: green/yellow/all-red cycle, four-way stop arrival
 order, 80% rule-following driver assignment, reckless behavior, and physical
-post colliders.
+post colliders. *(complete: `TrafficControlCoordinator` owns the existing
+9/2/1-second two-axis cycle, stable four-way arrival queues with the 1.1-second
+wait, and deterministic departure cleanup. Serial assignment yields 39/48
+compliant drivers, reckless/emergency agents bypass controls intentionally, and
+all 60 intersections publish four collision-layered Godot posts.)*
 
 6.5 Implement pedestrian graph/spawning and the 60-citizen floor. Port all
 archetypes and special behaviors: residents, professionals, joggers, tourists,
@@ -1295,7 +1309,11 @@ registries must consume the same bounded-query contract in the next slices.)*
 6.9 Implement simulation LOD separately from render LOD. Near agents receive
 full collision/behavior; medium agents reduce animation/query cadence; far
 agents use proxies and coarse updates; dormant agents retain aggregate identity
-only where design requires it.
+only where design requires it. *(traffic portion complete: simulation uses
+near/medium/far cadences of 1/2/8 ticks and only near agents retain physical
+collision, while the independent renderer uses 160/400-metre high/medium/low
+mesh and shadow tiers. All tiers preserve stable aggregate identity. Pedestrian
+LOD remains in the next slice.)*
 
 ### Exit gate
 

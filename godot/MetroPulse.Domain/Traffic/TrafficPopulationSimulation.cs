@@ -1,0 +1,533 @@
+using System.Collections.ObjectModel;
+using MetroPulse.Domain.Randomness;
+using MetroPulse.Domain.Simulation;
+
+namespace MetroPulse.Domain.Traffic;
+
+public static class TrafficAgentDetailTiers
+{
+    public const string Near = "NEAR";
+    public const string Medium = "MEDIUM";
+    public const string Far = "FAR";
+}
+
+public static class TrafficDamageStates
+{
+    public const string Healthy = "HEALTHY";
+    public const string Damaged = "DAMAGED";
+    public const string Disabled = "DISABLED";
+    public const string OnFire = "ON_FIRE";
+}
+
+public sealed record TrafficPopulationConfig
+{
+    public int MovingVehicleFloor { get; init; } = 48;
+
+    public int ParkedVehicleCount { get; init; } = 12;
+
+    public double NearDistance { get; init; } = 130;
+
+    public double MediumDistance { get; init; } = 340;
+
+    public double NeighborQueryRadius { get; init; } = 18;
+
+    public double StuckRecoverySeconds { get; init; } = 4;
+
+    public double FireDisableSeconds { get; init; } = 6;
+}
+
+public sealed record TrafficAgentSnapshot(
+    string Id,
+    string TypeId,
+    TrafficPoint Position,
+    double Heading,
+    double Speed,
+    double TargetSpeed,
+    string CurrentNodeId,
+    string TargetNodeId,
+    bool Parked,
+    bool PlayerControlled,
+    bool Emergency,
+    DriverRuleProfile Driver,
+    bool Impatient,
+    string DetailTier,
+    int SimulationCadence,
+    string DamageState,
+    double Health,
+    int RecoveryCount,
+    int HornCount);
+
+public sealed record TrafficPopulationSnapshot(
+    long Frame,
+    IReadOnlyList<TrafficAgentSnapshot> Moving,
+    IReadOnlyList<TrafficAgentSnapshot> Parked,
+    int MaximumLocalCandidates,
+    int TotalRecoveries,
+    int TotalHorns);
+
+/// <summary>
+/// Authoritative seeded traffic lifecycle and coarse movement simulation. It
+/// publishes immutable presentation state and delegates physics/rendering to engine adapters.
+/// </summary>
+public sealed class TrafficPopulationSimulation
+{
+    private static readonly string[] SpawnProfileIds = ["SEDAN", "SPORTS", "BUS", "TRUCK", "POLICE", "MOTORBIKE"];
+    private readonly TrafficRoadGraph graph;
+    private readonly RandomStreamRegistry randoms;
+    private readonly TrafficPopulationConfig config;
+    private readonly Dictionary<string, Agent> moving = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Agent> parked = new(StringComparer.Ordinal);
+    private readonly SpatialHashGrid<Agent> vehicleGrid;
+    private readonly Dictionary<string, RoadGraphNodeSnapshot> graphNodes;
+    private long nextMovingSerial;
+    private long nextParkedSerial;
+    private long frame;
+    private int maximumLocalCandidates;
+
+    public TrafficPopulationSimulation(
+        TrafficRoadGraph graph,
+        RandomStreamRegistry randoms,
+        TrafficPopulationConfig? config = null)
+    {
+        this.graph = graph ?? throw new ArgumentNullException(nameof(graph));
+        this.randoms = randoms ?? throw new ArgumentNullException(nameof(randoms));
+        this.config = config ?? new TrafficPopulationConfig();
+        ValidateConfig(this.config);
+        Controls = new TrafficControlCoordinator();
+        graphNodes = graph.Snapshot().Nodes.ToDictionary(node => node.Id, StringComparer.Ordinal);
+        vehicleGrid = new SpatialHashGrid<Agent>(24, agent => agent.Id, agent => new SpatialPoint(agent.Position.X, agent.Position.Z));
+        EnsurePopulationFloor();
+        while (parked.Count < this.config.ParkedVehicleCount) SpawnParked();
+    }
+
+    public TrafficControlCoordinator Controls { get; }
+
+    public int MovingCount => moving.Count;
+
+    public int ParkedCount => parked.Count;
+
+    public int MaximumLocalCandidates => maximumLocalCandidates;
+
+    public TrafficPopulationSnapshot Snapshot() => new(
+        frame,
+        new ReadOnlyCollection<TrafficAgentSnapshot>(moving.Values
+            .OrderBy(agent => agent.Id, StringComparer.Ordinal)
+            .Select(ToSnapshot)
+            .ToArray()),
+        new ReadOnlyCollection<TrafficAgentSnapshot>(parked.Values
+            .OrderBy(agent => agent.Id, StringComparer.Ordinal)
+            .Select(ToSnapshot)
+            .ToArray()),
+        maximumLocalCandidates,
+        moving.Values.Sum(agent => agent.RecoveryCount),
+        moving.Values.Sum(agent => agent.HornCount));
+
+    public void Advance(double delta, TrafficPoint focus, bool bridgePriorityEnabled = false)
+    {
+        if (!double.IsFinite(delta) || delta < 0 || !double.IsFinite(focus.X) || !double.IsFinite(focus.Z))
+        {
+            throw new ArgumentOutOfRangeException(nameof(delta));
+        }
+        frame += 1;
+        Controls.Advance(delta);
+        vehicleGrid.Rebuild(moving.Values);
+        foreach (Agent agent in moving.Values.OrderBy(agent => agent.Id, StringComparer.Ordinal))
+        {
+            UpdateTier(agent, focus);
+            if (agent.PlayerControlled) continue;
+            if ((frame + agent.Serial) % agent.SimulationCadence != 0) continue;
+            AdvanceAgent(agent, delta * agent.SimulationCadence, bridgePriorityEnabled);
+        }
+        EnsurePopulationFloor();
+    }
+
+    public bool Cull(string agentId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        bool removed = moving.Remove(agentId) || parked.Remove(agentId);
+        if (removed) EnsurePopulationFloor();
+        return removed;
+    }
+
+    public bool SetPlayerControlled(string agentId, bool controlled, TrafficPoint? pose = null, double? heading = null)
+    {
+        Agent agent = GetMoving(agentId);
+        if (agent.PlayerControlled == controlled) return false;
+        agent.PlayerControlled = controlled;
+        if (pose is not null)
+        {
+            if (!double.IsFinite(pose.X) || !double.IsFinite(pose.Z)) throw new ArgumentOutOfRangeException(nameof(pose));
+            agent.Position = pose;
+        }
+        if (heading is not null)
+        {
+            if (!double.IsFinite(heading.Value)) throw new ArgumentOutOfRangeException(nameof(heading));
+            agent.Heading = heading.Value;
+        }
+        if (!controlled)
+        {
+            string nearest = graph.FindNearestRoutableNode(agent.Position);
+            RoadGraphNodeSnapshot node = graphNodes[nearest];
+            agent.CurrentNodeId = nearest;
+            agent.TargetNodeId = node.NextNodeIds[0];
+            agent.Speed = Math.Max(5, agent.Speed);
+        }
+        return true;
+    }
+
+    public void SyncPlayerPose(string agentId, TrafficPoint position, double heading, double speed)
+    {
+        Agent agent = GetMoving(agentId);
+        if (!double.IsFinite(position.X) || !double.IsFinite(position.Z)
+            || !double.IsFinite(heading) || !double.IsFinite(speed))
+        {
+            throw new ArgumentOutOfRangeException(nameof(position));
+        }
+        if (!agent.PlayerControlled) throw new InvalidOperationException("Only a player-controlled traffic agent can publish a physics pose.");
+        agent.Position = position;
+        agent.Heading = heading;
+        agent.Speed = Math.Abs(speed);
+    }
+
+    public string ApplyDamage(string agentId, double amount, bool ignite = false)
+    {
+        Agent agent = GetMoving(agentId);
+        double bounded = double.IsFinite(amount) ? Math.Clamp(amount, 0, 100) : 0;
+        agent.Health = Math.Max(0, agent.Health - bounded);
+        agent.DamageState = ignite
+            ? TrafficDamageStates.OnFire
+            : agent.Health <= 0
+                ? TrafficDamageStates.Disabled
+                : agent.Health < 55
+                    ? TrafficDamageStates.Damaged
+                    : TrafficDamageStates.Healthy;
+        agent.FireElapsed = 0;
+        return agent.DamageState;
+    }
+
+    public TrafficAgentSnapshot GetSnapshot(string agentId) => ToSnapshot(GetMoving(agentId));
+
+    private void AdvanceAgent(Agent agent, double delta, bool bridgePriorityEnabled)
+    {
+        if (agent.DamageState == TrafficDamageStates.OnFire)
+        {
+            agent.FireElapsed += delta;
+            agent.Speed = Approach(agent.Speed, 0, 12 * delta);
+            if (agent.FireElapsed >= config.FireDisableSeconds) agent.DamageState = TrafficDamageStates.Disabled;
+            return;
+        }
+        if (agent.DamageState == TrafficDamageStates.Disabled)
+        {
+            agent.Speed = Approach(agent.Speed, 0, 18 * delta);
+            return;
+        }
+
+        RoadGraphNodeSnapshot target = graphNodes[agent.TargetNodeId];
+        double offsetX = target.Position.X - agent.Position.X;
+        double offsetZ = target.Position.Z - agent.Position.Z;
+        double distance = Math.Sqrt(offsetX * offsetX + offsetZ * offsetZ);
+        double desiredHeading = distance > 1e-6 ? Math.Atan2(offsetX, offsetZ) : agent.Heading;
+        double maximumSpeed = ProfileMaximumSpeed(agent.TypeId) * (agent.Emergency ? 1.12 : 1);
+        double turnLimit = TrafficNavigationModel.GetTurnSpeedLimit(
+            agent.Position, target.Position, agent.Heading, maximumSpeed);
+        double targetSpeed = Math.Min(maximumSpeed, turnLimit);
+        if (ShouldStopForControl(agent, target, distance)) targetSpeed = 0;
+
+        SpatialQueryResult<Agent> nearby = vehicleGrid.Query(
+            new SpatialPoint(agent.Position.X, agent.Position.Z),
+            config.NeighborQueryRadius);
+        maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
+        Agent? blocker = FindBlocker(agent, nearby.Items);
+        if (blocker is not null)
+        {
+            targetSpeed = Math.Min(targetSpeed, Math.Max(0, blocker.Speed - 2));
+            if (agent.Impatient && agent.Speed < 0.5)
+            {
+                agent.ImpatienceElapsed += delta;
+                if (agent.ImpatienceElapsed >= 3.5 && !agent.HornedForBlocker)
+                {
+                    agent.HornedForBlocker = true;
+                    agent.HornCount += 1;
+                }
+            }
+        }
+        else
+        {
+            agent.ImpatienceElapsed = 0;
+            agent.HornedForBlocker = false;
+        }
+
+        agent.TargetSpeed = targetSpeed;
+        double acceleration = targetSpeed < agent.Speed ? 18 : 7;
+        agent.Speed = Approach(agent.Speed, targetSpeed, acceleration * delta);
+        agent.Heading = ApproachAngle(agent.Heading, desiredHeading, Math.Min(1, delta * 4));
+        agent.Position = new TrafficPoint(
+            agent.Position.X + Math.Sin(agent.Heading) * agent.Speed * delta,
+            agent.Position.Z + Math.Cos(agent.Heading) * agent.Speed * delta);
+        LaneCorridorResult corridor = graph.EnforceLaneCorridor(
+            agent.Position, agent.CurrentNodeId, agent.TargetNodeId, ProfileWidth(agent.TypeId));
+        agent.Position = corridor.Position;
+
+        RouteAdvanceResult route = graph.AdvanceRoute(
+            agent.CurrentNodeId,
+            agent.TargetNodeId,
+            agent.Position,
+            randoms.TrafficBehavior,
+            bridgePriorityEnabled);
+        if (route.Advanced)
+        {
+            DepartStop(agent);
+            agent.CurrentNodeId = route.CurrentNodeId;
+            agent.TargetNodeId = route.TargetNodeId;
+            agent.StuckElapsed = 0;
+        }
+        else if (agent.Speed < 0.1 && targetSpeed > 1)
+        {
+            agent.StuckElapsed += delta;
+            if (agent.StuckElapsed >= config.StuckRecoverySeconds) Recover(agent);
+        }
+        else
+        {
+            agent.StuckElapsed = 0;
+        }
+    }
+
+    private bool ShouldStopForControl(Agent agent, RoadGraphNodeSnapshot target, double distance)
+    {
+        TrafficApproach? approach = TrafficRulesModel.ParseApproach(target.Id);
+        if (approach is null || distance > 16 || agent.Emergency || !agent.Driver.Compliant) return false;
+        TrafficControl? control = Controls.FindControl(approach.X, approach.Z);
+        if (control is null) return false;
+        if (control.Type == TrafficControlTypes.Signal)
+        {
+            string state = Controls.SignalState(control, approach.Axis);
+            return state is TrafficSignalStates.Red or TrafficSignalStates.Yellow;
+        }
+        if (!string.Equals(agent.StopControlId, control.Id, StringComparison.Ordinal))
+        {
+            DepartStop(agent);
+            Controls.Arrive(control.Id, agent.Id);
+            agent.StopControlId = control.Id;
+        }
+        return !Controls.CanProceed(control.Id, agent.Id);
+    }
+
+    private void DepartStop(Agent agent)
+    {
+        if (agent.StopControlId is null) return;
+        _ = Controls.Depart(agent.StopControlId, agent.Id);
+        agent.StopControlId = null;
+    }
+
+    private static Agent? FindBlocker(Agent source, IReadOnlyList<Agent> candidates)
+    {
+        double forwardX = Math.Sin(source.Heading);
+        double forwardZ = Math.Cos(source.Heading);
+        Agent? closest = null;
+        double closestDistance = 12;
+        foreach (Agent candidate in candidates)
+        {
+            if (ReferenceEquals(candidate, source) || candidate.Parked) continue;
+            double x = candidate.Position.X - source.Position.X;
+            double z = candidate.Position.Z - source.Position.Z;
+            double forward = x * forwardX + z * forwardZ;
+            if (forward <= 0 || forward >= closestDistance) continue;
+            double lateral = Math.Abs(x * forwardZ - z * forwardX);
+            if (lateral > 2.4) continue;
+            closest = candidate;
+            closestDistance = forward;
+        }
+        return closest;
+    }
+
+    private void Recover(Agent agent)
+    {
+        RoadGraphNodeSnapshot current = graphNodes[agent.CurrentNodeId];
+        agent.Position = current.Position;
+        agent.Speed = 4;
+        agent.TargetSpeed = 4;
+        agent.StuckElapsed = 0;
+        agent.RecoveryCount += 1;
+    }
+
+    private void EnsurePopulationFloor()
+    {
+        while (moving.Count < config.MovingVehicleFloor) SpawnMoving();
+    }
+
+    private void SpawnMoving()
+    {
+        long serial = ++nextMovingSerial;
+        RoadGraphNodeSnapshot[] spawnNodes = graphNodes.Values
+            .Where(node => node.Id.Contains("_OUT:", StringComparison.Ordinal) && node.NextNodeIds.Count > 0)
+            .OrderBy(node => node.Id, StringComparer.Ordinal)
+            .ToArray();
+        RoadGraphNodeSnapshot start = spawnNodes[randoms.TrafficSpawn.NextInt(spawnNodes.Length)];
+        string targetId = start.NextNodeIds[randoms.TrafficSpawn.NextInt(start.NextNodeIds.Count)];
+        string typeId = SpawnProfileIds[randoms.TrafficSpawn.NextInt(SpawnProfileIds.Length)];
+        DriverRuleProfile driver = TrafficRulesModel.CreateDriverProfile(serial);
+        var agent = new Agent
+        {
+            Id = $"traffic-moving-{serial:0000}",
+            Serial = serial,
+            TypeId = typeId,
+            Position = start.Position,
+            Heading = HeadingTo(start.Position, graphNodes[targetId].Position),
+            Speed = 5 + randoms.TrafficSpawn.NextRange(0, 4),
+            TargetSpeed = ProfileMaximumSpeed(typeId),
+            CurrentNodeId = start.Id,
+            TargetNodeId = targetId,
+            Driver = driver,
+            Impatient = randoms.TrafficBehavior.Chance(0.2),
+            Emergency = typeId == "POLICE",
+            DetailTier = TrafficAgentDetailTiers.Far,
+            SimulationCadence = 8,
+        };
+        moving.Add(agent.Id, agent);
+    }
+
+    private void SpawnParked()
+    {
+        long serial = ++nextParkedSerial;
+        RoadGraphNodeSnapshot[] nodes = graphNodes.Values
+            .Where(node => node.Id.Contains("_OUT:", StringComparison.Ordinal))
+            .OrderBy(node => node.Id, StringComparer.Ordinal)
+            .ToArray();
+        RoadGraphNodeSnapshot node = nodes[(int)((serial * 7) % nodes.Length)];
+        string typeId = SpawnProfileIds[(int)(serial % 4)];
+        var agent = new Agent
+        {
+            Id = $"traffic-parked-{serial:0000}",
+            Serial = serial,
+            TypeId = typeId,
+            Position = new TrafficPoint(node.Position.X + 5, node.Position.Z + 5),
+            CurrentNodeId = node.Id,
+            TargetNodeId = node.NextNodeIds[0],
+            Driver = TrafficRulesModel.CreateDriverProfile(serial),
+            Parked = true,
+            DetailTier = TrafficAgentDetailTiers.Far,
+            SimulationCadence = int.MaxValue,
+        };
+        parked.Add(agent.Id, agent);
+    }
+
+    private void UpdateTier(Agent agent, TrafficPoint focus)
+    {
+        double x = agent.Position.X - focus.X;
+        double z = agent.Position.Z - focus.Z;
+        double distanceSquared = x * x + z * z;
+        if (distanceSquared <= config.NearDistance * config.NearDistance)
+        {
+            agent.DetailTier = TrafficAgentDetailTiers.Near;
+            agent.SimulationCadence = 1;
+        }
+        else if (distanceSquared <= config.MediumDistance * config.MediumDistance)
+        {
+            agent.DetailTier = TrafficAgentDetailTiers.Medium;
+            agent.SimulationCadence = 2;
+        }
+        else
+        {
+            agent.DetailTier = TrafficAgentDetailTiers.Far;
+            agent.SimulationCadence = 8;
+        }
+    }
+
+    private Agent GetMoving(string id) => moving.TryGetValue(id, out Agent? agent)
+        ? agent
+        : throw new ArgumentOutOfRangeException(nameof(id), id, "Unknown moving traffic agent.");
+
+    private static TrafficAgentSnapshot ToSnapshot(Agent agent) => new(
+        agent.Id,
+        agent.TypeId,
+        agent.Position,
+        agent.Heading,
+        agent.Speed,
+        agent.TargetSpeed,
+        agent.CurrentNodeId,
+        agent.TargetNodeId,
+        agent.Parked,
+        agent.PlayerControlled,
+        agent.Emergency,
+        agent.Driver,
+        agent.Impatient,
+        agent.DetailTier,
+        agent.SimulationCadence,
+        agent.DamageState,
+        agent.Health,
+        agent.RecoveryCount,
+        agent.HornCount);
+
+    private static double ProfileMaximumSpeed(string typeId) => typeId switch
+    {
+        "SPORTS" => 22,
+        "BUS" => 13,
+        "TRUCK" => 12,
+        "POLICE" => 21,
+        "MOTORBIKE" => 19,
+        _ => 16,
+    };
+
+    private static double ProfileWidth(string typeId) => typeId switch
+    {
+        "BUS" or "TRUCK" => 2.5,
+        "MOTORBIKE" => 0.8,
+        _ => 1.9,
+    };
+
+    private static double HeadingTo(TrafficPoint source, TrafficPoint target) =>
+        Math.Atan2(target.X - source.X, target.Z - source.Z);
+
+    private static double Approach(double current, double target, double maximumChange) =>
+        current < target ? Math.Min(target, current + maximumChange) : Math.Max(target, current - maximumChange);
+
+    private static double ApproachAngle(double current, double target, double weight)
+    {
+        double difference = target - current;
+        while (difference < -Math.PI) difference += Math.PI * 2;
+        while (difference > Math.PI) difference -= Math.PI * 2;
+        return current + difference * Math.Clamp(weight, 0, 1);
+    }
+
+    private static void ValidateConfig(TrafficPopulationConfig config)
+    {
+        if (config.MovingVehicleFloor < 0 || config.ParkedVehicleCount < 0
+            || !double.IsFinite(config.NearDistance) || config.NearDistance <= 0
+            || !double.IsFinite(config.MediumDistance) || config.MediumDistance <= config.NearDistance
+            || !double.IsFinite(config.NeighborQueryRadius) || config.NeighborQueryRadius <= 0
+            || !double.IsFinite(config.StuckRecoverySeconds) || config.StuckRecoverySeconds <= 0
+            || !double.IsFinite(config.FireDisableSeconds) || config.FireDisableSeconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(config), "Traffic population configuration is invalid.");
+        }
+    }
+
+    private sealed class Agent
+    {
+        public required string Id { get; init; }
+        public required long Serial { get; init; }
+        public required string TypeId { get; init; }
+        public required TrafficPoint Position { get; set; }
+        public double Heading { get; set; }
+        public double Speed { get; set; }
+        public double TargetSpeed { get; set; }
+        public required string CurrentNodeId { get; set; }
+        public required string TargetNodeId { get; set; }
+        public bool Parked { get; init; }
+        public bool PlayerControlled { get; set; }
+        public bool Emergency { get; init; }
+        public required DriverRuleProfile Driver { get; init; }
+        public bool Impatient { get; init; }
+        public required string DetailTier { get; set; }
+        public int SimulationCadence { get; set; }
+        public string DamageState { get; set; } = TrafficDamageStates.Healthy;
+        public double Health { get; set; } = 100;
+        public double FireElapsed { get; set; }
+        public double StuckElapsed { get; set; }
+        public int RecoveryCount { get; set; }
+        public double ImpatienceElapsed { get; set; }
+        public bool HornedForBlocker { get; set; }
+        public int HornCount { get; set; }
+        public string? StopControlId { get; set; }
+    }
+}
