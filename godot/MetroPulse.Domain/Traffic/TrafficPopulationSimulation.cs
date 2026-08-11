@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Randomness;
 using MetroPulse.Domain.Simulation;
 
@@ -55,7 +56,18 @@ public sealed record TrafficAgentSnapshot(
     string DamageState,
     double Health,
     int RecoveryCount,
-    int HornCount);
+    int HornCount,
+    bool HitAndRunOffender,
+    string? PursuitTargetId,
+    bool SirenActive);
+
+public sealed record TrafficPedestrianInteraction(
+    bool ShouldYield,
+    bool ShouldHonk,
+    bool ShouldKnockDown,
+    bool HitAndRunStarted,
+    double DetectionDistance,
+    IReadOnlyList<string> ResponderIds);
 
 public sealed record TrafficPopulationSnapshot(
     long Frame,
@@ -131,6 +143,7 @@ public sealed class TrafficPopulationSimulation
         frame += 1;
         Controls.Advance(delta);
         vehicleGrid.Rebuild(moving.Values);
+        AdvancePursuits(delta);
         foreach (Agent agent in moving.Values.OrderBy(agent => agent.Id, StringComparer.Ordinal))
         {
             UpdateTier(agent, focus);
@@ -144,6 +157,15 @@ public sealed class TrafficPopulationSimulation
     public bool Cull(string agentId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(agentId);
+        if (moving.TryGetValue(agentId, out Agent? target))
+        {
+            ClearPursuit(target);
+            foreach (Agent offender in moving.Values.Where(agent =>
+                agent.HitAndRun?.ResponderIds.Contains(agentId, StringComparer.Ordinal) == true).ToArray())
+            {
+                ClearPursuit(offender);
+            }
+        }
         bool removed = moving.Remove(agentId) || parked.Remove(agentId);
         if (removed) EnsurePopulationFloor();
         return removed;
@@ -207,6 +229,65 @@ public sealed class TrafficPopulationSimulation
 
     public TrafficAgentSnapshot GetSnapshot(string agentId) => ToSnapshot(GetMoving(agentId));
 
+    public double GetPedestrianDetectionDistance(string agentId)
+    {
+        Agent agent = GetMoving(agentId);
+        return PedestrianTrafficModel.GetYieldKinematics(agent.Speed, 7).DetectionDistance;
+    }
+
+    public TrafficPedestrianInteraction UpdatePedestrianEncounter(
+        string agentId,
+        PedestrianTrafficContact? contact,
+        double delta)
+    {
+        Agent agent = GetMoving(agentId);
+        PedestrianYieldKinematics kinematics = PedestrianTrafficModel.GetYieldKinematics(agent.Speed, 7);
+        if (contact is null)
+        {
+            agent.PedestrianId = null;
+            agent.PedestrianEncounter = null;
+            agent.PedestrianShouldYield = false;
+            agent.PedestrianEmergencyStop = false;
+            return new TrafficPedestrianInteraction(false, false, false, false, kinematics.DetectionDistance, []);
+        }
+
+        double impactDistance = PedestrianTrafficModel.GetEmergencyStopDistance(agent.TypeId);
+        bool impact = agent.Speed > 2
+            && contact.ForwardDistance <= impactDistance
+            && contact.LateralDistance <= 1.55;
+        if (impact)
+        {
+            agent.PedestrianId = null;
+            agent.PedestrianEncounter = null;
+            agent.PedestrianShouldYield = false;
+            agent.PedestrianEmergencyStop = false;
+            IReadOnlyList<string> responders = [];
+            bool started = false;
+            if (!agent.PlayerControlled && !agent.Emergency && agent.HitAndRun is null
+                && agent.DamageState is not TrafficDamageStates.Disabled and not TrafficDamageStates.OnFire)
+            {
+                responders = BeginHitAndRun(agent, new TrafficPoint(
+                    agent.Position.X + Math.Sin(agent.Heading) * contact.ForwardDistance,
+                    agent.Position.Z + Math.Cos(agent.Heading) * contact.ForwardDistance));
+                started = true;
+            }
+            return new TrafficPedestrianInteraction(false, false, true, started, kinematics.DetectionDistance, responders);
+        }
+
+        if (!string.Equals(agent.PedestrianId, contact.PedestrianId, StringComparison.Ordinal))
+        {
+            agent.PedestrianId = contact.PedestrianId;
+            agent.PedestrianEncounter = new PedestrianTrafficEncounter(agent.Impatient);
+        }
+        PedestrianTrafficAction action = PedestrianTrafficModel.UpdateEncounter(agent.PedestrianEncounter, delta);
+        agent.PedestrianEncounter = action.State;
+        agent.PedestrianShouldYield = action.ShouldYield;
+        agent.PedestrianEmergencyStop = action.ShouldYield && contact.Distance <= impactDistance;
+        if (action.ShouldHonk) agent.HornCount += 1;
+        return new TrafficPedestrianInteraction(
+            action.ShouldYield, action.ShouldHonk, false, false, kinematics.DetectionDistance, []);
+    }
+
     private void AdvanceAgent(Agent agent, double delta, bool bridgePriorityEnabled)
     {
         if (agent.DamageState == TrafficDamageStates.OnFire)
@@ -227,11 +308,12 @@ public sealed class TrafficPopulationSimulation
         double offsetZ = target.Position.Z - agent.Position.Z;
         double distance = Math.Sqrt(offsetX * offsetX + offsetZ * offsetZ);
         double desiredHeading = distance > 1e-6 ? Math.Atan2(offsetX, offsetZ) : agent.Heading;
-        double maximumSpeed = ProfileMaximumSpeed(agent.TypeId) * (agent.Emergency ? 1.12 : 1);
+        double maximumSpeed = MaximumSpeedFor(agent);
         double turnLimit = TrafficNavigationModel.GetTurnSpeedLimit(
             agent.Position, target.Position, agent.Heading, maximumSpeed);
         double targetSpeed = Math.Min(maximumSpeed, turnLimit);
         if (ShouldStopForControl(agent, target, distance)) targetSpeed = 0;
+        if (agent.PedestrianShouldYield) targetSpeed = 0;
 
         SpatialQueryResult<Agent> nearby = vehicleGrid.Query(
             new SpatialPoint(agent.Position.X, agent.Position.Z),
@@ -259,7 +341,10 @@ public sealed class TrafficPopulationSimulation
 
         agent.TargetSpeed = targetSpeed;
         double acceleration = targetSpeed < agent.Speed ? 18 : 7;
-        agent.Speed = Approach(agent.Speed, targetSpeed, acceleration * delta);
+        agent.Speed = agent.PedestrianShouldYield
+            ? PedestrianTrafficModel.ApproachTargetSpeed(agent.Speed, targetSpeed, acceleration, delta, pedestrianBlocked: true)
+            : Approach(agent.Speed, targetSpeed, acceleration * delta);
+        if (agent.PedestrianEmergencyStop) agent.Speed = 0;
         agent.Heading = ApproachAngle(agent.Heading, desiredHeading, Math.Min(1, delta * 4));
         agent.Position = new TrafficPoint(
             agent.Position.X + Math.Sin(agent.Heading) * agent.Speed * delta,
@@ -279,6 +364,13 @@ public sealed class TrafficPopulationSimulation
             DepartStop(agent);
             agent.CurrentNodeId = route.CurrentNodeId;
             agent.TargetNodeId = route.TargetNodeId;
+            if (agent.PursuitTargetId is not null && moving.TryGetValue(agent.PursuitTargetId, out Agent? offender))
+            {
+                agent.TargetNodeId = graphNodes[agent.CurrentNodeId].NextNodeIds
+                    .OrderBy(id => DistanceSquared(graphNodes[id].Position, offender.Position))
+                    .ThenBy(id => id, StringComparer.Ordinal)
+                    .First();
+            }
             agent.StuckElapsed = 0;
         }
         else if (agent.Speed < 0.1 && targetSpeed > 1)
@@ -456,7 +548,82 @@ public sealed class TrafficPopulationSimulation
         agent.DamageState,
         agent.Health,
         agent.RecoveryCount,
-        agent.HornCount);
+        agent.HornCount,
+        agent.HitAndRun is not null,
+        agent.PursuitTargetId,
+        agent.SirenActive);
+
+    private IReadOnlyList<string> BeginHitAndRun(Agent offender, TrafficPoint origin)
+    {
+        SpatialQueryResult<Agent> nearby = vehicleGrid.Query(
+            new SpatialPoint(origin.X, origin.Z),
+            HitAndRunPursuitModel.DefaultConfig.NearbyPoliceRadius);
+        maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
+        IReadOnlyList<string> responders = HitAndRunPursuitModel.SelectNearbyPolice(
+            nearby.Items.Select(candidate => new HitAndRunPoliceCandidate(
+                candidate.Id,
+                candidate.Position,
+                candidate.TypeId == "POLICE",
+                candidate.PlayerControlled,
+                candidate.DamageState is TrafficDamageStates.Disabled or TrafficDamageStates.OnFire,
+                candidate.Parked,
+                candidate.PursuitTargetId is not null)).ToArray(),
+            origin);
+        offender.HitAndRun = HitAndRunPursuitModel.Create(
+            offender.Id, ProfileMaximumSpeed(offender.TypeId), responders);
+        foreach (string responderId in responders)
+        {
+            Agent police = moving[responderId];
+            police.PursuitTargetId = offender.Id;
+            police.SirenActive = true;
+        }
+        return responders;
+    }
+
+    private void AdvancePursuits(double delta)
+    {
+        foreach (Agent offender in moving.Values.Where(agent => agent.HitAndRun is not null).ToArray())
+        {
+            offender.HitAndRun = HitAndRunPursuitModel.Advance(offender.HitAndRun!, delta);
+            if (!offender.HitAndRun.Active
+                || offender.DamageState is TrafficDamageStates.Disabled or TrafficDamageStates.OnFire)
+            {
+                ClearPursuit(offender);
+            }
+        }
+    }
+
+    private void ClearPursuit(Agent offender)
+    {
+        if (offender.HitAndRun is null) return;
+        foreach (string responderId in offender.HitAndRun.ResponderIds)
+        {
+            if (!moving.TryGetValue(responderId, out Agent? police)
+                || police.PursuitTargetId != offender.Id) continue;
+            police.PursuitTargetId = null;
+            police.SirenActive = false;
+        }
+        offender.HitAndRun = null;
+    }
+
+    private double MaximumSpeedFor(Agent agent)
+    {
+        if (agent.HitAndRun is not null) return agent.HitAndRun.EscapeSpeed;
+        if (agent.PursuitTargetId is not null && moving.TryGetValue(agent.PursuitTargetId, out Agent? offender))
+        {
+            double distance = Math.Sqrt(DistanceSquared(agent.Position, offender.Position));
+            return HitAndRunPursuitModel.GetPoliceSpeed(
+                ProfileMaximumSpeed(agent.TypeId), offender.Speed, distance);
+        }
+        return ProfileMaximumSpeed(agent.TypeId) * (agent.Emergency ? 1.12 : 1);
+    }
+
+    private static double DistanceSquared(TrafficPoint first, TrafficPoint second)
+    {
+        double x = first.X - second.X;
+        double z = first.Z - second.Z;
+        return x * x + z * z;
+    }
 
     private static double ProfileMaximumSpeed(string typeId) => typeId switch
     {
@@ -529,5 +696,12 @@ public sealed class TrafficPopulationSimulation
         public bool HornedForBlocker { get; set; }
         public int HornCount { get; set; }
         public string? StopControlId { get; set; }
+        public string? PedestrianId { get; set; }
+        public PedestrianTrafficEncounter? PedestrianEncounter { get; set; }
+        public bool PedestrianShouldYield { get; set; }
+        public bool PedestrianEmergencyStop { get; set; }
+        public HitAndRunPursuitState? HitAndRun { get; set; }
+        public string? PursuitTargetId { get; set; }
+        public bool SirenActive { get; set; }
     }
 }

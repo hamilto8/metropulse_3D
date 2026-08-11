@@ -5,6 +5,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Traffic;
@@ -41,6 +42,8 @@ public partial class SessionShell : Node
     public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
     public LivingTrafficRuntime? LivingTraffic { get; private set; }
+
+    public LivingPedestrianRuntime? LivingPedestrians { get; private set; }
 
     public override void _Ready()
     {
@@ -82,6 +85,15 @@ public partial class SessionShell : Node
             PlayerControl,
             GetNode<Node3D>("WorldRoot/AgentRoot"),
             GetNode<Node3D>("WorldRoot/NavigationRoot"),
+            CameraAdapter);
+        LivingPedestrians = new LivingPedestrianRuntime { Name = "LivingPedestrians" };
+        runtimeServices.AddChild(LivingPedestrians);
+        LivingPedestrians.Initialize(
+            Content ?? throw new InvalidOperationException("Content must exist before pedestrians are initialized."),
+            World ?? throw new InvalidOperationException("The world must exist before pedestrians are initialized."),
+            PlayerControl,
+            LivingTraffic,
+            GetNode<Node3D>("WorldRoot/AgentRoot"),
             CameraAdapter);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
@@ -129,6 +141,7 @@ public partial class SessionShell : Node
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         VehicleInteractions?.Shutdown();
         RuntimeHost?.Shutdown();
+        LivingPedestrians?.Shutdown();
         LivingTraffic?.Shutdown();
         PlayerControl?.Shutdown();
         GameplayCamera?.Shutdown();
@@ -158,6 +171,7 @@ public partial class SessionShell : Node
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true
             || LivingTraffic?.Initialized != true
+            || LivingPedestrians?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

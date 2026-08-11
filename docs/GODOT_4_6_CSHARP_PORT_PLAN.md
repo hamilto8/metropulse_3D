@@ -1277,7 +1277,9 @@ horns, bounded stuck recovery, emergency priority, healthy/damaged/on-fire/
 disabled state, and exact-ID promotion into and out of the Phase 5 player
 physics registry are independent publications/adapters. Lightweight Godot
 visual/collision/audio actors are not simulation authorities. Pedestrian
-yielding is deliberately completed with item 6.6 in the next slice.)*
+yielding now consumes speed-aware stopping distance, patient/impatient encounter
+state, emergency stops, and one-shot horns; NPC impacts enter bounded hit-and-run
+pursuit while nearby police route over the road graph and return to patrol.)*
 
 6.4 Port traffic controls: green/yellow/all-red cycle, four-way stop arrival
 order, 80% rule-following driver assignment, reckless behavior, and physical
@@ -1290,10 +1292,23 @@ all 60 intersections publish four collision-layered Godot posts.)*
 6.5 Implement pedestrian graph/spawning and the 60-citizen floor. Port all
 archetypes and special behaviors: residents, professionals, joggers, tourists,
 cafe readers, and criminals. Keep visual construction separate from behavior.
+*(complete: `PedestrianSidewalkGraph` publishes the exact 246-node sidewalk,
+bridge-walkway, crosswalk, and park-path topology without dead ends. The seeded
+population maintains 60 monotonic identities in the canonical 18/12/9/6/9/6
+mix; tourist photo pauses, cafe seating, jogging, and bounded criminal target
+reservation/chase/knockdown are domain behavior. Godot actors only present
+capsule collision and high/medium/low proxy meshes.)*
 
 6.6 Implement traffic/pedestrian interactions: speed-aware braking, patient and
 impatient waiting, one-shot horns, knockdown, hit-and-run offender state,
 nearby-police selection, road-aware pursuit, and cleanup back to patrol.
+*(complete: each moving vehicle queries pedestrians through the shared spatial
+grid using speed-derived detection range, patient drivers yield indefinitely,
+the deterministic 20% impatient cohort honks once after 3.5 seconds, and
+emergency proximity stops are type-aware. Impacts knock down eligible citizens;
+NPC offenders select at most two eligible police within 65 metres from a bounded
+grid query, flee for 22 seconds, and police select road edges toward the offender
+before siren/pursuit state is cleared back to patrol.)*
 
 6.7 Port crime reporting, wanted state, police dispatch, pursuit across player
 vehicle switches, escape timer, arrest, one macro incident, and safe recovery.
@@ -1303,8 +1318,10 @@ queries. Do not use full-population scans in routine per-agent updates.
 *(complete: the generic XZ `SpatialHashGrid<T>` rebuilds by stable runtime ID,
 orders publications deterministically, handles negative cell boundaries,
 rejects duplicate IDs, skips nonfinite entities, and reports visited cells and
-candidates. Traffic obstacle queries already consume it; both living-agent
-registries must consume the same bounded-query contract in the next slices.)*
+candidates. Traffic obstacle, vehicle-neighbor, police-response, criminal-target,
+and vehicle-to-pedestrian queries all consume the same bounded-query contract;
+live integration currently measures maxima of six traffic and four pedestrian
+candidates.)*
 
 6.9 Implement simulation LOD separately from render LOD. Near agents receive
 full collision/behavior; medium agents reduce animation/query cadence; far
@@ -1313,7 +1330,9 @@ only where design requires it. *(traffic portion complete: simulation uses
 near/medium/far cadences of 1/2/8 ticks and only near agents retain physical
 collision, while the independent renderer uses 160/400-metre high/medium/low
 mesh and shadow tiers. All tiers preserve stable aggregate identity. Pedestrian
-LOD remains in the next slice.)*
+simulation now uses the same independent 1/2/8 cadence with collision only near
+the focus, while its renderer separately selects full/shadow, full/no-shadow,
+and low capsule proxies at 120/320 metres. All tiers retain stable identity.)*
 
 ### Exit gate
 

@@ -6,6 +6,7 @@ using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Interactions;
+using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
@@ -15,6 +16,7 @@ using MetroPulse.Domain.World;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
+using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Traffic;
@@ -172,6 +174,7 @@ public partial class IntegrationTestRunner : Node
         CheckRuntimeInput(compositionRoot, failures);
         CheckSessionRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
+        await CheckLivingPedestrians(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
@@ -191,6 +194,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase6.pedestrians.passed",
+                "Phase 6 sidewalk population, special behavior, LOD, yielding, knockdown, and bounded-query checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "7",
+                    ["citizens"] = session.LivingPedestrians?.Simulation.CitizenCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["sidewalkNodes"] = session.LivingPedestrians?.SidewalkGraph.NodeCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["maximumLocalCandidates"] = session.LivingPedestrians?.Simulation.MaximumLocalCandidates.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -347,7 +362,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 3 shell integration checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = recoverySeedScenario ? "146" : "142",
+                    ["assertions"] = recoverySeedScenario ? "153" : "149",
                     ["bootAction"] = expectedAction,
                 }));
             GetTree().Quit(0);
@@ -414,6 +429,53 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Living traffic integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async Task CheckLivingPedestrians(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Pedestrian integration requires a session.");
+            LivingPedestrianRuntime pedestrians = session.LivingPedestrians
+                ?? throw new InvalidOperationException("The living pedestrian runtime is unavailable.");
+            PedestrianPopulationSnapshot snapshot = pedestrians.Simulation.Snapshot();
+            Check(pedestrians.Initialized && snapshot.Citizens.Count == 60 && pedestrians.ActorCount == 60,
+                "The session owns and presents the seeded 60-citizen population floor.", failures);
+            Check(pedestrians.SidewalkGraph.NodeCount == 246
+                    && pedestrians.SidewalkGraph.Snapshot().Nodes.All(node => node.NextNodeIds.Count > 0),
+                "The live sidewalk graph preserves 246 authored routable nodes without dead ends.", failures);
+            Check(snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "CASUAL") == 18
+                    && snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "BUSINESS") == 12
+                    && snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "JOGGER") == 9
+                    && snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "CAFE_READER") == 6
+                    && snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "TOURIST") == 9
+                    && snapshot.Citizens.Count(agent => agent.Descriptor.Archetype == "CRIMINAL") == 6,
+                "The first 60 citizens retain the canonical six-archetype authored mix.", failures);
+            Check(snapshot.Citizens.Select(agent => agent.Id).Distinct(StringComparer.Ordinal).Count() == 60,
+                "Pedestrian actors publish unique stable runtime IDs.", failures);
+            Check(snapshot.Citizens.Any(agent => pedestrians.GetActor(agent.Id).RenderDetailTier == PedestrianRenderDetailTiers.High)
+                    && snapshot.Citizens.Any(agent => pedestrians.GetActor(agent.Id).RenderDetailTier == PedestrianRenderDetailTiers.Low),
+                "Pedestrian render LOD remains independent from simulation cadence.", failures);
+
+            PedestrianAgentSnapshot target = snapshot.Citizens.First(agent => agent.Descriptor.Archetype == "CASUAL");
+            _ = pedestrians.Simulation.KnockDown(target.Id, new PedestrianVector3(0, 0.25, 1), 10);
+            pedestrians.Simulation.RecoverToSidewalk(target.Id);
+            Check(!pedestrians.Simulation.GetSnapshot(target.Id).KnockedDown
+                    && pedestrians.Simulation.GetSnapshot(target.Id).RecoveryCount == 1,
+                "Citizen knockdown and sidewalk recovery preserve the same stable identity.", failures);
+
+            _ = pedestrians.Simulation.Cull(target.Id);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(pedestrians.Simulation.CitizenCount == 60 && pedestrians.ActorCount == 60
+                    && !pedestrians.Simulation.Snapshot().Citizens.Any(agent => agent.Id == target.Id)
+                    && pedestrians.Simulation.MaximumLocalCandidates < 30,
+                "Pedestrian culling restores the floor with a fresh ID while local scans stay bounded.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Living pedestrian integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

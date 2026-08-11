@@ -32,6 +32,8 @@ public partial class TrafficVehicleActor : AnimatableBody3D
 
     public bool CollisionActive => !collision.Disabled;
 
+    public bool SirenActive { get; private set; }
+
     public void Initialize(TrafficAgentSnapshot snapshot, VehicleProfileRecord record, MvpWorldGenerator worldOwner)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -86,12 +88,14 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         bool collisionEnabled = snapshot.DetailTier == TrafficAgentDetailTiers.Near && !snapshot.PlayerControlled;
         collision.SetDeferred(CollisionShape3D.PropertyName.Disabled, !collisionEnabled);
         Visible = !snapshot.PlayerControlled;
+        SirenActive = snapshot.SirenActive;
 
         Color color = snapshot.DamageState switch
         {
             TrafficDamageStates.OnFire => Color.FromHtml("f97316"),
             TrafficDamageStates.Disabled => Color.FromHtml("1f2937"),
             TrafficDamageStates.Damaged => TrafficColor(snapshot.TypeId).Darkened(0.35f),
+            _ when snapshot.SirenActive => Color.FromHtml("60a5fa"),
             _ => TrafficColor(snapshot.TypeId),
         };
         if (highDetail.MaterialOverride is StandardMaterial3D highMaterial) highMaterial.AlbedoColor = color;
