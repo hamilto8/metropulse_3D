@@ -189,6 +189,7 @@ public partial class IntegrationTestRunner : Node
         CheckSessionRuntime(compositionRoot, restoreScenario, failures);
         CheckManagementUi(compositionRoot, failures);
         CheckGameplayUi(compositionRoot, failures);
+        CheckMinimap(compositionRoot, failures);
         CheckSessionModals(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
@@ -216,6 +217,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.minimap.passed",
+                "Phase 9 roads, rivers, agents, player, congestion, mission, work-order, and Heat-safe minimap checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["roads"] = session.MinimapUi?.CurrentView?.Roads.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["icons"] = session.MinimapUi?.CurrentView?.Icons.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["routeSegments"] = session.MinimapUi?.CurrentView?.Route.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["heatResponders"] = session.MinimapUi?.CurrentView?.HeatResponderCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -2001,6 +2014,44 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Session modal integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckMinimap(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            MinimapHud minimap = session.MinimapUi
+                ?? throw new InvalidOperationException("Minimap is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime is unavailable.");
+            minimap.RefreshNow();
+            Check(minimap.Initialized
+                    && minimap.CurrentView is { Visible: false }
+                    && minimap.GetParent()?.GetPath().ToString().EndsWith("PlayerInterface/SafeArea/Chrome", StringComparison.Ordinal) == true,
+                "The shared chrome owns one minimap that remains hidden in Management.",
+                failures);
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("phase9:minimap-check", nameof(IntegrationTestRunner)));
+            minimap.RefreshNow();
+            Check(minimap.Visible
+                    && minimap.CurrentView is { Roads.Count: > 100, Icons.Count: > 100 }
+                    && minimap.GetNodeOrNull<MinimapCanvas>("Layout/MapCanvas") is not null,
+                "Street minimap projects the production road graph, river renderer, live agents, and player marker.",
+                failures);
+            Check(minimap.CurrentView!.HeatResponderCount
+                    <= (session.Enforcement?.Response?.ResponderIds.Count ?? 0)
+                    && minimap.AccessibilityDescription.Contains("road segments", StringComparison.Ordinal),
+                "Minimap Heat responders are a moving-only subset and the visual publishes a textual summary.",
+                failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase9:minimap-cleanup", nameof(IntegrationTestRunner)));
+            minimap.RefreshNow();
+            Check(!minimap.Visible, "Returning to Management releases minimap visibility.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Minimap integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

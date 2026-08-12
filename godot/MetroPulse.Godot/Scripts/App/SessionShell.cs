@@ -65,6 +65,8 @@ public partial class SessionShell : Node
 
     public GameplayHud? GameplayUi { get; private set; }
 
+    public MinimapHud? MinimapUi { get; private set; }
+
     public SessionModalController? Modals { get; private set; }
 
     public PlayerInterface? Interface { get; private set; }
@@ -210,6 +212,17 @@ public partial class SessionShell : Node
             Environment ?? throw new InvalidOperationException("The environment must exist before the gameplay UI is initialized."),
             Services,
             Missions);
+        MinimapUi = new MinimapHud { Name = "Minimap" };
+        Interface.Chrome.AddChild(MinimapUi);
+        MinimapUi.Initialize(
+            Interface,
+            LivingTraffic,
+            LivingPedestrians,
+            PlayerControl,
+            Enforcement,
+            Services,
+            Missions,
+            RuntimeHost);
         Modals = new SessionModalController { Name = "SessionModals" };
         Interface.ModalLayer.AddChild(Modals);
         Modals.Initialize(Interface, RuntimeHost, InputHost, settings);
@@ -251,6 +264,7 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         Modals?.Shutdown();
+        MinimapUi?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
         ManagementUi?.Shutdown();
@@ -300,6 +314,7 @@ public partial class SessionShell : Node
             || ManagementUi?.Initialized != true
             || Missions?.Initialized != true
             || GameplayUi?.Initialized != true
+            || MinimapUi?.Initialized != true
             || Modals?.Initialized != true
             || Interface?.Initialized != true
             || RuntimeHost?.Initialized != true)
