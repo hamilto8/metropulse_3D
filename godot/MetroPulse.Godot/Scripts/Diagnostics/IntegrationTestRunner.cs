@@ -27,6 +27,7 @@ using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Economy;
+using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
@@ -183,6 +184,7 @@ public partial class IntegrationTestRunner : Node
         await CheckBootActionPresentation(compositionRoot, failures);
         CheckUiFoundation(compositionRoot, failures);
         CheckAudio(compositionRoot, failures);
+        CheckEffects(compositionRoot, failures);
         CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
@@ -229,6 +231,18 @@ public partial class IntegrationTestRunner : Node
                     ["cachedStreams"] = session.Audio?.CachedStreamCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["captions"] = session.Audio?.CaptionCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["voiceCap"] = AudioPresentationModel.TotalVoiceCap.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.effects.passed",
+                "Phase 9 fixed pools, cleanup, settings, captions, weather reuse, and presentation-only effect checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["pooledRoots"] = session.Effects?.PoolNodeCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["spawns"] = session.Effects?.SpawnCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["cleanups"] = session.Effects?.CleanupCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["spatialVoices"] = session.Audio?.SpatialVoiceCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -1656,6 +1670,106 @@ public partial class IntegrationTestRunner : Node
         }
     }
 
+    private static void CheckEffects(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            SessionEffectRuntime effects = session.Effects
+                ?? throw new InvalidOperationException("Session effects are unavailable.");
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings authority is unavailable.");
+            Check(
+                effects.Initialized
+                    && effects.PoolNodeCount == EffectPresentationModel.TotalPooledNodes
+                    && effects.GetChildCount() == EffectPresentationModel.TotalPooledNodes
+                    && !ContainsCollisionObject(effects),
+                "Session effects preallocate exactly 48 collision-free presentation roots.",
+                failures);
+            Check(
+                EffectPresentationModel.Pools.All(pool =>
+                    !pool.CollisionEnabled && !pool.MutatesRoadGraph && !pool.MutatesEconomy),
+                "Every effect pool declares presentation-only road and economy behavior.",
+                failures);
+            Check(
+                effects.RainEmitterReused
+                    && session.Environment?.GetNodeOrNull<GpuParticles3D>("Rain") is not null
+                    && session.Environment.GetChildren().OfType<GpuParticles3D>().Count(node => node.Name == "Rain") == 1,
+                "Rain uses the environment's single reusable emitter instead of allocating weather particles per frame.",
+                failures);
+
+            long economyRevision = session.Economy?.Ledger.Snapshot().Revision
+                ?? throw new InvalidOperationException("Economy ledger is unavailable.");
+            long roadRevision = session.LivingTraffic?.RoadGraph.Snapshot().Revision
+                ?? throw new InvalidOperationException("Road graph is unavailable.");
+            int captionsBefore = session.Audio?.CaptionCount ?? 0;
+            effects.TriggerExplosion(new Vector3(4, 2, 4), "integration-explosion");
+            effects.TriggerFire(new Vector3(6, 2, 4), "integration-fire");
+            effects.TriggerRubble(new Vector3(8, 1, 4), "integration-rubble");
+            effects.TriggerComet(new Vector3(0, 90, 40));
+            effects.TriggerLightning(new Vector3(0, 70, 0));
+            Check(
+                effects.ActiveCounts[EffectIds.Explosion] == 1
+                    && effects.ActiveCounts[EffectIds.Fire] == 1
+                    && effects.ActiveCounts[EffectIds.Rubble] == 1
+                    && effects.ActiveCounts[EffectIds.Comet] == 1
+                    && effects.LastLightningFlash > 0
+                    && session.Audio?.CaptionCount >= captionsBefore + 5,
+                "Explosion, fire, rubble, comet, lightning, shake, and caption adapters activate through bounded presentation owners.",
+                failures);
+            Check(
+                session.Economy?.Ledger.Snapshot().Revision == economyRevision
+                    && session.LivingTraffic?.RoadGraph.Snapshot().Revision == roadRevision,
+                "Presentation effects cannot change authoritative road or economy revisions.",
+                failures);
+
+            SettingsPreferences original = settings.GetSettings();
+            _ = settings.Set("motion.reducedMotion", SettingValues.ReduceMotion);
+            _ = settings.Set("motion.cameraShake", 0d);
+            _ = settings.Set("motion.flashIntensity", SettingValues.OffEffect);
+            _ = settings.Set("motion.bloom", SettingValues.OffEffect);
+            int cometSpawns = effects.ActiveCounts[EffectIds.Comet];
+            effects.TriggerComet(new Vector3(0, 100, 0));
+            effects.TriggerLightning();
+            Check(
+                effects.CurrentPolicy is { ShakeScale: 0, FlashScale: 0, BloomEnabled: false, SpawnComets: false }
+                    && effects.ActiveCounts[EffectIds.Comet] == cometSpawns
+                    && effects.LastLightningFlash == 0
+                    && session.Environment?.BloomEnabled == false,
+                "Reduced-motion, shake, flash, bloom, and comet preferences apply immediately to live effects.",
+                failures);
+            _ = settings.Set("motion.reducedMotion", original.Motion.ReducedMotion);
+            _ = settings.Set("motion.cameraShake", original.Motion.CameraShake);
+            _ = settings.Set("motion.flashIntensity", original.Motion.FlashIntensity);
+            _ = settings.Set("motion.bloom", original.Motion.Bloom);
+
+            effects.AdvanceForTest(20);
+            Check(
+                effects.ActiveCounts[EffectIds.Explosion] == 0
+                    && effects.ActiveCounts[EffectIds.Rubble] == 0
+                    && effects.ActiveCounts[EffectIds.Comet] == 0
+                    && effects.ActiveCounts[EffectIds.Fire] == 1,
+                "Transient pool leases clean up while keyed fire remains active.",
+                failures);
+            effects.StopFire("integration-fire");
+            Check(effects.ActiveCount == 0, "Persistent fire returns to its pool when its source clears.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Effects integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static bool ContainsCollisionObject(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            if (child is CollisionObject3D || ContainsCollisionObject(child)) return true;
+        }
+        return false;
+    }
+
     private static void CheckDiagnostics(
         CompositionRoot compositionRoot,
         DiagnosticsOverlay diagnostics,
@@ -2671,10 +2785,10 @@ public partial class IntegrationTestRunner : Node
             }
             Check(interactions.Initialized
                     && interactions.Service.ProviderCount == 3
-                    && environment.StateSubscriberCount == 2
+                    && environment.StateSubscriberCount == 3
                     && sedan.ContactMonitor
                     && sedan.MaxContactsReported == 8,
-                "The session owns vehicle, service-work, and mission priority providers, weather-grip/audio subscribers, and contact-reporting production bodies.", failures);
+                "The session owns vehicle, service-work, and mission priority providers, weather-grip/audio/effects subscribers, and contact-reporting production bodies.", failures);
 
             environment.SetState(12, "rain");
             Check(Math.Abs(sedan.GripMultiplier - 0.48) < 0.0001

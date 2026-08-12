@@ -8,6 +8,7 @@ using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Economy;
+using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
@@ -31,6 +32,8 @@ public partial class SessionShell : Node
     public RuntimeInputHost? InputHost { get; private set; }
 
     public SessionAudioRuntime? Audio { get; private set; }
+
+    public SessionEffectRuntime? Effects { get; private set; }
 
     public MvpWorldGenerator? World { get; private set; }
 
@@ -212,6 +215,15 @@ public partial class SessionShell : Node
             LivingTraffic,
             PlayerControl,
             Environment ?? throw new InvalidOperationException("The environment must exist before audio sources are attached."));
+        Effects = new SessionEffectRuntime { Name = "SessionEffects" };
+        GetNode<Node3D>("WorldRoot/EffectRoot").AddChild(Effects);
+        Effects.Initialize(
+            settings,
+            PlayerControl,
+            LivingTraffic,
+            Environment,
+            GameplayCamera,
+            Audio);
         GameplayUi = new GameplayHud { Name = "GameplayHud" };
         Interface.Chrome.AddChild(GameplayUi);
         GameplayUi.Initialize(
@@ -279,6 +291,7 @@ public partial class SessionShell : Node
         Missions?.Shutdown();
         ManagementUi?.Shutdown();
         Interface?.Shutdown();
+        Effects?.Shutdown();
         Services?.Shutdown();
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
@@ -314,6 +327,7 @@ public partial class SessionShell : Node
             || GetNodeOrNull<Node3D>("WorldRoot") is null
             || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
             || Audio?.Initialized != true
+            || Effects?.Initialized != true
             || InputHost?.Initialized != true
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true

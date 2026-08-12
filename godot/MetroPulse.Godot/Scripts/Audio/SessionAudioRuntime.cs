@@ -18,6 +18,7 @@ public partial class SessionAudioRuntime : Node
     private readonly Dictionary<string, int> hornCounts = new(StringComparer.Ordinal);
     private readonly HashSet<string> activeSirens = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> impactCounts = new(StringComparer.Ordinal);
+    private readonly List<AudioStreamPlayer3D> spatialVoices = [];
     private SettingsStore settings = null!;
     private PlayerInterface playerInterface = null!;
     private LivingTrafficRuntime? traffic;
@@ -30,6 +31,8 @@ public partial class SessionAudioRuntime : Node
     private AudioStreamPlayer rain = null!;
     private AudioStreamPlayer ui = null!;
     private bool captionsEnabled;
+    private string lastWeatherMode = string.Empty;
+    private int nextSpatialVoice;
 
     public bool Initialized { get; private set; }
 
@@ -40,6 +43,8 @@ public partial class SessionAudioRuntime : Node
     public string LastCaption { get; private set; } = string.Empty;
 
     public int CachedStreamCount => ProceduralAudioStreamCache.Count;
+
+    public int SpatialVoiceCount => spatialVoices.Count;
 
     public IReadOnlyDictionary<string, AudioGainState> Gains => gains;
 
@@ -54,6 +59,17 @@ public partial class SessionAudioRuntime : Node
         ambience = GlobalPlayer("CityAmbience", "city-ambience", AudioBusIds.Ambience);
         rain = GlobalPlayer("Rain", "rain", AudioBusIds.Ambience, play: false);
         ui = GlobalPlayer("UiOneShot", "ui-confirm", AudioBusIds.UI, play: false);
+        for (int index = 0; index < 12; index++)
+        {
+            var voice = new AudioStreamPlayer3D
+            {
+                Name = $"SpatialVoice{index:00}",
+                MaxDistance = 520,
+                UnitSize = 24,
+            };
+            AddChild(voice);
+            spatialVoices.Add(voice);
+        }
         unsubscribeSettings = settings.Subscribe(change => ApplySettings(change.Current.Settings), emitCurrent: true);
         Initialized = true;
         SetProcess(true);
@@ -102,6 +118,21 @@ public partial class SessionAudioRuntime : Node
         if (caption) PublishCaption("[confirmation tone]");
     }
 
+    public void PlaySpatial(string soundId, Vector3 position, bool caption = true)
+    {
+        if (!Initialized || spatialVoices.Count == 0) return;
+        ProceduralSoundSpec spec = AudioPresentationModel.Sounds.SingleOrDefault(sound => sound.Id == soundId)
+            ?? throw new ArgumentOutOfRangeException(nameof(soundId), soundId, "Unknown spatial procedural sound.");
+        AudioStreamPlayer3D voice = spatialVoices.FirstOrDefault(candidate => !candidate.Playing)
+            ?? spatialVoices[nextSpatialVoice++ % spatialVoices.Count];
+        voice.Stop();
+        voice.Stream = ProceduralAudioStreamCache.Get(soundId);
+        voice.Bus = spec.Bus;
+        voice.GlobalPosition = position;
+        voice.Play();
+        if (caption) PublishCaption(spec.Caption);
+    }
+
     public void PublishCaption(string caption)
     {
         if (!captionsEnabled || string.IsNullOrWhiteSpace(caption)) return;
@@ -122,6 +153,7 @@ public partial class SessionAudioRuntime : Node
         ambience.Stop();
         rain.Stop();
         ui.Stop();
+        foreach (AudioStreamPlayer3D voice in spatialVoices) voice.Stop();
         foreach (string bus in addedBuses.AsEnumerable().Reverse())
         {
             int index = AudioServer.GetBusIndex(bus);
@@ -132,6 +164,9 @@ public partial class SessionAudioRuntime : Node
         traffic = null;
         player = null;
         environment = null;
+        spatialVoices.Clear();
+        lastWeatherMode = string.Empty;
+        nextSpatialVoice = 0;
         Initialized = false;
     }
 
@@ -174,7 +209,8 @@ public partial class SessionAudioRuntime : Node
         bool wet = snapshot.WeatherMode is "rain" or "storm" or "thunderstorm";
         if (wet && !rain.Playing) rain.Play();
         if (!wet && rain.Playing) rain.Stop();
-        if (snapshot.WeatherMode == "thunderstorm") PublishCaption("[thunder]");
+        if (snapshot.WeatherMode == "thunderstorm" && lastWeatherMode != "thunderstorm") PublishCaption("[thunder]");
+        lastWeatherMode = snapshot.WeatherMode;
     }
 
     private AudioStreamPlayer GlobalPlayer(string name, string soundId, string bus, bool play = true)

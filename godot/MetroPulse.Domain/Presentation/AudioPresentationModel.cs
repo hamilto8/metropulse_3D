@@ -70,6 +70,10 @@ public static class AudioPresentationModel
         new("horn", AudioBusIds.Vehicle, 360, 0.25, 0.12, false, true, 55, 12, "[vehicle horn]"),
         new("police-siren", AudioBusIds.Emergency, 720, 1.2, 0.09, true, true, 90, 8, "[police siren approaching]"),
         new("thunder", AudioBusIds.Emergency, 38, 0.8, 0.2, false, true, 85, 4, "[thunder]"),
+        new("explosion", AudioBusIds.Effects, 42, 0.65, 0.22, false, true, 95, 8, "[explosion]"),
+        new("fire", AudioBusIds.Effects, 92, 1.5, 0.08, false, true, 50, 8, "[fire crackling]"),
+        new("rubble", AudioBusIds.Effects, 58, 0.5, 0.13, false, true, 60, 8, "[rubble falling]"),
+        new("comet", AudioBusIds.Ambience, 240, 1.1, 0.07, false, true, 40, 4, "[comet streaks overhead]"),
         new("ui-confirm", AudioBusIds.UI, 620, 0.12, 0.08, false, false, 100, 4, "[confirmation tone]"),
     ]);
 

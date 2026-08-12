@@ -37,7 +37,7 @@ sound ID. Current cached sources are:
 - speed/pitch-responsive vehicle engine loop;
 - vehicle impact and horn one-shots;
 - police siren loop;
-- thunder;
+- thunder, explosion, fire, rubble, and comet one-shots;
 - UI confirmation tone.
 
 Vehicle engine and impact sources are `AudioStreamPlayer3D` nodes on the
@@ -62,6 +62,10 @@ Closed-caption strings:
 - `[vehicle horn]`
 - `[police siren approaching]`
 - `[thunder]`
+- `[explosion]`
+- `[fire crackling]`
+- `[rubble falling]`
+- `[comet streaks overhead]`
 - `[confirmation tone]`
 
 Captions require both subtitles and closed captions and publish through the
@@ -75,5 +79,6 @@ math, priority/distance/cap allocation, caption completeness, and bounded
 vehicle pitch/gain. Live integration verifies eight buses, parent sends,
 cached streams, music/ambience routing, zero mute and exact restore, caption
 publication, and clean bus teardown/recreation in clean, import, and recovery
-scenarios. Each scenario finishes with eight cached streams, seven observed
-caption events, and the fixed 64-voice budget.
+scenarios. After the effects slice, each scenario finishes with 13 cached
+streams, 17 observed caption events, 12 reusable effect one-shot voices, and
+the fixed 64-voice budget.
