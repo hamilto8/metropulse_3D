@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
 using MetroPulse.Domain.Vehicles;
@@ -35,6 +36,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
     public const int VehiclePhysicsPriority = -850;
     private readonly List<VehicleWheelComponent> wheels = [];
     private RuntimeInputHost? input;
+    private SettingsStore? settings;
     private MvpWorldGenerator? world;
     private Node3D? cameraOrigin;
     private VehicleProfile? profile;
@@ -75,6 +77,9 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
 
     public string? LastRecoveryCode { get; private set; }
 
+    public VehicleAssistPolicy AssistPolicy => GameplaySettingsModel.VehicleAssists(
+        settings?.GetSettings() ?? SettingsValidator.DefaultSettings);
+
     public Transform3D LastSupportedTransform => lastSupportedTransform;
 
     public event Action<PlayerVehicleController, VehicleImpactDecision, Vector3>? ImpactReported;
@@ -96,6 +101,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         string typeId,
         VehicleProfileRecord record,
         RuntimeInputHost inputHost,
+        SettingsStore settingsAuthority,
         MvpWorldGenerator worldOwner,
         Node3D cameraControlOrigin,
         bool authorized,
@@ -110,6 +116,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         profile = record.Profile ?? throw new ArgumentException("Vehicle profile is unavailable.", nameof(record));
         layout = record.PhysicsLayout ?? throw new ArgumentException("Vehicle physics layout is unavailable.", nameof(record));
         input = inputHost ?? throw new ArgumentNullException(nameof(inputHost));
+        settings = settingsAuthority ?? throw new ArgumentNullException(nameof(settingsAuthority));
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
         cameraOrigin = cameraControlOrigin ?? throw new ArgumentNullException(nameof(cameraControlOrigin));
         PlayerVehicleDynamics dynamics = profile.PlayerDynamics
@@ -394,6 +401,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         BodyEntered -= OnBodyEntered;
         SetPhysicsProcess(false);
         input = null;
+        settings = null;
         world = null;
         cameraOrigin = null;
         Initialized = false;
@@ -426,7 +434,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
         {
             lastSupportedTransform = GlobalTransform;
         }
-        _ = RecoverIfUnsafe();
+        if (AssistPolicy.AutomaticRecovery) _ = RecoverIfUnsafe();
     }
 
     private void BuildWheels(PlayerVehicleDynamics dynamics)
@@ -460,7 +468,9 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
     {
         double left = Slot(snapshot, "DRIVE", 0) + Slot(snapshot, "DRIVE", 2);
         double right = Slot(snapshot, "DRIVE", 1) + Slot(snapshot, "DRIVE", 3);
-        double steering = Math.Clamp(right - left + snapshot.LeftStick.X, -1, 1);
+        double steering = GameplaySettingsModel.ApplySteering(
+            Math.Clamp(right - left + snapshot.LeftStick.X, -1, 1),
+            AssistPolicy);
         double throttle = Math.Max(snapshot.Actions.GetValueOrDefault("THROTTLE"), snapshot.RightTrigger);
         double brakeInput = Math.Max(snapshot.Actions.GetValueOrDefault("BRAKE"), snapshot.LeftTrigger);
         double signedSpeed = LinearVelocity.Dot(-GlobalBasis.Z);
@@ -519,7 +529,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
                 Vector3 planar = pointVelocity - (up * pointVelocity.Dot(up));
                 if (!planar.IsZeroApprox())
                 {
-                    ApplyForce(-planar.Normalized() * (float)(control.Brake * drive.MaxBrakeForce * 5 / wheels.Count), worldOffset);
+                    ApplyForce(-planar.Normalized() * (float)(control.Brake * drive.MaxBrakeForce * 5 * AssistPolicy.BrakeForceScale / wheels.Count), worldOffset);
                 }
             }
         }

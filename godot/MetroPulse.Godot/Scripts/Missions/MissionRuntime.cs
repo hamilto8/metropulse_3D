@@ -125,7 +125,7 @@ public partial class MissionRuntime : Node
         Markers.Initialize(world);
         Presentation = new MissionPresentation { Name = "MissionPresentation" };
         interfaceOwner.Chrome.AddChild(Presentation);
-        Presentation.Initialize(interfaceOwner);
+        Presentation.Initialize(interfaceOwner, settingsAuthority);
         interactionProvider = new MissionInteractionProvider(
             Registry,
             Lifecycle,

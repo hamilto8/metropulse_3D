@@ -1,4 +1,5 @@
 using Godot;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 
@@ -13,6 +14,8 @@ public partial class RuntimeInputHost : Node
     private readonly HashSet<string> heldKeyboardMouse = new(StringComparer.Ordinal);
     private readonly HashSet<JoyButton> heldGamepadButtons = [];
     private readonly Dictionary<JoyAxis, float> gamepadAxes = [];
+    private readonly HoldToggleActionModel sprintToggle = new();
+    private readonly HoldToggleActionModel brakingToggle = new();
     private SettingsStore? settings;
     private RuntimeInputState? state;
     private Func<bool>? unsubscribeSettings;
@@ -26,6 +29,16 @@ public partial class RuntimeInputHost : Node
 
     public RuntimeInputSnapshot LatestSnapshot => state?.LatestSnapshot
         ?? throw new InvalidOperationException("Runtime input has not been initialized.");
+
+    public bool RepeatActionsToggleEnabled => settings?.GetSettings().ToggleHold.RepeatedActions == SettingValues.Toggle;
+
+    public bool SprintToggled => sprintToggle.Toggled;
+
+    public bool BrakingToggled => brakingToggle.Toggled;
+
+    public string SprintInputMode => settings?.GetSettings().ToggleHold.Sprint ?? SettingValues.Hold;
+
+    public string BrakingInputMode => settings?.GetSettings().ToggleHold.Braking ?? SettingValues.Hold;
 
     public void Initialize(SettingsStore settingsAuthority)
     {
@@ -67,6 +80,8 @@ public partial class RuntimeInputHost : Node
         if (state is null) return;
         state.ClearAndQuarantine(heldKeyboardMouse.ToArray());
         pendingPointerDelta = Vector2.Zero;
+        sprintToggle.Reset();
+        brakingToggle.Reset();
     }
 
     public void Shutdown()
@@ -194,6 +209,27 @@ public partial class RuntimeInputHost : Node
         InputVector rightStick = gamepadConnected
             ? ReadStick(JoyAxis.RightX, JoyAxis.RightY)
             : InputVector.Zero;
+        SettingsPreferences preferences = settings.GetSettings();
+        if (context == ControlContexts.Pedestrian && actions.TryGetValue("SPRINT", out double sprint))
+        {
+            actions["SPRINT"] = sprintToggle.Resolve(
+                sprint >= RuntimeInputState.PressedThreshold,
+                preferences.ToggleHold.Sprint) ? 1 : 0;
+        }
+        else
+        {
+            sprintToggle.Reset();
+        }
+        if (context == ControlContexts.Vehicle && actions.TryGetValue("BRAKE", out double braking))
+        {
+            actions["BRAKE"] = brakingToggle.Resolve(
+                braking >= RuntimeInputState.PressedThreshold,
+                preferences.ToggleHold.Braking) ? 1 : 0;
+        }
+        else
+        {
+            brakingToggle.Reset();
+        }
 
         state.FreezePhysicsTick(new RuntimeInputSample
         {

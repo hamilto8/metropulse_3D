@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
+using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Vehicles;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Runtime;
@@ -38,6 +39,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     private RuntimeInputHost? input;
     private MvpWorldGenerator? world;
     private GameContentRegistry? content;
+    private SettingsStore? settings;
     private Node3D? agentRoot;
     private Node3D? cameraOrigin;
     private PlayerPedestrianController? pedestrian;
@@ -82,6 +84,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
 
     public void Initialize(
         RuntimeInputHost inputHost,
+        SettingsStore settingsAuthority,
         MvpWorldGenerator worldOwner,
         GameContentRegistry contentRegistry,
         Node3D agentOwner,
@@ -89,6 +92,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     {
         if (Initialized) throw new InvalidOperationException("Player control runtime is already initialized.");
         input = inputHost ?? throw new ArgumentNullException(nameof(inputHost));
+        settings = settingsAuthority ?? throw new ArgumentNullException(nameof(settingsAuthority));
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
         content = contentRegistry ?? throw new ArgumentNullException(nameof(contentRegistry));
         agentRoot = agentOwner ?? throw new ArgumentNullException(nameof(agentOwner));
@@ -113,7 +117,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             ?? throw new ArgumentException($"Unknown vehicle profile {typeId}.", nameof(typeId));
         var vehicle = new PlayerVehicleController { Name = $"Vehicle_{stableId}" };
         agentRoot!.AddChild(vehicle);
-        vehicle.Initialize(stableId, typeId, profile, input!, world!, cameraOrigin!, authorized, occupied);
+        vehicle.Initialize(stableId, typeId, profile, input!, settings!, world!, cameraOrigin!, authorized, occupied);
         vehicle.ImpactReported += OnVehicleImpactReported;
         vehicle.SpawnAt(position, yaw);
         vehicles.Add(stableId, vehicle);
@@ -367,6 +371,7 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         hijack = null;
         ControlledKind = ControlKind.None;
         input = null;
+        settings = null;
         world = null;
         content = null;
         agentRoot = null;

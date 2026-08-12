@@ -8,6 +8,7 @@ public partial class SettingsPanel : PanelContainer
 {
     private readonly Dictionary<string, Control> controls = new(StringComparer.Ordinal);
     private SettingsStore settings = null!;
+    private Control initialFocus = null!;
     private bool applying;
 
     public int ControlCount => controls.Count;
@@ -62,6 +63,7 @@ public partial class SettingsPanel : PanelContainer
         focusOrder.Add(reset);
         focusOrder.Add(close);
         AccessibilityFocus.LinkVertical(focusOrder);
+        initialFocus = focusOrder[0];
         ApplyCurrent();
     }
 
@@ -95,6 +97,8 @@ public partial class SettingsPanel : PanelContainer
     }
 
     public void Shutdown() => CloseRequested = null;
+
+    public void GrabInitialFocus() => initialFocus.CallDeferred(Control.MethodName.GrabFocus);
 
     private Control BuildControl(SettingControlSpec spec)
     {

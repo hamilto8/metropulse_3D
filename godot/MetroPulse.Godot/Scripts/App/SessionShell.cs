@@ -111,6 +111,7 @@ public partial class SessionShell : Node
         runtimeServices.AddChild(PlayerControl);
         PlayerControl.Initialize(
             InputHost,
+            settings,
             World ?? throw new InvalidOperationException("The world must exist before player control is initialized."),
             Content ?? throw new InvalidOperationException("Content must exist before player control is initialized."),
             GetNode<Node3D>("WorldRoot/AgentRoot"),

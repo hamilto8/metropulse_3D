@@ -233,6 +233,7 @@ public partial class ManagementHud : Control
         Tools = new CityToolsPanel();
         Tools.Initialize();
         AddChild(Tools);
+        Tools.RefreshFocusGraph();
         Builder = new BuilderPanel();
         Builder.Initialize();
         AddChild(Builder);
@@ -298,30 +299,34 @@ public partial class ManagementHud : Control
 
     private void ApplyLayout(UiLayoutSnapshot layout)
     {
+        float topBarHeight = Math.Max(layout.TopBarHeight, TopBar.GetCombinedMinimumSize().Y);
+        float ribbonHeight = Math.Max(
+            layout.UseTwoRowControlRibbon ? 104 : 64,
+            Ribbon.GetCombinedMinimumSize().Y);
         TopBar.SetAnchorsPreset(LayoutPreset.TopWide);
         TopBar.OffsetLeft = 0;
         TopBar.OffsetTop = 0;
         TopBar.OffsetRight = 0;
-        TopBar.OffsetBottom = layout.TopBarHeight;
+        TopBar.OffsetBottom = topBarHeight;
 
         Ribbon.SetAnchorsPreset(LayoutPreset.BottomWide);
         Ribbon.OffsetLeft = 0;
         Ribbon.OffsetRight = 0;
-        Ribbon.OffsetTop = -(layout.UseTwoRowControlRibbon ? 104 : 64);
+        Ribbon.OffsetTop = -ribbonHeight;
         Ribbon.OffsetBottom = 0;
 
         Tools.SetAnchorsPreset(LayoutPreset.LeftWide);
         Tools.OffsetLeft = 0;
-        Tools.OffsetTop = layout.TopBarHeight + 8;
+        Tools.OffsetTop = topBarHeight + 8;
         Tools.OffsetRight = layout.ToolPanelWidth;
-        Tools.OffsetBottom = -(layout.UseTwoRowControlRibbon ? 112 : 72);
+        Tools.OffsetBottom = -(ribbonHeight + 8);
         if (RefreshCount == 0 && layout.CollapseToolsByDefault) Tools.SetCollapsed(true);
 
         Builder.SetAnchorsPreset(LayoutPreset.RightWide);
         Builder.OffsetLeft = layout.StackTopStats ? -Math.Min((float)layout.EffectiveWidth, layout.InspectorPanelWidth * 2f) : -(layout.InspectorPanelWidth * 2f);
-        Builder.OffsetTop = layout.TopBarHeight + 8;
+        Builder.OffsetTop = topBarHeight + 8;
         Builder.OffsetRight = 0;
-        Builder.OffsetBottom = -(layout.UseTwoRowControlRibbon ? 112 : 72);
+        Builder.OffsetBottom = -(ribbonHeight + 8);
     }
 
     private void EnsureInitialized()

@@ -1659,6 +1659,16 @@ reduced-shake behavior.
 - Effects return to pool/baseline counts and obey accessibility settings.
 - Visual UX signoff covers all primary modes, weather/time states, and results.
 
+**Status: complete.** Eight independently committed slices now own the shared
+theme and responsive layout, management/builder UI, gameplay HUD, mission and
+settings modals, minimap, audio, effects, and the final settings/accessibility/
+visual exit audit. The complete scene/view-model map, token and focus contracts,
+responsive matrix, audio/effect budgets, caption list, visual evidence, and
+deferred host-signoff items are in `docs/port_handoffs/phase-9-complete.md`.
+Native NVDA, VoiceOver, and Orca smoke tests remain explicitly assigned to the
+Phase 11 Windows/macOS/Linux release matrix; the Phase 9 automated AccessKit,
+focus, modal, input, and metadata contracts are complete.
+
 ### Handoff
 
 Publish scene/view-model map, theme tokens, focus graph, accessibility test

@@ -39,13 +39,13 @@ public partial class CityToolsPanel : PanelContainer
         {
             var section = new VBoxContainer { Name = $"Section_{id}" };
             var header = AccessibilityFocus.Describe(
-                new Button { Text = id, Alignment = HorizontalAlignment.Left },
+                new Button { Name = $"{id}_header", Text = id, Alignment = HorizontalAlignment.Left },
                 $"{id} section",
                 $"Expand the {id} City Tools section");
             var summary = new Label { ThemeTypeVariation = "Muted", AutowrapMode = TextServer.AutowrapMode.WordSmart };
             var details = new VBoxContainer { Visible = id == CityToolSectionIds.Economy };
             var action = AccessibilityFocus.Describe(
-                new Button { Visible = false },
+                new Button { Name = $"{id}_action", Visible = false },
                 $"{id} action",
                 $"Perform the available {id} action");
             header.Pressed += () => ToggleSection(id);
@@ -57,7 +57,7 @@ public partial class CityToolsPanel : PanelContainer
             content.AddChild(section);
             sections.Add(id, new SectionControls(header, summary, details, action));
         }
-        AccessibilityFocus.LinkVertical([collapseButton, .. sections.Values.Select(section => section.Header)]);
+        RefreshFocusGraph();
     }
 
     public void Apply(IReadOnlyList<CityToolSectionView> views)
@@ -94,6 +94,11 @@ public partial class CityToolsPanel : PanelContainer
     }
 
     public void Shutdown() => SectionActionRequested = null;
+
+    public void RefreshFocusGraph() => AccessibilityFocus.LinkVertical([
+        collapseButton,
+        .. sections.Values.SelectMany(section => new Control[] { section.Header, section.Action }),
+    ]);
 
     private void ToggleCollapsed() => SetCollapsed(!Collapsed);
 

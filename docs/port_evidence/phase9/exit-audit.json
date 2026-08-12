@@ -1,0 +1,44 @@
+{
+  "phase": 9,
+  "status": "complete",
+  "branch": "codex/godot_port",
+  "godot": "4.6.stable.mono.official.89cea1439",
+  "tests": {
+    "domainPassed": 389,
+    "domainFailed": 0,
+    "buildWarnings": 0,
+    "buildErrors": 0,
+    "integrationAssertions": [179, 179, 183],
+    "settingsLeaves": 27,
+    "focusableControlsAudited": 78,
+    "pooledEffectRoots": 48,
+    "effectSpatialVoices": 12,
+    "proceduralStreams": 13,
+    "observedCaptionEvents": 17
+  },
+  "responsiveContract": {
+    "minimumViewport": "1024x576",
+    "minimumTextScale": 0.8,
+    "maximumTextScale": 1.5,
+    "breakpoints": ["Compact", "Standard", "Wide"],
+    "stretchMode": "disabled"
+  },
+  "screenshots": [
+    { "id": "management-day-clear", "file": "screenshots/godot-management-day-clear.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "management-compact-text-150", "file": "screenshots/godot-management-compact-text-150.png", "width": 1024, "height": 576, "textScale": 1.5 },
+    { "id": "builder-wide-text-150", "file": "screenshots/godot-builder-wide-text-150.png", "width": 1920, "height": 1080, "textScale": 1.5 },
+    { "id": "street-wide-text-080", "file": "screenshots/godot-street-wide-text-080.png", "width": 1920, "height": 800, "textScale": 0.8 },
+    { "id": "pause", "file": "screenshots/godot-pause.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "settings", "file": "screenshots/godot-settings.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "dialogue", "file": "screenshots/godot-dialogue.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "result", "file": "screenshots/godot-result.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "management-dusk-rain", "file": "screenshots/godot-management-dusk-rain.png", "width": 1280, "height": 720, "textScale": 1.0 },
+    { "id": "management-night-thunderstorm", "file": "screenshots/godot-management-night-thunderstorm.png", "width": 1280, "height": 720, "textScale": 1.0 }
+  ],
+  "manualReview": {
+    "visual": "passed",
+    "modalContainment": "passed by automated live audit and reviewed captures",
+    "screenReaderHostMatrix": "deferred to Phase 11 Windows/macOS/Linux release validation"
+  },
+  "deferredFeatureGates": ["aircraft", "temporaryMayhem"]
+}

@@ -2,6 +2,7 @@ using Godot;
 using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Presentation;
+using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.UI;
 
 namespace MetroPulse.Godot.Missions;
@@ -10,6 +11,7 @@ namespace MetroPulse.Godot.Missions;
 public partial class MissionPresentation : Control
 {
     private PlayerInterface playerInterface = null!;
+    private SettingsStore settings = null!;
     private Label interactionPrompt = null!;
     private PanelContainer missionHud = null!;
     private Label missionTitle = null!;
@@ -40,6 +42,8 @@ public partial class MissionPresentation : Control
 
     public int DialogueChoiceCount => dialogueChoices.GetChildCount();
 
+    public bool SpeakerLabelsEnabled => settings.GetSettings().Subtitles.SpeakerLabels;
+
     public event Action<int>? DialogueChoiceRequested;
 
     public event Action? DialogueConfirmRequested;
@@ -48,10 +52,11 @@ public partial class MissionPresentation : Control
 
     public event Action? ContinueRequested;
 
-    public void Initialize(PlayerInterface interfaceOwner)
+    public void Initialize(PlayerInterface interfaceOwner, SettingsStore settingsAuthority)
     {
         if (Initialized) throw new InvalidOperationException("Mission presentation is already initialized.");
         playerInterface = interfaceOwner ?? throw new ArgumentNullException(nameof(interfaceOwner));
+        settings = settingsAuthority ?? throw new ArgumentNullException(nameof(settingsAuthority));
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Ignore;
         AccessibilityName = "Mission interface";
@@ -100,8 +105,12 @@ public partial class MissionPresentation : Control
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(snapshot);
         dialoguePanel.Visible = true;
-        dialogueSpeaker.Text = $"{snapshot.Avatar} {snapshot.Speaker}".Trim();
-        dialogueRole.Text = snapshot.Role;
+        playerInterface.SetModalActive("mission-dialogue", true);
+        bool speakerLabels = settings.GetSettings().Subtitles.SpeakerLabels;
+        dialogueSpeaker.Visible = speakerLabels;
+        dialogueRole.Visible = speakerLabels;
+        dialogueSpeaker.Text = speakerLabels ? $"{snapshot.Avatar} {snapshot.Speaker}".Trim() : string.Empty;
+        dialogueRole.Text = speakerLabels ? snapshot.Role : string.Empty;
         dialogueText.Text = snapshot.Text;
         ClearChildren(dialogueChoices);
         if (snapshot.IsTerminal)
@@ -111,7 +120,7 @@ public partial class MissionPresentation : Control
             dialogueChoices.AddChild(terminal);
             AccessibilityFocus.LinkVertical([terminal]);
             terminal.CallDeferred(Control.MethodName.GrabFocus);
-            playerInterface.Announce($"{snapshot.Speaker}. {snapshot.Text}");
+            playerInterface.Announce(speakerLabels ? $"{snapshot.Speaker}. {snapshot.Text}" : snapshot.Text);
             return;
         }
         var buttons = new List<Button>();
@@ -126,13 +135,14 @@ public partial class MissionPresentation : Control
         {
             buttons[Math.Clamp(snapshot.FocusIndex, 0, buttons.Count - 1)].CallDeferred(Control.MethodName.GrabFocus);
         }
-        playerInterface.Announce($"{snapshot.Speaker}. {snapshot.Text}");
+        playerInterface.Announce(speakerLabels ? $"{snapshot.Speaker}. {snapshot.Text}" : snapshot.Text);
     }
 
     public void HideDialogue()
     {
         if (!Initialized) return;
         dialoguePanel.Visible = false;
+        playerInterface.SetModalActive("mission-dialogue", false);
         ClearChildren(dialogueChoices);
     }
 
@@ -141,6 +151,7 @@ public partial class MissionPresentation : Control
         EnsureInitialized();
         ArgumentNullException.ThrowIfNull(view);
         resultPanel.Visible = true;
+        playerInterface.SetModalActive("mission-result", true);
         missionHud.Visible = false;
         resultTitle.Text = $"{view.OutcomeLabel}: {view.MissionTitle}";
         resultDescription.Text = $"{view.Description}\n{string.Join("\n", view.Why)}";
@@ -163,11 +174,14 @@ public partial class MissionPresentation : Control
     {
         if (!Initialized) return;
         resultPanel.Visible = false;
+        playerInterface.SetModalActive("mission-result", false);
     }
 
     public void Shutdown()
     {
         if (!Initialized) return;
+        playerInterface.SetModalActive("mission-dialogue", false);
+        playerInterface.SetModalActive("mission-result", false);
         DialogueChoiceRequested = null;
         DialogueConfirmRequested = null;
         RetryRequested = null;

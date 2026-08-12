@@ -196,6 +196,7 @@ public partial class GameplayHud : Control
             "Open the history of committed mission results");
         historyButton.Pressed += ToggleHistory;
         AddChild(historyButton);
+        AccessibilityFocus.LinkVertical([historyButton]);
         historyPanel = new PanelContainer
         {
             ThemeTypeVariation = "GlassPanelStrong",
@@ -212,6 +213,7 @@ public partial class GameplayHud : Control
         historyRoot.AddChild(scroll);
         historyClose = AccessibilityFocus.Describe(new Button { Text = "Close" }, "Close mission history", "Return focus to the Mission History button");
         historyClose.Pressed += ToggleHistory;
+        AccessibilityFocus.LinkVertical([historyClose]);
         historyRoot.AddChild(historyClose);
         historyPanel.AddChild(historyRoot);
         AddChild(historyPanel);

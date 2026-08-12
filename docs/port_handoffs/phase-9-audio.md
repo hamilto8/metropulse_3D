@@ -1,9 +1,9 @@
 # Phase 9 audio slice
 
-This slice adds the session audio authority, procedural stream cache, bus
+This slice added the session audio authority, procedural stream cache, bus
 routing, settings application, spatial vehicle/emergency sources, voice policy,
-and closed captions. Effects and final manual evidence remain before the full
-Phase 9 exit gate.
+and closed captions. The later effects and exit-audit slices are summarized in
+`phase-9-complete.md`.
 
 ## Bus layout and mapping
 

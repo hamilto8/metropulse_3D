@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Camera;
 using MetroPulse.Domain.Core;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.World;
@@ -58,6 +59,12 @@ public partial class GameplayCameraRig : Node
     public int FollowStartCount { get; private set; }
 
     public int FollowReleaseCount { get; private set; }
+
+    public double CurrentPointerSensitivity => ResolvePointerSensitivity();
+
+    public double PointerSensitivityFor(string target) => GameplaySettingsModel.PointerSensitivity(
+        settings?.GetSettings() ?? SettingsValidator.DefaultSettings,
+        target);
 
     public void Initialize(
         RuntimeInputHost inputHost,
@@ -334,7 +341,7 @@ public partial class GameplayCameraRig : Node
     {
         RuntimeInputSnapshot snapshot = input!.LatestSnapshot;
         if (snapshot.Suspended) return;
-        double sensitivity = settings?.Get("mouseSensitivity", 1d) ?? 1;
+        double sensitivity = ResolvePointerSensitivity();
         bool chase = Mode is GameplayCameraMode.SwoopToStreet or GameplayCameraMode.ChaseMicro;
         string lookAction = chase ? "CAMERA" : "ORBIT";
         bool pointerLooking = snapshot.Actions.GetValueOrDefault(lookAction) >= RuntimeInputState.PressedThreshold;
@@ -358,6 +365,20 @@ public partial class GameplayCameraRig : Node
             bool fast = Slot(snapshot, "PAN", 6) >= RuntimeInputState.PressedThreshold;
             Pan(new Vector3((float)horizontal, (float)vertical, (float)forward), delta, fast);
         }
+    }
+
+    private double ResolvePointerSensitivity()
+    {
+        SettingsPreferences preferences = settings?.GetSettings()
+            ?? SettingsValidator.DefaultSettings;
+        string target = CameraSensitivityTargets.Orbit;
+        if (Mode is GameplayCameraMode.StreetLook or GameplayCameraMode.SwoopToStreet or GameplayCameraMode.ChaseMicro)
+        {
+            target = followTarget?.CaptureCameraTarget().Type == CameraTargetTypes.Vehicle
+                ? CameraSensitivityTargets.Vehicle
+                : CameraSensitivityTargets.OnFoot;
+        }
+        return GameplaySettingsModel.PointerSensitivity(preferences, target);
     }
 
     private void AdvancePresetTransition(double delta)

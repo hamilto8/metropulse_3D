@@ -89,7 +89,7 @@ public partial class SessionModalController : Control
         settingsPanel.ApplyCurrent();
         pausePanel.Visible = false;
         settingsPanel.Visible = true;
-        settingsPanel.CallDeferred(Control.MethodName.GrabFocus);
+        settingsPanel.GrabInitialFocus();
         ApplyLayout();
     }
 
@@ -106,6 +106,7 @@ public partial class SessionModalController : Control
         SetPhysicsProcess(false);
         _ = unsubscribePause?.Invoke();
         unsubscribePause = null;
+        playerInterface.SetModalActive("pause", false);
         settingsPanel.Shutdown();
         Initialized = false;
     }
@@ -143,10 +144,12 @@ public partial class SessionModalController : Control
     {
         if (!snapshot.MenuOpen)
         {
+            playerInterface.SetModalActive("pause", false);
             pausePanel.Visible = false;
             settingsPanel.Visible = false;
             return;
         }
+        playerInterface.SetModalActive("pause", true);
         if (!settingsPanel.Visible) pausePanel.Visible = true;
         resume.CallDeferred(Control.MethodName.GrabFocus);
         playerInterface.Announce("Game paused. Pause menu opened.");

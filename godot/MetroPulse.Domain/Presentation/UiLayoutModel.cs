@@ -79,7 +79,7 @@ public static class UiLayoutModel
             effectiveWidth,
             horizontalMargin,
             verticalMargin,
-            Scale(breakpoint == DesktopUiBreakpoint.Compact ? 84 : 64, request.TextScale),
+            Scale(120, request.TextScale),
             panelWidth,
             panelWidth,
             modalMaximumWidth,

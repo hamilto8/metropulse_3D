@@ -185,6 +185,7 @@ public partial class IntegrationTestRunner : Node
         CheckUiFoundation(compositionRoot, failures);
         CheckAudio(compositionRoot, failures);
         CheckEffects(compositionRoot, failures);
+        CheckLiveSettingsEffects(compositionRoot, failures);
         CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
@@ -194,6 +195,7 @@ public partial class IntegrationTestRunner : Node
         CheckGameplayUi(compositionRoot, failures);
         CheckMinimap(compositionRoot, failures);
         CheckSessionModals(compositionRoot, failures);
+        CheckAccessibilityControlTree(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
@@ -243,6 +245,18 @@ public partial class IntegrationTestRunner : Node
                     ["spawns"] = session.Effects?.SpawnCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["cleanups"] = session.Effects?.CleanupCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["spatialVoices"] = session.Audio?.SpatialVoiceCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.settings_accessibility.passed",
+                "Phase 9 live settings consumers and complete interactive-control accessibility audit passed.",
+                new Dictionary<string, string>
+                {
+                    ["settingsLeaves"] = SettingsUiCatalog.All.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["focusableControls"] = CountFocusableControls(session.Interface).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["textScaleMinimum"] = UiLayoutModel.MinimumTextScale.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["textScaleMaximum"] = UiLayoutModel.MaximumTextScale.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
@@ -1593,7 +1607,9 @@ public partial class IntegrationTestRunner : Node
             layout is not null
                 && layout.HorizontalMargin > 0
                 && layout.VerticalMargin > 0
-                && layout.ModalMaximumWidth <= playerInterface!.GetViewportRect().Size.X,
+                && layout.ModalMaximumWidth <= Math.Max(
+                    UiLayoutModel.MinimumWidth,
+                    playerInterface!.GetViewportRect().Size.X),
             "The live interface applies a bounded responsive desktop layout.",
             failures);
         Check(
@@ -1614,9 +1630,10 @@ public partial class IntegrationTestRunner : Node
             failures);
         Check(
             ProjectSettings.GetSetting("accessibility/general/accessibility_support", -1).AsInt32() == 0
+                && ProjectSettings.GetSetting("display/window/stretch/mode", string.Empty).AsString() == "disabled"
                 && ProjectSettings.GetSetting("display/window/size/min_width", 0).AsInt32() == UiLayoutModel.MinimumWidth
                 && ProjectSettings.GetSetting("display/window/size/min_height", 0).AsInt32() == UiLayoutModel.MinimumHeight,
-            "Project settings retain automatic AccessKit support and the supported desktop minimum viewport.",
+            "Project settings retain automatic AccessKit support, responsive native desktop sizing, and the supported minimum viewport.",
             failures);
     }
 
@@ -1758,6 +1775,140 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Effects integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckLiveSettingsEffects(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings authority is unavailable.");
+            SettingsDocument original = settings.Snapshot();
+            SettingsPreferences custom = original.Settings with
+            {
+                MouseSensitivity = 1.2,
+                CameraSensitivity = new CameraSensitivitySettings(0.5, 1.5, 2.5),
+                Subtitles = new SubtitleSettings(true, false, true),
+                ColorSafePatterns = false,
+                ToggleHold = new ToggleHoldSettings(SettingValues.Toggle, SettingValues.Toggle, SettingValues.Toggle),
+                DrivingAssists = new DrivingAssistSettings(SettingValues.AssistedSteering, false, true),
+                Difficulty = SettingValues.ExpertDifficulty,
+                TimerLeniency = 1.5,
+            };
+            _ = settings.Replace(custom, original.Bindings, persist: false, source: "phase9-live-settings-check");
+
+            GameplayCameraRig camera = session.GameplayCamera
+                ?? throw new InvalidOperationException("Gameplay camera is unavailable.");
+            Check(
+                Math.Abs(camera.PointerSensitivityFor(CameraSensitivityTargets.Orbit) - 0.6) < 1e-9
+                    && Math.Abs(camera.PointerSensitivityFor(CameraSensitivityTargets.OnFoot) - 1.8) < 1e-9
+                    && Math.Abs(camera.PointerSensitivityFor(CameraSensitivityTargets.Vehicle) - 3) < 1e-9,
+                "Mouse, orbit, on-foot, and vehicle sensitivity settings combine independently in the live camera.",
+                failures);
+            Check(
+                session.InputHost is
+                {
+                    SprintInputMode: SettingValues.Toggle,
+                    BrakingInputMode: SettingValues.Toggle,
+                    RepeatActionsToggleEnabled: true,
+                },
+                "Keyboard/controller sprint, braking, and repeated-action hold/toggle preferences reach the input owner.",
+                failures);
+
+            PlayerControlRuntime player = session.PlayerControl
+                ?? throw new InvalidOperationException("Player control is unavailable.");
+            PlayerVehicleController vehicle = player.SpawnVehicle(
+                "phase9-settings-assist",
+                "SEDAN",
+                new Vector3(-30, 0, -30),
+                authorized: true,
+                occupied: false);
+            VehicleAssistPolicy assists = vehicle.AssistPolicy;
+            Check(
+                assists is { AssistedSteering: true, AutomaticRecovery: false, BrakeForceScale: 1.25 }
+                    && GameplaySettingsModel.ApplySteering(0.5, assists) < 0.5,
+                "Steering assist, automatic recovery, and the browser-compatible 1.25 braking assist reach live vehicles.",
+                failures);
+            Check(player.RemoveVehicle(vehicle.StableId), "The settings vehicle fixture releases without residue.", failures);
+
+            GameplayPreferenceProjection projection = session.Interface?.CurrentPreferences
+                ?? throw new InvalidOperationException("Interface preferences are unavailable.");
+            Check(
+                projection is
+                {
+                    Difficulty: SettingValues.ExpertDifficulty,
+                    ColorSafePatterns: false,
+                    SubtitlesEnabled: true,
+                    SpeakerLabelsEnabled: false,
+                    ClosedCaptionsEnabled: true,
+                    RepeatActionsToggleEnabled: true,
+                    TimerLeniency: 1.5,
+                }
+                    && session.Missions?.Presentation.SpeakerLabelsEnabled == false,
+                "Subtitles, speaker labels, captions, color-safe status policy, difficulty, and timer leniency update live presentation owners.",
+                failures);
+
+            _ = settings.Replace(original.Settings, original.Bindings, persist: false, source: "phase9-live-settings-restore");
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Live settings integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckAccessibilityControlTree(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            PlayerInterface playerInterface = compositionRoot.CurrentSession?.Interface
+                ?? throw new InvalidOperationException("Player interface is unavailable.");
+            Control[] interactive = Descendants(playerInterface)
+                .OfType<Control>()
+                .Where(control => control is BaseButton or global::Godot.Range or LineEdit)
+                .ToArray();
+            Control[] missingMetadata = interactive.Where(control =>
+                    string.IsNullOrWhiteSpace(control.AccessibilityName)
+                    || string.IsNullOrWhiteSpace(control.AccessibilityDescription))
+                .ToArray();
+            Control[] missingInput = interactive.Where(control =>
+                    control.FocusMode != Control.FocusModeEnum.All
+                    || control.MouseFilter == Control.MouseFilterEnum.Ignore)
+                .ToArray();
+            Control[] missingFocusEdges = interactive.Where(control =>
+                    string.IsNullOrEmpty(control.FocusPrevious.ToString())
+                    || string.IsNullOrEmpty(control.FocusNext.ToString()))
+                .ToArray();
+            Check(interactive.Length == CountFocusableControls(playerInterface) && interactive.Length >= 35,
+                "The shared interface exposes the expected complete interactive control set.", failures);
+            Check(missingMetadata.Length == 0,
+                $"Every interactive control has an accessible name and description (missing: {string.Join(", ", missingMetadata.Select(control => control.GetPath()))}).",
+                failures);
+            Check(missingInput.Length == 0,
+                $"Every interactive control accepts mouse plus keyboard/controller focus (missing: {string.Join(", ", missingInput.Select(control => control.GetPath()))}).",
+                failures);
+            Check(missingFocusEdges.Length == 0,
+                $"Every interactive control has explicit previous/next focus neighbors (missing: {string.Join(", ", missingFocusEdges.Select(control => control.GetPath()))}).",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Accessibility control-tree audit threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static int CountFocusableControls(PlayerInterface? playerInterface) => playerInterface is null
+        ? 0
+        : Descendants(playerInterface).OfType<Control>().Count(control => control is BaseButton or global::Godot.Range or LineEdit);
+
+    private static IEnumerable<Node> Descendants(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            yield return child;
+            foreach (Node nested in Descendants(child)) yield return nested;
         }
     }
 
@@ -2159,7 +2310,9 @@ public partial class IntegrationTestRunner : Node
             modals.OpenPause();
             Check(runtime.StateMachine.State == GameState.Paused
                     && runtime.Pause.MenuOpen
-                    && modals.PauseVisible,
+                    && modals.PauseVisible
+                    && playerInterface.ModalScrimVisible
+                    && playerInterface.ModalLayer.MouseFilter == Control.MouseFilterEnum.Stop,
                 "Pause opens through the canonical hold manager and retains the exact resume state.",
                 failures);
             modals.OpenSettings();
@@ -2184,7 +2337,9 @@ public partial class IntegrationTestRunner : Node
             modals.ClosePause();
             Check(runtime.StateMachine.State == GameState.Management
                     && !runtime.Pause.MenuOpen
-                    && !modals.PauseVisible,
+                    && !modals.PauseVisible
+                    && !playerInterface.ModalScrimVisible
+                    && playerInterface.ModalLayer.MouseFilter == Control.MouseFilterEnum.Ignore,
                 "Closing pause resumes the exact Management source state without a lingering hold.",
                 failures);
         }
