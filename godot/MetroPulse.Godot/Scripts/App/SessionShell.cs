@@ -63,6 +63,8 @@ public partial class SessionShell : Node
 
     public MissionRuntime? Missions { get; private set; }
 
+    public GameplayHud? GameplayUi { get; private set; }
+
     public PlayerInterface? Interface { get; private set; }
 
     public override void _Ready()
@@ -196,6 +198,16 @@ public partial class SessionShell : Node
             LivingPedestrians,
             RuntimeHost,
             World ?? throw new InvalidOperationException("The world must exist before enforcement is initialized."));
+        GameplayUi = new GameplayHud { Name = "GameplayHud" };
+        Interface.Chrome.AddChild(GameplayUi);
+        GameplayUi.Initialize(
+            Interface,
+            PlayerControl,
+            Enforcement,
+            RuntimeHost,
+            Environment ?? throw new InvalidOperationException("The environment must exist before the gameplay UI is initialized."),
+            Services,
+            Missions);
         PlayerControl.RiderEjectionPrepared += OnRiderEjectionPrepared;
         unsubscribeWeatherGrip = Environment?.SubscribeState(
             snapshot => PlayerControl.ApplyWeatherGrip(snapshot.WeatherMode),
@@ -233,6 +245,7 @@ public partial class SessionShell : Node
         _ = unsubscribeWeatherGrip?.Invoke();
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
+        GameplayUi?.Shutdown();
         Missions?.Shutdown();
         ManagementUi?.Shutdown();
         Interface?.Shutdown();
@@ -280,6 +293,7 @@ public partial class SessionShell : Node
             || Services?.Initialized != true
             || ManagementUi?.Initialized != true
             || Missions?.Initialized != true
+            || GameplayUi?.Initialized != true
             || Interface?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {

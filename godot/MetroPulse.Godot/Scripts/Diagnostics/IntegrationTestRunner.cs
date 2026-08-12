@@ -188,6 +188,7 @@ public partial class IntegrationTestRunner : Node
         CheckRuntimeInput(compositionRoot, restoreScenario, failures);
         CheckSessionRuntime(compositionRoot, restoreScenario, failures);
         CheckManagementUi(compositionRoot, failures);
+        CheckGameplayUi(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
@@ -214,6 +215,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.gameplay_ui.passed",
+                "Phase 9 street telemetry, Heat/arrest, news, alerts, and mission-history presentation checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["refreshes"] = session.GameplayUi?.RefreshCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["newsCards"] = session.GameplayUi?.CurrentView?.News.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["toasts"] = session.GameplayUi?.CurrentView?.Toasts.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["history"] = session.GameplayUi?.CurrentView?.History.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -1866,6 +1879,51 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Management UI integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckGameplayUi(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            GameplayHud hud = session.GameplayUi
+                ?? throw new InvalidOperationException("Gameplay HUD is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime is unavailable.");
+            Check(hud.Initialized
+                    && hud.GetParent()?.GetPath().ToString().EndsWith("PlayerInterface/SafeArea/Chrome", StringComparison.Ordinal) == true,
+                "The session owns one gameplay HUD under shared interface chrome.",
+                failures);
+            hud.RefreshNow();
+            Check(hud.CurrentView is { Visible: false },
+                "Gameplay telemetry remains hidden while Management owns presentation.",
+                failures);
+
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("phase9:gameplay-ui-check", nameof(IntegrationTestRunner)));
+            hud.RefreshNow();
+            Check(hud.Visible
+                    && hud.CurrentView is { Visible: true, Vehicle.Visible: false, Flight.Visible: false }
+                    && !string.IsNullOrWhiteSpace(hud.CurrentView.TimeWeather),
+                "Street presentation exposes time/weather while vehicle and latent flight telemetry follow control ownership.",
+                failures);
+            Check(!string.IsNullOrWhiteSpace(hud.AccessibilityName)
+                    && !string.IsNullOrWhiteSpace(hud.AccessibilityDescription)
+                    && hud.GetNode<Button>("MissionHistoryButton").AccessibilityName == "Mission History",
+                "The gameplay surface and mission-history entry expose accessibility metadata.",
+                failures);
+            hud.ToggleHistory();
+            Check(hud.HistoryVisible, "Mission history opens as a contained newest-first result surface.", failures);
+            hud.ToggleHistory();
+            Check(!hud.HistoryVisible, "Mission history closes and returns to street presentation.", failures);
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase9:gameplay-ui-cleanup", nameof(IntegrationTestRunner)));
+            hud.RefreshNow();
+            Check(!hud.Visible, "Returning to Management releases gameplay HUD visibility.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Gameplay UI integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 
