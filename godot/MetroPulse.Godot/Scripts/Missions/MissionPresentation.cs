@@ -1,12 +1,15 @@
 using Godot;
 using MetroPulse.Domain.Interactions;
 using MetroPulse.Domain.Missions;
+using MetroPulse.Domain.Presentation;
+using MetroPulse.Godot.UI;
 
 namespace MetroPulse.Godot.Missions;
 
 /// <summary>Functional Phase 8 mission/dialogue/result controls; final visual styling belongs to Phase 9.</summary>
 public partial class MissionPresentation : Control
 {
+    private PlayerInterface playerInterface = null!;
     private Label interactionPrompt = null!;
     private PanelContainer missionHud = null!;
     private Label missionTitle = null!;
@@ -45,15 +48,19 @@ public partial class MissionPresentation : Control
 
     public event Action? ContinueRequested;
 
-    public void Initialize()
+    public void Initialize(PlayerInterface interfaceOwner)
     {
         if (Initialized) throw new InvalidOperationException("Mission presentation is already initialized.");
+        playerInterface = interfaceOwner ?? throw new ArgumentNullException(nameof(interfaceOwner));
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         MouseFilter = MouseFilterEnum.Ignore;
+        AccessibilityName = "Mission interface";
+        AccessibilityDescription = "Interaction prompt, active objective, dialogue, and mission result";
         BuildInteractionPrompt();
         BuildMissionHud();
         BuildDialogue();
         BuildResult();
+        ApplyLayout();
         Initialized = true;
     }
 
@@ -102,7 +109,9 @@ public partial class MissionPresentation : Control
             string label = snapshot.AuthoredAction == MissionDialogueActions.StartMission ? "Start mission" : "Close";
             Button terminal = ChoiceButton(label, 0, terminal: true);
             dialogueChoices.AddChild(terminal);
+            AccessibilityFocus.LinkVertical([terminal]);
             terminal.CallDeferred(Control.MethodName.GrabFocus);
+            playerInterface.Announce($"{snapshot.Speaker}. {snapshot.Text}");
             return;
         }
         var buttons = new List<Button>();
@@ -112,15 +121,12 @@ public partial class MissionPresentation : Control
             dialogueChoices.AddChild(button);
             buttons.Add(button);
         }
-        for (int index = 0; index < buttons.Count; index++)
-        {
-            buttons[index].FocusNeighborTop = buttons[(index - 1 + buttons.Count) % buttons.Count].GetPath();
-            buttons[index].FocusNeighborBottom = buttons[(index + 1) % buttons.Count].GetPath();
-        }
+        AccessibilityFocus.LinkVertical(buttons);
         if (buttons.Count > 0)
         {
             buttons[Math.Clamp(snapshot.FocusIndex, 0, buttons.Count - 1)].CallDeferred(Control.MethodName.GrabFocus);
         }
+        playerInterface.Announce($"{snapshot.Speaker}. {snapshot.Text}");
     }
 
     public void HideDialogue()
@@ -150,6 +156,7 @@ public partial class MissionPresentation : Control
         retryButton.Text = view.NextAction.RetryLabel;
         continueButton.Text = view.NextAction.ContinueLabel;
         (view.NextAction.CanRetry ? retryButton : continueButton).CallDeferred(Control.MethodName.GrabFocus);
+        playerInterface.Announce(view.Announcement, true);
     }
 
     public void HideResult()
@@ -165,6 +172,8 @@ public partial class MissionPresentation : Control
         DialogueConfirmRequested = null;
         RetryRequested = null;
         ContinueRequested = null;
+        if (GodotObject.IsInstanceValid(dialoguePanel)) dialoguePanel.Free();
+        if (GodotObject.IsInstanceValid(resultPanel)) resultPanel.Free();
         Initialized = false;
     }
 
@@ -181,6 +190,10 @@ public partial class MissionPresentation : Control
             AnchorTop = 0.86f,
             AnchorBottom = 0.94f,
             Visible = false,
+            ThemeTypeVariation = "Metric",
+            AccessibilityName = "Primary interaction",
+            AccessibilityDescription = "Current eligible or unavailable world interaction",
+            AccessibilityLive = DisplayServer.AccessibilityLiveMode.Polite,
         };
         AddChild(interactionPrompt);
     }
@@ -190,18 +203,17 @@ public partial class MissionPresentation : Control
         missionHud = new PanelContainer
         {
             Name = "MissionHud",
-            AnchorLeft = 0.02f,
-            AnchorRight = 0.34f,
-            AnchorTop = 0.04f,
-            AnchorBottom = 0.24f,
+            ThemeTypeVariation = "GlassPanel",
             MouseFilter = MouseFilterEnum.Ignore,
             Visible = false,
+            AccessibilityName = "Active mission",
+            AccessibilityDescription = "Mission title, next objective, time remaining, and reward",
         };
         var stack = new VBoxContainer();
-        missionTitle = new Label();
+        missionTitle = new Label { ThemeTypeVariation = "Heading" };
         missionObjective = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
-        missionTimer = new Label();
-        missionReward = new Label();
+        missionTimer = new Label { ThemeTypeVariation = "Metric" };
+        missionReward = new Label { ThemeTypeVariation = "Muted" };
         stack.AddChild(missionTitle);
         stack.AddChild(missionObjective);
         stack.AddChild(missionTimer);
@@ -215,16 +227,15 @@ public partial class MissionPresentation : Control
         dialoguePanel = new PanelContainer
         {
             Name = "MissionDialogue",
-            AnchorLeft = 0.22f,
-            AnchorRight = 0.78f,
-            AnchorTop = 0.2f,
-            AnchorBottom = 0.8f,
+            ThemeTypeVariation = "GlassPanelStrong",
             MouseFilter = MouseFilterEnum.Stop,
             Visible = false,
+            AccessibilityName = "Mission dialogue",
+            AccessibilityDescription = "Mission briefing and response choices",
         };
         var stack = new VBoxContainer();
-        dialogueSpeaker = new Label();
-        dialogueRole = new Label();
+        dialogueSpeaker = new Label { ThemeTypeVariation = "Title" };
+        dialogueRole = new Label { ThemeTypeVariation = "Muted" };
         dialogueText = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsVertical = SizeFlags.ExpandFill };
         dialogueChoices = new VBoxContainer();
         stack.AddChild(dialogueSpeaker);
@@ -232,7 +243,7 @@ public partial class MissionPresentation : Control
         stack.AddChild(dialogueText);
         stack.AddChild(dialogueChoices);
         dialoguePanel.AddChild(stack);
-        AddChild(dialoguePanel);
+        playerInterface.ModalLayer.AddChild(dialoguePanel);
     }
 
     private void BuildResult()
@@ -240,20 +251,19 @@ public partial class MissionPresentation : Control
         resultPanel = new PanelContainer
         {
             Name = "MissionResult",
-            AnchorLeft = 0.15f,
-            AnchorRight = 0.85f,
-            AnchorTop = 0.12f,
-            AnchorBottom = 0.88f,
+            ThemeTypeVariation = "GlassPanelStrong",
             MouseFilter = MouseFilterEnum.Stop,
             Visible = false,
+            AccessibilityName = "Mission result",
+            AccessibilityDescription = "Committed mission outcome, reasons, city changes, and next actions",
         };
         var stack = new VBoxContainer();
-        resultTitle = new Label();
+        resultTitle = new Label { ThemeTypeVariation = "Title" };
         resultDescription = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart };
         resultChanges = new Label { AutowrapMode = TextServer.AutowrapMode.WordSmart, SizeFlagsVertical = SizeFlags.ExpandFill };
         var actions = new HBoxContainer();
-        retryButton = new Button { Text = "Retry mission", Visible = false };
-        continueButton = new Button { Text = "Return to Management" };
+        retryButton = AccessibilityFocus.Describe(new Button { Text = "Retry mission", Visible = false }, "Retry mission", "Restart from the available committed checkpoint");
+        continueButton = AccessibilityFocus.Describe(new Button { Text = "Return to Management", ThemeTypeVariation = "AccentButton" }, "Return to Management", "Acknowledge the result and return to city management");
         retryButton.Pressed += () => RetryRequested?.Invoke();
         continueButton.Pressed += () => ContinueRequested?.Invoke();
         actions.AddChild(retryButton);
@@ -263,12 +273,16 @@ public partial class MissionPresentation : Control
         stack.AddChild(resultChanges);
         stack.AddChild(actions);
         resultPanel.AddChild(stack);
-        AddChild(resultPanel);
+        playerInterface.ModalLayer.AddChild(resultPanel);
+        AccessibilityFocus.LinkHorizontal([retryButton, continueButton]);
     }
 
     private Button ChoiceButton(string label, int index, bool terminal)
     {
-        var button = new Button { Text = label, FocusMode = FocusModeEnum.All };
+        var button = AccessibilityFocus.Describe(
+            new Button { Text = label, FocusMode = FocusModeEnum.All },
+            label,
+            terminal ? "Confirm the current dialogue action" : $"Choose dialogue response {index + 1}");
         if (terminal) button.Pressed += () => DialogueConfirmRequested?.Invoke();
         else button.Pressed += () => DialogueChoiceRequested?.Invoke(index);
         return button;
@@ -282,5 +296,27 @@ public partial class MissionPresentation : Control
     private void EnsureInitialized()
     {
         if (!Initialized) throw new InvalidOperationException("Mission presentation is not initialized.");
+    }
+
+    private void ApplyLayout()
+    {
+        UiLayoutSnapshot layout = playerInterface.CurrentLayout;
+        missionHud.SetAnchorsPreset(LayoutPreset.TopLeft);
+        missionHud.OffsetLeft = 16;
+        missionHud.OffsetTop = 16;
+        missionHud.OffsetRight = layout.ToolPanelWidth;
+        missionHud.OffsetBottom = 176;
+        dialoguePanel.SetAnchorsPreset(LayoutPreset.Center);
+        float dialogueWidth = Math.Min(layout.ModalMaximumWidth, 760);
+        dialoguePanel.OffsetLeft = -dialogueWidth / 2;
+        dialoguePanel.OffsetTop = -240;
+        dialoguePanel.OffsetRight = dialogueWidth / 2;
+        dialoguePanel.OffsetBottom = 240;
+        resultPanel.SetAnchorsPreset(LayoutPreset.Center);
+        float resultWidth = Math.Min(layout.ModalMaximumWidth, 900);
+        resultPanel.OffsetLeft = -resultWidth / 2;
+        resultPanel.OffsetTop = -300;
+        resultPanel.OffsetRight = resultWidth / 2;
+        resultPanel.OffsetBottom = 300;
     }
 }

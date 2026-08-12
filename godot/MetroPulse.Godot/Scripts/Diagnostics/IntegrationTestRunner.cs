@@ -189,6 +189,7 @@ public partial class IntegrationTestRunner : Node
         CheckSessionRuntime(compositionRoot, restoreScenario, failures);
         CheckManagementUi(compositionRoot, failures);
         CheckGameplayUi(compositionRoot, failures);
+        CheckSessionModals(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
@@ -215,6 +216,17 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.modals.passed",
+                "Phase 9 mission, result, pause, and complete settings modal ownership and accessibility checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["settingsControls"] = session.Modals?.Settings.ControlCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["dialogueLayer"] = session.Missions?.Presentation.DialogueVisible.ToString() ?? "False",
+                    ["resultLayer"] = session.Missions?.Presentation.ResultVisible.ToString() ?? "False",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -1926,6 +1938,74 @@ public partial class IntegrationTestRunner : Node
             failures.Add($"Gameplay UI integration threw {error.GetType().Name}: {error.Message}");
         }
     }
+
+    private static void CheckSessionModals(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            SessionModalController modals = session.Modals
+                ?? throw new InvalidOperationException("Session modal controller is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime is unavailable.");
+            PlayerInterface playerInterface = session.Interface
+                ?? throw new InvalidOperationException("Player interface is unavailable.");
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings authority is unavailable.");
+
+            Check(modals.Initialized
+                    && modals.GetParent()?.GetPath().ToString().EndsWith("PlayerInterface/ModalLayer", StringComparison.Ordinal) == true
+                    && modals.Settings.ControlCount == SettingsUiCatalog.All.Count
+                    && modals.Settings.ControlCount == 27,
+                "The shared modal layer owns pause and one control for every settings preference leaf.",
+                failures);
+            Check(session.Missions?.Presentation.GetParent() == playerInterface.Chrome
+                    && playerInterface.ModalLayer.GetNodeOrNull<PanelContainer>("MissionDialogue") is not null
+                    && playerInterface.ModalLayer.GetNodeOrNull<PanelContainer>("MissionResult") is not null,
+                "Mission HUD remains in chrome while dialogue and result panels use the shared modal layer.",
+                failures);
+
+            modals.OpenPause();
+            Check(runtime.StateMachine.State == GameState.Paused
+                    && runtime.Pause.MenuOpen
+                    && modals.PauseVisible,
+                "Pause opens through the canonical hold manager and retains the exact resume state.",
+                failures);
+            modals.OpenSettings();
+            Check(modals.SettingsVisible
+                    && !modals.PauseVisible
+                    && !string.IsNullOrWhiteSpace(modals.Settings.AccessibilityDescription),
+                "Settings replaces the pause panel inside the contained modal scope.",
+                failures);
+            double originalTextScale = settings.GetSettings().TextScale;
+            double alternateTextScale = Math.Abs(originalTextScale - 1.1) < 0.001 ? 1.2 : 1.1;
+            _ = settings.Set("textScale", alternateTextScale);
+            modals.Settings.ApplyCurrent();
+            Check(Math.Abs(playerInterface.CurrentLayout.EffectiveWidth
+                    - (Math.Max(UiLayoutModel.MinimumWidth, GetViewportWidth(compositionRoot)) / alternateTextScale)) < 1,
+                "A modal settings change immediately drives the shared responsive layout authority.",
+                failures);
+            _ = settings.Set("textScale", originalTextScale);
+            modals.CloseSettings();
+            Check(modals.PauseVisible && !modals.SettingsVisible,
+                "Closing settings restores the pause focus surface.",
+                failures);
+            modals.ClosePause();
+            Check(runtime.StateMachine.State == GameState.Management
+                    && !runtime.Pause.MenuOpen
+                    && !modals.PauseVisible,
+                "Closing pause resumes the exact Management source state without a lingering hold.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Session modal integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static double GetViewportWidth(CompositionRoot compositionRoot) =>
+        compositionRoot.GetViewport().GetVisibleRect().Size.X;
 
     private async Task CheckPedestrianControl(
         CompositionRoot compositionRoot,

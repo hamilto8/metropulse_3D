@@ -65,6 +65,8 @@ public partial class SessionShell : Node
 
     public GameplayHud? GameplayUi { get; private set; }
 
+    public SessionModalController? Modals { get; private set; }
+
     public PlayerInterface? Interface { get; private set; }
 
     public override void _Ready()
@@ -186,7 +188,7 @@ public partial class SessionShell : Node
             Environment ?? throw new InvalidOperationException("The environment must exist before missions are initialized."),
             World,
             GetNode<Node3D>("WorldRoot/EffectRoot"),
-            Interface.Chrome);
+            Interface);
         VehicleInteractions.SetControlledReleaseEligibilityProvider(
             () => Missions.InteractionReleaseEligibility());
         Services.SetMissionCriticalProvider(() => Missions.Lifecycle.IsMissionCritical);
@@ -208,6 +210,9 @@ public partial class SessionShell : Node
             Environment ?? throw new InvalidOperationException("The environment must exist before the gameplay UI is initialized."),
             Services,
             Missions);
+        Modals = new SessionModalController { Name = "SessionModals" };
+        Interface.ModalLayer.AddChild(Modals);
+        Modals.Initialize(Interface, RuntimeHost, InputHost, settings);
         PlayerControl.RiderEjectionPrepared += OnRiderEjectionPrepared;
         unsubscribeWeatherGrip = Environment?.SubscribeState(
             snapshot => PlayerControl.ApplyWeatherGrip(snapshot.WeatherMode),
@@ -245,6 +250,7 @@ public partial class SessionShell : Node
         _ = unsubscribeWeatherGrip?.Invoke();
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
+        Modals?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
         ManagementUi?.Shutdown();
@@ -294,6 +300,7 @@ public partial class SessionShell : Node
             || ManagementUi?.Initialized != true
             || Missions?.Initialized != true
             || GameplayUi?.Initialized != true
+            || Modals?.Initialized != true
             || Interface?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {

@@ -11,6 +11,7 @@ using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
+using MetroPulse.Godot.UI;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
@@ -87,7 +88,7 @@ public partial class MissionRuntime : Node
         WorldEnvironmentController environment,
         MvpWorldGenerator world,
         Node3D effectRoot,
-        Control hud,
+        PlayerInterface interfaceOwner,
         bool temporaryMayhemEnabled = false)
     {
         if (Initialized) throw new InvalidOperationException("Mission runtime is already initialized.");
@@ -103,7 +104,7 @@ public partial class MissionRuntime : Node
         ArgumentNullException.ThrowIfNull(environment);
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(effectRoot);
-        ArgumentNullException.ThrowIfNull(hud);
+        ArgumentNullException.ThrowIfNull(interfaceOwner);
 
         Registry = content.Missions;
         Conditions = new CityConditionService(economy.Ledger, services.Outcomes);
@@ -123,8 +124,8 @@ public partial class MissionRuntime : Node
         effectRoot.AddChild(Markers);
         Markers.Initialize(world);
         Presentation = new MissionPresentation { Name = "MissionPresentation" };
-        hud.AddChild(Presentation);
-        Presentation.Initialize();
+        interfaceOwner.Chrome.AddChild(Presentation);
+        Presentation.Initialize(interfaceOwner);
         interactionProvider = new MissionInteractionProvider(
             Registry,
             Lifecycle,
