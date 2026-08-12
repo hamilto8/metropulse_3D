@@ -59,6 +59,21 @@ public partial class MissionRuntime : Node
     public InteractionEligibility InteractionReleaseEligibility() => interactionProvider?.ControlledEntityReleaseEligibility()
         ?? new InteractionEligibility(true);
 
+    public MissionSaveDecision CanSave() => Lifecycle.CanSave();
+
+    public MissionRuntimeState CaptureState()
+    {
+        EnsureInitialized();
+        var state = new MissionRuntimeState
+        {
+            Lifecycle = Lifecycle.Serialize(),
+            Execution = Execution.Snapshot,
+            ResultTransactionId = Lifecycle.Phase == MissionPhases.Result ? Lifecycle.Snapshot().Run?.TransactionId : null,
+        };
+        MissionRuntimeState.Validate(state, Registry);
+        return state;
+    }
+
     public void Initialize(
         GameContentRegistry contentRegistry,
         SettingsStore settingsAuthority,
@@ -104,6 +119,12 @@ public partial class MissionRuntime : Node
             content.EconomyBalance.Missions!.RewardScale,
             temporaryMayhemEnabled);
         Dialogue = new MissionDialogueModel(Registry, Lifecycle);
+        Markers = new MissionMarkerPresenter { Name = "MissionMarkers" };
+        effectRoot.AddChild(Markers);
+        Markers.Initialize(world);
+        Presentation = new MissionPresentation { Name = "MissionPresentation" };
+        hud.AddChild(Presentation);
+        Presentation.Initialize();
         interactionProvider = new MissionInteractionProvider(
             Registry,
             Lifecycle,
@@ -114,15 +135,9 @@ public partial class MissionRuntime : Node
         unregisterInteractionProvider = interactionProvider.Register(interactions);
         unsubscribeInteractions = interactions.Subscribe(snapshot =>
             Presentation.ApplyInteraction(snapshot, InteractionBindingLabel()));
-
-        Markers = new MissionMarkerPresenter { Name = "MissionMarkers" };
-        effectRoot.AddChild(Markers);
-        Markers.Initialize(world);
-        Presentation = new MissionPresentation { Name = "MissionPresentation" };
-        hud.AddChild(Presentation);
-        Presentation.Initialize();
         Presentation.DialogueChoiceRequested += ChooseDialogue;
         Presentation.DialogueConfirmRequested += ConfirmDialogue;
+        Presentation.RetryRequested += OnRetryRequested;
         Presentation.ContinueRequested += AcknowledgeResult;
 
         runtime.SetMissionContextProvider(() => new TransitionContext(
@@ -271,6 +286,76 @@ public partial class MissionRuntime : Node
         RefreshPresentation();
     }
 
+    public bool RetryResult()
+    {
+        EnsureInitialized();
+        MissionRetryDecision decision = Lifecycle.GetRetryDecision();
+        MissionExecutionState execution = Execution.Snapshot
+            ?? throw new MissionLifecycleException("Mission retry execution state is unavailable.", "MISSION_RETRY_UNAVAILABLE");
+        if (!decision.Allowed) return false;
+        PlayerVehicleController vehicle = playerControl!.Vehicles.SingleOrDefault(candidate => candidate.StableId == execution.VehicleId)
+            ?? throw new MissionLifecycleException("The saved mission vehicle is unavailable for retry.", "MISSION_VEHICLE_UNAVAILABLE");
+        if (vehicle.TypeId != execution.VehicleType)
+            throw new MissionLifecycleException("The saved mission vehicle type changed before retry.", "MISSION_VEHICLE_UNAVAILABLE");
+        playerControl.PrepareRestoredVehicleControl(
+            vehicle.StableId,
+            vehicle.TypeId,
+            vehicle.GlobalPosition,
+            vehicle.Rotation.Y);
+        runtime!.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("mission-retry-control", Name));
+        MissionRecoveryResult recovery = Lifecycle.BeginRecovery(retry: true);
+        _ = Execution.RecoverForRetry(
+            CaptureControlledVehicle()
+                ?? throw new MissionLifecycleException("Mission vehicle control was not reacquired.", "MISSION_VEHICLE_UNAVAILABLE"),
+            recovery.Decision!);
+        LatestResult = null;
+        Presentation.HideResult();
+        RefreshPresentation();
+        return true;
+    }
+
+    public MissionRuntimeState RestoreState(MissionRuntimeState state)
+    {
+        EnsureInitialized();
+        MissionRuntimeState.Validate(state, Registry);
+        if (state.Lifecycle.Phase is MissionPhases.Active or MissionPhases.Checkpoint)
+        {
+            MissionVehicleSnapshot vehicle = CaptureControlledVehicle()
+                ?? throw new InvalidDataException("Active mission restore requires the saved controlled vehicle first.");
+            if (state.Execution is not { } execution
+                || vehicle.StableId != execution.VehicleId
+                || vehicle.TypeId != execution.VehicleType)
+            {
+                throw new InvalidDataException("Active mission restore did not reacquire the exact saved vehicle ID and type.");
+            }
+        }
+
+        MissionOutcomeReceipt? resultReceipt = null;
+        MissionOutcomeExplanation? resultExplanation = null;
+        if (state.Lifecycle.Phase == MissionPhases.Result)
+        {
+            resultReceipt = services!.Outcomes.GetReceipt(state.ResultTransactionId!);
+            resultExplanation = services.Outcomes.Explain(state.ResultTransactionId!);
+            if (resultReceipt is null || resultExplanation is null)
+                throw new InvalidDataException("RESULT restore requires its previously committed outcome receipt.");
+        }
+
+        Lifecycle.Restore(state.Lifecycle);
+        if (state.Execution is not null) Execution.Restore(state.Execution);
+        else Execution.Clear();
+        LatestResult = resultReceipt is null
+            ? null
+            : MissionResultViewModel.Build(
+                resultExplanation!,
+                Lifecycle.Snapshot(),
+                Lifecycle.CurrentMission,
+                Lifecycle.GetRetryDecision(),
+                resultReceipt.Sequence);
+        RefreshPresentation();
+        if (LatestResult is not null) Presentation.ShowResult(LatestResult);
+        return CaptureState();
+    }
+
     public void RefreshPresentation()
     {
         if (!Initialized && Markers is null) return;
@@ -301,6 +386,7 @@ public partial class MissionRuntime : Node
         unregisterInteractionProvider = null;
         Presentation.DialogueChoiceRequested -= ChooseDialogue;
         Presentation.DialogueConfirmRequested -= ConfirmDialogue;
+        Presentation.RetryRequested -= OnRetryRequested;
         Presentation.ContinueRequested -= AcknowledgeResult;
         Presentation.Shutdown();
         Markers.Shutdown();
@@ -408,6 +494,8 @@ public partial class MissionRuntime : Node
             },
         });
     }
+
+    private void OnRetryRequested() => _ = RetryResult();
 
     private void EnsureInitialized()
     {

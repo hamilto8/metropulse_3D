@@ -211,6 +211,35 @@ public sealed class MissionExecutionModelTests
         }));
     }
 
+    [Fact]
+    public void RetryReacquiresExactVehicleAndRestoresLastRaceCheckpoint()
+    {
+        Harness harness = CreateHarness();
+        MissionVehicleSnapshot sports = Vehicle("sports-retry", "SPORTS", 210, 0);
+        harness.Execution.BeginBriefing("mission_sports_trial", sports);
+        _ = harness.Execution.Accept(sports);
+        _ = harness.Execution.Advance(2, Vehicle("sports-retry", "SPORTS", 260, 50));
+        MissionExecutionState checkpointState = harness.Execution.Snapshot!;
+        _ = harness.Execution.Fail("vehicle_lost");
+        harness.Lifecycle.BeginCleanup();
+        MissionOutcomeReceipt receipt = new MissionOutcomeService().Apply(harness.Lifecycle.CreateOutcomeTransaction());
+        harness.Lifecycle.CommitCleanup(receipt);
+        MissionRecoveryResult recovery = harness.Lifecycle.BeginRecovery(retry: true);
+
+        Assert.Throws<MissionLifecycleException>(() => harness.Execution.RecoverForRetry(
+            Vehicle("replacement", "SPORTS", 260, 50),
+            recovery.Decision!));
+        MissionExecutionState retried = harness.Execution.RecoverForRetry(
+            Vehicle("sports-retry", "SPORTS", 260, 50),
+            recovery.Decision!);
+
+        Assert.Equal(MissionPhases.Active, harness.Lifecycle.Phase);
+        Assert.Equal(2, harness.Lifecycle.Snapshot().Run!.Attempt);
+        Assert.Equal(checkpointState.RouteIndex, retried.RouteIndex);
+        Assert.Equal(checkpointState.TimeRemaining, retried.TimeRemaining);
+        Assert.Equal(checkpointState.RaceElapsed, retried.RaceElapsed);
+    }
+
     private static Harness CreateHarness(bool temporaryMayhemEnabled = false)
     {
         MissionRegistry registry = MissionRegistry.LoadProduction();

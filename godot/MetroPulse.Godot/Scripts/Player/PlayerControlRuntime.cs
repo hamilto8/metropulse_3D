@@ -133,6 +133,40 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         return true;
     }
 
+    public PlayerVehicleController PrepareRestoredVehicleControl(
+        string stableId,
+        string typeId,
+        Vector3 position,
+        float yaw = 0)
+    {
+        EnsureInitialized();
+        if (ControlledKind != ControlKind.None || pendingVehicle is not null || hijack is not null)
+            throw new InvalidOperationException("Restored vehicle control requires an unowned player-control runtime.");
+        PlayerVehicleController vehicle;
+        if (vehicles.TryGetValue(stableId, out PlayerVehicleController? existing))
+        {
+            if (existing.TypeId != typeId)
+                throw new InvalidDataException($"Saved vehicle {stableId} changed type from {typeId} to {existing.TypeId}.");
+            vehicle = existing;
+            vehicle.SpawnAt(position, yaw);
+        }
+        else
+        {
+            vehicle = SpawnVehicle(stableId, typeId, position, authorized: true, occupied: false, yaw);
+        }
+        pendingVehicle = vehicle;
+        return vehicle;
+    }
+
+    public bool CancelPreparedVehicleControl(string stableId, bool removeVehicle)
+    {
+        EnsureInitialized();
+        if (pendingVehicle?.StableId != stableId || ControlledKind != ControlKind.None) return false;
+        PlayerVehicleController vehicle = pendingVehicle;
+        pendingVehicle = null;
+        return !removeVehicle || RemoveVehicle(vehicle.StableId);
+    }
+
     public VehicleEntryRequestResult BeginVehicleEntry(PlayerVehicleController vehicle)
     {
         EnsureInitialized();

@@ -431,6 +431,19 @@ public sealed class GameSaveDocumentValidator : IGameSaveDocumentValidator
                 throw Error(error.Message, "save.data.missions.lifecycle", innerException: error);
             }
         }
+        if (missions["runtime"] is JsonObject runtime)
+        {
+            try
+            {
+                MissionRuntimeState state = JsonSerializer.Deserialize<MissionRuntimeState>(runtime.ToJsonString(), JsonOptions)
+                    ?? throw new InvalidDataException("Mission runtime state is empty.");
+                MissionRuntimeState.Validate(state, content.Missions);
+            }
+            catch (Exception error)
+            {
+                throw Error(error.Message, "save.data.missions.runtime", innerException: error);
+            }
+        }
         if (missions["active"] is JsonObject active)
         {
             string missionId = KnownMission(active["contentId"], "save.data.missions.active.contentId");

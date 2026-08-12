@@ -327,6 +327,52 @@ public sealed class MissionExecutionModel
         return state;
     }
 
+    public MissionExecutionState RecoverForRetry(
+        MissionVehicleSnapshot vehicle,
+        MissionRetryDecision decision)
+    {
+        ArgumentNullException.ThrowIfNull(vehicle);
+        ArgumentNullException.ThrowIfNull(decision);
+        if (lifecycle.Phase != MissionPhases.Recovery || !decision.Allowed || state is null)
+            throw new MissionLifecycleException("Mission retry recovery is not prepared.", "MISSION_RETRY_UNAVAILABLE");
+        string? vehicleError = ValidateBoundVehicle(state, vehicle);
+        if (vehicleError is not null)
+            throw new MissionLifecycleException("The saved mission vehicle must be reacquired before retry.", "MISSION_VEHICLE_UNAVAILABLE");
+
+        MissionExecutionState recovered = state with
+        {
+            TimeRemaining = state.InitialTimeLimit,
+            Payout = state.BasePayout,
+            RouteIndex = 0,
+            RaceElapsed = 0,
+            SabotageActive = false,
+            SabotageProgress = 0,
+            SabotageTargetCheckpointRecorded = false,
+            CongestionSamples = 0,
+            CongestionTotal = 0,
+        };
+        if (decision.Checkpoint is { } checkpoint)
+        {
+            MissionExecutionCheckpointPayload payload = checkpoint.Payload.Deserialize<MissionExecutionCheckpointPayload>(JsonOptions)
+                ?? throw new InvalidDataException("Mission retry checkpoint payload is unavailable.");
+            recovered = recovered with
+            {
+                TimeRemaining = payload.TimeRemaining,
+                Payout = payload.Payout,
+                RouteIndex = payload.RouteIndex,
+                RaceElapsed = payload.RaceElapsed,
+                SabotageTargetCheckpointRecorded = recovered.Objective == MissionObjectiveTypes.Sabotage,
+                CongestionSamples = payload.CongestionSamples,
+                CongestionTotal = payload.CongestionTotal,
+            };
+        }
+        lifecycle.FinishRecovery(retry: true);
+        lifecycle.BeginExecution();
+        ValidateState(recovered, registry, lifecycle.Snapshot());
+        state = Freeze(recovered);
+        return state;
+    }
+
     public void Clear()
     {
         if (lifecycle.Phase is not (MissionPhases.Idle or MissionPhases.Result or MissionPhases.Recovery))

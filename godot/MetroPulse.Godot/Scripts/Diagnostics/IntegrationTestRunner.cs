@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Godot;
 using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Boot;
@@ -164,12 +165,10 @@ public partial class IntegrationTestRunner : Node
                 ? compositionRoot.StaticRestoreReport is { PendingRuntime: not null }
                     && compositionRoot.StaticRestoreReport.AppliedDomains.SequenceEqual(
                         [GameSaveDomainIds.Settings, GameSaveDomainIds.Bindings])
-                    && ReferenceEquals(
-                        compositionRoot.StaticRestoreReport.PendingRuntime,
-                        compositionRoot.SaveRestoreCoordinator?.PendingRuntime)
+                    && compositionRoot.SaveRestoreCoordinator?.PendingRuntime is null
                 : compositionRoot.StaticRestoreReport is null
                     && compositionRoot.SaveRestoreCoordinator?.PendingRuntime is null,
-            "Static restore applies available owners and retains runtime only for restore actions.",
+            "Static restore applies available owners and interactive release consumes the validated runtime descriptor exactly once.",
             failures);
         Check(
             restoreScenario
@@ -183,8 +182,8 @@ public partial class IntegrationTestRunner : Node
         CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
-        CheckRuntimeInput(compositionRoot, failures);
-        CheckSessionRuntime(compositionRoot, failures);
+        CheckRuntimeInput(compositionRoot, restoreScenario, failures);
+        CheckSessionRuntime(compositionRoot, restoreScenario, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
@@ -218,7 +217,7 @@ public partial class IntegrationTestRunner : Node
                 "Phase 8 live mission markers, dialogue pause/input, vehicle binding, cleanup receipt, result, alert, and recovery checks passed.",
                 new Dictionary<string, string>
                 {
-                    ["assertions"] = "6",
+                    ["assertions"] = "10",
                     ["results"] = session.Missions?.CompletedResultCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["cleanupCommits"] = session.Missions?.CleanupCommitCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     ["offerMarkers"] = session.Missions?.Markers.OfferMarkerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
@@ -980,6 +979,15 @@ public partial class IntegrationTestRunner : Node
                     && services.Alerts.Snapshot().Active.Any(alert => alert.DedupeKey == $"mission-outcome:{receipt.TransactionId}"),
                 "Live completion applies one receipt-gated outcome, releases control only for RESULT, removes temporary objective presentation, and publishes debrief plus alert.", failures);
 
+            CityServicesRuntimeState resultServicesState = services.CaptureState();
+            int resultOutcomeCount = resultServicesState.Outcomes.Transactions.Count;
+            DeferredGameSaveDescriptor resultSave = MissionSaveDescriptor(
+                "phase8-result-save",
+                missions.CaptureState(),
+                resultServicesState,
+                GameState.Result,
+                controlledVehicle: null);
+
             int commits = missions.CleanupCommitCount;
             bool duplicateCommit = missions.CommitResult();
             missions.AcknowledgeResult();
@@ -992,6 +1000,118 @@ public partial class IntegrationTestRunner : Node
                     && player.RemoveVehicle(vehicleId),
                 "Result acknowledgement returns to clean Management/IDLE ownership and cannot duplicate cleanup, Capital, markers, or the mission receipt.", failures);
             taxi = null;
+
+            MissionOfferView raceOffer = missions.Execution.BuildOffer("mission_sports_trial", null);
+            Vector3 raceEntry = new(0, (float)world.Surface.GetTerrainHeight(0, 0), 0);
+            PlayerVehicleController sports = player.SpawnVehicle(
+                "phase8-restart-sports",
+                "SPORTS",
+                raceEntry,
+                authorized: true,
+                occupied: false);
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("phase8:checkpoint-entry", nameof(IntegrationTestRunner)));
+            player.Pedestrian!.SpawnAt(raceEntry + new Vector3(2, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1) await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            VehicleEntryRequestResult sportsEntry = player.BeginVehicleEntry(sports);
+            if (!sportsEntry.ReadyForTransition)
+                throw new InvalidOperationException($"Mission checkpoint vehicle entry was not prepared: {sportsEntry.Code ?? "UNKNOWN"}.");
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("phase8:checkpoint-vehicle", nameof(IntegrationTestRunner)));
+            sports.SpawnAt(new Vector3(
+                (float)raceOffer.Pickup.X,
+                (float)world.Surface.GetTerrainHeight(raceOffer.Pickup.X, raceOffer.Pickup.Z),
+                (float)raceOffer.Pickup.Z));
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            _ = missions.OpenOffer("mission_sports_trial");
+            missions.ChooseDialogue(0);
+            missions.ConfirmDialogue();
+            MissionWorldPoint firstCheckpoint = missions.Execution.NavigationTarget!;
+            sports.SpawnAt(new Vector3(
+                (float)firstCheckpoint.X,
+                (float)world.Surface.GetTerrainHeight(firstCheckpoint.X, firstCheckpoint.Z),
+                (float)firstCheckpoint.Z));
+            MissionExecutionUpdate checkpoint = missions.AdvanceExecution(1)
+                ?? throw new InvalidOperationException("Mission checkpoint did not advance.");
+            CityServicesRuntimeState activeServicesState = services.CaptureState();
+            int activeOutcomeCount = activeServicesState.Outcomes.Transactions.Count;
+            DeferredGameSaveDescriptor activeSave = MissionSaveDescriptor(
+                "phase8-active-save",
+                missions.CaptureState(),
+                activeServicesState,
+                GameState.StreetVehicle,
+                sports);
+            Check(checkpoint.Signal == MissionExecutionSignals.Checkpoint
+                    && missions.Lifecycle.Phase == MissionPhases.Active
+                    && missions.Execution.Snapshot?.RouteIndex == 1,
+                "A live Race checkpoint is captured only after its stable route index and payload commit.", failures);
+
+            _ = missions.Execution.Fail("restart-soak-cleanup");
+            _ = missions.CommitResult();
+            bool retried = missions.RetryResult();
+            Check(retried
+                    && missions.Lifecycle.Phase == MissionPhases.Active
+                    && missions.Lifecycle.Snapshot().Run?.Attempt == 2
+                    && missions.Execution.Snapshot?.RouteIndex == 1
+                    && player.ControlledVehicle?.StableId == sports.StableId
+                    && runtime.StateMachine.State == GameState.StreetVehicle
+                    && !missions.Presentation.ResultVisible,
+                "Failure debrief retry reacquires the exact vehicle and resumes the last authored Race checkpoint as attempt two.", failures);
+            _ = missions.Execution.Fail("restart-soak-cleanup-2");
+            _ = missions.CommitResult();
+            missions.AcknowledgeResult();
+            _ = player.RemoveVehicle(sports.StableId);
+
+            bool tenRestartsStable = true;
+            var restartSnapshots = new List<string>();
+            for (int restart = 0; restart < 10; restart += 1)
+            {
+                DeferredGameSaveDescriptor saved = restart % 2 == 0 ? activeSave : resultSave;
+                SessionShell reloaded = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+                reloaded.Name = $"Phase8Reload{restart + 1}";
+                compositionRoot.GetParent().AddChild(reloaded);
+                try
+                {
+                    reloaded.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+                    reloaded.InitializeRuntimeInput(compositionRoot.SettingsAuthority!);
+                    new SessionGameSaveRuntimeRestoreAdapter(reloaded).Apply(saved);
+                    reloaded.ReleaseInteractiveControl();
+                    MissionRuntime restoredMission = reloaded.Missions!;
+                    bool activeReload = restart % 2 == 0;
+                    int expectedOutcomeCount = activeReload ? activeOutcomeCount : resultOutcomeCount;
+                    bool restartStable = reloaded.VehicleInteractions?.Service.ProviderCount == 3
+                        && reloaded.Services?.Outcomes.Snapshot().Transactions.Count == expectedOutcomeCount
+                        && (activeReload
+                            ? restoredMission.Lifecycle.Phase == MissionPhases.Active
+                                && reloaded.RuntimeHost?.StateMachine.State == GameState.StreetVehicle
+                                && reloaded.PlayerControl?.ControlledVehicle?.StableId == "phase8-restart-sports"
+                                && restoredMission.Execution.Snapshot?.RouteIndex == 1
+                                && restoredMission.Markers.OfferMarkerCount == 0
+                                && restoredMission.Markers.ObjectiveMarkerCount == 1
+                            : restoredMission.Lifecycle.Phase == MissionPhases.Result
+                                && reloaded.RuntimeHost?.StateMachine.State == GameState.Result
+                                && reloaded.PlayerControl?.ControlledKind == ControlKind.None
+                                && restoredMission.LatestResult?.TransactionId == receipt.TransactionId
+                                && restoredMission.Presentation.ResultVisible
+                                && restoredMission.Markers.OfferMarkerCount == 0
+                                && restoredMission.Markers.ObjectiveMarkerCount == 0);
+                    tenRestartsStable &= restartStable;
+                    restartSnapshots.Add(
+                        $"{restart + 1}:{(activeReload ? "ACTIVE" : "RESULT")}:ok={restartStable}:"
+                        + $"phase={restoredMission.Lifecycle.Phase}:game={reloaded.RuntimeHost?.StateMachine.State}:"
+                        + $"control={reloaded.PlayerControl?.ControlledKind}/{reloaded.PlayerControl?.ControlledVehicle?.StableId ?? "none"}:"
+                        + $"providers={reloaded.VehicleInteractions?.Service.ProviderCount}:receipts={reloaded.Services?.Outcomes.Snapshot().Transactions.Count}:"
+                        + $"markers={restoredMission.Markers.OfferMarkerCount}/{restoredMission.Markers.ObjectiveMarkerCount}:"
+                        + $"route={restoredMission.Execution.Snapshot?.RouteIndex}:result={restoredMission.LatestResult?.TransactionId ?? "none"}:"
+                        + $"visible={restoredMission.Presentation.ResultVisible}");
+                }
+                finally
+                {
+                    reloaded.Shutdown();
+                    reloaded.Free();
+                }
+            }
+            Check(tenRestartsStable,
+                "Ten consecutive active-checkpoint/RESULT reloads reacquire control in dependency order and never duplicate providers, markers, receipts, outcomes, or result ownership. "
+                    + string.Join(" | ", restartSnapshots), failures);
         }
         catch (Exception error)
         {
@@ -1151,7 +1271,9 @@ public partial class IntegrationTestRunner : Node
                     && !enforcement.State.Wanted
                     && runtime.StateMachine.State == GameState.StreetOnFoot
                     && controlled.GlobalPosition.DistanceTo(new Vector3(-75, controlled.GlobalPosition.Y, -75)) < 0.1,
-                "Arrest clears immediate Heat and returns the controlled player to the supported recovery point.", failures);
+                "Arrest clears immediate Heat and returns the controlled player to the supported recovery point. "
+                    + $"outcome={arrest.Outcome}; arrests={enforcement.ArrestCount}; wanted={enforcement.State.Wanted}; "
+                    + $"game={runtime.StateMachine.State}; position={controlled.GlobalPosition}.", failures);
             runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration", "phase6-arrest-cleanup"));
         }
         catch (Exception error)
@@ -1353,14 +1475,14 @@ public partial class IntegrationTestRunner : Node
         DiagnosticSnapshot snapshot = diagnostics.CurrentSnapshot;
         Check(
             snapshot.Runtime.GameState == (restoreScenario ? "STREET_VEHICLE" : "MANAGEMENT")
-                && snapshot.Runtime.Transition == (restoreScenario ? "RUNTIME_RESTORE_PENDING" : "STABLE"),
-            "Diagnostics report the authoritative or explicitly deferred game state and transition.",
+                && snapshot.Runtime.Transition == "STABLE",
+            "Diagnostics report the authoritative restored game state and stable transition.",
             failures);
         Check(
             snapshot.Save.Action == compositionRoot.Configuration?.BootAction
-                && snapshot.Save.Status == (restoreScenario ? "RESTORE_DEFERRED" : "READY")
-                && snapshot.Save.RuntimeRestorePending == restoreScenario,
-            "Diagnostics report boot action, save-slot state, and deferred runtime restore truthfully.",
+                && snapshot.Save.Status == "READY"
+                && !snapshot.Save.RuntimeRestorePending,
+            "Diagnostics report boot action, save-slot state, and consumed runtime restore truthfully.",
             failures);
         Check(
             restoreScenario
@@ -1455,6 +1577,7 @@ public partial class IntegrationTestRunner : Node
 
     private static void CheckRuntimeInput(
         CompositionRoot compositionRoot,
+        bool restoreScenario,
         ICollection<string> failures)
     {
         try
@@ -1477,16 +1600,18 @@ public partial class IntegrationTestRunner : Node
                 "Interactive release publishes exactly one canonical snapshot per physics callback.",
                 failures);
             Check(
-                snapshot.Context == ControlContexts.Management
+                snapshot.Context == (restoreScenario ? ControlContexts.Vehicle : ControlContexts.Management)
                     && snapshot.ActiveInterface == InputInterfaces.Keyboard,
-                "The empty session starts with Management keyboard authority.",
+                "The session starts with keyboard authority matching its restored control state.",
                 failures);
             Check(
-                snapshot.Prompts.GetValueOrDefault("BUILD") == "F",
-                "Contextual prompt metadata reads the validated binding authority.",
+                restoreScenario
+                    ? snapshot.Prompts.ContainsKey("INTERACT")
+                    : snapshot.Prompts.GetValueOrDefault("BUILD") == "F",
+                "Contextual prompt metadata reads the validated binding authority for the active control context.",
                 failures);
             Check(
-                snapshot.Actions.ContainsKey(RuntimeInputActionIds.Slot("PAN", 0)),
+                snapshot.Actions.ContainsKey(RuntimeInputActionIds.Slot(restoreScenario ? "DRIVE" : "PAN", 0)),
                 "Canonical snapshots retain stable per-binding directional slots.",
                 failures);
             Check(
@@ -1509,6 +1634,7 @@ public partial class IntegrationTestRunner : Node
 
     private static void CheckSessionRuntime(
         CompositionRoot compositionRoot,
+        bool restoreScenario,
         ICollection<string> failures)
     {
         try
@@ -1525,8 +1651,16 @@ public partial class IntegrationTestRunner : Node
             Check(runtime.Initialized, "SessionRoot initializes one game-state/scheduler runtime owner.", failures);
             Check(runtime.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true,
                 "The session runtime is lifecycle-owned by SessionRoot/RuntimeServices.", failures);
-            Check(runtime.StateMachine.State == GameState.Management && runtime.Scheduler.ClockPolicy == ClockPolicy.City,
-                "Interactive release starts in authoritative Management/City policy.", failures);
+            Check(runtime.StateMachine.State == (restoreScenario ? GameState.StreetVehicle : GameState.Management)
+                    && runtime.Scheduler.ClockPolicy == (restoreScenario ? ClockPolicy.Street : ClockPolicy.City),
+                "Interactive release starts in its authoritative restored game/clock policy.", failures);
+            if (restoreScenario)
+            {
+                string restoredVehicleId = playerControl.ControlledVehicle?.StableId
+                    ?? throw new InvalidOperationException("Runtime restore did not reacquire the saved vehicle.");
+                runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("integration:restored-control-cleanup", nameof(IntegrationTestRunner)));
+                _ = playerControl.RemoveVehicle(restoredVehicleId);
+            }
             Check(runtime.AdvancedFrames > 0 && runtime.Scheduler.Frame > 0,
                 "The live Godot process loop advances the canonical scheduler.", failures);
 
@@ -1599,8 +1733,8 @@ public partial class IntegrationTestRunner : Node
 
             Check(playerControl.Initialized
                     && playerControl.GetParent()?.GetPath().ToString().EndsWith("SessionRoot/RuntimeServices", StringComparison.Ordinal) == true
-                    && playerControl.Pedestrian is null,
-                "The session owns one lazy player-control authority without a Management body.", failures);
+                    && playerControl.Pedestrian?.Controlled != true,
+                "The session owns one player-control authority without a controlled Management body.", failures);
 
             runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("integration", "phase5-pedestrian"));
             await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
@@ -2608,6 +2742,60 @@ public partial class IntegrationTestRunner : Node
     }
 
     private static string SaveFixture(string id) => $"{{\"format\":\"integration-save\",\"id\":\"{id}\"}}";
+
+    private static DeferredGameSaveDescriptor MissionSaveDescriptor(
+        string saveId,
+        MissionRuntimeState mission,
+        CityServicesRuntimeState services,
+        GameState gameState,
+        PlayerVehicleController? controlledVehicle)
+    {
+        var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        JsonNode? controlled = controlledVehicle is null
+            ? null
+            : new JsonObject
+            {
+                ["contentId"] = controlledVehicle.StableId,
+                ["typeId"] = controlledVehicle.TypeId,
+                ["kind"] = ControlKind.Vehicle.ToToken(),
+                ["position"] = new JsonArray(
+                    controlledVehicle.GlobalPosition.X,
+                    controlledVehicle.GlobalPosition.Y,
+                    controlledVehicle.GlobalPosition.Z),
+                ["rotation"] = new JsonArray(
+                    controlledVehicle.Rotation.X,
+                    controlledVehicle.Rotation.Y,
+                    controlledVehicle.Rotation.Z),
+                ["speed"] = new Vector2(
+                    controlledVehicle.LinearVelocity.X,
+                    controlledVehicle.LinearVelocity.Z).Length(),
+            };
+        var data = new JsonObject
+        {
+            [GameSaveDomainIds.Game] = new JsonObject
+            {
+                ["version"] = 1,
+                ["state"] = gameState.ToToken(),
+                ["resumeState"] = null,
+                ["mayhemEnabled"] = false,
+            },
+            [GameSaveDomainIds.Player] = new JsonObject
+            {
+                ["version"] = 1,
+                ["controlled"] = controlled,
+            },
+            [GameSaveDomainIds.Missions] = new JsonObject
+            {
+                ["runtime"] = JsonSerializer.SerializeToNode(mission, jsonOptions),
+                ["contracts"] = JsonSerializer.SerializeToNode(services.Outcomes, jsonOptions),
+            },
+            [GameSaveDomainIds.Alerts] = JsonSerializer.SerializeToNode(services.Alerts, jsonOptions),
+        };
+        return new DeferredGameSaveDescriptor(
+            saveId,
+            data.ToJsonString(),
+            [GameSaveDomainIds.Game, GameSaveDomainIds.Player, GameSaveDomainIds.Missions, GameSaveDomainIds.Alerts]);
+    }
 
     private static void WriteGodotText(string path, string text)
     {

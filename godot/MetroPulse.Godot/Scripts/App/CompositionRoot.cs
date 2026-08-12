@@ -7,6 +7,7 @@ using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.Missions;
 
 namespace MetroPulse.Godot.App;
 
@@ -407,6 +408,10 @@ public partial class CompositionRoot : Node
             new(BootStageIds.InteractiveRelease, "Releasing interactive control", (results, _) =>
             {
                 SessionShell session = (SessionShell)results[BootStageIds.SessionConstruction]!;
+                if (SaveRestoreCoordinator?.PendingRuntime is not null)
+                {
+                    SaveRestoreCoordinator.RestoreRuntime(new SessionGameSaveRuntimeRestoreAdapter(session));
+                }
                 session.ReleaseInteractiveControl();
                 return ValueTask.FromResult<object?>(session.IsInteractiveReleased);
             }),
