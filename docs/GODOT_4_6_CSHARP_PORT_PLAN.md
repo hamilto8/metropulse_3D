@@ -1577,6 +1577,14 @@ not block its own load transition.
   exercised in an authorized temporary-Mayhem test build; the five non-MVP
   records validate but remain outside normal scope.
 
+**Status: complete.** Five independently committed slices now own the pure
+execution templates, dialogue/interaction/result contracts, live Godot runtime,
+checkpoint/RESULT restore and retry, and the final ten-mission/failure exit
+matrix. The normal build publishes nine offers, temporary Mayhem publishes the
+tenth Survival offer, and all five non-MVP records remain validated but absent.
+The complete evidence and ownership tables are in
+`docs/port_handoffs/phase-8-complete.md`.
+
 ### Handoff
 
 Provide mission/content validation report, lifecycle/state diagram, world marker

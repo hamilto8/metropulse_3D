@@ -226,6 +226,20 @@ public partial class IntegrationTestRunner : Node
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
+                "phase8.exit.passed",
+                "Phase 8 live mission execution, receipt cleanup, retry, checkpoint/RESULT restore, and restart ownership exit checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["liveAssertions"] = "10",
+                    ["restartReloads"] = "10",
+                    ["missionTemplates"] = "6",
+                    ["mvpMissions"] = "10",
+                    ["normalOfferMarkers"] = session.Missions?.Markers.OfferMarkerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["interactionProviders"] = session.VehicleInteractions?.Service.ProviderCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
                 "phase7.economy_catalog.passed",
                 "Phase 7 frozen economy baseline, skyline adapter, city tick, view model, and catalog checks passed.",
                 new Dictionary<string, string>
@@ -981,9 +995,10 @@ public partial class IntegrationTestRunner : Node
 
             CityServicesRuntimeState resultServicesState = services.CaptureState();
             int resultOutcomeCount = resultServicesState.Outcomes.Transactions.Count;
+            MissionRuntimeState resultMissionState = missions.CaptureState();
             DeferredGameSaveDescriptor resultSave = MissionSaveDescriptor(
                 "phase8-result-save",
-                missions.CaptureState(),
+                resultMissionState,
                 resultServicesState,
                 GameState.Result,
                 controlledVehicle: null);
@@ -1072,13 +1087,23 @@ public partial class IntegrationTestRunner : Node
                 {
                     reloaded.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
                     reloaded.InitializeRuntimeInput(compositionRoot.SettingsAuthority!);
+                    double capitalBeforeRestore = reloaded.Economy!.Ledger.Treasury;
                     new SessionGameSaveRuntimeRestoreAdapter(reloaded).Apply(saved);
                     reloaded.ReleaseInteractiveControl();
                     MissionRuntime restoredMission = reloaded.Missions!;
                     bool activeReload = restart % 2 == 0;
                     int expectedOutcomeCount = activeReload ? activeOutcomeCount : resultOutcomeCount;
+                    CityServicesRuntimeState expectedServices = activeReload ? activeServicesState : resultServicesState;
+                    bool outcomeStateExact = JsonSerializer.Serialize(
+                        reloaded.Services!.CaptureState().Outcomes,
+                        new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                        == JsonSerializer.Serialize(
+                            expectedServices.Outcomes,
+                            new JsonSerializerOptions(JsonSerializerDefaults.Web));
                     bool restartStable = reloaded.VehicleInteractions?.Service.ProviderCount == 3
                         && reloaded.Services?.Outcomes.Snapshot().Transactions.Count == expectedOutcomeCount
+                        && outcomeStateExact
+                        && reloaded.Economy.Ledger.Treasury == capitalBeforeRestore
                         && (activeReload
                             ? restoredMission.Lifecycle.Phase == MissionPhases.Active
                                 && reloaded.RuntimeHost?.StateMachine.State == GameState.StreetVehicle
@@ -1090,6 +1115,7 @@ public partial class IntegrationTestRunner : Node
                                 && reloaded.RuntimeHost?.StateMachine.State == GameState.Result
                                 && reloaded.PlayerControl?.ControlledKind == ControlKind.None
                                 && restoredMission.LatestResult?.TransactionId == receipt.TransactionId
+                                && restoredMission.Lifecycle.Snapshot().Run?.Resolution == resultMissionState.Lifecycle.Run?.Resolution
                                 && restoredMission.Presentation.ResultVisible
                                 && restoredMission.Markers.OfferMarkerCount == 0
                                 && restoredMission.Markers.ObjectiveMarkerCount == 0);
