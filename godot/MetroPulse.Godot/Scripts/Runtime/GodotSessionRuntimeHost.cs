@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.TimeWeather;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Diagnostics;
 
@@ -14,6 +15,7 @@ public partial class GodotSessionRuntimeHost : Node
 {
     private Func<bool>? unsubscribeTransitions;
     private Func<bool>? unregisterCameraTask;
+    private double cityTimeScale = SimulationTimeModel.DefaultSpeed;
 
     public bool Initialized { get; private set; }
 
@@ -29,6 +31,8 @@ public partial class GodotSessionRuntimeHost : Node
 
     public long AdvancedFrames { get; private set; }
 
+    public double CityTimeScale => cityTimeScale;
+
     public void Initialize(
         RuntimeInputHost input,
         GameplayCameraRig gameplayCamera)
@@ -38,7 +42,9 @@ public partial class GodotSessionRuntimeHost : Node
             throw new InvalidOperationException("The Godot session runtime is already initialized.");
         }
 
-        Scheduler = new SimulationScheduler(initialClockPolicy: ClockPolicy.City);
+        Scheduler = new SimulationScheduler(
+            getCityTimeScale: _ => cityTimeScale,
+            initialClockPolicy: ClockPolicy.City);
         Runtime = new GodotTransitionRuntime(input, gameplayCamera, Scheduler);
         StateMachine = new GameStateMachine(GameState.Management, Runtime.SnapshotContext);
         Transitions = new GameTransitionCoordinator(StateMachine, Runtime);
@@ -77,6 +83,17 @@ public partial class GodotSessionRuntimeHost : Node
     {
         EnsureInitialized();
         Transitions.TransitionTo(destination, options);
+    }
+
+    public double SetCityTimeScale(double scale)
+    {
+        EnsureInitialized();
+        if (!SimulationTimeModel.SpeedOptions.Contains(scale))
+        {
+            throw new ArgumentOutOfRangeException(nameof(scale), scale, "Unsupported city time scale.");
+        }
+        cityTimeScale = scale;
+        return cityTimeScale;
     }
 
     public override void _Process(double delta)

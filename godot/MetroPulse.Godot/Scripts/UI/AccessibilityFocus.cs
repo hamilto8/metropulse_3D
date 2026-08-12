@@ -24,8 +24,8 @@ public static class AccessibilityFocus
             control.FocusMode = Control.FocusModeEnum.All;
             Control? previous = index > 0 ? controls[index - 1] : wrap ? controls[^1] : null;
             Control? next = index + 1 < controls.Count ? controls[index + 1] : wrap ? controls[0] : null;
-            control.FocusPrevious = previous?.GetPath() ?? default;
-            control.FocusNext = next?.GetPath() ?? default;
+            control.FocusPrevious = PathFrom(control, previous);
+            control.FocusNext = PathFrom(control, next);
         }
     }
 
@@ -36,8 +36,8 @@ public static class AccessibilityFocus
         {
             Control? previous = index > 0 ? controls[index - 1] : wrap ? controls[^1] : null;
             Control? next = index + 1 < controls.Count ? controls[index + 1] : wrap ? controls[0] : null;
-            controls[index].FocusNeighborTop = previous?.GetPath() ?? default;
-            controls[index].FocusNeighborBottom = next?.GetPath() ?? default;
+            controls[index].FocusNeighborTop = PathFrom(controls[index], previous);
+            controls[index].FocusNeighborBottom = PathFrom(controls[index], next);
         }
     }
 
@@ -48,10 +48,13 @@ public static class AccessibilityFocus
         {
             Control? previous = index > 0 ? controls[index - 1] : wrap ? controls[^1] : null;
             Control? next = index + 1 < controls.Count ? controls[index + 1] : wrap ? controls[0] : null;
-            controls[index].FocusNeighborLeft = previous?.GetPath() ?? default;
-            controls[index].FocusNeighborRight = next?.GetPath() ?? default;
+            controls[index].FocusNeighborLeft = PathFrom(controls[index], previous);
+            controls[index].FocusNeighborRight = PathFrom(controls[index], next);
         }
     }
+
+    private static NodePath PathFrom(Control source, Control? destination) =>
+        destination is null ? new NodePath(string.Empty) : source.GetPathTo(destination);
 }
 
 /// <summary>Contains modal focus and restores the invoking control when the modal closes.</summary>

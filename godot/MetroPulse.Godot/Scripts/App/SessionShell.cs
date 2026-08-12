@@ -59,6 +59,8 @@ public partial class SessionShell : Node
 
     public CityServicesRuntime? Services { get; private set; }
 
+    public ManagementHud? ManagementUi { get; private set; }
+
     public MissionRuntime? Missions { get; private set; }
 
     public PlayerInterface? Interface { get; private set; }
@@ -119,6 +121,7 @@ public partial class SessionShell : Node
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
         RuntimeHost.Initialize(InputHost, GameplayCamera);
+        Environment?.StartClock(RuntimeHost.Scheduler);
         RuntimeHost.SetControlBridge(PlayerControl);
         Economy = new CityEconomyRuntime { Name = "CityEconomy" };
         runtimeServices.AddChild(Economy);
@@ -154,6 +157,18 @@ public partial class SessionShell : Node
             VehicleInteractions.Service,
             World ?? throw new InvalidOperationException("The world must exist before city services are initialized."),
             GetNode<Node3D>("WorldRoot/EffectRoot"));
+        ManagementUi = new ManagementHud { Name = "ManagementHud" };
+        Interface.Chrome.AddChild(ManagementUi);
+        ManagementUi.Initialize(
+            Interface,
+            Economy,
+            Editor,
+            Services,
+            LivingTraffic,
+            RuntimeHost,
+            InputHost,
+            Environment ?? throw new InvalidOperationException("The environment must exist before the management UI is initialized."),
+            GetNode<Camera3D>("CameraRig/MainCamera"));
         Missions = new MissionRuntime { Name = "Missions" };
         runtimeServices.AddChild(Missions);
         Missions.Initialize(
@@ -219,6 +234,7 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         Missions?.Shutdown();
+        ManagementUi?.Shutdown();
         Interface?.Shutdown();
         Services?.Shutdown();
         VehicleInteractions?.Shutdown();
@@ -262,6 +278,7 @@ public partial class SessionShell : Node
             || Economy?.Initialized != true
             || Editor?.Initialized != true
             || Services?.Initialized != true
+            || ManagementUi?.Initialized != true
             || Missions?.Initialized != true
             || Interface?.Initialized != true
             || RuntimeHost?.Initialized != true)

@@ -187,6 +187,7 @@ public partial class IntegrationTestRunner : Node
         CheckSettingsAndInputMap(compositionRoot, failures);
         CheckRuntimeInput(compositionRoot, restoreScenario, failures);
         CheckSessionRuntime(compositionRoot, restoreScenario, failures);
+        CheckManagementUi(compositionRoot, failures);
         CheckCityEconomyRuntime(compositionRoot, failures);
         CheckCityEditorRuntime(compositionRoot, failures);
         await CheckLivingTraffic(compositionRoot, failures);
@@ -213,6 +214,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.management_ui.passed",
+                "Phase 9 responsive management, tools, builder forecast, input ribbon, time scale, and accessibility checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["metrics"] = session.ManagementUi?.CurrentView?.TopBar.Metrics.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["toolSections"] = session.ManagementUi?.CurrentView?.Tools.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["catalogCards"] = session.ManagementUi?.CurrentView?.Catalog.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["refreshes"] = session.ManagementUi?.RefreshCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -1338,7 +1351,11 @@ public partial class IntegrationTestRunner : Node
         WorldEnvironmentController? environment = session?.Environment;
         CachedBillboardSystem? billboards = session?.Billboards;
         GodotCameraWorldAdapter? camera = session?.CameraAdapter;
-        Check(environment?.Initialized == true && environment.Current is { Hour: 12, WeatherMode: "clear" }, "The world environment initializes to canonical noon/clear presentation.", failures);
+        Check(environment?.Initialized == true
+                && environment.ClockActive
+                && environment.Current is { Hour: >= 12 and < 13, WeatherMode: "clear" },
+            "The world environment starts its scheduler-owned canonical noon/clear presentation clock.",
+            failures);
         Check(session?.GetNodeOrNull<WorldEnvironment>("RuntimeServices/WorldPresentation/WorldEnvironment") is not null, "The session owns one configured Godot WorldEnvironment.", failures);
         Check(session?.GetNodeOrNull<DirectionalLight3D>("RuntimeServices/WorldPresentation/SunLight") is not null
             && session.GetNodeOrNull<DirectionalLight3D>("RuntimeServices/WorldPresentation/MoonLight") is not null, "The presentation owner creates distinct sun and moon lights.", failures);
@@ -1785,6 +1802,70 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Session runtime integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private static void CheckManagementUi(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            ManagementHud hud = session.ManagementUi
+                ?? throw new InvalidOperationException("Management HUD is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Session runtime is unavailable.");
+            CityEditorRuntime editor = session.Editor
+                ?? throw new InvalidOperationException("City editor is unavailable.");
+
+            hud.RefreshNow();
+            ManagementUiSnapshot view = hud.CurrentView
+                ?? throw new InvalidOperationException("Management HUD did not publish a view.");
+            Check(hud.Initialized
+                    && hud.IsInsideTree()
+                    && hud.GetParent()?.GetPath().ToString().EndsWith("PlayerInterface/SafeArea/Chrome", StringComparison.Ordinal) == true,
+                "The session owns one independent management HUD under shared interface chrome.",
+                failures);
+            Check(view.TopBar.Metrics.Count == 7
+                    && view.TopBar.Metrics.Select(metric => metric.Id).SequenceEqual(
+                        ["capital", "population", "jobs", "energy", "satisfaction", "time", "weather"]),
+                "The top city bar projects all seven authoritative management metrics in stable order.",
+                failures);
+            Check(view.Tools.Select(tool => tool.Id).SequenceEqual(CityToolSectionIds.All)
+                    && view.Catalog.Count == editor.GetCatalog(includeAdvanced: false, includeLocked: true).Count,
+                "City Tools and the starter builder catalog preserve canonical section and content ownership.",
+                failures);
+            Check(view.Forecast.Facts.Count > 0
+                    && !string.IsNullOrWhiteSpace(view.Forecast.Remedy)
+                    && view.SelectedBuildingId == editor.SelectedSpec.Id,
+                "The builder publishes a disclosed placement forecast from the live editor decision.",
+                failures);
+            Check(!string.IsNullOrWhiteSpace(hud.TopBar.AccessibilityName)
+                    && !string.IsNullOrWhiteSpace(hud.Tools.AccessibilityDescription)
+                    && !string.IsNullOrWhiteSpace(hud.Builder.AccessibilityName)
+                    && !string.IsNullOrWhiteSpace(hud.Ribbon.AccessibilityDescription),
+                "Management, tools, builder, and ribbon controls expose accessibility metadata.",
+                failures);
+
+            hud.RequestTimeScale(5);
+            Check(runtime.CityTimeScale == 5, "The adaptive ribbon writes only a validated city time scale.", failures);
+            hud.RequestTimeScale(1);
+            hud.RequestModeToggle();
+            Check(runtime.StateMachine.State == GameState.Builder
+                    && editor.Active
+                    && hud.CurrentView?.BuilderVisible == true,
+                "The management HUD opens Builder through the canonical transition and editor ownership path.",
+                failures);
+            hud.RequestModeToggle();
+            Check(runtime.StateMachine.State == GameState.Management
+                    && !editor.Active
+                    && hud.CurrentView?.BuilderVisible == false,
+                "The management HUD returns to Management without leaving builder presentation ownership active.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Management UI integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

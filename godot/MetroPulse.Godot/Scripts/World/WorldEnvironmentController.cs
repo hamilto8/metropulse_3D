@@ -1,5 +1,6 @@
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.TimeWeather;
 using MetroPulse.Domain.World;
@@ -13,6 +14,8 @@ public partial class WorldEnvironmentController : Node3D
     private const double GodotFogDensityScale = 0.18;
     private static readonly string[] WetMaterialIds = ["ground", "road", "bridge-deck", "bridge-sidewalk", "sidewalk"];
     private EnvironmentPresentationModel? model;
+    private WeatherCycleModel? weatherCycle;
+    private WeatherCycleState? weatherState;
     private GameContentRegistry? content;
     private WorldResourceCache? resources;
     private IReadOnlyDictionary<string, WorldMaterialDefinition>? materialDefinitions;
@@ -24,8 +27,10 @@ public partial class WorldEnvironmentController : Node3D
     private MeshInstance3D? moonBody;
     private GpuParticles3D? rain;
     private Func<bool>? unsubscribeSettings;
+    private Func<bool>? unregisterClock;
     private SettingsPreferences? preferences;
     private readonly List<Action<EnvironmentPresentationSnapshot>> stateListeners = [];
+    private double clockHour = 12;
 
     public bool Initialized { get; private set; }
 
@@ -41,6 +46,10 @@ public partial class WorldEnvironmentController : Node3D
 
     public int StateSubscriberCount => stateListeners.Count;
 
+    public bool ClockActive => unregisterClock is not null;
+
+    public double WeatherRemainingSeconds => weatherState?.RemainingSeconds ?? 0;
+
     public void Initialize(GameContentRegistry registry, SettingsStore settings, MvpWorldGenerator world)
     {
         ArgumentNullException.ThrowIfNull(registry);
@@ -55,6 +64,7 @@ public partial class WorldEnvironmentController : Node3D
         materialDefinitions = world.Layout?.Materials
             ?? throw new InvalidOperationException("The authored world must be built before environment initialization.");
         model = new EnvironmentPresentationModel(registry.WeatherRecords, registry.DefaultWeatherMode);
+        weatherCycle = new WeatherCycleModel(registry.WeatherRecords, registry.WeatherSequence, registry.DefaultWeatherMode);
         BuildEnvironmentNodes();
         ApplyPreferences(settings.GetSettings());
         unsubscribeSettings = settings.Subscribe(change => ApplyPreferences(change.Current.Settings));
@@ -65,10 +75,33 @@ public partial class WorldEnvironmentController : Node3D
     public EnvironmentPresentationSnapshot SetState(double time, string? weatherMode, double cameraHeight = 0)
     {
         EnvironmentPresentationModel presentation = model ?? throw new InvalidOperationException("World environment is not initialized.");
-        Current = presentation.Evaluate(time, weatherMode, cameraHeight);
-        Apply(Current);
-        foreach (Action<EnvironmentPresentationSnapshot> listener in stateListeners.ToArray()) listener(Current);
-        return Current;
+        WeatherCycleModel cycle = weatherCycle ?? throw new InvalidOperationException("Weather cycle is not initialized.");
+        clockHour = SimulationTimeModel.NormalizeHour(time);
+        string mode = cycle.NormalizeMode(weatherMode);
+        weatherState = cycle.Step(mode, 0, 0);
+        return Publish(presentation.Evaluate(clockHour, mode, cameraHeight));
+    }
+
+    public void StartClock(SimulationScheduler scheduler)
+    {
+        ArgumentNullException.ThrowIfNull(scheduler);
+        if (!Initialized) throw new InvalidOperationException("World environment must be initialized before its clock starts.");
+        if (unregisterClock is not null) throw new InvalidOperationException("World environment clock is already active.");
+        unregisterClock = scheduler.RegisterTask(
+            "environment.time-weather",
+            SimulationStage.City,
+            (delta, _) => AdvanceClock(delta),
+            order: 1000);
+    }
+
+    public EnvironmentPresentationSnapshot SetTime(double hour) =>
+        SetState(hour, Current?.WeatherMode ?? content?.DefaultWeatherMode);
+
+    public EnvironmentPresentationSnapshot CycleWeather()
+    {
+        WeatherCycleModel cycle = weatherCycle ?? throw new InvalidOperationException("Weather cycle is not initialized.");
+        string next = cycle.GetNextMode(Current?.WeatherMode);
+        return SetState(Current?.Hour ?? clockHour, next);
     }
 
     public Func<bool> SubscribeState(Action<EnvironmentPresentationSnapshot> listener, bool emitCurrent = false)
@@ -122,6 +155,8 @@ public partial class WorldEnvironmentController : Node3D
 
     public void Shutdown()
     {
+        unregisterClock?.Invoke();
+        unregisterClock = null;
         unsubscribeSettings?.Invoke();
         unsubscribeSettings = null;
         stateListeners.Clear();
@@ -249,6 +284,25 @@ public partial class WorldEnvironmentController : Node3D
             lamps.EmissionEnergyMultiplier = (float)Lerp(0.1, 2.2, snapshot.NightFactor);
         }
 
+    }
+
+    private void AdvanceClock(double delta)
+    {
+        if (model is null || weatherCycle is null || weatherState is null || Current is null) return;
+        clockHour = SimulationTimeModel.Advance(clockHour, delta);
+        weatherState = weatherCycle.Step(
+            weatherState.Mode,
+            weatherState.RemainingSeconds,
+            delta);
+        _ = Publish(model.Evaluate(clockHour, weatherState.Mode, 320));
+    }
+
+    private EnvironmentPresentationSnapshot Publish(EnvironmentPresentationSnapshot snapshot)
+    {
+        Current = snapshot;
+        Apply(Current);
+        foreach (Action<EnvironmentPresentationSnapshot> listener in stateListeners.ToArray()) listener(Current);
+        return Current;
     }
 
     private void ApplyPreferences(SettingsPreferences? next)
