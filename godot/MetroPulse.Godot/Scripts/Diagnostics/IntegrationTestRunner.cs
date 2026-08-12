@@ -182,6 +182,7 @@ public partial class IntegrationTestRunner : Node
             failures);
         await CheckBootActionPresentation(compositionRoot, failures);
         CheckUiFoundation(compositionRoot, failures);
+        CheckAudio(compositionRoot, failures);
         CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
@@ -217,6 +218,18 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase9.audio.passed",
+                "Phase 9 bus routing, settings gain, procedural cache, spatial source, priority/cap, and caption checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["buses"] = AudioBusIds.All.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["cachedStreams"] = session.Audio?.CachedStreamCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["captions"] = session.Audio?.CaptionCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["voiceCap"] = AudioPresentationModel.TotalVoiceCap.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -1593,6 +1606,56 @@ public partial class IntegrationTestRunner : Node
             failures);
     }
 
+    private static void CheckAudio(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Session shell is unavailable.");
+            var audio = session.Audio
+                ?? throw new InvalidOperationException("Session audio is unavailable.");
+            SettingsStore settings = compositionRoot.SettingsAuthority
+                ?? throw new InvalidOperationException("Settings authority is unavailable.");
+            Check(audio.Initialized
+                    && AudioBusIds.All.All(id => AudioServer.GetBusIndex(id) >= 0)
+                    && AudioServer.BusCount == audio.InitialBusCount + AudioBusIds.All.Count - 1,
+                "Session audio installs each required bus exactly once.",
+                failures);
+            Check(AudioPresentationModel.Buses.Skip(1).All(bus =>
+                    AudioServer.GetBusSend(AudioServer.GetBusIndex(bus.Id)).ToString() == bus.Parent),
+                "Vehicle, Emergency, UI, and primary buses route through the declared parent tree.",
+                failures);
+            Check(audio.CachedStreamCount >= 6
+                    && audio.GetNode<AudioStreamPlayer>("Music").Bus == AudioBusIds.Music
+                    && audio.GetNode<AudioStreamPlayer>("CityAmbience").Bus == AudioBusIds.Ambience,
+                "Procedural loops and spatial effects share cached WAV streams on named buses.",
+                failures);
+
+            double originalEffects = settings.GetSettings().Audio.Effects;
+            _ = settings.Set("audio.effects", 0d);
+            int effectsBus = AudioServer.GetBusIndex(AudioBusIds.Effects);
+            Check(audio.Gains[AudioBusIds.Effects].Muted && AudioServer.IsBusMute(effectsBus),
+                "A zero linear volume mutes the bus while retaining its last audible gain.",
+                failures);
+            _ = settings.Set("audio.effects", originalEffects);
+            Check(!audio.Gains[AudioBusIds.Effects].Muted
+                    && !AudioServer.IsBusMute(effectsBus)
+                    && Math.Abs(AudioServer.GetBusVolumeDb(effectsBus) - AudioPresentationModel.ResolveGain(originalEffects).Decibels) < 0.01,
+                "Restoring linear volume restores the exact dB gain and un-mutes the bus.",
+                failures);
+            int captionsBefore = audio.CaptionCount;
+            audio.PublishCaption("[integration siren]");
+            Check(audio.CaptionCount == captionsBefore + 1
+                    && session.Interface?.LastAnnouncement == "[integration siren]",
+                "Closed captions publish important procedural sounds through the shared live region.",
+                failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Audio integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
     private static void CheckDiagnostics(
         CompositionRoot compositionRoot,
         DiagnosticsOverlay diagnostics,
@@ -2608,10 +2671,10 @@ public partial class IntegrationTestRunner : Node
             }
             Check(interactions.Initialized
                     && interactions.Service.ProviderCount == 3
-                    && environment.StateSubscriberCount == 1
+                    && environment.StateSubscriberCount == 2
                     && sedan.ContactMonitor
                     && sedan.MaxContactsReported == 8,
-                "The session owns vehicle, service-work, and mission priority providers, one weather-grip subscriber, and contact-reporting production bodies.", failures);
+                "The session owns vehicle, service-work, and mission priority providers, weather-grip/audio subscribers, and contact-reporting production bodies.", failures);
 
             environment.SetState(12, "rain");
             Check(Math.Abs(sedan.GripMultiplier - 0.48) < 0.0001

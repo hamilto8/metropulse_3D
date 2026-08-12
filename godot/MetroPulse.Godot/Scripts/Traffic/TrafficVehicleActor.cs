@@ -1,6 +1,8 @@
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Traffic;
+using MetroPulse.Godot.Audio;
 using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Traffic;
@@ -19,6 +21,7 @@ public partial class TrafficVehicleActor : AnimatableBody3D
     private MeshInstance3D highDetail = null!;
     private MeshInstance3D lowDetail = null!;
     private AudioStreamPlayer3D horn = null!;
+    private AudioStreamPlayer3D siren = null!;
     private MvpWorldGenerator? world;
     private int publishedHornCount;
 
@@ -61,8 +64,22 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         lowDetail = CreateBody("LowDetailProxy", profile, TrafficColor(snapshot.TypeId).Darkened(0.18f), 0.82f);
         AddChild(highDetail);
         AddChild(lowDetail);
-        horn = new AudioStreamPlayer3D { Name = "Horn", MaxDistance = 70 };
+        horn = new AudioStreamPlayer3D
+        {
+            Name = "Horn",
+            MaxDistance = 70,
+            Bus = AudioBusIds.Vehicle,
+            Stream = ProceduralAudioStreamCache.Get("horn"),
+        };
         AddChild(horn);
+        siren = new AudioStreamPlayer3D
+        {
+            Name = "Siren",
+            MaxDistance = 160,
+            Bus = AudioBusIds.Emergency,
+            Stream = ProceduralAudioStreamCache.Get("police-siren"),
+        };
+        AddChild(siren);
         Apply(snapshot, Vector3.Zero);
     }
 
@@ -89,6 +106,8 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         collision.SetDeferred(CollisionShape3D.PropertyName.Disabled, !collisionEnabled);
         Visible = !snapshot.PlayerControlled;
         SirenActive = snapshot.SirenActive;
+        if (SirenActive && !siren.Playing) siren.Play();
+        if (!SirenActive && siren.Playing) siren.Stop();
 
         Color color = snapshot.DamageState switch
         {

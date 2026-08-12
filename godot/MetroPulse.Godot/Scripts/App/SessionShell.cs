@@ -3,6 +3,7 @@ using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
+using MetroPulse.Godot.Audio;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Diagnostics;
@@ -28,6 +29,8 @@ public partial class SessionShell : Node
     public bool IsInteractiveReleased { get; private set; }
 
     public RuntimeInputHost? InputHost { get; private set; }
+
+    public SessionAudioRuntime? Audio { get; private set; }
 
     public MvpWorldGenerator? World { get; private set; }
 
@@ -91,6 +94,9 @@ public partial class SessionShell : Node
         Interface = new PlayerInterface { Name = "PlayerInterface" };
         GetNode<CanvasLayer>("HUD").AddChild(Interface);
         Interface.Initialize(settings);
+        Audio = new SessionAudioRuntime { Name = "SessionAudio" };
+        runtimeServices.AddChild(Audio);
+        Audio.Initialize(settings, Interface);
         InputHost = new RuntimeInputHost { Name = "RuntimeInputHost" };
         runtimeServices.AddChild(InputHost);
         InputHost.Initialize(settings);
@@ -202,6 +208,10 @@ public partial class SessionShell : Node
             LivingPedestrians,
             RuntimeHost,
             World ?? throw new InvalidOperationException("The world must exist before enforcement is initialized."));
+        Audio.AttachSources(
+            LivingTraffic,
+            PlayerControl,
+            Environment ?? throw new InvalidOperationException("The environment must exist before audio sources are attached."));
         GameplayUi = new GameplayHud { Name = "GameplayHud" };
         Interface.Chrome.AddChild(GameplayUi);
         GameplayUi.Initialize(
@@ -278,6 +288,7 @@ public partial class SessionShell : Node
         LivingPedestrians?.Shutdown();
         LivingTraffic?.Shutdown();
         PlayerControl?.Shutdown();
+        Audio?.Shutdown();
         GameplayCamera?.Shutdown();
         InputHost?.Shutdown();
         Environment?.Shutdown();
@@ -302,6 +313,7 @@ public partial class SessionShell : Node
         if (!IsInsideTree()
             || GetNodeOrNull<Node3D>("WorldRoot") is null
             || GetNodeOrNull<Camera3D>("CameraRig/MainCamera") is null
+            || Audio?.Initialized != true
             || InputHost?.Initialized != true
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true

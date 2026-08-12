@@ -315,6 +315,7 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
 
         secondsSinceImpact = 0;
         ImpactCount++;
+        Audio.PlayImpact();
         LastImpactSpeed = Math.Abs(double.IsFinite(relativeSpeed) ? relativeSpeed : 0);
         Vector3 knockDirection = direction ?? new Vector3(LinearVelocity.X, 0, LinearVelocity.Z);
         if (knockDirection.IsZeroApprox()) knockDirection = -GlobalBasis.Z;
@@ -381,6 +382,10 @@ public partial class PlayerVehicleController : RigidBody3D, IGameplayCameraTarge
             }
         }
         ApplyVehicleForces();
+        Audio.ApplySpeed(
+            new Vector2(LinearVelocity.X, LinearVelocity.Z).Length(),
+            Profile.Drive?.MaxForwardSpeed ?? 1,
+            Controlled);
         UpdateSupportedPoseAndRecovery(delta);
     }
 

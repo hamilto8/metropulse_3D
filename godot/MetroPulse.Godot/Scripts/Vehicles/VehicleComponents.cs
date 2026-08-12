@@ -1,5 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Presentation;
+using MetroPulse.Godot.Audio;
 
 namespace MetroPulse.Godot.Vehicles;
 
@@ -156,11 +158,34 @@ public partial class VehicleAudioComponent : Node3D
 
     public void Initialize()
     {
-        Engine = new AudioStreamPlayer3D { Name = "Engine", MaxDistance = 80 };
-        Impact = new AudioStreamPlayer3D { Name = "Impact", MaxDistance = 60 };
+        Engine = new AudioStreamPlayer3D
+        {
+            Name = "Engine",
+            MaxDistance = 80,
+            Bus = AudioBusIds.Vehicle,
+            Stream = ProceduralAudioStreamCache.Get("vehicle-engine"),
+            Autoplay = true,
+        };
+        Impact = new AudioStreamPlayer3D
+        {
+            Name = "Impact",
+            MaxDistance = 60,
+            Bus = AudioBusIds.Vehicle,
+            Stream = ProceduralAudioStreamCache.Get("vehicle-impact"),
+        };
         AddChild(Engine);
         AddChild(Impact);
     }
+
+    public void ApplySpeed(double speedMetresPerSecond, double maximumSpeed, bool controlled)
+    {
+        VehicleEngineAudioProfile profile = AudioPresentationModel.VehicleEngine(speedMetresPerSecond, maximumSpeed, controlled);
+        Engine.PitchScale = (float)profile.PitchScale;
+        Engine.VolumeDb = (float)AudioPresentationModel.ResolveGain(profile.Gain).Decibels;
+        if (!Engine.Playing) Engine.Play();
+    }
+
+    public void PlayImpact() => Impact.Play();
 }
 
 public partial class VehicleGameplayStateComponent : Node
