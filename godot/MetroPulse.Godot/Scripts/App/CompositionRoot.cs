@@ -391,13 +391,14 @@ public partial class CompositionRoot : Node
                     || session.Economy?.Initialized != true
                     || session.Editor?.Initialized != true
                     || session.Services?.Initialized != true
+                    || session.Missions?.Initialized != true
                     || session.RuntimeHost?.Initialized != true)
                 {
                     throw new BootStageException(
                         BootStageIds.FinalReadiness,
                         "Verifying session readiness",
                         "SESSION_NOT_READY",
-                        "The Management session did not construct its required world, camera, input, player-control, gameplay-camera, economy, editor, services, and runtime owners.",
+                        "The Management session did not construct its required world, camera, input, player-control, gameplay-camera, economy, editor, services, missions, and runtime owners.",
                         ["Repair or reinstall MetroPulse, then retry."]);
                 }
 

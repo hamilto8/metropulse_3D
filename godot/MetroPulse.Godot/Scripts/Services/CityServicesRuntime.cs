@@ -121,6 +121,12 @@ public partial class CityServicesRuntime : Node
         return interactions!.Refresh();
     }
 
+    public void SetMissionCriticalProvider(Func<bool>? provider)
+    {
+        EnsureInitialized();
+        missionCritical = provider ?? (() => false);
+    }
+
     public void Shutdown()
     {
         if (!Initialized) return;

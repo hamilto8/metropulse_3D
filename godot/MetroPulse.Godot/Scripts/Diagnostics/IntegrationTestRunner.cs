@@ -26,6 +26,7 @@ using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Enforcement;
+using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
@@ -190,6 +191,7 @@ public partial class IntegrationTestRunner : Node
         await CheckLivingPedestrians(compositionRoot, failures);
         await CheckPedestrianControl(compositionRoot, failures);
         CheckCityServicesRuntime(compositionRoot, failures);
+        await CheckMissionRuntime(compositionRoot, failures);
         CheckGameplayCamera(compositionRoot, failures);
         await CheckVehiclePhysicsSpike(compositionRoot, failures);
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
@@ -209,6 +211,19 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            AppLog.Write(new StructuredLogEvent(
+                LogCategory.Test,
+                LogSeverity.Information,
+                "phase8.mission_runtime.passed",
+                "Phase 8 live mission markers, dialogue pause/input, vehicle binding, cleanup receipt, result, alert, and recovery checks passed.",
+                new Dictionary<string, string>
+                {
+                    ["assertions"] = "6",
+                    ["results"] = session.Missions?.CompletedResultCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["cleanupCommits"] = session.Missions?.CleanupCommitCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["offerMarkers"] = session.Missions?.Markers.OfferMarkerCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    ["interactionProviders"] = session.VehicleInteractions?.Service.ProviderCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                }));
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -848,6 +863,150 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"City service integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async Task CheckMissionRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        const string vehicleId = "phase8-mission-taxi";
+        PlayerVehicleController? taxi = null;
+        try
+        {
+            SessionShell session = compositionRoot.CurrentSession
+                ?? throw new InvalidOperationException("Mission integration requires a session.");
+            MissionRuntime missions = session.Missions
+                ?? throw new InvalidOperationException("Mission runtime is unavailable.");
+            GodotSessionRuntimeHost runtime = session.RuntimeHost
+                ?? throw new InvalidOperationException("Mission integration requires the runtime host.");
+            PlayerControlRuntime player = session.PlayerControl
+                ?? throw new InvalidOperationException("Mission integration requires player control.");
+            PlayerVehicleInteractionPublisher interactions = session.VehicleInteractions
+                ?? throw new InvalidOperationException("Mission integration requires shared interactions.");
+            CityServicesRuntime services = session.Services
+                ?? throw new InvalidOperationException("Mission integration requires shared outcomes and alerts.");
+            MvpWorldGenerator world = session.World
+                ?? throw new InvalidOperationException("Mission integration requires the authored world.");
+            RuntimeInputHost input = session.InputHost
+                ?? throw new InvalidOperationException("Mission integration requires runtime input.");
+
+            Check(missions.Initialized
+                    && missions.Lifecycle.Phase == MissionPhases.Idle
+                    && missions.Markers.OfferMarkerCount == 9
+                    && missions.Markers.ObjectiveMarkerCount == 0
+                    && interactions.Service.ProviderCount == 3,
+                "The live mission owner publishes exactly the nine normal-scope offer markers through the existing shared interaction service.", failures);
+
+            MissionOfferView executiveOffer = missions.Execution.BuildOffer("mission_executive", null);
+            Vector3 pickup = new(
+                (float)executiveOffer.Pickup.X,
+                (float)world.Surface.GetTerrainHeight(executiveOffer.Pickup.X, executiveOffer.Pickup.Z),
+                (float)executiveOffer.Pickup.Z);
+            Vector3 entrySite = new(0, (float)world.Surface.GetTerrainHeight(0, 0), 0);
+            taxi = player.SpawnVehicle(vehicleId, "TAXI", entrySite, authorized: true, occupied: false);
+            runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("phase8:mission-entry", nameof(IntegrationTestRunner)));
+            PlayerPedestrianController pedestrian = player.Pedestrian
+                ?? throw new InvalidOperationException("Mission vehicle entry requires a pedestrian.");
+            pedestrian.SpawnAt(entrySite + new Vector3(2, 0, 0));
+            for (int frame = 0; frame < 35; frame += 1) await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            VehicleEntryRequestResult entry = player.BeginVehicleEntry(taxi);
+            if (!entry.ReadyForTransition)
+            {
+                throw new InvalidOperationException($"Mission taxi entry was not prepared: {entry.Code ?? "UNKNOWN"}.");
+            }
+            runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("phase8:mission-vehicle", nameof(IntegrationTestRunner)));
+            taxi.SpawnAt(pickup);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(entry.ReadyForTransition
+                    && missions.OpenOffer("mission_executive")
+                    && runtime.StateMachine.State == GameState.Paused
+                    && runtime.Pause.Snapshot().Reasons.Contains(PauseReason.Dialogue)
+                    && missions.Dialogue.Snapshot?.NodeId == "start"
+                    && missions.Presentation.DialogueVisible,
+                "A valid live pickup opens stable-node dialogue under one Dialogue pause hold without releasing the accepted vehicle.", failures);
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(input.LatestSnapshot.Context == ControlContexts.Dialogue,
+                "Dialogue pause selects the keyboard/controller Dialogue context rather than the Pause-menu context.", failures);
+
+            missions.ChooseDialogue(0);
+            missions.ConfirmDialogue();
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            Check(runtime.StateMachine.State == GameState.StreetVehicle
+                    && input.LatestSnapshot.Context == ControlContexts.Vehicle
+                    && missions.Lifecycle.Phase == MissionPhases.Active
+                    && missions.Execution.Snapshot?.VehicleId == vehicleId
+                    && missions.Markers.OfferMarkerCount == 0
+                    && missions.Markers.ObjectiveMarkerCount == 1
+                    && missions.Presentation.HudVisible
+                    && !missions.Presentation.DialogueVisible,
+                "Dialogue acceptance binds the exact live vehicle, restores Vehicle input, hides offers, and publishes one current objective marker/HUD.", failures);
+
+            Exception? blockedModeEscape = null;
+            try
+            {
+                runtime.TransitionTo(
+                    GameState.Management,
+                    new TransitionRequestOptions("phase8:blocked-mode-escape", nameof(IntegrationTestRunner)));
+            }
+            catch (Exception error)
+            {
+                blockedModeEscape = error;
+            }
+            InteractionSnapshot blockedExit = interactions.Refresh();
+            Check(blockedModeEscape is GameTransitionException { Code: TransitionRejectionCodes.MissionCritical }
+                    && runtime.StateMachine.State == GameState.StreetVehicle
+                    && blockedExit.Primary is { Kind: "VEHICLE_EXIT", Eligibility.Allowed: false }
+                    && blockedExit.Primary.FailureReason?.Contains("mission-critical", StringComparison.OrdinalIgnoreCase) == true,
+                "Mission criticality blocks both mode escape and controlled-vehicle release through the canonical transition/interaction reasons.", failures);
+
+            int outcomeCountBefore = services.Outcomes.Snapshot().Transactions.Count;
+            MissionWorldPoint target = missions.Execution.NavigationTarget
+                ?? throw new InvalidOperationException("Accepted mission has no navigation target.");
+            Vector3 destination = new(
+                (float)target.X,
+                (float)world.Surface.GetTerrainHeight(target.X, target.Z),
+                (float)target.Z);
+            taxi.SpawnAt(destination);
+            MissionExecutionUpdate? completion = missions.AdvanceExecution(1);
+            MissionOutcomeReceipt receipt = services.Outcomes.Snapshot().Transactions.Last();
+            Check(completion?.Signal == MissionExecutionSignals.Completed
+                    && missions.Lifecycle.Phase == MissionPhases.Result
+                    && runtime.StateMachine.State == GameState.Result
+                    && player.ControlledKind == ControlKind.None
+                    && services.Outcomes.Snapshot().Transactions.Count == outcomeCountBefore + 1
+                    && receipt.Source is { Kind: OutcomeSourceKinds.Mission, ContentId: "mission_executive" }
+                    && missions.LatestResult?.TransactionId == receipt.TransactionId
+                    && missions.Presentation.ResultVisible
+                    && missions.Markers.ObjectiveMarkerCount == 0
+                    && services.Alerts.Snapshot().Active.Any(alert => alert.DedupeKey == $"mission-outcome:{receipt.TransactionId}"),
+                "Live completion applies one receipt-gated outcome, releases control only for RESULT, removes temporary objective presentation, and publishes debrief plus alert.", failures);
+
+            int commits = missions.CleanupCommitCount;
+            bool duplicateCommit = missions.CommitResult();
+            missions.AcknowledgeResult();
+            Check(!duplicateCommit
+                    && missions.CleanupCommitCount == commits
+                    && missions.Lifecycle.Phase == MissionPhases.Idle
+                    && runtime.StateMachine.State == GameState.Management
+                    && missions.Markers.OfferMarkerCount == 9
+                    && !missions.Presentation.ResultVisible
+                    && player.RemoveVehicle(vehicleId),
+                "Result acknowledgement returns to clean Management/IDLE ownership and cannot duplicate cleanup, Capital, markers, or the mission receipt.", failures);
+            taxi = null;
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Mission runtime integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            SessionShell? session = compositionRoot.CurrentSession;
+            MissionRuntime? missions = session?.Missions;
+            GodotSessionRuntimeHost? runtime = session?.RuntimeHost;
+            if (missions?.Dialogue.Snapshot is not null) missions.CloseDialogue();
+            if (missions?.Lifecycle.Phase == MissionPhases.Result) missions.AcknowledgeResult();
+            if (taxi is not null && !taxi.Controlled) _ = session?.PlayerControl?.RemoveVehicle(vehicleId);
+            if (runtime?.StateMachine.State == GameState.StreetOnFoot)
+                runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase8:mission-test-cleanup", nameof(IntegrationTestRunner)));
         }
     }
 
@@ -1972,11 +2131,11 @@ public partial class IntegrationTestRunner : Node
                 await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
             }
             Check(interactions.Initialized
-                    && interactions.Service.ProviderCount == 2
+                    && interactions.Service.ProviderCount == 3
                     && environment.StateSubscriberCount == 1
                     && sedan.ContactMonitor
                     && sedan.MaxContactsReported == 8,
-                "The session owns vehicle and service-work priority providers, one weather-grip subscriber, and contact-reporting production bodies.", failures);
+                "The session owns vehicle, service-work, and mission priority providers, one weather-grip subscriber, and contact-reporting production bodies.", failures);
 
             environment.SetState(12, "rain");
             Check(Math.Abs(sedan.GripMultiplier - 0.48) < 0.0001

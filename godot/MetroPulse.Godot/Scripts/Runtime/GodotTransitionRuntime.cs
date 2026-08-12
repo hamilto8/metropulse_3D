@@ -10,6 +10,8 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
     private readonly GameplayCameraRig gameplayCamera;
     private readonly SimulationScheduler scheduler;
     private IPlayerControlTransitionBridge? controlBridge;
+    private Func<TransitionContext>? missionContextProvider;
+    private bool dialogueOpen;
 
     public GodotTransitionRuntime(
         RuntimeInputHost input,
@@ -29,8 +31,25 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
 
     public void SetControlBridge(IPlayerControlTransitionBridge? bridge) => controlBridge = bridge;
 
-    public TransitionContext SnapshotContext() =>
-        controlBridge?.SnapshotContext() ?? new TransitionContext();
+    public void SetMissionContextProvider(Func<TransitionContext>? provider) => missionContextProvider = provider;
+
+    public void SetDialogueOpen(bool open, GameState state)
+    {
+        dialogueOpen = open;
+        ApplyInputContext(state);
+    }
+
+    public TransitionContext SnapshotContext()
+    {
+        TransitionContext control = controlBridge?.SnapshotContext() ?? new TransitionContext();
+        TransitionContext mission = missionContextProvider?.Invoke() ?? new TransitionContext();
+        return control with
+        {
+            MissionActive = mission.MissionActive,
+            MissionCritical = mission.MissionCritical,
+            MissionState = mission.MissionState,
+        };
+    }
 
     public TransitionPhaseResult Execute(TransitionPhase phase, TransitionRuntimeContext context)
     {
@@ -129,7 +148,8 @@ public sealed class GodotTransitionRuntime : ITransitionRuntime
     {
         TransitionContext ownership = SnapshotContext();
         input.SetContextSignals(new ControlContextSignals(
-            PauseOpen: state == GameState.Paused,
+            PauseOpen: state == GameState.Paused && !dialogueOpen,
+            DialogueOpen: dialogueOpen,
             BuilderActive: state == GameState.Builder,
             VehicleControlled: ownership.ControlledEntityKind == ControlKind.Vehicle,
             AircraftControlled: ownership.ControlledEntityKind == ControlKind.Aircraft,

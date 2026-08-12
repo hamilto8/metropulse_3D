@@ -8,6 +8,7 @@ using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Enforcement;
+using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
@@ -56,6 +57,8 @@ public partial class SessionShell : Node
     public CityEditorRuntime? Editor { get; private set; }
 
     public CityServicesRuntime? Services { get; private set; }
+
+    public MissionRuntime? Missions { get; private set; }
 
     public override void _Ready()
     {
@@ -145,6 +148,25 @@ public partial class SessionShell : Node
             VehicleInteractions.Service,
             World ?? throw new InvalidOperationException("The world must exist before city services are initialized."),
             GetNode<Node3D>("WorldRoot/EffectRoot"));
+        Missions = new MissionRuntime { Name = "Missions" };
+        runtimeServices.AddChild(Missions);
+        Missions.Initialize(
+            Content,
+            settings,
+            Economy,
+            Services,
+            PlayerControl,
+            RuntimeHost,
+            InputHost,
+            LivingTraffic,
+            VehicleInteractions.Service,
+            Environment ?? throw new InvalidOperationException("The environment must exist before missions are initialized."),
+            World,
+            GetNode<Node3D>("WorldRoot/EffectRoot"),
+            GetNode<CanvasLayer>("HUD"));
+        VehicleInteractions.SetControlledReleaseEligibilityProvider(
+            () => Missions.InteractionReleaseEligibility());
+        Services.SetMissionCriticalProvider(() => Missions.Lifecycle.IsMissionCritical);
         Enforcement = new EnforcementRuntime { Name = "Enforcement" };
         runtimeServices.AddChild(Enforcement);
         Enforcement.Initialize(
@@ -190,6 +212,7 @@ public partial class SessionShell : Node
         _ = unsubscribeWeatherGrip?.Invoke();
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
+        Missions?.Shutdown();
         Services?.Shutdown();
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
@@ -231,6 +254,7 @@ public partial class SessionShell : Node
             || Economy?.Initialized != true
             || Editor?.Initialized != true
             || Services?.Initialized != true
+            || Missions?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

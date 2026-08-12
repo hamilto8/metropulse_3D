@@ -61,6 +61,18 @@ public partial class GodotSessionRuntimeHost : Node
         Runtime.SetControlBridge(bridge);
     }
 
+    public void SetMissionContextProvider(Func<TransitionContext>? provider)
+    {
+        EnsureInitialized();
+        Runtime.SetMissionContextProvider(provider);
+    }
+
+    public void SetDialogueOpen(bool open)
+    {
+        EnsureInitialized();
+        Runtime.SetDialogueOpen(open, StateMachine.State);
+    }
+
     public void TransitionTo(GameState destination, TransitionRequestOptions? options = null)
     {
         EnsureInitialized();
@@ -81,6 +93,7 @@ public partial class GodotSessionRuntimeHost : Node
         unsubscribeTransitions = null;
         _ = unregisterCameraTask?.Invoke();
         unregisterCameraTask = null;
+        Runtime.SetMissionContextProvider(null);
         SetProcess(false);
         Initialized = false;
     }

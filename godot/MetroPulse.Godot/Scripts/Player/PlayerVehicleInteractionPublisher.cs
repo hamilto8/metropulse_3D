@@ -16,6 +16,7 @@ public partial class PlayerVehicleInteractionPublisher : Node
     private GodotSessionRuntimeHost? runtime;
     private RuntimeInputHost? input;
     private Func<bool>? unregisterProvider;
+    private Func<InteractionEligibility>? controlledReleaseEligibility;
 
     public bool Initialized { get; private set; }
 
@@ -45,6 +46,9 @@ public partial class PlayerVehicleInteractionPublisher : Node
 
     public InteractionResolution ResolvePrimary() => Service.ResolvePrimary();
 
+    public void SetControlledReleaseEligibilityProvider(Func<InteractionEligibility>? provider) =>
+        controlledReleaseEligibility = provider;
+
     public override void _PhysicsProcess(double delta)
     {
         if (!Initialized || input is null || playerControl is null || runtime is null) return;
@@ -52,6 +56,10 @@ public partial class PlayerVehicleInteractionPublisher : Node
         if (!snapshot.Suspended && snapshot.JustPressed.Contains("INTERACT"))
         {
             _ = Service.ResolvePrimary();
+        }
+        else
+        {
+            _ = Service.Refresh();
         }
         if (runtime.StateMachine.State == GameState.StreetOnFoot && playerControl.HijackProgress?.Completed == false)
         {
@@ -73,6 +81,7 @@ public partial class PlayerVehicleInteractionPublisher : Node
         playerControl = null;
         runtime = null;
         input = null;
+        controlledReleaseEligibility = null;
         Initialized = false;
     }
 
@@ -90,6 +99,9 @@ public partial class PlayerVehicleInteractionPublisher : Node
                 controlled.Rotation.Z,
                 controlled.GroundedWheelCount > 0,
                 poseSafe);
+            InteractionEligibility mission = controlledReleaseEligibility?.Invoke() ?? new InteractionEligibility(true);
+            bool allowed = exit.Allowed && mission.Allowed;
+            string? reason = !mission.Allowed ? mission.Reason : exit.Code;
             return
             [
                 new InteractionCandidateInput
@@ -100,8 +112,8 @@ public partial class PlayerVehicleInteractionPublisher : Node
                     Prompt = $"Exit {controlled.TypeId}",
                     AccessibilityLabel = $"Exit controlled {controlled.TypeId} vehicle",
                     Distance = 0,
-                    Eligibility = new InteractionEligibility(exit.Allowed, exit.Code),
-                    FailureReason = exit.Code,
+                    Eligibility = new InteractionEligibility(allowed, allowed ? null : reason),
+                    FailureReason = allowed ? null : reason,
                     Metadata = Metadata(controlled, "Returns this vehicle to AI control."),
                     Action = _ => ExitControlledVehicle(),
                 },
