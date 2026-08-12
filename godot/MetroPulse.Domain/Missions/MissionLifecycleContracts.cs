@@ -114,7 +114,10 @@ public sealed record MissionResolution(
     string Outcome,
     double? Payout = null,
     string? Summary = null,
-    string? Reason = null);
+    string? Reason = null,
+    double? Satisfaction = null,
+    double? Damage = null,
+    double? Heat = null);
 
 public sealed record MissionLifecycleRun
 {

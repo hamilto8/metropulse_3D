@@ -307,19 +307,34 @@ public sealed class MissionLifecycleController
         return Snapshot();
     }
 
-    public MissionLifecycleState ResolveSuccess(double? payout = null, string? summary = null)
+    public MissionLifecycleState ResolveSuccess(
+        double? payout = null,
+        string? summary = null,
+        double? satisfaction = null,
+        double? damage = null,
+        double? heat = null)
     {
         if (payout is not null && (!double.IsFinite(payout.Value) || payout < 0))
         {
             throw new ArgumentOutOfRangeException(nameof(payout), "Mission payout cannot be negative.");
         }
-        return Resolve(new MissionResolution("SUCCESS", payout, summary), MissionPhases.Completion);
+        ValidatePerformance(satisfaction, damage, heat);
+        return Resolve(
+            new MissionResolution("SUCCESS", payout, summary, Satisfaction: satisfaction, Damage: damage, Heat: heat),
+            MissionPhases.Completion);
     }
 
-    public MissionLifecycleState ResolveFailure(string reason, string? summary = null)
+    public MissionLifecycleState ResolveFailure(
+        string reason,
+        string? summary = null,
+        double? damage = null,
+        double? heat = null)
     {
         string normalizedReason = RequireText(reason, nameof(reason));
-        return Resolve(new MissionResolution("FAILURE", Summary: summary, Reason: normalizedReason), MissionPhases.Failure);
+        ValidatePerformance(null, damage, heat);
+        return Resolve(
+            new MissionResolution("FAILURE", Summary: summary, Reason: normalizedReason, Damage: damage, Heat: heat),
+            MissionPhases.Failure);
     }
 
     public MissionLifecycleState BeginCleanup()
@@ -650,6 +665,13 @@ public sealed class MissionLifecycleController
             RequireText(run.Checkpoint.Id, "mission lifecycle checkpoint.id");
             if (run.Checkpoint.Sequence < 1) throw new ArgumentOutOfRangeException(nameof(value), "Mission checkpoint sequence must be positive.");
         }
+        if (run.Resolution is { } resolution)
+        {
+            RequireText(resolution.Outcome, "mission lifecycle resolution.outcome");
+            if (resolution.Payout is { } payout && (!double.IsFinite(payout) || payout < 0))
+                throw new ArgumentOutOfRangeException(nameof(value), "Mission resolution payout is invalid.");
+            ValidatePerformance(resolution.Satisfaction, resolution.Damage, resolution.Heat);
+        }
         return true;
     }
 
@@ -710,6 +732,17 @@ public sealed class MissionLifecycleController
             state with { Phase = phase, Run = state.Run! with { Resolution = resolution } },
             Detail(new { resolution }));
         return Snapshot();
+    }
+
+    private static void ValidatePerformance(double? satisfaction, double? damage, double? heat)
+    {
+        if (satisfaction is { } satisfactionValue
+            && (!double.IsFinite(satisfactionValue) || satisfactionValue < 0 || satisfactionValue > 100))
+            throw new ArgumentOutOfRangeException(nameof(satisfaction));
+        if (damage is { } damageValue && (!double.IsFinite(damageValue) || damageValue < 0))
+            throw new ArgumentOutOfRangeException(nameof(damage));
+        if (heat is { } heatValue && (!double.IsFinite(heatValue) || heatValue < 0))
+            throw new ArgumentOutOfRangeException(nameof(heat));
     }
 
     private static MissionLifecycleState CreateInitialState() => new()

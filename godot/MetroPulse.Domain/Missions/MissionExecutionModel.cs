@@ -86,6 +86,7 @@ public sealed class MissionExecutionModel
             ?? throw new ArgumentOutOfRangeException(nameof(missionId), $"Unknown mission: {missionId}");
         MissionAvailability availability = lifecycle.EvaluateAvailability(mission);
         MissionTrafficModifier modifier = traffic ?? new MissionTrafficModifier();
+        ValidateModifier(modifier);
         double distance = vehicle is null ? double.PositiveInfinity : Distance(vehicle.X, vehicle.Z, Point(mission.Pickup!));
         string? reason = null;
         if (!IsInFeatureScope(mission)) reason = "Mission is outside the active feature scope.";
@@ -96,6 +97,56 @@ public sealed class MissionExecutionModel
             reason = $"Requires a {mission.VehicleType} vehicle.";
         else if (requireProximity && distance >= PickupRadius) reason = "Drive into the mission pickup marker first.";
         return new MissionOfferDecision(reason is null, reason, availability, distance, modifier);
+    }
+
+    public MissionOfferView BuildOffer(
+        string missionId,
+        MissionVehicleSnapshot? vehicle,
+        MissionTrafficModifier? traffic = null)
+    {
+        MissionDefinition mission = registry.Get(missionId)
+            ?? throw new ArgumentOutOfRangeException(nameof(missionId), $"Unknown mission: {missionId}");
+        MissionOfferDecision eligibility = EvaluateOffer(missionId, vehicle, traffic);
+        var risks = new List<string>();
+        if (eligibility.Availability.Weather is { } weather && weather.Disposition != MissionWeatherDispositions.Allowed)
+            risks.Add(weather.Reason);
+        if (eligibility.Traffic is { Available: true } modifier
+            && (modifier.TimeLimitMultiplier != 1 || modifier.RewardMultiplier != 1)
+            && !string.IsNullOrWhiteSpace(modifier.Reason)) risks.Add(modifier.Reason);
+        if (ObjectiveOf(mission) == MissionObjectiveTypes.Race) risks.Add("A rival can finish before the route timer expires.");
+        if (ObjectiveOf(mission) == MissionObjectiveTypes.Sabotage) risks.Add("The target action requires an uninterrupted stopped-vehicle hold.");
+        if (ObjectiveOf(mission) == MissionObjectiveTypes.Survival) risks.Add("Survive until the activity timer expires.");
+        return new MissionOfferView(
+            mission.Id!,
+            mission.Title!,
+            ObjectiveOf(mission),
+            mission.PassengerName ?? "Mission contact",
+            mission.PassengerRole ?? "Citizen",
+            mission.VehicleType!,
+            Point(mission.Pickup!),
+            ObjectiveOf(mission) == MissionObjectiveTypes.Survival ? null : Point(mission.Dropoff!),
+            RoundCurrency(mission.BaseReward * rewardScale * eligibility.Traffic.RewardMultiplier),
+            mission.TimeLimit * eligibility.Traffic.TimeLimitMultiplier,
+            Array.AsReadOnly(risks.Distinct(StringComparer.Ordinal).ToArray()),
+            Array.AsReadOnly(eligibility.Availability.Prerequisites.Where(item => !item.Passed).Select(item => item.Reason).ToArray()),
+            eligibility);
+    }
+
+    public MissionObjectiveActionDecision EvaluateObjectiveAction(MissionVehicleSnapshot? vehicle)
+    {
+        MissionExecutionState current = RequireActive();
+        MissionDefinition mission = registry.Get(current.MissionId)!;
+        string prompt = mission.SabotageAction ?? "Perform mission action";
+        if (current.Objective != MissionObjectiveTypes.Sabotage)
+            return new MissionObjectiveActionDecision(false, "The active objective does not use an interaction action.", double.PositiveInfinity, prompt);
+        string? reason = ValidateBoundVehicle(current, vehicle);
+        double distance = vehicle is null || NavigationTarget is not { } target
+            ? double.PositiveInfinity
+            : Distance(vehicle.X, vehicle.Z, target);
+        if (reason is null && distance >= ObjectiveRadius) reason = "Reach the sabotage target first.";
+        if (reason is null && Math.Abs(vehicle!.Speed) > SabotageMaximumSpeed)
+            reason = "Stop the vehicle before starting the sabotage action.";
+        return new MissionObjectiveActionDecision(reason is null, reason, distance, prompt);
     }
 
     public MissionLifecycleState BeginBriefing(
@@ -140,7 +191,6 @@ public sealed class MissionExecutionModel
             throw new ArgumentOutOfRangeException(nameof(choice));
         }
         MissionTrafficModifier modifier = decision.Traffic;
-        ValidateModifier(modifier);
         double authoredTime = acceptedChoice.TimeLimitOverride ?? mission.TimeLimit;
         double baseTime = authoredTime * modifier.TimeLimitMultiplier * timerLeniency;
         double basePayout = RoundCurrency((mission.BaseReward + acceptedChoice.RushBonus) * rewardScale * modifier.RewardMultiplier);
@@ -179,16 +229,8 @@ public sealed class MissionExecutionModel
     public MissionExecutionUpdate BeginObjectiveHold(MissionVehicleSnapshot? vehicle)
     {
         MissionExecutionState current = RequireActive();
-        if (current.Objective != MissionObjectiveTypes.Sabotage)
-        {
-            return new MissionExecutionUpdate(current, MissionExecutionSignals.None, "The active objective does not use a hold action.");
-        }
-        string? reason = ValidateBoundVehicle(current, vehicle);
-        if (reason is null && NavigationTarget is { } target && Distance(vehicle!.X, vehicle.Z, target) >= ObjectiveRadius)
-            reason = "Reach the sabotage target first.";
-        if (reason is null && Math.Abs(vehicle!.Speed) > SabotageMaximumSpeed)
-            reason = "Stop the vehicle before starting the sabotage action.";
-        if (reason is not null) return new MissionExecutionUpdate(current, MissionExecutionSignals.None, reason);
+        MissionObjectiveActionDecision decision = EvaluateObjectiveAction(vehicle);
+        if (!decision.Allowed) return new MissionExecutionUpdate(current, MissionExecutionSignals.None, decision.Reason);
         state = current with { SabotageActive = true, SabotageProgress = 0 };
         return new MissionExecutionUpdate(state, MissionExecutionSignals.HoldStarted);
     }
@@ -341,7 +383,7 @@ public sealed class MissionExecutionModel
         string summary = current.Objective == MissionObjectiveTypes.Taxi
             ? $"{mission.PassengerName} arrived with {satisfaction}% satisfaction."
             : $"{mission.Title} completed successfully.";
-        lifecycle.ResolveSuccess(payout, summary);
+        lifecycle.ResolveSuccess(payout, summary, satisfaction);
         return new MissionExecutionUpdate(state!, MissionExecutionSignals.Completed, Satisfaction: satisfaction);
     }
 

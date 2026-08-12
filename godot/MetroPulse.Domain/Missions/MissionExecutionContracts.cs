@@ -65,6 +65,27 @@ public sealed record MissionOfferMarker(
     string? IneligibleReason,
     double Distance);
 
+public sealed record MissionOfferView(
+    string MissionId,
+    string Title,
+    string Objective,
+    string ContactName,
+    string ContactRole,
+    string RequiredVehicleType,
+    MissionWorldPoint Pickup,
+    MissionWorldPoint? Destination,
+    double BaseReward,
+    double TimeLimit,
+    IReadOnlyList<string> Risks,
+    IReadOnlyList<string> Prerequisites,
+    MissionOfferDecision Eligibility);
+
+public sealed record MissionObjectiveActionDecision(
+    bool Allowed,
+    string? Reason,
+    double Distance,
+    string Prompt);
+
 public sealed record MissionExecutionState
 {
     public int Version { get; init; } = 1;
