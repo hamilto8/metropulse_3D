@@ -14,6 +14,7 @@ using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Placement;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Services;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
@@ -33,6 +34,7 @@ using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
+using MetroPulse.Godot.UI;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
@@ -179,6 +181,7 @@ public partial class IntegrationTestRunner : Node
             "Save application leaves the expected action-specific slot state.",
             failures);
         await CheckBootActionPresentation(compositionRoot, failures);
+        CheckUiFoundation(compositionRoot, failures);
         CheckDiagnostics(compositionRoot, diagnostics, restoreScenario, failures);
         CheckRecoveryScenario(compositionRoot, recoverySeedScenario, failures);
         CheckSettingsAndInputMap(compositionRoot, failures);
@@ -1490,6 +1493,49 @@ public partial class IntegrationTestRunner : Node
         boot.ShowFatal("INTEGRATION_RETRY", "Correct the fixture, then retry.");
         Check(boot.RetryAvailable, "Actionable boot failure presentation exposes Retry.", failures);
         boot.ShowReady();
+    }
+
+    private static void CheckUiFoundation(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        SessionShell? session = compositionRoot.CurrentSession;
+        PlayerInterface? playerInterface = session?.Interface;
+        UiLayoutSnapshot? layout = playerInterface?.CurrentLayout;
+        Check(
+            playerInterface is { Initialized: true, Theme: not null }
+                && playerInterface.AccessibilityName == "MetroPulse player interface",
+            "The session owns one themed and accessibly named player-interface root.",
+            failures);
+        Check(
+            layout is not null
+                && layout.HorizontalMargin > 0
+                && layout.VerticalMargin > 0
+                && layout.ModalMaximumWidth <= playerInterface!.GetViewportRect().Size.X,
+            "The live interface applies a bounded responsive desktop layout.",
+            failures);
+        Check(
+            ReferenceEquals(session?.Missions?.Presentation.GetParent(), playerInterface?.Chrome),
+            "Mission presentation inherits the shared theme through the responsive chrome tree.",
+            failures);
+        Label? liveRegion = playerInterface?.GetNodeOrNull<Label>("LiveAnnouncements");
+        Check(
+            liveRegion is not null
+                && liveRegion.AccessibilityName == "MetroPulse announcements"
+                && liveRegion.AccessibilityLive == DisplayServer.AccessibilityLiveMode.Polite,
+            "The session exposes a polite AccessKit live-announcement region.",
+            failures);
+        playerInterface?.Announce("Interface ready for input.");
+        Check(
+            playerInterface?.LastAnnouncement == "Interface ready for input.",
+            "Authoritative UI announcements update the screen-reader live region.",
+            failures);
+        Check(
+            ProjectSettings.GetSetting("accessibility/general/accessibility_support", -1).AsInt32() == 0
+                && ProjectSettings.GetSetting("display/window/size/min_width", 0).AsInt32() == UiLayoutModel.MinimumWidth
+                && ProjectSettings.GetSetting("display/window/size/min_height", 0).AsInt32() == UiLayoutModel.MinimumHeight,
+            "Project settings retain automatic AccessKit support and the supported desktop minimum viewport.",
+            failures);
     }
 
     private static void CheckDiagnostics(

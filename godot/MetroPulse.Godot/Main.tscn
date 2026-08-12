@@ -52,25 +52,21 @@ text = "Choose how to enter MetroPulse."
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="Actions" type="HBoxContainer" parent="BootLayer/Margin/Content"]
+[node name="Actions" type="BoxContainer" parent="BootLayer/Margin/Content"]
 visible = false
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 12
 
 [node name="NewGame" type="Button" parent="BootLayer/Margin/Content/Actions"]
 layout_mode = 2
-custom_minimum_size = Vector2(180, 64)
 text = "New Game"
 
 [node name="Continue" type="Button" parent="BootLayer/Margin/Content/Actions"]
 layout_mode = 2
-custom_minimum_size = Vector2(220, 64)
 text = "Continue"
 
 [node name="Recover" type="Button" parent="BootLayer/Margin/Content/Actions"]
 layout_mode = 2
-custom_minimum_size = Vector2(240, 64)
 text = "Recover Previous Save"
 
 [node name="Retry" type="Button" parent="BootLayer/Margin/Content"]

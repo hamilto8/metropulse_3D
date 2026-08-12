@@ -14,6 +14,7 @@ using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
+using MetroPulse.Godot.UI;
 using MetroPulse.Godot.Vehicles;
 using MetroPulse.Godot.World;
 
@@ -60,6 +61,8 @@ public partial class SessionShell : Node
 
     public MissionRuntime? Missions { get; private set; }
 
+    public PlayerInterface? Interface { get; private set; }
+
     public override void _Ready()
     {
         AppLog.Write(new StructuredLogEvent(
@@ -77,6 +80,9 @@ public partial class SessionShell : Node
         }
 
         Node runtimeServices = GetNode<Node>("RuntimeServices");
+        Interface = new PlayerInterface { Name = "PlayerInterface" };
+        GetNode<CanvasLayer>("HUD").AddChild(Interface);
+        Interface.Initialize(settings);
         InputHost = new RuntimeInputHost { Name = "RuntimeInputHost" };
         runtimeServices.AddChild(InputHost);
         InputHost.Initialize(settings);
@@ -163,7 +169,7 @@ public partial class SessionShell : Node
             Environment ?? throw new InvalidOperationException("The environment must exist before missions are initialized."),
             World,
             GetNode<Node3D>("WorldRoot/EffectRoot"),
-            GetNode<CanvasLayer>("HUD"));
+            Interface.Chrome);
         VehicleInteractions.SetControlledReleaseEligibilityProvider(
             () => Missions.InteractionReleaseEligibility());
         Services.SetMissionCriticalProvider(() => Missions.Lifecycle.IsMissionCritical);
@@ -213,6 +219,7 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         Missions?.Shutdown();
+        Interface?.Shutdown();
         Services?.Shutdown();
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
@@ -228,6 +235,7 @@ public partial class SessionShell : Node
         Billboards?.Shutdown();
         World?.ShutdownWorld();
         Content = null;
+        Interface = null;
         AppLog.Write(new StructuredLogEvent(
             LogCategory.Session,
             LogSeverity.Information,
@@ -255,6 +263,7 @@ public partial class SessionShell : Node
             || Editor?.Initialized != true
             || Services?.Initialized != true
             || Missions?.Initialized != true
+            || Interface?.Initialized != true
             || RuntimeHost?.Initialized != true)
         {
             throw new InvalidOperationException("The session readiness contract is incomplete.");

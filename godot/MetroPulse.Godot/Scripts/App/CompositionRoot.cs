@@ -274,6 +274,7 @@ public partial class CompositionRoot : Node
                         "settings.listener_failed",
                         error.Message)));
                 SettingsLoadResult result = SettingsAuthority.Load();
+                boot.ApplySettings(result.Settings);
                 foreach (string warning in result.Warnings)
                 {
                     AppLog.Write(new StructuredLogEvent(

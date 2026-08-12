@@ -87,7 +87,7 @@ public partial class MissionRuntime : Node
         WorldEnvironmentController environment,
         MvpWorldGenerator world,
         Node3D effectRoot,
-        CanvasLayer hud,
+        Control hud,
         bool temporaryMayhemEnabled = false)
     {
         if (Initialized) throw new InvalidOperationException("Mission runtime is already initialized.");
