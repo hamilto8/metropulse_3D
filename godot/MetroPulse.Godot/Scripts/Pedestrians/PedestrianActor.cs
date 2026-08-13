@@ -75,7 +75,6 @@ public partial class PedestrianActor : AnimatableBody3D
         Rotation = snapshot.KnockedDown
             ? new Vector3(0, (float)snapshot.Heading, Mathf.Pi / 2)
             : new Vector3(0, (float)snapshot.Heading, 0);
-        ResetPhysicsInterpolation();
 
         float distance = new Vector2(GlobalPosition.X - renderFocus.X, GlobalPosition.Z - renderFocus.Z).Length();
         RenderDetailTier = distance <= quality.PedestrianHighDetailDistance

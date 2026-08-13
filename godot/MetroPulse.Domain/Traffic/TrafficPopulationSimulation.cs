@@ -96,6 +96,7 @@ public sealed class TrafficPopulationSimulation
     private readonly Dictionary<string, Agent> moving = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Agent> parked = new(StringComparer.Ordinal);
     private readonly SpatialHashGrid<Agent> vehicleGrid;
+    private readonly List<Agent> nearbyAgents = [];
     private readonly Dictionary<string, RoadGraphNodeSnapshot> graphNodes = new(StringComparer.Ordinal);
     private long graphRevision = -1;
     private long nextMovingSerial;
@@ -127,6 +128,8 @@ public sealed class TrafficPopulationSimulation
     public int ParkedCount => parked.Count;
 
     public int MaximumLocalCandidates => maximumLocalCandidates;
+
+    public int GraphSnapshotRefreshCount { get; private set; }
 
     public TrafficPopulationSnapshot Snapshot() => new(
         frame,
@@ -429,11 +432,12 @@ public sealed class TrafficPopulationSimulation
         if (ShouldStopForControl(agent, target, distance)) targetSpeed = 0;
         if (agent.PedestrianShouldYield) targetSpeed = 0;
 
-        SpatialQueryResult<Agent> nearby = vehicleGrid.Query(
+        SpatialQueryMetrics nearby = vehicleGrid.QueryInto(
             new SpatialPoint(agent.Position.X, agent.Position.Z),
-            config.NeighborQueryRadius);
+            config.NeighborQueryRadius,
+            nearbyAgents);
         maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
-        Agent? blocker = FindBlocker(agent, nearby.Items);
+        Agent? blocker = FindBlocker(agent, nearbyAgents);
         if (blocker is not null)
         {
             targetSpeed = Math.Min(targetSpeed, Math.Max(0, blocker.Speed - 2));
@@ -656,8 +660,9 @@ public sealed class TrafficPopulationSimulation
 
     private void RefreshGraphNodes()
     {
+        if (graph.Revision == graphRevision) return;
         TrafficRoadGraphSnapshot graphSnapshot = graph.Snapshot();
-        if (graphSnapshot.Revision == graphRevision) return;
+        GraphSnapshotRefreshCount += 1;
         graphNodes.Clear();
         foreach (RoadGraphNodeSnapshot node in graphSnapshot.Nodes) graphNodes.Add(node.Id, node);
         foreach (Agent agent in moving.Values)

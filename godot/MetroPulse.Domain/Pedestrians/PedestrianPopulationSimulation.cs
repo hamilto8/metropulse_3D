@@ -76,6 +76,7 @@ public sealed class PedestrianPopulationSimulation
     private readonly Dictionary<string, Agent> citizens = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SidewalkNodeSnapshot> nodes;
     private readonly SpatialHashGrid<Agent> grid;
+    private readonly List<Agent> nearbyAgents = [];
     private long nextSerial;
     private long frame;
     private int nextSeat;
@@ -144,15 +145,15 @@ public sealed class PedestrianPopulationSimulation
     {
         if (!vehiclePosition.IsFinite || !double.IsFinite(vehicleHeading)
             || !double.IsFinite(detectionDistance) || detectionDistance <= 0) return null;
-        SpatialQueryResult<Agent> nearby = grid.Query(
-            new SpatialPoint(vehiclePosition.X, vehiclePosition.Z), detectionDistance);
+        SpatialQueryMetrics nearby = grid.QueryInto(
+            new SpatialPoint(vehiclePosition.X, vehiclePosition.Z), detectionDistance, nearbyAgents);
         maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
         double forwardX = Math.Sin(vehicleHeading);
         double forwardZ = Math.Cos(vehicleHeading);
         double rightX = forwardZ;
         double rightZ = -forwardX;
         PedestrianTrafficContact? closest = null;
-        foreach (Agent agent in nearby.Items)
+        foreach (Agent agent in nearbyAgents)
         {
             bool seated = agent.Seat is not null && agent.Behavior.Mode == NpcBehaviorModes.SittingReading;
             if (!PedestrianTrafficModel.IsTrafficParticipant(new PedestrianTrafficParticipant(
@@ -264,14 +265,15 @@ public sealed class PedestrianPopulationSimulation
         {
             criminal.Behavior = state with { Timer = Math.Max(0, state.Timer - delta) };
             if (criminal.Behavior.Timer > 0) return false;
-            SpatialQueryResult<Agent> nearby = grid.Query(
+            SpatialQueryMetrics nearby = grid.QueryInto(
                 new SpatialPoint(criminal.Position.X, criminal.Position.Z),
-                NpcBehaviorModel.DefaultConfig.AggressionRadius);
+                NpcBehaviorModel.DefaultConfig.AggressionRadius,
+                nearbyAgents);
             maximumLocalCandidates = Math.Max(maximumLocalCandidates, nearby.CandidatesTested);
             NpcCandidate? selectedTarget = NpcBehaviorModel.SelectAggressionTarget(
                 criminal.Id,
                 criminal.Position,
-                nearby.Items.Select(candidate => new NpcCandidate(
+                nearbyAgents.Select(candidate => new NpcCandidate(
                     candidate.Id,
                     candidate.Descriptor.Archetype,
                     candidate.Position,

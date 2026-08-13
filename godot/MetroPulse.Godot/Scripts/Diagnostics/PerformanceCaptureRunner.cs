@@ -23,6 +23,7 @@ public partial class PerformanceCaptureRunner : Node
     private ulong captureStartedUsec;
     private ulong nextSampleUsec;
     private int[] gcStart = [];
+    private long allocatedBytesStart;
 
     public void Begin(
         CompositionRoot root,
@@ -41,6 +42,7 @@ public partial class PerformanceCaptureRunner : Node
         diagnostics.BeginPerformanceCapture();
         startedUsec = Time.GetTicksUsec();
         gcStart = [GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2)];
+        allocatedBytesStart = GC.GetTotalAllocatedBytes(precise: false);
         SetProcess(true);
     }
 
@@ -146,6 +148,7 @@ public partial class PerformanceCaptureRunner : Node
                 videoMemoryBytes = final.VideoMemoryBytes,
                 staticMemoryBytes = final.StaticMemoryBytes,
                 managedMemoryBytes = final.ManagedMemoryBytes,
+                managedAllocatedBytes = Math.Max(0, final.TotalAllocatedBytes - allocatedBytesStart),
                 physicsActiveObjects = final.PhysicsActiveObjects,
                 physicsCollisionPairs = final.PhysicsCollisionPairs,
                 physicsIslands = final.PhysicsIslandCount,

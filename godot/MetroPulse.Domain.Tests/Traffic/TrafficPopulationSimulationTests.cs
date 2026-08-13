@@ -75,6 +75,20 @@ public sealed class TrafficPopulationSimulationTests
     }
 
     [Fact]
+    public void StableRoadRevisionDoesNotRebuildLargeGraphSnapshotsEveryTick()
+    {
+        TrafficPopulationSimulation simulation = Create("graph-refresh-fast-path");
+        Assert.Equal(1, simulation.GraphSnapshotRefreshCount);
+
+        for (int frame = 0; frame < 240; frame += 1)
+        {
+            simulation.Advance(1d / 120, new TrafficPoint(0, 0));
+        }
+
+        Assert.Equal(1, simulation.GraphSnapshotRefreshCount);
+    }
+
+    [Fact]
     public void DamageFireAndInvalidInputsHaveBoundedLifecycle()
     {
         TrafficPopulationSimulation simulation = Create("damage-seed");

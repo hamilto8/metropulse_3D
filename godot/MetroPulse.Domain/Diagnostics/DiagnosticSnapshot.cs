@@ -55,6 +55,7 @@ public sealed record DiagnosticPerformance(
     ulong VideoMemoryBytes,
     ulong StaticMemoryBytes,
     long ManagedMemoryBytes,
+    long TotalAllocatedBytes,
     ulong GodotObjectCount,
     ulong ResourceCount,
     ulong NodeCount,

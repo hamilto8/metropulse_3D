@@ -42,5 +42,27 @@ public sealed class SpatialHashGridTests
         Assert.Empty(grid.Query(new SpatialPoint(0, 0), -1).Items);
     }
 
+    [Fact]
+    public void QueryIntoReusesCallerBufferAndRebuildDropsInactiveCells()
+    {
+        var grid = new SpatialHashGrid<Entity>(10, entity => entity.Id, entity => entity.Position);
+        grid.Rebuild([
+            new Entity("b", new SpatialPoint(5, 0)),
+            new Entity("a", new SpatialPoint(-5, 0)),
+            new Entity("far", new SpatialPoint(50, 0)),
+        ]);
+        List<Entity> buffer = [new Entity("stale", new SpatialPoint(0, 0))];
+
+        SpatialQueryMetrics first = grid.QueryInto(new SpatialPoint(0, 0), 10, buffer);
+        Assert.Equal(new[] { "a", "b" }, buffer.Select(item => item.Id));
+        Assert.Equal(2, first.CandidatesTested);
+
+        grid.Rebuild([new Entity("moved", new SpatialPoint(100, 100))]);
+        SpatialQueryMetrics second = grid.QueryInto(new SpatialPoint(0, 0), 10, buffer);
+        Assert.Empty(buffer);
+        Assert.Equal(0, second.CandidatesTested);
+        Assert.Equal(1, grid.OccupiedCellCount);
+    }
+
     private sealed record Entity(string Id, SpatialPoint Position);
 }

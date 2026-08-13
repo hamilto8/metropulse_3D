@@ -96,7 +96,8 @@ requested JSON report.
 The report contains boot-to-interactive time; average and tail frame, process,
 physics, navigation, CPU-render, and GPU-render timing; FPS; render counts;
 Godot/static/managed/video memory; live objects/resources/nodes/orphans;
-physics activity; audio voices; and GC collection deltas. A backend that cannot
+physics activity; audio voices; managed allocated bytes; and GC collection
+deltas. A backend that cannot
 publish measured GPU timestamps reports zero values with
 `availability.gpuTiming=false`; consumers must not interpret those zeros as
 free GPU work. Host data is limited to OS/runtime/hardware descriptors and does

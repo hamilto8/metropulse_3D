@@ -15,9 +15,13 @@ namespace MetroPulse.Godot.Traffic;
 /// <summary>Session-owned Godot adapter for the authoritative traffic population.</summary>
 public partial class LivingTrafficRuntime : Node
 {
+    private const double PresentationIntervalSeconds = 1.0 / 60.0;
     private readonly Dictionary<string, TrafficVehicleActor> actors = new(StringComparer.Ordinal);
     private readonly Dictionary<string, PlayerVehicleController> promoted = new(StringComparer.Ordinal);
     private readonly List<TrafficControlPostActor> controlPosts = [];
+    private readonly Dictionary<string, TrafficControl> controls = new(StringComparer.Ordinal);
+    private readonly HashSet<string> activeActorIds = new(StringComparer.Ordinal);
+    private readonly List<string> removedActorIds = [];
     private GameContentRegistry? content;
     private MvpWorldGenerator? world;
     private PlayerControlRuntime? playerControl;
@@ -27,12 +31,15 @@ public partial class LivingTrafficRuntime : Node
     private Func<bool>? unregisterProductivityTick;
     private TrafficAlertAdapter? trafficAlerts;
     private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
+    private double presentationRemaining;
 
     public bool Initialized { get; private set; }
 
     public TrafficRoadGraph RoadGraph { get; private set; } = null!;
 
     public TrafficPopulationSimulation Simulation { get; private set; } = null!;
+
+    public TrafficPopulationSnapshot CurrentSnapshot { get; private set; } = null!;
 
     public TrafficProductivityModel? Productivity { get; private set; }
 
@@ -73,7 +80,8 @@ public partial class LivingTrafficRuntime : Node
         controlRoot = new Node3D { Name = "TrafficControls" };
         navigationRoot.AddChild(controlRoot);
         BuildControlPosts();
-        ReconcileActors(Simulation.Snapshot(), Vector3.Zero);
+        CurrentSnapshot = Simulation.Snapshot();
+        ReconcileActors(CurrentSnapshot, Vector3.Zero);
         ProcessPhysicsPriority = -780;
         SetPhysicsProcess(true);
         Initialized = true;
@@ -164,7 +172,11 @@ public partial class LivingTrafficRuntime : Node
             bridgePriorityEnabled: Productivity?.BridgePolicy == BridgePolicies.FreightPriority,
             speedMultiplier: productivity?.Presentation.SpeedMultiplier ?? 1,
             bridgeSpeedMultiplier: productivity?.Presentation.BridgeSpeedMultiplier ?? 1);
-        ReconcileActors(Simulation.Snapshot(), focus);
+        presentationRemaining -= Math.Max(0, delta);
+        if (presentationRemaining > 0) return;
+        presentationRemaining = PresentationIntervalSeconds;
+        CurrentSnapshot = Simulation.Snapshot();
+        ReconcileActors(CurrentSnapshot, focus);
         ApplyControlSignals();
     }
 
@@ -186,6 +198,9 @@ public partial class LivingTrafficRuntime : Node
         if (controlRoot is not null && GodotObject.IsInstanceValid(controlRoot)) controlRoot.Free();
         actors.Clear();
         controlPosts.Clear();
+        controls.Clear();
+        activeActorIds.Clear();
+        removedActorIds.Clear();
         trafficRoot = null;
         controlRoot = null;
         content = null;
@@ -195,6 +210,7 @@ public partial class LivingTrafficRuntime : Node
         Productivity = null;
         Alerts = null;
         ProductivityPresentation = null;
+        presentationRemaining = 0;
         Initialized = false;
     }
 
@@ -202,30 +218,47 @@ public partial class LivingTrafficRuntime : Node
 
     private void ReconcileActors(TrafficPopulationSnapshot snapshot, Vector3 focus)
     {
-        foreach (TrafficAgentSnapshot agent in snapshot.Moving.Concat(snapshot.Parked))
+        activeActorIds.Clear();
+        foreach (TrafficAgentSnapshot agent in snapshot.Moving)
         {
-            if (!actors.TryGetValue(agent.Id, out TrafficVehicleActor? actor))
-            {
-                actor = new TrafficVehicleActor { Name = $"Traffic_{agent.Id}" };
-                trafficRoot!.AddChild(actor);
-                VehicleProfileRecord record = content!.GetVehicleProfile(agent.TypeId)
-                    ?? throw new InvalidOperationException($"Traffic profile '{agent.TypeId}' is unavailable.");
-                actor.Initialize(agent, record, world!, quality);
-                actors.Add(agent.Id, actor);
-            }
-            actor.Apply(agent, focus);
+            activeActorIds.Add(agent.Id);
+            ReconcileActor(agent, focus);
         }
-        var activeIds = snapshot.Moving.Concat(snapshot.Parked).Select(agent => agent.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (string removedId in actors.Keys.Where(id => !activeIds.Contains(id)).ToArray())
+        foreach (TrafficAgentSnapshot agent in snapshot.Parked)
+        {
+            activeActorIds.Add(agent.Id);
+            ReconcileActor(agent, focus);
+        }
+        removedActorIds.Clear();
+        foreach (string actorId in actors.Keys)
+        {
+            if (!activeActorIds.Contains(actorId)) removedActorIds.Add(actorId);
+        }
+        foreach (string removedId in removedActorIds)
         {
             actors[removedId].Free();
             actors.Remove(removedId);
         }
     }
 
+    private void ReconcileActor(TrafficAgentSnapshot agent, Vector3 focus)
+    {
+        if (!actors.TryGetValue(agent.Id, out TrafficVehicleActor? actor))
+        {
+            actor = new TrafficVehicleActor { Name = $"Traffic_{agent.Id}" };
+            trafficRoot!.AddChild(actor);
+            VehicleProfileRecord record = content!.GetVehicleProfile(agent.TypeId)
+                ?? throw new InvalidOperationException($"Traffic profile '{agent.TypeId}' is unavailable.");
+            actor.Initialize(agent, record, world!, quality);
+            actors.Add(agent.Id, actor);
+        }
+        actor.Apply(agent, focus);
+    }
+
     private void BuildControlPosts()
     {
-        IReadOnlyDictionary<string, TrafficControl> controls = Simulation.Controls.Controls.ToDictionary(control => control.Id, StringComparer.Ordinal);
+        controls.Clear();
+        foreach (TrafficControl control in Simulation.Controls.Controls) controls.Add(control.Id, control);
         foreach (TrafficControlPost definition in Simulation.Controls.Posts)
         {
             var post = new TrafficControlPostActor { Name = $"Post_{Sanitize(definition.Id)}" };
@@ -237,7 +270,6 @@ public partial class LivingTrafficRuntime : Node
 
     private void ApplyControlSignals()
     {
-        IReadOnlyDictionary<string, TrafficControl> controls = Simulation.Controls.Controls.ToDictionary(control => control.Id, StringComparer.Ordinal);
         foreach (TrafficControlPostActor post in controlPosts)
         {
             TrafficControl control = controls[post.ControlId];

@@ -262,6 +262,7 @@ public partial class DiagnosticsOverlay : CanvasLayer
         RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.VideoMemUsed),
         MonitorUnsigned(Performance.Monitor.MemoryStatic),
         GC.GetTotalMemory(forceFullCollection: false),
+        GC.GetTotalAllocatedBytes(precise: false),
         MonitorUnsigned(Performance.Monitor.ObjectCount),
         MonitorUnsigned(Performance.Monitor.ObjectResourceCount),
         MonitorUnsigned(Performance.Monitor.ObjectNodeCount),

@@ -33,6 +33,7 @@ public partial class SessionEffectRuntime : Node3D
     private double lightningClearAt = double.PositiveInfinity;
     private double nextComet = 15;
     private int cometSequence;
+    private double observationRemaining;
 
     public bool Initialized { get; private set; }
 
@@ -104,8 +105,13 @@ public partial class SessionEffectRuntime : Node3D
         double safeDelta = double.IsFinite(delta) ? Math.Clamp(delta, 0, 0.25) : 0;
         elapsed += safeDelta;
         AdvanceVisuals(safeDelta);
-        ObserveVehicleImpacts();
-        ReconcileTrafficFires();
+        observationRemaining -= safeDelta;
+        if (observationRemaining <= 0)
+        {
+            observationRemaining = 0.1;
+            ObserveVehicleImpacts();
+            ReconcileTrafficFires();
+        }
         AdvanceWeatherEffects();
     }
 
@@ -248,7 +254,7 @@ public partial class SessionEffectRuntime : Node3D
 
     private void ReconcileTrafficFires()
     {
-        TrafficAgentSnapshot[] burning = traffic.Simulation.Snapshot().Moving
+        TrafficAgentSnapshot[] burning = traffic.CurrentSnapshot.Moving
             .Where(agent => agent.DamageState == TrafficDamageStates.OnFire)
             .ToArray();
         foreach (TrafficAgentSnapshot agent in burning)

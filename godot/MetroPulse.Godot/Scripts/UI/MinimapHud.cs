@@ -95,7 +95,7 @@ public partial class MinimapHud : PanelContainer
             Point(nodes[edge.FromNodeId].Position),
             Point(nodes[edge.ToNodeId].Position),
             edge.Source == RoadGraphMetadata.UserRoad)).ToArray();
-        TrafficPopulationSnapshot trafficSnapshot = traffic.Simulation.Snapshot();
+        TrafficPopulationSnapshot trafficSnapshot = traffic.CurrentSnapshot;
         HashSet<string> responders = (enforcement.Response?.ResponderIds ?? Array.Empty<string>()).ToHashSet(StringComparer.Ordinal);
         IEnumerable<MinimapAgentInput> moving = trafficSnapshot.Moving.Select(agent => new MinimapAgentInput(
             agent.Id,
@@ -110,7 +110,7 @@ public partial class MinimapHud : PanelContainer
             agent.Heading,
             Parked: true,
             HeatResponder: responders.Contains(agent.Id)));
-        PedestrianPopulationSnapshot pedestrianSnapshot = pedestrians.Simulation.Snapshot();
+        PedestrianPopulationSnapshot pedestrianSnapshot = pedestrians.CurrentSnapshot;
         IEnumerable<MinimapAgentInput> citizens = pedestrianSnapshot.Citizens.Select(agent => new MinimapAgentInput(
             agent.Id,
             MinimapMarkerKinds.Pedestrian,

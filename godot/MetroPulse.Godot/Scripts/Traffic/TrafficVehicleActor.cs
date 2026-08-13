@@ -95,7 +95,6 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         double height = world.Surface.GetTerrainHeight(snapshot.Position.X, snapshot.Position.Z);
         GlobalPosition = new Vector3((float)snapshot.Position.X, (float)height, (float)snapshot.Position.Z);
         Rotation = new Vector3(0, (float)snapshot.Heading, 0);
-        ResetPhysicsInterpolation();
 
         float distance = new Vector2(GlobalPosition.X - renderFocus.X, GlobalPosition.Z - renderFocus.Z).Length();
         RenderDetailTier = distance <= quality.TrafficHighDetailDistance

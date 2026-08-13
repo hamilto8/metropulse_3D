@@ -33,6 +33,7 @@ public partial class SessionAudioRuntime : Node
     private bool captionsEnabled;
     private string lastWeatherMode = string.Empty;
     private int nextSpatialVoice;
+    private double observationRemaining;
 
     public bool Initialized { get; private set; }
 
@@ -103,7 +104,10 @@ public partial class SessionAudioRuntime : Node
     {
         _ = delta;
         if (!Initialized || traffic is null) return;
-        TrafficPopulationSnapshot snapshot = traffic.Simulation.Snapshot();
+        observationRemaining -= Math.Max(0, delta);
+        if (observationRemaining > 0) return;
+        observationRemaining = 0.1;
+        TrafficPopulationSnapshot snapshot = traffic.CurrentSnapshot;
         foreach (TrafficAgentSnapshot agent in snapshot.Moving)
         {
             int previous = hornCounts.GetValueOrDefault(agent.Id);
@@ -180,6 +184,7 @@ public partial class SessionAudioRuntime : Node
         spatialVoices.Clear();
         lastWeatherMode = string.Empty;
         nextSpatialVoice = 0;
+        observationRemaining = 0;
         Initialized = false;
     }
 

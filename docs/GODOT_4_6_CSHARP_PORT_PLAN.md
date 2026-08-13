@@ -1741,6 +1741,15 @@ and garbage collection.
 procedural node count, materials/draw calls, shadows/glow, physics ticks,
 minimap redraw, UI layout, and allocation-heavy C#↔Godot calls.
 
+> **Status:** first allocation pass complete. Native telemetry identified a
+> full 480-node/834-edge road-graph snapshot rebuilt at every 120 Hz traffic
+> tick plus disposable spatial-query/reconciliation collections. Revision-first
+> graph refresh, reusable spatial buckets/query buffers, shared presentation
+> snapshots, cached controls, and 60 Hz interpolated agent presentation reduce
+> measured managed allocation by about 77.7% on the M1 Pro capture while the
+> 120 Hz simulation and 179-assertion integration behavior remain exact. Dynamic
+> visual batching and further allocation work remain open.
+
 11.3 Implement high/medium/low quality profiles without removing targets,
 hazards, traffic meaning, or input feedback. Use cell-based MultiMeshes,
 visibility ranges, LOD meshes/proxies, shadow tiers, effect budgets, update

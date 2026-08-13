@@ -13,19 +13,25 @@ namespace MetroPulse.Godot.Pedestrians;
 /// <summary>Session owner for ambient citizens and bounded vehicle/pedestrian interaction.</summary>
 public partial class LivingPedestrianRuntime : Node
 {
+    private const double PresentationIntervalSeconds = 1.0 / 60.0;
     private readonly Dictionary<string, PedestrianActor> actors = new(StringComparer.Ordinal);
+    private readonly HashSet<string> activeActorIds = new(StringComparer.Ordinal);
+    private readonly List<string> removedActorIds = [];
     private MvpWorldGenerator? world;
     private PlayerControlRuntime? playerControl;
     private LivingTrafficRuntime? traffic;
     private Node3D? cameraOrigin;
     private Node3D? pedestrianRoot;
     private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
+    private double presentationRemaining;
 
     public bool Initialized { get; private set; }
 
     public PedestrianSidewalkGraph SidewalkGraph { get; private set; } = null!;
 
     public PedestrianPopulationSimulation Simulation { get; private set; } = null!;
+
+    public PedestrianPopulationSnapshot CurrentSnapshot { get; private set; } = null!;
 
     public int ActorCount => actors.Count;
 
@@ -54,7 +60,8 @@ public partial class LivingPedestrianRuntime : Node
         Simulation = new PedestrianPopulationSimulation(SidewalkGraph, new RandomStreamRegistry(seed), content);
         pedestrianRoot = new Node3D { Name = "AmbientPedestrians" };
         agentRoot.AddChild(pedestrianRoot);
-        ReconcileActors(Simulation.Snapshot(), Vector3.Zero);
+        CurrentSnapshot = Simulation.Snapshot();
+        ReconcileActors(CurrentSnapshot, Vector3.Zero);
         ProcessPhysicsPriority = -790;
         SetPhysicsProcess(true);
         Initialized = true;
@@ -75,7 +82,11 @@ public partial class LivingPedestrianRuntime : Node
             new PedestrianVector3(focus.X, focus.Y, focus.Z),
             (x, z) => world!.Surface.GetTerrainHeight(x, z));
         ApplyTrafficInteractions(delta);
-        ReconcileActors(Simulation.Snapshot(), focus);
+        presentationRemaining -= Math.Max(0, delta);
+        if (presentationRemaining > 0) return;
+        presentationRemaining = PresentationIntervalSeconds;
+        CurrentSnapshot = Simulation.Snapshot();
+        ReconcileActors(CurrentSnapshot, focus);
     }
 
     public void Shutdown()
@@ -84,11 +95,14 @@ public partial class LivingPedestrianRuntime : Node
         SetPhysicsProcess(false);
         if (pedestrianRoot is not null && GodotObject.IsInstanceValid(pedestrianRoot)) pedestrianRoot.Free();
         actors.Clear();
+        activeActorIds.Clear();
+        removedActorIds.Clear();
         pedestrianRoot = null;
         world = null;
         playerControl = null;
         traffic = null;
         cameraOrigin = null;
+        presentationRemaining = 0;
         Initialized = false;
     }
 
@@ -96,7 +110,7 @@ public partial class LivingPedestrianRuntime : Node
 
     private void ApplyTrafficInteractions(double delta)
     {
-        TrafficPopulationSnapshot trafficSnapshot = traffic!.Simulation.Snapshot();
+        TrafficPopulationSnapshot trafficSnapshot = traffic!.CurrentSnapshot;
         foreach (TrafficAgentSnapshot vehicle in trafficSnapshot.Moving)
         {
             double detection = traffic.Simulation.GetPedestrianDetectionDistance(vehicle.Id);
@@ -119,6 +133,7 @@ public partial class LivingPedestrianRuntime : Node
     {
         foreach (PedestrianAgentSnapshot citizen in snapshot.Citizens)
         {
+            activeActorIds.Add(citizen.Id);
             if (!actors.TryGetValue(citizen.Id, out PedestrianActor? actor))
             {
                 actor = new PedestrianActor { Name = $"Pedestrian_{citizen.Id}" };
@@ -128,11 +143,16 @@ public partial class LivingPedestrianRuntime : Node
             }
             actor.Apply(citizen, focus);
         }
-        HashSet<string> active = snapshot.Citizens.Select(citizen => citizen.Id).ToHashSet(StringComparer.Ordinal);
-        foreach (string removedId in actors.Keys.Where(id => !active.Contains(id)).ToArray())
+        removedActorIds.Clear();
+        foreach (string actorId in actors.Keys)
+        {
+            if (!activeActorIds.Contains(actorId)) removedActorIds.Add(actorId);
+        }
+        foreach (string removedId in removedActorIds)
         {
             actors[removedId].Free();
             actors.Remove(removedId);
         }
+        activeActorIds.Clear();
     }
 }
