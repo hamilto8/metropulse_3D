@@ -89,6 +89,30 @@ public sealed class TrafficRoadGraphTests
     }
 
     [Fact]
+    public void TemporaryClosuresBlockBoundedEdgesAndRestoreWithoutChangingTopology()
+    {
+        TrafficRoadGraph graph = TrafficRoadGraph.CreateProduction();
+        TrafficRoadGraphSnapshot baseline = graph.Snapshot();
+
+        TemporaryRoadClosure closure = graph.AddTemporaryClosure(
+            "mayhem-impact-1", new TrafficPoint(0, 0), radius: 24, maximumEdges: 6);
+
+        Assert.NotEmpty(closure.EdgeIds);
+        Assert.InRange(closure.EdgeIds.Count, 1, 6);
+        Assert.Equal(1, graph.TemporaryClosureCount);
+        Assert.Equal(closure.EdgeIds.Distinct(StringComparer.Ordinal).Count(), graph.BlockedEdgeCount);
+        Assert.Equal(baseline.Nodes.Count, graph.NodeCount);
+        Assert.Throws<InvalidOperationException>(() => graph.AddTemporaryClosure(
+            "mayhem-impact-1", new TrafficPoint(0, 0), 24));
+
+        Assert.True(graph.RemoveTemporaryClosure(closure.Id));
+        Assert.False(graph.RemoveTemporaryClosure(closure.Id));
+        Assert.Equal(0, graph.TemporaryClosureCount);
+        Assert.Equal(0, graph.BlockedEdgeCount);
+        Assert.Equal(baseline.Nodes.Select(node => node.Id), graph.Snapshot().Nodes.Select(node => node.Id));
+    }
+
+    [Fact]
     public void CustomBridgePublishesConnectedCapacityAndDynamicSimulationTopology()
     {
         TrafficRoadGraph graph = TrafficRoadGraph.CreateProduction();

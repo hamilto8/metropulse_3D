@@ -18,6 +18,7 @@ public static class EconomyEventTypes
     public const string ReputationChanged = "REPUTATION_CHANGED";
     public const string IncidentRecorded = "INCIDENT_RECORDED";
     public const string IncidentResolved = "INCIDENT_RESOLVED";
+    public const string IncidentRolledBack = "INCIDENT_ROLLED_BACK";
     public const string ServiceChanged = "SERVICE_CHANGED";
     public const string MobilityFeedbackChanged = "MOBILITY_FEEDBACK_CHANGED";
     public const string CityPulseChanged = "CITY_PULSE_CHANGED";
@@ -733,6 +734,23 @@ public sealed class EconomyLedger
                 ResolvedAtRevision = Revision + 1,
             });
         return true;
+    }
+
+    /// <summary>Compensates an incident that belonged to an uncommitted cross-authority transaction.</summary>
+    public bool RollbackIncident(string id)
+    {
+        string normalizedId = RequireId(id, "incident id");
+        if (!incidents.TryGetValue(normalizedId, out EconomyIncident? incident)) return false;
+        double nextReputation = RequireFinite(reputation - incident.ReputationDelta, "resulting reputation");
+        return Commit(
+            EconomyEventTypes.IncidentRolledBack,
+            Detail(("incidentId", normalizedId)),
+            () =>
+            {
+                incidents.Remove(normalizedId);
+                reputation = nextReputation;
+                return true;
+            });
     }
 
     public EconomyLedgerSnapshot SetService(string service, double? capacity = null, double? demand = null)

@@ -138,6 +138,29 @@ public sealed class EconomyLedgerTests
     }
 
     [Fact]
+    public void TransactionIncidentRollbackRemovesRecordAndReversesReputationExactly()
+    {
+        var ledger = new EconomyLedger(ProductionBalance(), 100, 0, reputation: 12);
+        EconomyIncident incident = ledger.RecordIncident(new EconomyIncident
+        {
+            Id = "temporary-impact",
+            Type = "BUILDING_DESTROYED",
+            ReputationDelta = -2,
+            HappinessModifier = -3,
+            LandValueModifier = -5,
+            Position = new EconomyPoint(10, 20),
+            InfluenceRadius = 28,
+        });
+
+        Assert.Equal(10, ledger.Reputation);
+        Assert.True(ledger.HasIncident(incident.Id));
+        Assert.True(ledger.RollbackIncident(incident.Id));
+        Assert.False(ledger.RollbackIncident(incident.Id));
+        Assert.False(ledger.HasIncident(incident.Id));
+        Assert.Equal(12, ledger.Reputation);
+    }
+
+    [Fact]
     public void DeficitsClampAtZeroAndRecoveryHasAReachableExit()
     {
         var ledger = new EconomyLedger(ProductionBalance(), 100, 0);

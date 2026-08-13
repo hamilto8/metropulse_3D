@@ -139,11 +139,30 @@ public partial class SessionEffectRuntime : Node3D
         audio.PlaySpatial("rubble", position);
     }
 
-    public void TriggerComet(Vector3 position)
+    public void TriggerComet(Vector3 position, string? sourceId = null)
     {
         if (!CurrentPolicy.SpawnComets) return;
-        Spawn(EffectIds.Comet, position);
+        Spawn(EffectIds.Comet, position, sourceId);
         audio.PlaySpatial("comet", position);
+    }
+
+    public int ReleaseSourcesWithPrefix(string prefix)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+        int released = 0;
+        foreach ((string id, List<PooledWorldEffect> pool) in pools)
+        {
+            foreach (PooledWorldEffect effect in pool.Where(effect => effect.Active
+                && effect.SourceId?.StartsWith(prefix, StringComparison.Ordinal) == true))
+            {
+                if (effect.SourceId is string sourceId) _ = models[id].ReleaseSource(sourceId);
+                fireSources.Remove(effect.SourceId ?? string.Empty);
+                effect.Deactivate();
+                released++;
+                CleanupCount++;
+            }
+        }
+        return released;
     }
 
     public void TriggerLightning(Vector3? position = null)

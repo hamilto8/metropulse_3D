@@ -11,6 +11,7 @@ using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Economy;
 using MetroPulse.Domain.Enforcement;
 using MetroPulse.Domain.Interactions;
+using MetroPulse.Domain.Mayhem;
 using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
@@ -31,6 +32,7 @@ using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
+using MetroPulse.Godot.Mayhem;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
@@ -211,6 +213,7 @@ public partial class IntegrationTestRunner : Node
         await CheckLivingEnforcement(compositionRoot, failures);
         await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
         await CheckAircraft(compositionRoot, failures);
+        await CheckTemporaryMayhem(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -237,6 +240,19 @@ public partial class IntegrationTestRunner : Node
                         ["aircraft"] = GetTree().GetNodesInGroup("aircraft").Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
                         ["airfieldColliders"] = "6",
                         ["authorityGeneration"] = session.PlayerControl?.AuthorityGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    }));
+            }
+            if (session.Features.IsEnabled(FeatureIds.TemporaryMayhem))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.temporary-mayhem.passed",
+                    "Phase 10 gated Temporary Mayhem warning, comet, rollback, mission, effects, and save-isolation contracts passed.",
+                    new Dictionary<string, string>
+                    {
+                        ["impacts"] = session.TemporaryMayhem?.ImpactCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                        ["roadClosures"] = session.LivingTraffic?.RoadGraph.TemporaryClosureCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     }));
             }
             AppLog.Write(new StructuredLogEvent(
@@ -728,6 +744,127 @@ public partial class IntegrationTestRunner : Node
         runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase10:aircraft-cleanup", nameof(IntegrationTestRunner)));
     }
 
+    private async ValueTask CheckTemporaryMayhem(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for Temporary Mayhem verification.");
+        bool enabled = compositionRoot.Configuration?.Features.IsEnabled(FeatureIds.TemporaryMayhem) == true;
+        MissionOfferDecision survivalScope = session.Missions!.Execution.EvaluateOffer(
+            "mission_mayhem_escape", vehicle: null, requireProximity: false);
+        if (!enabled)
+        {
+            Check(session.TemporaryMayhem is null
+                    && session.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/TemporaryMayhemControl") is null
+                    && survivalScope.Reason == "Mission is outside the active feature scope.",
+                "Feature-off Temporary Mayhem creates no runtime, task, control, or Survival mission scope.", failures);
+            return;
+        }
+
+        TemporaryMayhemRuntime mayhem = session.TemporaryMayhem
+            ?? throw new InvalidOperationException("Enabled Temporary Mayhem runtime is unavailable.");
+        EconomyLedger ledger = session.Economy!.Ledger;
+        TrafficRoadGraph graph = session.LivingTraffic!.RoadGraph;
+        int colliderBaseline = session.World!.Colliders.Count;
+        int buildingBaseline = ledger.Snapshot().Buildings.Count;
+        int incidentBaseline = ledger.Snapshot().Incidents.Count;
+        int activeAlertBaseline = session.Services!.Alerts.Snapshot().Active.Count;
+        double reputationBaseline = ledger.Reputation;
+        Check(mayhem.Initialized
+                && mayhem.Control.Initialized
+                && !mayhem.Control.WarningVisible
+                && survivalScope.Reason != "Mission is outside the active feature scope.",
+            "Feature-on Temporary Mayhem creates one accessible control and admits the Survival mission scope.", failures);
+
+        try
+        {
+            mayhem.Control.OpenWarning();
+            Check(mayhem.Control.WarningVisible
+                    && session.Interface!.ModalScrimVisible
+                    && !mayhem.Active,
+                "The destructive-content warning is modal and does not start Mayhem before acknowledgement.", failures);
+            mayhem.Control.CloseWarning();
+            mayhem.AcknowledgeWarningAndStart();
+            Check(mayhem.Active && mayhem.Snapshot.WarningAcknowledged,
+                "Explicit acknowledgement starts the bounded temporary sandbox.", failures);
+
+            PauseHold pause = session.RuntimeHost!.Pause.OpenMenu("phase10-mayhem-pause");
+            int pausedSequence = mayhem.Snapshot.Sequence;
+            _ = session.RuntimeHost.Scheduler.AdvanceFrame(5);
+            Check(pause.Reason == PauseReason.Menu && mayhem.Snapshot.Sequence == pausedSequence,
+                "Pause freezes the scheduler-owned comet timeline.", failures);
+            _ = session.RuntimeHost.Pause.CloseMenu("phase10-mayhem-pause");
+
+            mayhem.AdvanceForTest(TemporaryMayhemPolicy.InitialSpawnDelaySeconds);
+            mayhem.AdvanceForTest(TemporaryMayhemPolicy.CometFlightSeconds);
+            EconomyLedgerSnapshot impacted = ledger.Snapshot();
+            Check(mayhem.ImpactCount >= 1
+                    && impacted.Buildings.Count < buildingBaseline
+                    && impacted.Incidents.Count > incidentBaseline
+                    && impacted.Incidents.Any(incident => incident.Active && incident.Type == "BUILDING_DESTROYED")
+                    && session.World.Colliders.Count < colliderBaseline
+                    && graph.TemporaryClosureCount > 0
+                    && graph.BlockedEdgeCount > 0
+                    && session.Effects!.ActiveCount > 0
+                    && session.Services.Alerts.Snapshot().Active.Count > activeAlertBaseline
+                    && mayhem.PanicEventCount >= 1,
+                "A comet impact atomically applies capped destruction, rubble/fire, road closure, economy incident, siren, panic, and news.", failures);
+
+            mayhem.Stop();
+            EconomyLedgerSnapshot restored = ledger.Snapshot();
+            Check(!mayhem.Active
+                    && !mayhem.Snapshot.WarningAcknowledged
+                    && mayhem.Snapshot.Comets.Count == 0
+                    && mayhem.Snapshot.DestroyedTargetIds.Count == 0
+                    && restored.Buildings.Count == buildingBaseline
+                    && restored.Incidents.Count == incidentBaseline
+                    && Math.Abs(ledger.Reputation - reputationBaseline) < 0.0001
+                    && session.World.Colliders.Count == colliderBaseline
+                    && graph.TemporaryClosureCount == 0
+                    && graph.BlockedEdgeCount == 0
+                    && session.Services.Alerts.Snapshot().Active.Count == activeAlertBaseline,
+                "Stopping Mayhem rolls every authoritative owner back to its exact pre-feature baseline.", failures);
+
+            mayhem.AcknowledgeWarningAndStart();
+            mayhem.AdvanceForTest(TemporaryMayhemPolicy.InitialSpawnDelaySeconds);
+            mayhem.AdvanceForTest(TemporaryMayhemPolicy.CometFlightSeconds);
+            mayhem.Stop();
+            Check(ledger.Snapshot().Buildings.Count == buildingBaseline
+                    && ledger.Snapshot().Incidents.Count == incidentBaseline
+                    && session.World.Colliders.Count == colliderBaseline
+                    && graph.TemporaryClosureCount == 0,
+                "A second enable-disable cycle returns all feature-owned counts to baseline.", failures);
+
+            DeferredGameSaveDescriptor mayhemSave = MissionSaveDescriptor(
+                "phase10-temporary-mayhem-save",
+                session.Missions.CaptureState(),
+                session.Services.CaptureState(),
+                GameState.Management,
+                controlledVehicle: null,
+                mayhemEnabled: true);
+            SessionShell restoredSession = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(restoredSession);
+            restoredSession.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            restoredSession.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, compositionRoot.Configuration!.Features);
+            new SessionGameSaveRuntimeRestoreAdapter(restoredSession).Apply(mayhemSave);
+            Check(restoredSession.TemporaryMayhem is { Active: false }
+                    && restoredSession.World?.Colliders.Count == colliderBaseline
+                    && restoredSession.Economy?.Ledger.Snapshot().Buildings.Count == buildingBaseline
+                    && restoredSession.LivingTraffic?.RoadGraph.TemporaryClosureCount == 0,
+                "Temporary Mayhem save flags never restore destructive state, even when the package is available.", failures);
+            restoredSession.Shutdown();
+            restoredSession.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Temporary Mayhem integration threw {error.GetType().Name}: {error.Message}");
+        }
+        finally
+        {
+            if (mayhem.Active) mayhem.Stop();
+        }
+    }
+
     private static void CheckCityEconomyRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
     {
         SessionShell? session = compositionRoot.CurrentSession;
@@ -1124,13 +1261,14 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Mission integration requires the authored world.");
             RuntimeInputHost input = session.InputHost
                 ?? throw new InvalidOperationException("Mission integration requires runtime input.");
+            int expectedOfferMarkers = session.Features.IsEnabled(FeatureIds.TemporaryMayhem) ? 10 : 9;
 
             Check(missions.Initialized
                     && missions.Lifecycle.Phase == MissionPhases.Idle
-                    && missions.Markers.OfferMarkerCount == 9
+                    && missions.Markers.OfferMarkerCount == expectedOfferMarkers
                     && missions.Markers.ObjectiveMarkerCount == 0
                     && interactions.Service.ProviderCount == 3,
-                "The live mission owner publishes exactly the nine normal-scope offer markers through the existing shared interaction service.", failures);
+                "The live mission owner publishes the exact feature-scoped offer markers through the existing shared interaction service.", failures);
 
             MissionOfferView executiveOffer = missions.Execution.BuildOffer("mission_executive", null);
             Vector3 pickup = new(
@@ -1233,7 +1371,7 @@ public partial class IntegrationTestRunner : Node
                     && missions.CleanupCommitCount == commits
                     && missions.Lifecycle.Phase == MissionPhases.Idle
                     && runtime.StateMachine.State == GameState.Management
-                    && missions.Markers.OfferMarkerCount == 9
+                    && missions.Markers.OfferMarkerCount == expectedOfferMarkers
                     && !missions.Presentation.ResultVisible
                     && player.RemoveVehicle(vehicleId),
                 "Result acknowledgement returns to clean Management/IDLE ownership and cannot duplicate cleanup, Capital, markers, or the mission receipt.", failures);
@@ -3551,7 +3689,8 @@ public partial class IntegrationTestRunner : Node
         CityServicesRuntimeState services,
         GameState gameState,
         PlayerVehicleController? controlledVehicle,
-        AircraftActor? controlledAircraft = null)
+        AircraftActor? controlledAircraft = null,
+        bool mayhemEnabled = false)
     {
         var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         JsonNode? controlled = controlledAircraft is not null
@@ -3595,7 +3734,7 @@ public partial class IntegrationTestRunner : Node
                 ["version"] = 1,
                 ["state"] = gameState.ToToken(),
                 ["resumeState"] = null,
-                ["mayhemEnabled"] = false,
+                ["mayhemEnabled"] = mayhemEnabled,
             },
             [GameSaveDomainIds.Player] = new JsonObject
             {

@@ -4,9 +4,18 @@ using MetroPulse.Domain.World;
 
 namespace MetroPulse.Godot.World;
 
+public sealed record MayhemWorldObjectState(
+    string StableId,
+    Node3D Owner,
+    WorldColliderMetadata Collider,
+    uint CollisionLayer,
+    uint CollisionMask);
+
 public partial class MvpWorldGenerator : Node3D
 {
     private readonly Dictionary<string, Node3D> chunks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Node3D> runtimeObjects = new(StringComparer.Ordinal);
+    private readonly HashSet<string> mayhemSuspended = new(StringComparer.Ordinal);
 
     public bool IsBuilt { get; private set; }
 
@@ -21,6 +30,11 @@ public partial class MvpWorldGenerator : Node3D
     public int MultiMeshGroupCount { get; private set; }
 
     public WorldDebugTraversalCapsule? DebugTraversalCapsule { get; private set; }
+
+    public IReadOnlyList<WorldObjectDefinition> MayhemTargets => Layout?.Objects
+        .Where(item => item.ChunkId == "InitialSkyline" && item.Kind == "building")
+        .OrderBy(item => item.Id, StringComparer.Ordinal)
+        .ToArray() ?? Array.Empty<WorldObjectDefinition>();
 
     public void Initialize(GameContentRegistry content)
     {
@@ -70,6 +84,8 @@ public partial class MvpWorldGenerator : Node3D
             child.QueueFree();
         }
         chunks.Clear();
+        runtimeObjects.Clear();
+        mayhemSuspended.Clear();
         Colliders.Clear();
         Resources.Clear();
         Layout = null;
@@ -95,6 +111,7 @@ public partial class MvpWorldGenerator : Node3D
         owner.SetMeta("world_kind", definition.Kind);
         owner.SetMeta("world_chunk", definition.ChunkId);
         chunks[definition.ChunkId].AddChild(owner);
+        runtimeObjects.Add(definition.Id, owner);
 
         if (definition.Rendered)
         {
@@ -137,6 +154,46 @@ public partial class MvpWorldGenerator : Node3D
             ToVector(definition.Size),
             definition.RotationY,
             body));
+    }
+
+    public MayhemWorldObjectState? SuspendMayhemTarget(string stableId)
+    {
+        if (!runtimeObjects.TryGetValue(stableId, out Node3D? owner)
+            || mayhemSuspended.Contains(stableId)
+            || !Colliders.TryGet(stableId, out WorldColliderMetadata? collider)
+            || collider is null)
+        {
+            return null;
+        }
+        var state = new MayhemWorldObjectState(
+            stableId,
+            owner,
+            collider,
+            collider.Body.CollisionLayer,
+            collider.Body.CollisionMask);
+        owner.Visible = false;
+        collider.Body.CollisionLayer = 0;
+        collider.Body.CollisionMask = 0;
+        if (!Colliders.Unregister(stableId))
+        {
+            owner.Visible = true;
+            collider.Body.CollisionLayer = state.CollisionLayer;
+            collider.Body.CollisionMask = state.CollisionMask;
+            return null;
+        }
+        mayhemSuspended.Add(stableId);
+        return state;
+    }
+
+    public bool RestoreMayhemTarget(MayhemWorldObjectState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (!mayhemSuspended.Remove(state.StableId)) return false;
+        state.Owner.Visible = true;
+        state.Collider.Body.CollisionLayer = state.CollisionLayer;
+        state.Collider.Body.CollisionMask = state.CollisionMask;
+        Colliders.Register(state.Collider);
+        return true;
     }
 
     private void AddInstances(WorldInstanceGroupDefinition group, WorldMaterialDefinition material)

@@ -11,6 +11,7 @@ using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
+using MetroPulse.Godot.Mayhem;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
@@ -55,6 +56,8 @@ public partial class SessionShell : Node
     public PlayerControlRuntime? PlayerControl { get; private set; }
 
     public AircraftRuntime? Aircraft { get; private set; }
+
+    public TemporaryMayhemRuntime? TemporaryMayhem { get; private set; }
 
     public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
@@ -220,7 +223,8 @@ public partial class SessionShell : Node
             Environment ?? throw new InvalidOperationException("The environment must exist before missions are initialized."),
             World,
             GetNode<Node3D>("WorldRoot/EffectRoot"),
-            Interface);
+            Interface,
+            temporaryMayhemEnabled: Features.IsEnabled(FeatureIds.TemporaryMayhem));
         VehicleInteractions.SetControlledReleaseEligibilityProvider(
             () => Missions.InteractionReleaseEligibility());
         Services.SetMissionCriticalProvider(() => Missions.Lifecycle.IsMissionCritical);
@@ -245,6 +249,21 @@ public partial class SessionShell : Node
             Environment,
             GameplayCamera,
             Audio);
+        if (Features.IsEnabled(FeatureIds.TemporaryMayhem))
+        {
+            TemporaryMayhem = new TemporaryMayhemRuntime { Name = "TemporaryMayhemRuntime" };
+            runtimeServices.AddChild(TemporaryMayhem);
+            TemporaryMayhem.Initialize(
+                World ?? throw new InvalidOperationException("The world must exist before Temporary Mayhem is initialized."),
+                Economy,
+                LivingTraffic,
+                Services,
+                Missions,
+                RuntimeHost,
+                Effects,
+                Audio,
+                Interface);
+        }
         GameplayUi = new GameplayHud { Name = "GameplayHud" };
         Interface.Chrome.AddChild(GameplayUi);
         GameplayUi.Initialize(
@@ -307,6 +326,7 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = null;
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         Modals?.Shutdown();
+        TemporaryMayhem?.Shutdown();
         MinimapUi?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
@@ -354,6 +374,7 @@ public partial class SessionShell : Node
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true
             || (Features.IsEnabled(FeatureIds.Aircraft) && Aircraft?.Initialized != true)
+            || (Features.IsEnabled(FeatureIds.TemporaryMayhem) && TemporaryMayhem?.Initialized != true)
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true

@@ -13,6 +13,7 @@ public partial class CityEconomyRuntime : Node
 {
     private Func<bool>? unsubscribeEconomy;
     private Func<bool>? unregisterCityTick;
+    private readonly Dictionary<string, string> authoredEconomyIds = new(StringComparer.Ordinal);
 
     public bool Initialized { get; private set; }
 
@@ -51,9 +52,14 @@ public partial class CityEconomyRuntime : Node
             eastDistrictUnlockCost: content.EconomyBalance.Progression!.EastDistrictUnlockCost);
         ReferenceBaseline = CityEconomyViewModel.FromSnapshot(Ledger.Snapshot());
 
-        foreach (EconomyBuilding building in BuildingEconomyAdapter.AdaptAuthoredSkyline(world))
+        WorldObjectDefinition[] authored = world.Objects
+            .Where(item => item.ChunkId == "InitialSkyline" && item.Kind == "building")
+            .ToArray();
+        foreach ((WorldObjectDefinition definition, int index) in authored.Select((definition, index) => (definition, index)))
         {
+            EconomyBuilding building = BuildingEconomyAdapter.FromAuthoredSkyline(definition, index + 1);
             Ledger.RegisterBuilding(building);
+            authoredEconomyIds.Add(definition.Id, building.Id);
             AuthoredBuildingCount++;
         }
 
@@ -78,8 +84,17 @@ public partial class CityEconomyRuntime : Node
         unregisterCityTick = null;
         _ = unsubscribeEconomy?.Invoke();
         unsubscribeEconomy = null;
+        authoredEconomyIds.Clear();
         Initialized = false;
     }
+
+    public EconomyBuilding? SuspendAuthoredBuilding(string worldId)
+    {
+        if (!authoredEconomyIds.TryGetValue(worldId, out string? economyId)) return null;
+        return Ledger.RemoveBuilding(economyId);
+    }
+
+    public EconomyBuilding RestoreAuthoredBuilding(EconomyBuilding building) => Ledger.RegisterBuilding(building);
 
     public override void _ExitTree() => Shutdown();
 

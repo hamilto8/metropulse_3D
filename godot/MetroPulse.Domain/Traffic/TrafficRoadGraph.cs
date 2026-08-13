@@ -59,6 +59,12 @@ public sealed record LaneCorridorResult(
     double MaximumDeviation,
     bool Corrected);
 
+public sealed record TemporaryRoadClosure(
+    string Id,
+    IReadOnlyList<string> EdgeIds,
+    TrafficPoint Center,
+    double Radius);
+
 /// <summary>
 /// Sole mutable owner of authored and player-built traffic topology. Every
 /// published snapshot is detached from the mutable adjacency graph.
@@ -75,6 +81,7 @@ public sealed class TrafficRoadGraph
     private const double UserRoadConnectionRadius = 38;
     private readonly Dictionary<string, Node> nodes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, UserRoadRecord> userRoads = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TemporaryRoadClosure> temporaryClosures = new(StringComparer.Ordinal);
     private readonly int baseNodeCount;
 
     private TrafficRoadGraph()
@@ -88,6 +95,13 @@ public sealed class TrafficRoadGraph
     public int NodeCount => nodes.Count;
 
     public int BaseNodeCount => baseNodeCount;
+
+    public int TemporaryClosureCount => temporaryClosures.Count;
+
+    public int BlockedEdgeCount => temporaryClosures.Values
+        .SelectMany(closure => closure.EdgeIds)
+        .Distinct(StringComparer.Ordinal)
+        .Count();
 
     public static TrafficRoadGraph CreateProduction() => new();
 
@@ -222,6 +236,42 @@ public sealed class TrafficRoadGraph
         return true;
     }
 
+    public TemporaryRoadClosure AddTemporaryClosure(
+        string id,
+        TrafficPoint center,
+        double radius,
+        int maximumEdges = 8)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (temporaryClosures.ContainsKey(id)) throw new InvalidOperationException($"Temporary road closure '{id}' already exists.");
+        if (!double.IsFinite(center.X) || !double.IsFinite(center.Z)
+            || !double.IsFinite(radius) || radius <= 0 || maximumEdges <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(radius), "Temporary closure geometry and capacity must be positive and finite.");
+        }
+        string[] edgeIds = nodes.Values
+            .SelectMany(from => from.NextNodeIds.Select(toId => (From: from, To: nodes[toId])))
+            .Select(edge => (Id: EdgeId(edge.From.Id, edge.To.Id), Distance: DistanceToSegment(center, edge.From.Position, edge.To.Position)))
+            .Where(edge => edge.Distance <= radius)
+            .OrderBy(edge => edge.Distance)
+            .ThenBy(edge => edge.Id, StringComparer.Ordinal)
+            .Take(maximumEdges)
+            .Select(edge => edge.Id)
+            .ToArray();
+        var closure = new TemporaryRoadClosure(id.Trim(), Array.AsReadOnly(edgeIds), center, radius);
+        temporaryClosures.Add(closure.Id, closure);
+        Revision += 1;
+        return closure;
+    }
+
+    public bool RemoveTemporaryClosure(string id)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (!temporaryClosures.Remove(id.Trim())) return false;
+        Revision += 1;
+        return true;
+    }
+
     public RouteAdvanceResult AdvanceRoute(
         string currentNodeId,
         string targetNodeId,
@@ -240,6 +290,7 @@ public sealed class TrafficRoadGraph
 
         Node[] candidates = target.NextNodeIds
             .Select(id => nodes[id])
+            .Where(candidate => !IsEdgeBlocked(target.Id, candidate.Id))
             .Where(candidate => !string.Equals(candidate.Id, current.Id, StringComparison.Ordinal))
             .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
             .ToArray();
@@ -247,12 +298,13 @@ public sealed class TrafficRoadGraph
         {
             candidates = target.NextNodeIds
                 .Select(id => nodes[id])
+                .Where(candidate => !IsEdgeBlocked(target.Id, candidate.Id))
                 .OrderBy(candidate => candidate.Id, StringComparer.Ordinal)
                 .ToArray();
         }
         if (candidates.Length == 0)
         {
-            throw new InvalidOperationException($"Traffic node '{target.Id}' has no outgoing route.");
+            return new RouteAdvanceResult(target.Id, target.Id, false, false);
         }
 
         Node[] bridgeCandidates = bridgePriorityEnabled
@@ -305,7 +357,7 @@ public sealed class TrafficRoadGraph
             throw new ArgumentOutOfRangeException(nameof(position));
         }
         return nodes.Values
-            .Where(node => node.NextNodeIds.Count > 0)
+            .Where(node => node.NextNodeIds.Any(target => !IsEdgeBlocked(node.Id, target)))
             .OrderBy(node => DistanceSquared(node.Position, position))
             .ThenBy(node => node.Id, StringComparer.Ordinal)
             .First()
@@ -444,6 +496,24 @@ public sealed class TrafficRoadGraph
         double x = first.X - second.X;
         double z = first.Z - second.Z;
         return x * x + z * z;
+    }
+
+    private bool IsEdgeBlocked(string fromId, string toId)
+    {
+        string edgeId = EdgeId(fromId, toId);
+        return temporaryClosures.Values.Any(closure => closure.EdgeIds.Contains(edgeId, StringComparer.Ordinal));
+    }
+
+    private static string EdgeId(string fromId, string toId) => $"{fromId}->{toId}";
+
+    private static double DistanceToSegment(TrafficPoint point, TrafficPoint start, TrafficPoint end)
+    {
+        double x = end.X - start.X;
+        double z = end.Z - start.Z;
+        double lengthSquared = x * x + z * z;
+        if (lengthSquared <= double.Epsilon) return Distance(point, start);
+        double projection = Math.Clamp(((point.X - start.X) * x + (point.Z - start.Z) * z) / lengthSquared, 0, 1);
+        return Distance(point, new TrafficPoint(start.X + projection * x, start.Z + projection * z));
     }
 
     private sealed record UserRoadRecord(UserRoadSegmentDefinition Definition, IReadOnlyList<string> NodeIds);
