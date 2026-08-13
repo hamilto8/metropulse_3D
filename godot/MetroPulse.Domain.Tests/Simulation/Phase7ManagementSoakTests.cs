@@ -13,7 +13,7 @@ public sealed class Phase7ManagementSoakTests
     [Fact]
     public void RepeatedWorldEditsAndIncidentRecoveryLeaveNoActiveRuntimeResidue()
     {
-        const int cycles = 50;
+        const int cycles = 100;
         GameContentRegistry content = GameContentRegistry.LoadProduction();
         var economy = new EconomyLedger(content.EconomyBalance, 2_000_000, 8);
         var stores = new List<MemoryWorldEditParticipant>();
@@ -64,6 +64,43 @@ public sealed class Phase7ManagementSoakTests
         Assert.Equal(cycles * 6, outcomes.Snapshot().Transactions.Count);
         Assert.Equal(2_000_000, economy.Treasury);
         services.Destroy();
+    }
+
+    [Fact]
+    public void OneHundredInjectedLateFailuresRollBackEveryParticipantAndTreasury()
+    {
+        const int cycles = 100;
+        GameContentRegistry content = GameContentRegistry.LoadProduction();
+        var economy = new EconomyLedger(content.EconomyBalance, 2_000_000, 8);
+        bool injectFailure = false;
+        var stores = new List<MemoryWorldEditParticipant>();
+        IWorldEditParticipant[] participants = WorldEditParticipantIds.RequiredOrder.Select(id =>
+        {
+            if (id == WorldEditParticipantIds.Economy)
+                return (IWorldEditParticipant)new EconomyWorldEditParticipant(economy);
+            var store = new MemoryWorldEditParticipant(
+                id,
+                (operation, _) => !(injectFailure
+                    && id == WorldEditParticipantIds.Persistence
+                    && operation == "ATTACH"));
+            stores.Add(store);
+            return store;
+        }).ToArray();
+        var editor = new WorldEditCoordinator(content, economy, participants);
+
+        for (int cycle = 0; cycle < cycles; cycle++)
+        {
+            injectFailure = true;
+            WorldEditTransactionException error = Assert.Throws<WorldEditTransactionException>(() =>
+                editor.Place("ROAD_STRAIGHT", Decision(-125 + cycle % 5, -75)));
+            injectFailure = false;
+
+            Assert.Empty(error.RollbackErrors);
+            Assert.Empty(editor.Records);
+            Assert.All(stores, store => Assert.Empty(store.Records));
+            Assert.Empty(economy.Snapshot().Buildings);
+            Assert.Equal(2_000_000, economy.Treasury);
+        }
     }
 
     private static PlacementDecision Decision(double x, double z) => new(

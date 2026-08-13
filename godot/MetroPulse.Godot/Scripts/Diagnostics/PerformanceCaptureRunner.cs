@@ -24,6 +24,7 @@ public partial class PerformanceCaptureRunner : Node
     private ulong nextSampleUsec;
     private int[] gcStart = [];
     private long allocatedBytesStart;
+    private DiagnosticPerformance? resourceBaseline;
 
     public void Begin(
         CompositionRoot root,
@@ -57,6 +58,7 @@ public partial class PerformanceCaptureRunner : Node
         {
             captureStartedUsec = now;
             nextSampleUsec = now;
+            resourceBaseline = diagnostics.CurrentPerformance;
         }
 
         if (now >= nextSampleUsec)
@@ -76,6 +78,7 @@ public partial class PerformanceCaptureRunner : Node
         SetProcess(false);
         DiagnosticSnapshot finalSnapshot = diagnostics.CurrentSnapshot;
         DiagnosticPerformance final = finalSnapshot.Performance;
+        DiagnosticPerformance baseline = resourceBaseline ?? final;
         var report = new
         {
             schemaVersion = 1,
@@ -160,6 +163,16 @@ public partial class PerformanceCaptureRunner : Node
                     generation2 = final.Gen2Collections - gcStart[2],
                 },
             },
+            resourceGrowth = new
+            {
+                staticMemoryBytes = SignedDelta(final.StaticMemoryBytes, baseline.StaticMemoryBytes),
+                managedMemoryBytes = final.ManagedMemoryBytes - baseline.ManagedMemoryBytes,
+                videoMemoryBytes = SignedDelta(final.VideoMemoryBytes, baseline.VideoMemoryBytes),
+                godotObjects = SignedDelta(final.GodotObjectCount, baseline.GodotObjectCount),
+                resources = SignedDelta(final.ResourceCount, baseline.ResourceCount),
+                nodes = SignedDelta(final.NodeCount, baseline.NodeCount),
+                orphanNodes = SignedDelta(final.OrphanNodeCount, baseline.OrphanNodeCount),
+            },
             gates = new
             {
                 recommendedAverageFps = samples.Count > 0 && samples.Average(sample => sample.Fps) >= 60,
@@ -188,4 +201,8 @@ public partial class PerformanceCaptureRunner : Node
         PerformanceStatistics.Summarize(samples.Select(selector));
 
     private static double Seconds(ulong microseconds) => microseconds / 1_000_000.0;
+
+    private static long SignedDelta(ulong current, ulong baseline) => current >= baseline
+        ? checked((long)(current - baseline))
+        : -checked((long)(baseline - current));
 }

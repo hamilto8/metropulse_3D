@@ -102,6 +102,23 @@ publish measured GPU timestamps reports zero values with
 `availability.gpuTiming=false`; consumers must not interpret those zeros as
 free GPU work. Host data is limited to OS/runtime/hardware descriptors and does
 not include user names, host names, paths, saves, dialogue, or device serials.
+The report also compares resource/object/node/orphan counts at the end of the
+sample with their post-warmup baseline.
+
+The consolidated feasible Phase 11 soak gate is:
+
+```bash
+GODOT_BIN=/path/to/Godot ./godot/scripts/test-phase11-soaks.sh
+```
+
+It runs the simulated 30-minute living-city soak, 100 successful management
+edit/incident cycles, 100 late-failure rollback injections, focused transaction
+failures, 50 native cross-mode cycles, 10 native mission restarts, and the full
+save/import/recovery matrix. For longer native observation of the stable
+Management scene, run `run-management-soak.sh <absolute-output> <seconds>
+<quality>`; its default is 1,800 seconds on low quality. This supports resource
+growth investigation but does not replace the required two-hour representative
+interactive playtest across gameplay modes.
 
 Run the Phase 3 native scenarios with:
 

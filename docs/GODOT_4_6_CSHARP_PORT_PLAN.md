@@ -1778,6 +1778,15 @@ interpolation. Record the selected value in an ADR and update fixtures.
 - 30-minute headless living simulation;
 - two-hour representative interactive soak.
 
+> **Status:** all automatable bounded soaks are consolidated and pass on macOS:
+> 50 cross-mode cycles, 10 live mission restart/reload cycles across the six MVP
+> templates, 100 successful management edit/incident cycles, 100 injected
+> late-participant rollbacks, repeated session construction/disposal, the full
+> save/import/recovery fault matrix, and the simulated 30-minute living city.
+> Native capture now reports post-warmup resource growth. The two-hour
+> representative interactive soak remains a manual release-candidate gate and
+> has not been performed in this work session.
+
 11.6 Complete the browser-save migration UX, documentation, backup, and failure
 recovery. Test imported saves on all desktop platforms.
 
