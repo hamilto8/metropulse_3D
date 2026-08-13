@@ -18,7 +18,7 @@ namespace MetroPulse.Godot.UI;
 
 public partial class MinimapHud : PanelContainer
 {
-    private const double RefreshIntervalSeconds = 0.2;
+    private double refreshIntervalSeconds = 0.2;
     private PlayerInterface playerInterface = null!;
     private LivingTrafficRuntime traffic = null!;
     private LivingPedestrianRuntime pedestrians = null!;
@@ -44,7 +44,8 @@ public partial class MinimapHud : PanelContainer
         EnforcementRuntime enforcementOwner,
         CityServicesRuntime servicesOwner,
         MissionRuntime missionsOwner,
-        GodotSessionRuntimeHost runtimeOwner)
+        GodotSessionRuntimeHost runtimeOwner,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (Initialized) throw new InvalidOperationException("The minimap is already initialized.");
         playerInterface = interfaceOwner ?? throw new ArgumentNullException(nameof(interfaceOwner));
@@ -55,6 +56,7 @@ public partial class MinimapHud : PanelContainer
         services = servicesOwner ?? throw new ArgumentNullException(nameof(servicesOwner));
         missions = missionsOwner ?? throw new ArgumentNullException(nameof(missionsOwner));
         runtime = runtimeOwner ?? throw new ArgumentNullException(nameof(runtimeOwner));
+        refreshIntervalSeconds = (qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High)).MinimapRefreshSeconds;
         Name = "Minimap";
         ThemeTypeVariation = "GlassPanelStrong";
         MouseFilter = MouseFilterEnum.Ignore;
@@ -144,7 +146,7 @@ public partial class MinimapHud : PanelContainer
         canvas.Apply(CurrentView);
         ApplyLayout(playerInterface.CurrentLayout);
         RefreshCount++;
-        refreshRemaining = RefreshIntervalSeconds;
+        refreshRemaining = refreshIntervalSeconds;
     }
 
     public void Shutdown()

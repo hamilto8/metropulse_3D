@@ -3,6 +3,7 @@ using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Economy;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Randomness;
 using MetroPulse.Domain.Traffic;
 using MetroPulse.Godot.Player;
@@ -25,6 +26,7 @@ public partial class LivingTrafficRuntime : Node
     private Node3D? controlRoot;
     private Func<bool>? unregisterProductivityTick;
     private TrafficAlertAdapter? trafficAlerts;
+    private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
 
     public bool Initialized { get; private set; }
 
@@ -55,13 +57,15 @@ public partial class LivingTrafficRuntime : Node
         Node3D agentRoot,
         Node3D navigationRoot,
         Node3D cameraControlOrigin,
-        string seed = RandomStreamRegistry.DefaultSeed)
+        string seed = RandomStreamRegistry.DefaultSeed,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (Initialized) throw new InvalidOperationException("Living traffic is already initialized.");
         content = contentRegistry ?? throw new ArgumentNullException(nameof(contentRegistry));
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
         playerControl = controlOwner ?? throw new ArgumentNullException(nameof(controlOwner));
         cameraOrigin = cameraControlOrigin ?? throw new ArgumentNullException(nameof(cameraControlOrigin));
+        quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         RoadGraph = TrafficRoadGraph.CreateProduction();
         Simulation = new TrafficPopulationSimulation(RoadGraph, new RandomStreamRegistry(seed));
         trafficRoot = new Node3D { Name = "AmbientTraffic" };
@@ -206,7 +210,7 @@ public partial class LivingTrafficRuntime : Node
                 trafficRoot!.AddChild(actor);
                 VehicleProfileRecord record = content!.GetVehicleProfile(agent.TypeId)
                     ?? throw new InvalidOperationException($"Traffic profile '{agent.TypeId}' is unavailable.");
-                actor.Initialize(agent, record, world!);
+                actor.Initialize(agent, record, world!, quality);
                 actors.Add(agent.Id, actor);
             }
             actor.Apply(agent, focus);

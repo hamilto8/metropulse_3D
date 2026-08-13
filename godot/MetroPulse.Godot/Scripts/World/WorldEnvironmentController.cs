@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.TimeWeather;
 using MetroPulse.Domain.World;
@@ -29,6 +30,7 @@ public partial class WorldEnvironmentController : Node3D
     private Func<bool>? unsubscribeSettings;
     private Func<bool>? unregisterClock;
     private SettingsPreferences? preferences;
+    private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
     private readonly List<Action<EnvironmentPresentationSnapshot>> stateListeners = [];
     private double clockHour = 12;
 
@@ -120,16 +122,18 @@ public partial class WorldEnvironmentController : Node3D
 
     public void SetQualityProfile(string? profile)
     {
-        QualityProfile = profile is "LOW" or "MEDIUM" ? profile : "HIGH";
+        quality = QualityProfilePolicy.Resolve(profile);
+        QualityProfile = quality.Id;
         if (sunLight is not null)
         {
-            sunLight.ShadowEnabled = QualityProfile != "LOW";
-            sunLight.DirectionalShadowMaxDistance = QualityProfile == "HIGH" ? 500 : 260;
+            sunLight.ShadowEnabled = quality.DirectionalShadows;
+            sunLight.DirectionalShadowMaxDistance = (float)quality.DirectionalShadowDistance;
         }
         if (environment is not null)
         {
-            environment.VolumetricFogEnabled = QualityProfile == "HIGH";
+            environment.VolumetricFogEnabled = quality.VolumetricFog;
         }
+        if (rain is not null) rain.Amount = quality.RainParticles;
         ApplyPreferences(preferences);
     }
 
@@ -321,7 +325,7 @@ public partial class WorldEnvironmentController : Node3D
         CameraShakeScale = next.Motion.ReducedMotion == SettingValues.ReduceMotion
             ? 0
             : Math.Clamp(next.Motion.CameraShake, 0, 1);
-        bool bloomAllowed = next.Motion.Bloom != SettingValues.OffEffect && QualityProfile != "LOW";
+        bool bloomAllowed = next.Motion.Bloom != SettingValues.OffEffect && quality.Bloom;
         environment.GlowEnabled = bloomAllowed;
         if (bloomAllowed && next.Motion.Bloom == SettingValues.ReducedEffect && Current is not null)
         {

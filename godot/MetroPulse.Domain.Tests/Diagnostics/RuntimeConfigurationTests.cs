@@ -19,6 +19,7 @@ public sealed class RuntimeConfigurationTests
         Assert.Null(configuration.ImportSavePath);
         Assert.False(configuration.ConfirmImport);
         Assert.Null(configuration.BootAction);
+        Assert.Equal("HIGH", configuration.QualityProfile);
         Assert.Null(configuration.PerformanceCapturePath);
         Assert.Equal(5, configuration.PerformanceWarmupSeconds);
         Assert.Equal(20, configuration.PerformanceDurationSeconds);
@@ -170,5 +171,22 @@ public sealed class RuntimeConfigurationTests
         Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse(
             ["--performance-capture=/tmp/result.json", "--smoke-boot"],
             isDebugBuild: true));
+    }
+
+    [Theory]
+    [InlineData("high", "HIGH")]
+    [InlineData("MEDIUM", "MEDIUM")]
+    [InlineData("Low", "LOW")]
+    public void Parse_AcceptsReleaseSafeQualityProfile(string input, string expected)
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse([$"--quality={input}"], isDebugBuild: false);
+
+        Assert.Equal(expected, configuration.QualityProfile);
+    }
+
+    [Fact]
+    public void Parse_RejectsUnknownQualityProfile()
+    {
+        Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse(["--quality=ULTRA"], isDebugBuild: true));
     }
 }

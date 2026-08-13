@@ -1,5 +1,6 @@
 using Godot;
 using MetroPulse.Domain.Content;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.World;
 
 namespace MetroPulse.Godot.World;
@@ -97,6 +98,27 @@ public partial class MvpWorldGenerator : Node3D
     public override void _ExitTree()
     {
         ShutdownWorld();
+    }
+
+    public void ApplyQualityProfile(QualityProfilePolicy policy, Node? root = null)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        foreach (GeometryInstance3D geometry in Descendants(root ?? this).OfType<GeometryInstance3D>())
+        {
+            const string authoredShadowKey = "phase11_authored_shadow";
+            if (!geometry.HasMeta(authoredShadowKey))
+            {
+                geometry.SetMeta(authoredShadowKey, (int)geometry.CastShadow);
+            }
+            GeometryInstance3D.ShadowCastingSetting authored =
+                (GeometryInstance3D.ShadowCastingSetting)geometry.GetMeta(authoredShadowKey).AsInt32();
+            geometry.CastShadow = policy.Id switch
+            {
+                QualityProfileIds.Low => GeometryInstance3D.ShadowCastingSetting.Off,
+                QualityProfileIds.Medium when geometry is MultiMeshInstance3D => GeometryInstance3D.ShadowCastingSetting.Off,
+                _ => authored,
+            };
+        }
     }
 
     private void AddObject(WorldObjectDefinition definition, WorldMaterialDefinition material)
@@ -266,4 +288,13 @@ public partial class MvpWorldGenerator : Node3D
     }
 
     private static Vector3 ToVector(WorldVector3 value) => new((float)value.X, (float)value.Y, (float)value.Z);
+
+    private static IEnumerable<Node> Descendants(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            yield return child;
+            foreach (Node nested in Descendants(child)) yield return nested;
+        }
+    }
 }

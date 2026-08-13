@@ -83,11 +83,12 @@ Run an uncapped, native-window capture after closing unrelated GPU-heavy work:
 ```bash
 GODOT_BIN=/Applications/Godot_mono.app/Contents/MacOS/Godot \
   ./godot/scripts/capture-performance.sh \
-  "$PWD/godot/artifacts/performance/native-high-debug.json" 20 5
+  "$PWD/godot/artifacts/performance/native-high-debug.json" 20 5 HIGH
 ```
 
-The final arguments are measured duration and warmup seconds. The output path
-must be absolute. Capture mode hides the debug overlay to avoid measuring its
+The final arguments are measured duration, warmup seconds, and the
+`HIGH`/`MEDIUM`/`LOW` quality profile. The output path must be absolute. Capture
+mode hides the debug overlay to avoid measuring its
 scene-tree traversal and JSON serialization. It samples at 10 Hz and exits
 automatically, writing through a temporary file before atomically replacing the
 requested JSON report.

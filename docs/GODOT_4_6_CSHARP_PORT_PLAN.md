@@ -1746,6 +1746,15 @@ hazards, traffic meaning, or input feedback. Use cell-based MultiMeshes,
 visibility ranges, LOD meshes/proxies, shadow tiers, effect budgets, update
 cadence, and capped audio voices.
 
+> **Status:** presentation-profile policy and live Godot wiring are complete.
+> High/medium/low scale shadows, fog/bloom, rain, traffic/pedestrian render LOD,
+> effect pools, audio voices, and minimap cadence while preserving identical
+> population, collision, mission, hazard, input, physics, and save authority.
+> The low tier passes the full 179-assertion clean integration scenario. Dynamic
+> agent batching and further draw-call reduction remain optimization work under
+> 11.2, not a waiver of the 11.3 semantic contract. See
+> `docs/GODOT_QUALITY_PROFILES.md`.
+
 11.4 Revisit 120 Hz physics only with telemetry. Compare 120 vs 60/90 Hz on
 input latency, vehicle behavior, bridge/terrain contacts, impacts, CPU time, and
 interpolation. Record the selected value in an ADR and update fixtures.

@@ -1,6 +1,7 @@
 using Godot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Pedestrians;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Randomness;
 using MetroPulse.Domain.Traffic;
 using MetroPulse.Godot.Player;
@@ -18,6 +19,7 @@ public partial class LivingPedestrianRuntime : Node
     private LivingTrafficRuntime? traffic;
     private Node3D? cameraOrigin;
     private Node3D? pedestrianRoot;
+    private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
 
     public bool Initialized { get; private set; }
 
@@ -38,7 +40,8 @@ public partial class LivingPedestrianRuntime : Node
         LivingTrafficRuntime trafficOwner,
         Node3D agentRoot,
         Node3D cameraControlOrigin,
-        string seed = RandomStreamRegistry.DefaultSeed)
+        string seed = RandomStreamRegistry.DefaultSeed,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (Initialized) throw new InvalidOperationException("Living pedestrians are already initialized.");
         ArgumentNullException.ThrowIfNull(content);
@@ -46,6 +49,7 @@ public partial class LivingPedestrianRuntime : Node
         playerControl = controlOwner ?? throw new ArgumentNullException(nameof(controlOwner));
         traffic = trafficOwner ?? throw new ArgumentNullException(nameof(trafficOwner));
         cameraOrigin = cameraControlOrigin ?? throw new ArgumentNullException(nameof(cameraControlOrigin));
+        quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         SidewalkGraph = PedestrianSidewalkGraph.CreateProduction();
         Simulation = new PedestrianPopulationSimulation(SidewalkGraph, new RandomStreamRegistry(seed), content);
         pedestrianRoot = new Node3D { Name = "AmbientPedestrians" };
@@ -119,7 +123,7 @@ public partial class LivingPedestrianRuntime : Node
             {
                 actor = new PedestrianActor { Name = $"Pedestrian_{citizen.Id}" };
                 pedestrianRoot!.AddChild(actor);
-                actor.Initialize(citizen, world!);
+                actor.Initialize(citizen, world!, quality);
                 actors.Add(citizen.Id, actor);
             }
             actor.Apply(citizen, focus);

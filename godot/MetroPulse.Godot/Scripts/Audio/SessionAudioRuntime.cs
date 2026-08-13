@@ -55,6 +55,12 @@ public partial class SessionAudioRuntime : Node
     public IReadOnlyDictionary<string, AudioGainState> Gains => gains;
 
     public void Initialize(SettingsStore settingsAuthority, PlayerInterface interfaceOwner)
+        => Initialize(settingsAuthority, interfaceOwner, QualityProfilePolicy.Resolve(QualityProfileIds.High));
+
+    public void Initialize(
+        SettingsStore settingsAuthority,
+        PlayerInterface interfaceOwner,
+        QualityProfilePolicy quality)
     {
         if (Initialized) throw new InvalidOperationException("Session audio is already initialized.");
         settings = settingsAuthority ?? throw new ArgumentNullException(nameof(settingsAuthority));
@@ -65,7 +71,8 @@ public partial class SessionAudioRuntime : Node
         ambience = GlobalPlayer("CityAmbience", "city-ambience", AudioBusIds.Ambience);
         rain = GlobalPlayer("Rain", "rain", AudioBusIds.Ambience, play: false);
         ui = GlobalPlayer("UiOneShot", "ui-confirm", AudioBusIds.UI, play: false);
-        for (int index = 0; index < 12; index++)
+        ArgumentNullException.ThrowIfNull(quality);
+        for (int index = 0; index < quality.SpatialAudioVoices; index++)
         {
             var voice = new AudioStreamPlayer3D
             {

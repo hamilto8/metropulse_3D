@@ -1,5 +1,6 @@
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Persistence;
+using MetroPulse.Domain.Presentation;
 
 namespace MetroPulse.Domain.Diagnostics;
 
@@ -12,6 +13,7 @@ public sealed record RuntimeConfiguration(
     string? ImportSavePath,
     bool ConfirmImport,
     string? BootAction,
+    string QualityProfile,
     string? PerformanceCapturePath,
     double PerformanceWarmupSeconds,
     double PerformanceDurationSeconds,
@@ -34,6 +36,7 @@ public sealed record RuntimeConfiguration(
         string? importSavePath = null;
         bool confirmImport = false;
         string? bootAction = null;
+        string qualityProfile = QualityProfileIds.High;
         string? performanceCapturePath = null;
         double performanceWarmupSeconds = DefaultPerformanceWarmupSeconds;
         double performanceDurationSeconds = DefaultPerformanceDurationSeconds;
@@ -109,6 +112,15 @@ public sealed record RuntimeConfiguration(
                         }
                         performanceCapturePath = value;
                     }
+                    else if (argument.StartsWith("--quality=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--quality=".Length..].ToUpperInvariant();
+                        if (!QualityProfileIds.All.Contains(value, StringComparer.Ordinal))
+                        {
+                            throw new ArgumentException($"Unknown quality profile: {value}.", nameof(arguments));
+                        }
+                        qualityProfile = value;
+                    }
                     else if (argument.StartsWith("--performance-warmup=", StringComparison.Ordinal))
                     {
                         performanceWarmupSeconds = ParseSeconds(
@@ -174,6 +186,7 @@ public sealed record RuntimeConfiguration(
             importSavePath,
             confirmImport,
             bootAction,
+            qualityProfile,
             performanceCapturePath,
             performanceWarmupSeconds,
             performanceDurationSeconds,

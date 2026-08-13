@@ -2,6 +2,7 @@ using Godot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.Audio;
@@ -37,6 +38,8 @@ public partial class SessionShell : Node
     public RuntimeInputHost? InputHost { get; private set; }
 
     public FeatureFlagSet Features { get; private set; } = new();
+
+    public QualityProfilePolicy Quality { get; private set; } = QualityProfilePolicy.Resolve(QualityProfileIds.High);
 
     public SessionAudioRuntime? Audio { get; private set; }
 
@@ -103,7 +106,10 @@ public partial class SessionShell : Node
             "An empty disposable session shell was created."));
     }
 
-    public void InitializeRuntimeInput(SettingsStore settings, FeatureFlagSet features)
+    public void InitializeRuntimeInput(
+        SettingsStore settings,
+        FeatureFlagSet features,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (InputHost is not null)
         {
@@ -111,6 +117,7 @@ public partial class SessionShell : Node
         }
 
         Features = features ?? throw new ArgumentNullException(nameof(features));
+        Quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         CameraAdapter?.ConfigureFeatures(Features);
         Node runtimeServices = GetNode<Node>("RuntimeServices");
         Interface = new PlayerInterface { Name = "PlayerInterface" };
@@ -118,7 +125,7 @@ public partial class SessionShell : Node
         Interface.Initialize(settings);
         Audio = new SessionAudioRuntime { Name = "SessionAudio" };
         runtimeServices.AddChild(Audio);
-        Audio.Initialize(settings, Interface);
+        Audio.Initialize(settings, Interface, Quality);
         InputHost = new RuntimeInputHost { Name = "RuntimeInputHost" };
         runtimeServices.AddChild(InputHost);
         InputHost.Initialize(settings);
@@ -143,7 +150,8 @@ public partial class SessionShell : Node
             PlayerControl,
             GetNode<Node3D>("WorldRoot/AgentRoot"),
             GetNode<Node3D>("WorldRoot/NavigationRoot"),
-            CameraAdapter);
+            CameraAdapter,
+            qualityProfile: Quality);
         LivingPedestrians = new LivingPedestrianRuntime { Name = "LivingPedestrians" };
         runtimeServices.AddChild(LivingPedestrians);
         LivingPedestrians.Initialize(
@@ -152,7 +160,8 @@ public partial class SessionShell : Node
             PlayerControl,
             LivingTraffic,
             GetNode<Node3D>("WorldRoot/AgentRoot"),
-            CameraAdapter);
+            CameraAdapter,
+            qualityProfile: Quality);
         RuntimeHost = new GodotSessionRuntimeHost { Name = "SessionRuntime" };
         runtimeServices.AddChild(RuntimeHost);
         RuntimeHost.Initialize(InputHost, GameplayCamera);
@@ -276,7 +285,8 @@ public partial class SessionShell : Node
             LivingTraffic,
             Environment,
             GameplayCamera,
-            Audio);
+            Audio,
+            Quality);
         if (Features.IsEnabled(FeatureIds.TemporaryMayhem))
         {
             TemporaryMayhem = new TemporaryMayhemRuntime { Name = "TemporaryMayhemRuntime" };
@@ -335,7 +345,8 @@ public partial class SessionShell : Node
             Enforcement,
             Services,
             Missions,
-            RuntimeHost);
+            RuntimeHost,
+            Quality);
         Modals = new SessionModalController { Name = "SessionModals" };
         Interface.ModalLayer.AddChild(Modals);
         Modals.Initialize(Interface, RuntimeHost, InputHost, settings);
@@ -343,9 +354,16 @@ public partial class SessionShell : Node
         unsubscribeWeatherGrip = Environment?.SubscribeState(
             snapshot => PlayerControl.ApplyWeatherGrip(snapshot.WeatherMode),
             emitCurrent: true);
+        if (Quality.Id != QualityProfileIds.High)
+        {
+            World?.ApplyQualityProfile(Quality, GetNode<Node3D>("WorldRoot"));
+        }
     }
 
-    public void InitializeWorld(GameContentRegistry content, SettingsStore settings)
+    public void InitializeWorld(
+        GameContentRegistry content,
+        SettingsStore settings,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (World is not null)
         {
@@ -353,12 +371,15 @@ public partial class SessionShell : Node
         }
         World = GetNode<MvpWorldGenerator>("WorldRoot/AuthoredWorld");
         Content = content;
+        Quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         World.Initialize(content);
+        World.ApplyQualityProfile(Quality);
         CameraAdapter = GetNode<GodotCameraWorldAdapter>("CameraRig");
         CameraAdapter.Initialize(World, content);
         Environment = new WorldEnvironmentController { Name = "WorldPresentation" };
         GetNode<Node>("RuntimeServices").AddChild(Environment);
         Environment.Initialize(content, settings, World);
+        Environment.SetQualityProfile(Quality.Id);
         Billboards = new CachedBillboardSystem { Name = "BillboardSystem" };
         GetNode<Node>("RuntimeServices").AddChild(Billboards);
         Billboards.Initialize(World);

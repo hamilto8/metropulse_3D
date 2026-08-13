@@ -2188,9 +2188,14 @@ public partial class IntegrationTestRunner : Node
         Check(environment?.ApplyLightningFlash(1) == 1, "Lightning flash intensity honors the full-effect preference.", failures);
         environment?.ClearLightningFlash();
         environment?.SetQualityProfile("LOW");
-        Check(environment is { QualityProfile: "LOW", BloomEnabled: false }, "Low quality disables bloom and expensive environment effects.", failures);
+        Check(environment is { QualityProfile: "LOW", BloomEnabled: false }
+                && environment.GetNode<GpuParticles3D>("Rain").Amount == 600,
+            "Low quality disables bloom and caps weather particles.", failures);
         environment?.SetQualityProfile("HIGH");
-        Check(environment is { QualityProfile: "HIGH", BloomEnabled: true }, "High quality restores preference-allowed bloom.", failures);
+        Check(environment is { QualityProfile: "HIGH", BloomEnabled: true }
+                && environment.GetNode<GpuParticles3D>("Rain").Amount == 2_000,
+            "High quality restores preference-allowed bloom and weather density.", failures);
+        environment?.SetQualityProfile(session?.Quality.Id);
         Check(billboards is { TextureCount: 3, RedrawCount: 3 }, "Three skyline billboards render through cached SubViewport textures exactly once.", failures);
         int redraws = billboards?.RedrawCount ?? -1;
         Check(billboards?.UpdateContent("metro-news", "METRO NEWS LIVE\n12:00  •  CLEAR") == false
@@ -2411,7 +2416,8 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Settings authority is unavailable.");
             Check(audio.Initialized
                     && AudioBusIds.All.All(id => AudioServer.GetBusIndex(id) >= 0)
-                    && AudioServer.BusCount == audio.InitialBusCount + AudioBusIds.All.Count - 1,
+                    && AudioServer.BusCount == audio.InitialBusCount + AudioBusIds.All.Count - 1
+                    && audio.SpatialVoiceCount == session.Quality.SpatialAudioVoices,
                 "Session audio installs each required bus exactly once.",
                 failures);
             Check(AudioPresentationModel.Buses.Skip(1).All(bus =>
@@ -2459,12 +2465,14 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Session effects are unavailable.");
             SettingsStore settings = compositionRoot.SettingsAuthority
                 ?? throw new InvalidOperationException("Settings authority is unavailable.");
+            int expectedPoolNodes = EffectPresentationModel.Pools.Sum(pool =>
+                Math.Max(1, (int)Math.Ceiling(pool.Capacity * session.Quality.EffectBudgetScale)));
             Check(
                 effects.Initialized
-                    && effects.PoolNodeCount == EffectPresentationModel.TotalPooledNodes
-                    && effects.GetChildCount() == EffectPresentationModel.TotalPooledNodes
+                    && effects.PoolNodeCount == expectedPoolNodes
+                    && effects.GetChildCount() == expectedPoolNodes
                     && !ContainsCollisionObject(effects),
-                "Session effects preallocate exactly 48 collision-free presentation roots.",
+                "Session effects preallocate the quality-capped collision-free presentation roots.",
                 failures);
             Check(
                 EffectPresentationModel.Pools.All(pool =>

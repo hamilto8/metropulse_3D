@@ -4,6 +4,7 @@ using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Persistence;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Godot.Adapters;
 using MetroPulse.Godot.Diagnostics;
@@ -389,13 +390,16 @@ public partial class CompositionRoot : Node
             new(BootStageIds.SessionConstruction, "Constructing empty Management session", (_, _) =>
             {
                 SessionShell session = StartSession();
+                QualityProfilePolicy quality = QualityProfilePolicy.Resolve(Configuration?.QualityProfile);
                 session.InitializeWorld(
                     ContentRegistry ?? throw new InvalidOperationException("Content validation must precede session construction."),
-                    SettingsAuthority ?? throw new InvalidOperationException("Settings authority must precede session construction."));
+                    SettingsAuthority ?? throw new InvalidOperationException("Settings authority must precede session construction."),
+                    quality);
                 session.InitializeRuntimeInput(SettingsAuthority
                     ?? throw new InvalidOperationException("Settings authority must precede session construction."),
                     Configuration?.Features
-                    ?? throw new InvalidOperationException("Feature configuration must precede session construction."));
+                    ?? throw new InvalidOperationException("Feature configuration must precede session construction."),
+                    quality);
                 return ValueTask.FromResult<object?>(session);
             }),
             new(BootStageIds.SaveApplication, "Preparing validated city state", (results, _) =>

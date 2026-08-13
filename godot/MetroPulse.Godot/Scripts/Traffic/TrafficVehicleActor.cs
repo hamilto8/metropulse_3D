@@ -23,6 +23,7 @@ public partial class TrafficVehicleActor : AnimatableBody3D
     private AudioStreamPlayer3D horn = null!;
     private AudioStreamPlayer3D siren = null!;
     private MvpWorldGenerator? world;
+    private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
     private int publishedHornCount;
 
     public string StableId { get; private set; } = string.Empty;
@@ -37,7 +38,11 @@ public partial class TrafficVehicleActor : AnimatableBody3D
 
     public bool SirenActive { get; private set; }
 
-    public void Initialize(TrafficAgentSnapshot snapshot, VehicleProfileRecord record, MvpWorldGenerator worldOwner)
+    public void Initialize(
+        TrafficAgentSnapshot snapshot,
+        VehicleProfileRecord record,
+        MvpWorldGenerator worldOwner,
+        QualityProfilePolicy? qualityProfile = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(record);
@@ -46,6 +51,7 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         TypeId = snapshot.TypeId;
         Parked = snapshot.Parked;
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
+        quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         CollisionLayer = (uint)MetroPulse.Domain.Simulation.CollisionLayer.Traffic;
         CollisionMask = (uint)(MetroPulse.Domain.Simulation.CollisionLayer.Player
             | MetroPulse.Domain.Simulation.CollisionLayer.Traffic
@@ -92,14 +98,14 @@ public partial class TrafficVehicleActor : AnimatableBody3D
         ResetPhysicsInterpolation();
 
         float distance = new Vector2(GlobalPosition.X - renderFocus.X, GlobalPosition.Z - renderFocus.Z).Length();
-        RenderDetailTier = distance <= 160
+        RenderDetailTier = distance <= quality.TrafficHighDetailDistance
             ? TrafficRenderDetailTiers.High
-            : distance <= 400
+            : distance <= quality.TrafficProxyDistance
                 ? TrafficRenderDetailTiers.Medium
                 : TrafficRenderDetailTiers.Low;
         highDetail.Visible = RenderDetailTier is TrafficRenderDetailTiers.High or TrafficRenderDetailTiers.Medium;
         lowDetail.Visible = RenderDetailTier == TrafficRenderDetailTiers.Low;
-        highDetail.CastShadow = RenderDetailTier == TrafficRenderDetailTiers.High
+        highDetail.CastShadow = quality.TrafficShadows && RenderDetailTier == TrafficRenderDetailTiers.High
             ? GeometryInstance3D.ShadowCastingSetting.On
             : GeometryInstance3D.ShadowCastingSetting.Off;
         bool collisionEnabled = snapshot.DetailTier == TrafficAgentDetailTiers.Near && !snapshot.PlayerControlled;

@@ -15,6 +15,7 @@ namespace MetroPulse.Godot.Effects;
 public partial class SessionEffectRuntime : Node3D
 {
     private readonly Dictionary<string, EffectPoolModel> models = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EffectPoolSpec> effectiveSpecs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<PooledWorldEffect>> pools = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> impactCounts = new(StringComparer.Ordinal);
     private readonly HashSet<string> fireSources = new(StringComparer.Ordinal);
@@ -60,7 +61,8 @@ public partial class SessionEffectRuntime : Node3D
         LivingTrafficRuntime trafficOwner,
         WorldEnvironmentController environmentOwner,
         GameplayCameraRig cameraOwner,
-        SessionAudioRuntime audioOwner)
+        SessionAudioRuntime audioOwner,
+        QualityProfilePolicy? qualityProfile = null)
     {
         if (Initialized) throw new InvalidOperationException("Session effects are already initialized.");
         settings = settingsAuthority ?? throw new ArgumentNullException(nameof(settingsAuthority));
@@ -69,8 +71,14 @@ public partial class SessionEffectRuntime : Node3D
         environment = environmentOwner ?? throw new ArgumentNullException(nameof(environmentOwner));
         camera = cameraOwner ?? throw new ArgumentNullException(nameof(cameraOwner));
         audio = audioOwner ?? throw new ArgumentNullException(nameof(audioOwner));
-        foreach (EffectPoolSpec spec in EffectPresentationModel.Pools)
+        QualityProfilePolicy quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
+        foreach (EffectPoolSpec authoredSpec in EffectPresentationModel.Pools)
         {
+            EffectPoolSpec spec = authoredSpec with
+            {
+                Capacity = Math.Max(1, (int)Math.Ceiling(authoredSpec.Capacity * quality.EffectBudgetScale)),
+            };
+            effectiveSpecs.Add(spec.Id, spec);
             models.Add(spec.Id, new EffectPoolModel(spec));
             var pool = new List<PooledWorldEffect>(spec.Capacity);
             for (int slot = 0; slot < spec.Capacity; slot++)
@@ -191,6 +199,7 @@ public partial class SessionEffectRuntime : Node3D
         environment.ClearLightningFlash();
         foreach (PooledWorldEffect effect in pools.Values.SelectMany(pool => pool)) effect.Deactivate();
         models.Clear();
+        effectiveSpecs.Clear();
         pools.Clear();
         impactCounts.Clear();
         fireSources.Clear();
@@ -201,7 +210,7 @@ public partial class SessionEffectRuntime : Node3D
 
     private void Spawn(string effectId, Vector3 position, string? sourceId = null)
     {
-        EffectPoolSpec spec = EffectPresentationModel.Pools.Single(pool => pool.Id == effectId);
+        EffectPoolSpec spec = effectiveSpecs[effectId];
         EffectLease lease = models[effectId].Acquire(elapsed, sourceId);
         pools[effectId][lease.Slot].Activate(position, spec.LifetimeSeconds, lease.Generation, sourceId);
         SpawnCount++;

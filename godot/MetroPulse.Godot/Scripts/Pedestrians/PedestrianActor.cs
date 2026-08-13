@@ -1,5 +1,6 @@
 using Godot;
 using MetroPulse.Domain.Pedestrians;
+using MetroPulse.Domain.Presentation;
 using MetroPulse.Godot.World;
 
 namespace MetroPulse.Godot.Pedestrians;
@@ -18,6 +19,7 @@ public partial class PedestrianActor : AnimatableBody3D
     private Node3D highDetail = null!;
     private MeshInstance3D lowDetail = null!;
     private MvpWorldGenerator? world;
+    private QualityProfilePolicy quality = QualityProfilePolicy.Resolve(QualityProfileIds.High);
 
     public string StableId { get; private set; } = string.Empty;
 
@@ -27,10 +29,14 @@ public partial class PedestrianActor : AnimatableBody3D
 
     public bool CollisionActive => !collision.Disabled;
 
-    public void Initialize(PedestrianAgentSnapshot snapshot, MvpWorldGenerator worldOwner)
+    public void Initialize(
+        PedestrianAgentSnapshot snapshot,
+        MvpWorldGenerator worldOwner,
+        QualityProfilePolicy? qualityProfile = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         world = worldOwner ?? throw new ArgumentNullException(nameof(worldOwner));
+        quality = qualityProfile ?? QualityProfilePolicy.Resolve(QualityProfileIds.High);
         StableId = snapshot.Id;
         Archetype = snapshot.Descriptor.Archetype;
         CollisionLayer = (uint)MetroPulse.Domain.Simulation.CollisionLayer.Pedestrian;
@@ -72,16 +78,16 @@ public partial class PedestrianActor : AnimatableBody3D
         ResetPhysicsInterpolation();
 
         float distance = new Vector2(GlobalPosition.X - renderFocus.X, GlobalPosition.Z - renderFocus.Z).Length();
-        RenderDetailTier = distance <= 120
+        RenderDetailTier = distance <= quality.PedestrianHighDetailDistance
             ? PedestrianRenderDetailTiers.High
-            : distance <= 320
+            : distance <= quality.PedestrianProxyDistance
                 ? PedestrianRenderDetailTiers.Medium
                 : PedestrianRenderDetailTiers.Low;
         highDetail.Visible = RenderDetailTier is PedestrianRenderDetailTiers.High or PedestrianRenderDetailTiers.Medium;
         lowDetail.Visible = RenderDetailTier == PedestrianRenderDetailTiers.Low;
         foreach (MeshInstance3D mesh in highDetail.GetChildren().OfType<MeshInstance3D>())
         {
-            mesh.CastShadow = RenderDetailTier == PedestrianRenderDetailTiers.High
+            mesh.CastShadow = quality.PedestrianShadows && RenderDetailTier == PedestrianRenderDetailTiers.High
                 ? GeometryInstance3D.ShadowCastingSetting.On
                 : GeometryInstance3D.ShadowCastingSetting.Off;
         }
