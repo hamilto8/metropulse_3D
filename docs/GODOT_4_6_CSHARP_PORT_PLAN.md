@@ -1790,10 +1790,23 @@ interpolation. Record the selected value in an ADR and update fixtures.
 11.6 Complete the browser-save migration UX, documentation, backup, and failure
 recovery. Test imported saves on all desktop platforms.
 
+> **Status:** the explicit browser export, native no-write preview, confirmed
+> exact-byte backup/migration, rotating recovery behavior, fault matrix, and
+> player-facing migration/rollback guide are complete. macOS exported-build
+> verification is feasible on the current host; Windows and Linux native import
+> tests remain required and cannot be inferred from cross-export success.
+
 11.7 Build signed/reproducible export presets. Godot stores normal export
 settings in `export_presets.cfg`; never commit export credentials. Automate
 release exports using the documented
 [command-line export flow](https://docs.godotengine.org/en/4.6/tutorials/export/exporting_projects.html).
+
+> **Status:** automated clean-input release exports and per-file SHA-256
+> manifests cover all three desktop presets. The validator rejects committed
+> credentials. macOS gets host smoke plus ad-hoc signature verification;
+> Developer ID/notarization, Windows Authenticode, distribution-channel signing,
+> and native Windows/Linux execution require credentialed target release hosts.
+> See `docs/RELEASE_EXPORTS.md`.
 
 11.8 Perform separate art, animation, audio, writing, balance, UX,
 accessibility, platform compatibility, save migration, privacy, and licensing

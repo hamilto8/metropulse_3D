@@ -155,6 +155,9 @@ Validation or confirmation failures write neither backup nor save slot. A
 repository failure may leave the import backup for diagnosis, but current and
 recovery retain their exact pre-import values.
 
+Player-facing preview, confirmation, platform storage locations, exact-backup
+retry, and recovery instructions are in `docs/SAVE_MIGRATION_GUIDE.md`.
+
 ## Native split restore
 
 `GameSaveRestoreCoordinator` separates static owner mutation from runtime

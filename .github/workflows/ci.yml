@@ -142,8 +142,8 @@ jobs:
       - name: Run headless engine integration tests
         run: ./godot/scripts/test-integration.sh
 
-      - name: Export Linux release shell
-        run: ./godot/scripts/export.sh linux release
+      - name: Export and manifest Linux release shell
+        run: ./godot/scripts/release-export.sh linux release
 
       - name: Upload Godot foundation evidence
         if: always()
@@ -153,5 +153,6 @@ jobs:
           path: |
             godot/artifacts/test-results/
             godot/artifacts/exports/linux/
+            godot/artifacts/release/linux/
           if-no-files-found: warn
           retention-days: 14

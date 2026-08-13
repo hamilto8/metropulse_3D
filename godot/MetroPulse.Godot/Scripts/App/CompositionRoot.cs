@@ -178,7 +178,8 @@ public partial class CompositionRoot : Node
             diagnostics.SetFatalError(errorCode);
             boot.ShowFatal(errorCode, remedy);
 
-            if (OS.GetCmdlineUserArgs().Contains("--run-integration-tests", StringComparer.Ordinal))
+            if (OS.GetCmdlineUserArgs().Contains("--run-integration-tests", StringComparer.Ordinal)
+                || OS.GetCmdlineUserArgs().Contains("--smoke-boot", StringComparer.Ordinal))
             {
                 GetTree().Quit(1);
             }
