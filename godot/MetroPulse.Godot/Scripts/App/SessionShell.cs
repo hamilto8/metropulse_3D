@@ -15,6 +15,7 @@ using MetroPulse.Godot.Mayhem;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
+using MetroPulse.Godot.Rocket;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
@@ -59,6 +60,8 @@ public partial class SessionShell : Node
 
     public TemporaryMayhemRuntime? TemporaryMayhem { get; private set; }
 
+    public RocketLaunchRuntime? RocketLaunch { get; private set; }
+
     public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
     public LivingTrafficRuntime? LivingTraffic { get; private set; }
@@ -102,6 +105,7 @@ public partial class SessionShell : Node
         }
 
         Features = features ?? throw new ArgumentNullException(nameof(features));
+        CameraAdapter?.ConfigureFeatures(Features);
         Node runtimeServices = GetNode<Node>("RuntimeServices");
         Interface = new PlayerInterface { Name = "PlayerInterface" };
         GetNode<CanvasLayer>("HUD").AddChild(Interface);
@@ -264,6 +268,19 @@ public partial class SessionShell : Node
                 Audio,
                 Interface);
         }
+        if (Features.IsEnabled(FeatureIds.RocketLaunch))
+        {
+            RocketLaunch = new RocketLaunchRuntime { Name = "RocketLaunchRuntime" };
+            runtimeServices.AddChild(RocketLaunch);
+            RocketLaunch.Initialize(
+                World ?? throw new InvalidOperationException("The world must exist before rocket launch is initialized."),
+                RuntimeHost,
+                GameplayCamera,
+                Effects,
+                Audio,
+                Interface,
+                GetNode<Node3D>("WorldRoot"));
+        }
         GameplayUi = new GameplayHud { Name = "GameplayHud" };
         Interface.Chrome.AddChild(GameplayUi);
         GameplayUi.Initialize(
@@ -327,6 +344,7 @@ public partial class SessionShell : Node
         if (PlayerControl is not null) PlayerControl.RiderEjectionPrepared -= OnRiderEjectionPrepared;
         Modals?.Shutdown();
         TemporaryMayhem?.Shutdown();
+        RocketLaunch?.Shutdown();
         MinimapUi?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
@@ -375,6 +393,7 @@ public partial class SessionShell : Node
             || PlayerControl?.Initialized != true
             || (Features.IsEnabled(FeatureIds.Aircraft) && Aircraft?.Initialized != true)
             || (Features.IsEnabled(FeatureIds.TemporaryMayhem) && TemporaryMayhem?.Initialized != true)
+            || (Features.IsEnabled(FeatureIds.RocketLaunch) && RocketLaunch?.Initialized != true)
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true

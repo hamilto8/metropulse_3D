@@ -143,6 +143,17 @@ public partial class GameplayCameraRig : Node
         return true;
     }
 
+    public bool ApplyRocketTracking(double altitude)
+    {
+        EnsureInitialized();
+        if (ActivePresetId != "rocket" || !double.IsFinite(altitude)) return false;
+        float delta = (float)Math.Max(0, altitude - 1.5);
+        camera!.GlobalPosition = new Vector3(670, 52 + delta * 0.9f, -245);
+        lookAt = new Vector3(700, 28 + delta, -280);
+        camera.LookAt(lookAt, Vector3.Up);
+        return true;
+    }
+
     public bool StartFollow(IGameplayCameraTarget target, double duration = DefaultTransitionDuration)
     {
         EnsureInitialized();

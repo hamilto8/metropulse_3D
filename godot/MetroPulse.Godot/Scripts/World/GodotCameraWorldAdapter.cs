@@ -8,6 +8,7 @@ public partial class GodotCameraWorldAdapter : Node3D
 {
     private static readonly IReadOnlyList<string> ProductionPresetIds = Array.AsReadOnly(
         new[] { "management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free" });
+    private readonly HashSet<string> availablePresetIds = new(ProductionPresetIds, StringComparer.Ordinal);
     private Camera3D? camera;
     private MvpWorldGenerator? world;
     private CameraPresetModel? presets;
@@ -17,7 +18,9 @@ public partial class GodotCameraWorldAdapter : Node3D
 
     public string? ActivePresetId { get; private set; }
 
-    public IReadOnlyList<string> AvailablePresetIds => ProductionPresetIds;
+    public IReadOnlyList<string> AvailablePresetIds => ProductionPresetIds
+        .Concat(availablePresetIds.Contains("rocket") ? ["rocket"] : Array.Empty<string>())
+        .ToArray();
 
     public CameraClearanceInspection? CurrentInspection { get; private set; }
 
@@ -47,10 +50,17 @@ public partial class GodotCameraWorldAdapter : Node3D
         }
     }
 
+    public void ConfigureFeatures(FeatureFlagSet features)
+    {
+        ArgumentNullException.ThrowIfNull(features);
+        if (features.IsEnabled(FeatureIds.RocketLaunch)) availablePresetIds.Add("rocket");
+        else availablePresetIds.Remove("rocket");
+    }
+
     public bool ApplyPreset(string? id)
     {
         if (!Initialized || camera is null || presets is null || clearance is null || id is null
-            || !ProductionPresetIds.Contains(id, StringComparer.Ordinal))
+            || !availablePresetIds.Contains(id))
         {
             return false;
         }

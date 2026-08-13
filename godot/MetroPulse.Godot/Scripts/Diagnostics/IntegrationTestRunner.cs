@@ -17,6 +17,7 @@ using MetroPulse.Domain.Pedestrians;
 using MetroPulse.Domain.Persistence;
 using MetroPulse.Domain.Placement;
 using MetroPulse.Domain.Presentation;
+using MetroPulse.Domain.Rocket;
 using MetroPulse.Domain.Services;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Simulation;
@@ -36,6 +37,7 @@ using MetroPulse.Godot.Mayhem;
 using MetroPulse.Godot.Missions;
 using MetroPulse.Godot.Pedestrians;
 using MetroPulse.Godot.Player;
+using MetroPulse.Godot.Rocket;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Services;
 using MetroPulse.Godot.Traffic;
@@ -214,6 +216,7 @@ public partial class IntegrationTestRunner : Node
         await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
         await CheckAircraft(compositionRoot, failures);
         await CheckTemporaryMayhem(compositionRoot, failures);
+        await CheckRocketLaunch(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -253,6 +256,19 @@ public partial class IntegrationTestRunner : Node
                     {
                         ["impacts"] = session.TemporaryMayhem?.ImpactCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                         ["roadClosures"] = session.LivingTraffic?.RoadGraph.TemporaryClosureCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    }));
+            }
+            if (session.Features.IsEnabled(FeatureIds.RocketLaunch))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.rocket-launch.passed",
+                    "Phase 10 gated launch facility, countdown, launch motion, effects, camera, UI, reset, and cleanup contracts passed.",
+                    new Dictionary<string, string>
+                    {
+                        ["launches"] = session.RocketLaunch?.Snapshot.LaunchCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                        ["vapors"] = session.RocketLaunch?.VaporCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                     }));
             }
             AppLog.Write(new StructuredLogEvent(
@@ -862,6 +878,104 @@ public partial class IntegrationTestRunner : Node
         finally
         {
             if (mayhem.Active) mayhem.Stop();
+        }
+    }
+
+    private async ValueTask CheckRocketLaunch(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for rocket verification.");
+        bool enabled = session.Features.IsEnabled(FeatureIds.RocketLaunch);
+        if (!enabled)
+        {
+            Check(session.RocketLaunch is null
+                    && GetTree().GetNodesInGroup("rocket_launch").Count == 0
+                    && session.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/RocketLaunchControl") is null
+                    && session.CameraAdapter?.ApplyPreset("rocket") == false,
+                "Feature-off rocket launch creates no facility, task, UI, or camera availability.", failures);
+            return;
+        }
+
+        RocketLaunchRuntime rocket = session.RocketLaunch
+            ?? throw new InvalidOperationException("Enabled rocket runtime is unavailable.");
+        _ = rocket.Reset();
+        int packageColliderBaseline = session.World!.Colliders.Count - 3;
+        Check(rocket.Initialized
+                && rocket.VaporCount == 20
+                && rocket.Snapshot is { Countdown: > 0 and <= 300, Altitude: 1.5, VelocityY: 0 }
+                && session.World.Colliders.Count == packageColliderBaseline + 3
+                && GetTree().GetNodesInGroup("rocket_launch").Count == 1
+                && session.CameraAdapter!.AvailablePresetIds.Contains("rocket", StringComparer.Ordinal)
+                && rocket.Control.Initialized,
+            "Feature-on rocket launch creates one facility, three collision owners, twenty pooled vapors, camera, and accessible UI.", failures);
+
+        try
+        {
+            PauseHold hold = session.RuntimeHost!.Pause.OpenMenu("phase10-rocket-pause");
+            double pausedCountdown = rocket.Snapshot.Countdown;
+            _ = session.RuntimeHost.Scheduler.AdvanceFrame(5);
+            Check(hold.Reason == PauseReason.Menu && rocket.Snapshot.Countdown == pausedCountdown,
+                "Pause freezes the scheduler-owned rocket countdown.", failures);
+            _ = session.RuntimeHost.Pause.CloseMenu("phase10-rocket-pause");
+
+            double countdownBeforeAdvance = rocket.Snapshot.Countdown;
+            rocket.AdvanceForTest(1);
+            int displayedSeconds = (int)Math.Ceiling(rocket.Snapshot.Countdown);
+            Check(Math.Abs(rocket.Snapshot.Countdown - (countdownBeforeAdvance - 1)) < 0.0001
+                    && rocket.Control.StatusText == $"T-{displayedSeconds / 60}:{displayedSeconds % 60:00}",
+                "The live countdown and UI advance on gameplay time.", failures);
+            Check(rocket.ViewLaunch()
+                    && session.GameplayCamera?.ActivePresetId == "rocket",
+                "The feature-owned camera control applies the authored rocket preset.", failures);
+            float cameraY = session.CameraAdapter!.GetNode<Camera3D>("MainCamera").GlobalPosition.Y;
+            Check(rocket.LaunchNow() && rocket.Launched && rocket.Snapshot.Countdown == 0,
+                "Launch-now transitions the rocket exactly once and emits liftoff presentation.", failures);
+            rocket.AdvanceForTest(1);
+            Check(rocket.Snapshot is { VelocityY: 45, Altitude: 46.5 }
+                    && session.CameraAdapter!.GetNode<Camera3D>("MainCamera").GlobalPosition.Y > cameraY
+                    && rocket.Control.StatusText.StartsWith("LIFTOFF", StringComparison.Ordinal)
+                    && session.Audio!.LastCaption == "[explosion]",
+                "Launch motion uses the source acceleration while camera, flame/vapor, UI, and caption follow liftoff.", failures);
+
+            RocketLaunchSnapshot reset = rocket.Reset();
+            Check(reset is { Phase: RocketLaunchPhase.Countdown, Countdown: 300, Altitude: 1.5, VelocityY: 0 }
+                    && rocket.Control.StatusText == "T-5:00",
+                "Reset restores the exact pad pose, countdown, pooled presentation, and UI baseline.", failures);
+
+            SessionShell cleanup = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(cleanup);
+            cleanup.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            int cleanupBaseline = cleanup.World!.Colliders.Count;
+            cleanup.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, compositionRoot.Configuration!.Features);
+            int cleanupWithPackage = cleanup.World.Colliders.Count;
+            Check(cleanupWithPackage >= cleanupBaseline + 3
+                    && cleanup.RocketLaunch is { Initialized: true, Launched: false },
+                "A fresh enabled session starts from a clean unlaunched package baseline.", failures);
+            cleanup.RocketLaunch!.Shutdown();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            Check(cleanup.World.Colliders.Count == cleanupWithPackage - 3
+                    && cleanup.GetNodeOrNull<Node3D>("WorldRoot/RocketLaunchFacility") is null,
+                "Feature shutdown releases every facility collider, task, world node, and UI owner.", failures);
+            cleanup.Shutdown();
+            cleanup.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            SessionShell unavailable = compositionRoot.SessionScene.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(unavailable);
+            unavailable.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            int unavailableBaseline = unavailable.World!.Colliders.Count;
+            unavailable.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, new FeatureFlagSet());
+            Check(unavailable.RocketLaunch is null
+                    && unavailable.World.Colliders.Count == unavailableBaseline
+                    && unavailable.CameraAdapter?.ApplyPreset("rocket") == false,
+                "A new game remains valid and clean when the rocket package is unavailable.", failures);
+            unavailable.Shutdown();
+            unavailable.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Rocket launch integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 
@@ -1719,10 +1833,16 @@ public partial class IntegrationTestRunner : Node
             && billboards.RedrawCount == redraws, "Unchanged billboard content does not redraw its viewport.", failures);
         Check(billboards?.UpdateContent("metro-news", "METRO NEWS LIVE\n00:00  •  THUNDERSTORM") == true
             && billboards.RedrawCount == redraws + 1, "Changed billboard content requests exactly one redraw.", failures);
-        Check(camera?.AvailablePresetIds.SequenceEqual(["management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free"]) == true, "Camera adapter exposes only the eight production Phase 4 presets.", failures);
+        string[] expectedPresets = session?.Features.IsEnabled(FeatureIds.RocketLaunch) == true
+            ? ["management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free", "rocket"]
+            : ["management", "ground", "street", "birdseye", "park", "downtown", "bridge", "free"];
+        Check(camera?.AvailablePresetIds.SequenceEqual(expectedPresets) == true,
+            "Camera adapter exposes exactly the production presets plus enabled feature presets.", failures);
         string[] unavailablePresets = camera?.AvailablePresetIds.Where(id => !camera.ApplyPreset(id)).ToArray() ?? ["adapter-unavailable"];
         Check(unavailablePresets.Length == 0, $"Every production camera preset resolves against terrain, water, and obstacle clearance. Failed: {string.Join(", ", unavailablePresets)}", failures);
-        Check(camera?.ApplyPreset("airfield") == false && camera.ApplyPreset("rocket") == false, "Optional airfield and rocket presets remain feature-gated.", failures);
+        Check(camera?.ApplyPreset("airfield") == false
+                && camera.ApplyPreset("rocket") == (session?.Features.IsEnabled(FeatureIds.RocketLaunch) == true),
+            "Optional airfield and rocket presets remain independently feature-gated.", failures);
         environment?.SetState(12, "clear", 320);
         billboards?.ApplyStatus(12, "clear");
     }
