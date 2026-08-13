@@ -34,7 +34,7 @@ expect_import_failure() {
     echo "Invalid save import unexpectedly succeeded: ${error_code}." >&2
     exit 1
   fi
-  rg -q "${error_code}" "${GODOT_ROOT}/artifacts/test-results/${log_name}"
+  grep -Fq "${error_code}" "${GODOT_ROOT}/artifacts/test-results/${log_name}"
 }
 
 extract_fixture \
@@ -54,7 +54,7 @@ if "${GODOT_EXECUTABLE}" --headless --path "${PROJECT_ROOT}" -- \
   echo "Unconfirmed save import unexpectedly succeeded." >&2
   exit 1
 fi
-rg -q 'IMPORT_CONFIRMATION_REQUIRED' "${GODOT_ROOT}/artifacts/test-results/godot-import-preview.log"
+grep -Fq 'IMPORT_CONFIRMATION_REQUIRED' "${GODOT_ROOT}/artifacts/test-results/godot-import-preview.log"
 
 expect_import_failure "${CORRUPT_FIXTURE}" "INVALID_SAVE" "godot-integration-corrupt.log"
 expect_import_failure "${FUTURE_FIXTURE}" "FUTURE_SAVE_VERSION" "godot-integration-future.log"
