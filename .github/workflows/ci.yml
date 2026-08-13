@@ -73,6 +73,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install canonical content dependencies
+        run: npm ci
+
       - name: Validate canonical Godot content extraction
         run: ./godot/scripts/validate-content-extraction.sh
 

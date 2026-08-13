@@ -16,7 +16,7 @@ if awk -F= '
   /^[[:space:]]*(password|encryption\/encryption_key|codesign\/identity|codesign\/certificate_file|notarization\/api_key)[[:space:]]*=/ {
     value = $0
     sub(/^[^=]*=/, "", value)
-    gsub(/[[:space:]\"]/, "", value)
+    gsub(/[[:space:]"]/, "", value)
     if (value != "") found = 1
   }
   END { exit found ? 0 : 1 }
