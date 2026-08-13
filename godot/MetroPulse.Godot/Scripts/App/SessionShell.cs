@@ -7,6 +7,7 @@ using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.Audio;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
+using MetroPulse.Godot.Countryside;
 using MetroPulse.Godot.Diagnostics;
 using MetroPulse.Godot.EastSide;
 using MetroPulse.Godot.Economy;
@@ -76,6 +77,8 @@ public partial class SessionShell : Node
     public CityEditorRuntime? Editor { get; private set; }
 
     public EastSideDevelopmentRuntime? EastSideDevelopment { get; private set; }
+
+    public CountrysideExpansionRuntime? CountrysideExpansion { get; private set; }
 
     public CityServicesRuntime? Services { get; private set; }
 
@@ -189,12 +192,23 @@ public partial class SessionShell : Node
             PlayerControl,
             LivingTraffic,
             GetNode<Node3D>("WorldRoot/UserWorld"),
-            Features.IsEnabled(FeatureIds.EastSideDevelopment));
+            Features.IsEnabled(FeatureIds.EastSideDevelopment),
+            Features.IsEnabled(FeatureIds.CountrysideExpansion));
         if (Features.IsEnabled(FeatureIds.EastSideDevelopment))
         {
             EastSideDevelopment = new EastSideDevelopmentRuntime { Name = "EastSideDevelopmentRuntime" };
             runtimeServices.AddChild(EastSideDevelopment);
             EastSideDevelopment.Initialize(Economy, Editor, Interface);
+        }
+        if (Features.IsEnabled(FeatureIds.CountrysideExpansion))
+        {
+            CountrysideExpansion = new CountrysideExpansionRuntime { Name = "CountrysideExpansionRuntime" };
+            runtimeServices.AddChild(CountrysideExpansion);
+            CountrysideExpansion.Initialize(
+                Content,
+                World ?? throw new InvalidOperationException("The world must exist before Countryside is initialized."),
+                Editor,
+                GetNode<Node3D>("WorldRoot"));
         }
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);
@@ -356,6 +370,7 @@ public partial class SessionShell : Node
         TemporaryMayhem?.Shutdown();
         RocketLaunch?.Shutdown();
         EastSideDevelopment?.Shutdown();
+        CountrysideExpansion?.Shutdown();
         MinimapUi?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
@@ -406,6 +421,7 @@ public partial class SessionShell : Node
             || (Features.IsEnabled(FeatureIds.TemporaryMayhem) && TemporaryMayhem?.Initialized != true)
             || (Features.IsEnabled(FeatureIds.RocketLaunch) && RocketLaunch?.Initialized != true)
             || (Features.IsEnabled(FeatureIds.EastSideDevelopment) && EastSideDevelopment?.Initialized != true)
+            || (Features.IsEnabled(FeatureIds.CountrysideExpansion) && CountrysideExpansion?.Initialized != true)
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true

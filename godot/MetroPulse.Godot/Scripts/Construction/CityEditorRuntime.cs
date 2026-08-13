@@ -22,6 +22,11 @@ public enum CityEditorTool
     Demolish,
 }
 
+public interface IFeatureSceneryOwner
+{
+    int RemoveOverlapping(PlacementRect footprint);
+}
+
 /// <summary>Session-owned Godot adapter for the authoritative Phase 7 world-edit command path.</summary>
 public partial class CityEditorRuntime : Node
 {
@@ -51,6 +56,8 @@ public partial class CityEditorRuntime : Node
     private double rotationY;
     private long zoneTransactionSerial;
     private bool eastSideDevelopmentAvailable;
+    private bool countrysideExpansionAvailable;
+    private IFeatureSceneryOwner? featureSceneryOwner;
 
     public bool Initialized { get; private set; }
 
@@ -140,6 +147,19 @@ public partial class CityEditorRuntime : Node
             throw new InvalidOperationException("Restored city editor state contains duplicate zone parcels.");
         }
 
+        if (featureSceneryOwner is not null)
+        {
+            foreach (WorldEditBuildingState saved in state.Buildings)
+            {
+                _ = featureSceneryOwner.RemoveOverlapping(PlacementGeometry.CreateRect(
+                    saved.Plot.X,
+                    saved.Plot.Z,
+                    saved.Plot.Width,
+                    saved.Plot.Depth,
+                    saved.RotationY,
+                    0));
+            }
+        }
         _ = coordinator.Restore(state.Buildings);
         foreach (PlacementZoneParcel parcel in restoredZones)
         {
@@ -179,7 +199,8 @@ public partial class CityEditorRuntime : Node
         PlayerControlRuntime playerControlRuntime,
         LivingTrafficRuntime trafficRuntime,
         Node3D userWorldOwner,
-        bool eastSideDevelopmentEnabled = true)
+        bool eastSideDevelopmentEnabled = true,
+        bool countrysideExpansionEnabled = true)
     {
         if (Initialized) throw new InvalidOperationException("The city editor runtime is already initialized.");
         content = contentRegistry ?? throw new ArgumentNullException(nameof(contentRegistry));
@@ -189,6 +210,7 @@ public partial class CityEditorRuntime : Node
         traffic = trafficRuntime ?? throw new ArgumentNullException(nameof(trafficRuntime));
         userWorld = userWorldOwner ?? throw new ArgumentNullException(nameof(userWorldOwner));
         eastSideDevelopmentAvailable = eastSideDevelopmentEnabled;
+        countrysideExpansionAvailable = countrysideExpansionEnabled;
 
         presentation = new Node3D { Name = "EditorPresentation" };
         userWorld.AddChild(presentation);
@@ -238,6 +260,17 @@ public partial class CityEditorRuntime : Node
         }
         unlockedTiers.Add(tier);
         RefreshPreview();
+    }
+
+    public void AttachFeatureSceneryOwner(IFeatureSceneryOwner owner)
+    {
+        EnsureInitialized();
+        featureSceneryOwner = owner ?? throw new ArgumentNullException(nameof(owner));
+    }
+
+    public void DetachFeatureSceneryOwner(IFeatureSceneryOwner owner)
+    {
+        if (ReferenceEquals(featureSceneryOwner, owner)) featureSceneryOwner = null;
     }
 
     public void SetActive(bool active)
@@ -436,6 +469,7 @@ public partial class CityEditorRuntime : Node
         presentation.QueueFree();
         Initialized = false;
         Active = false;
+        featureSceneryOwner = null;
     }
 
     public override void _ExitTree() => Shutdown();
@@ -473,6 +507,7 @@ public partial class CityEditorRuntime : Node
                 : new PlacementVector3(target.Position.X, target.Position.Y, target.Position.Z),
             IgnoreOccupantId = ignoreOccupantId,
             EastSideDevelopmentAvailable = eastSideDevelopmentAvailable,
+            CountrysideExpansionAvailable = countrysideExpansionAvailable,
         });
     }
 
@@ -533,6 +568,18 @@ public partial class CityEditorRuntime : Node
 
     private void ValidateZonePlacement(PlacementZoneParcel parcel)
     {
+        if (PlacementWorldRules.IsCountrysideExpansionPosition(parcel.X) && !countrysideExpansionAvailable)
+        {
+            throw new InvalidOperationException("Countryside expansion is unavailable in this session.");
+        }
+        if (PlacementWorldRules.IsEastSideDevelopmentPosition(parcel.X)
+            && (!eastSideDevelopmentAvailable
+                || !economy.Ledger.IsDistrictUnlocked(EconomyDistrictIds.EastCyberMetropolis)))
+        {
+            throw new InvalidOperationException(eastSideDevelopmentAvailable
+                ? "East Cyber-Metropolis is locked."
+                : "East-side development is unavailable in this session.");
+        }
         PlacementRect bounds = parcel.Bounds;
         PlanarBounds worldBounds = new(
             ContentDefinitions.WorldBounds.MinX,

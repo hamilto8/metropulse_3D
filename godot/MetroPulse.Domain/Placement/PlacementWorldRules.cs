@@ -40,6 +40,7 @@ public sealed record PlacementWorldEvaluationInput
     public string? IgnoreOccupantId { get; init; }
     public bool IgnorePlayer { get; init; }
     public bool EastSideDevelopmentAvailable { get; init; } = true;
+    public bool CountrysideExpansionAvailable { get; init; } = true;
 }
 
 /// <summary>Canonical world-query adapter that feeds the single PlacementIntelligence authority.</summary>
@@ -48,6 +49,8 @@ public static class PlacementWorldRules
     public const double GridSnapSize = 10;
     public const double EastSideDevelopmentMinX = 185;
     public const double EastSideDevelopmentMaxX = 420;
+    public const double CountrysideExpansionMinX = 420;
+    public const double CountrysideExpansionMaxX = 800;
 
     public static readonly IReadOnlyList<ProtectedLandmarkEnvelope> ProtectedLandmarks = Array.AsReadOnly<ProtectedLandmarkEnvelope>([
         new("Central Park", new PlacementRect(-96, -54, -96, -54)),
@@ -128,6 +131,8 @@ public static class PlacementWorldRules
         bool eastLocked = eastSide
             && input.EastSideDevelopmentAvailable
             && !input.Economy.IsDistrictUnlocked(EconomyDistrictIds.EastCyberMetropolis);
+        bool countrysideUnavailable = IsCountrysideExpansionPosition(input.Position.X)
+            && !input.CountrysideExpansionAvailable;
         return PlacementIntelligence.Evaluate(new PlacementEvaluationInput
         {
             Spec = spec,
@@ -136,7 +141,13 @@ public static class PlacementWorldRules
                 input.CatalogAccess.Unlocked,
                 input.CatalogAccess.RequiredTier,
                 input.CatalogAccess.Reason),
-            District = eastUnavailable
+            District = countrysideUnavailable
+                ? new PlacementDistrictAccess(
+                    false,
+                    FeatureIds.CountrysideExpansion,
+                    "Countryside expansion is unavailable in this session.",
+                    "Enable the Countryside expansion feature or choose a parcel in the active city footprint.")
+                : eastUnavailable
                 ? new PlacementDistrictAccess(
                     false,
                     EconomyDistrictIds.EastCyberMetropolis,
@@ -177,6 +188,9 @@ public static class PlacementWorldRules
 
     public static bool IsEastSideDevelopmentPosition(double x) =>
         double.IsFinite(x) && x >= EastSideDevelopmentMinX && x <= EastSideDevelopmentMaxX;
+
+    public static bool IsCountrysideExpansionPosition(double x) =>
+        double.IsFinite(x) && x > CountrysideExpansionMinX && x <= CountrysideExpansionMaxX;
 
     public static bool IsZoneCompatible(string? category, string? zoneType)
     {

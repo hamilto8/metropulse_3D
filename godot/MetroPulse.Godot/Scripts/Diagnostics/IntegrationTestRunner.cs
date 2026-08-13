@@ -30,6 +30,7 @@ using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
+using MetroPulse.Godot.Countryside;
 using MetroPulse.Godot.EastSide;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Effects;
@@ -219,6 +220,7 @@ public partial class IntegrationTestRunner : Node
         await CheckTemporaryMayhem(compositionRoot, failures);
         await CheckRocketLaunch(compositionRoot, failures);
         await CheckEastSideDevelopment(compositionRoot, failures);
+        await CheckCountrysideExpansion(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -284,6 +286,20 @@ public partial class IntegrationTestRunner : Node
                     {
                         ["district"] = EconomyDistrictIds.EastCyberMetropolis,
                         ["unlocked"] = (session.EastSideDevelopment?.Snapshot.Unlocked == true).ToString(),
+                    }));
+            }
+            if (session.Features.IsEnabled(FeatureIds.CountrysideExpansion))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.countryside-expansion.passed",
+                    "Phase 10 gated countryside terrain, suburb, roads, bridges, occupancy, navigation, landing, save, and cleanup contracts passed.",
+                    new Dictionary<string, string>
+                    {
+                        ["houses"] = session.CountrysideExpansion?.Plan.Houses.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                        ["trees"] = session.CountrysideExpansion?.Plan.Trees.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                        ["bridges"] = "5",
                     }));
             }
             AppLog.Write(new StructuredLogEvent(
@@ -1082,6 +1098,151 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"East-side development integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async ValueTask CheckCountrysideExpansion(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for Countryside verification.");
+        bool enabled = session.Features.IsEnabled(FeatureIds.CountrysideExpansion);
+        session.Editor!.SelectCatalog("ROAD_STRAIGHT");
+        PlacementDecision scopedDecision = session.Editor.SetAim(500, 300);
+        if (!enabled)
+        {
+            bool zoningRejected = false;
+            try
+            {
+                _ = session.Editor.ApplyZone("RES");
+            }
+            catch (InvalidOperationException error) when (error.Message.Contains("Countryside", StringComparison.Ordinal))
+            {
+                zoningRejected = true;
+            }
+            Check(session.CountrysideExpansion is null
+                    && GetTree().GetNodesInGroup("countryside_expansion").Count == 0
+                    && zoningRejected
+                    && scopedDecision.Blockers.Any(blocker =>
+                        blocker.Code == PlacementBlockerCodes.DistrictLocked
+                        && blocker.Message.Contains("Countryside", StringComparison.Ordinal)),
+                "Feature-off Countryside creates no package node or UI/task owner and keeps rural construction unavailable.", failures);
+            return;
+        }
+
+        CountrysideExpansionRuntime countryside = session.CountrysideExpansion
+            ?? throw new InvalidOperationException("Enabled Countryside runtime is unavailable.");
+        int colliderBaseline = session.World!.Colliders.Count - countryside.OwnedColliderCount;
+        try
+        {
+            Check(countryside.Initialized
+                    && countryside.HouseCount == 17
+                    && countryside.TreeCount > 0
+                    && countryside.RoadVisualCount == 292
+                    && countryside.BridgeCount == 5
+                    && countryside.OwnedColliderCount == 18 + countryside.HouseCount + countryside.TreeCount
+                    && GetTree().GetNodesInGroup("countryside_expansion").Count == 1,
+                "Feature-on Countryside creates deterministic terrain, seventeen homes, nature, eleven road ribbons, and five guarded bridges.", failures);
+
+            await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+            PhysicsDirectSpaceState3D space = session.World.GetWorld3D().DirectSpaceState;
+            string? terrainHit = RayStableId(space, new Vector3(525, 20, 25), new Vector3(525, -20, 25));
+            string? bridgeHit = RayStableId(space, new Vector3(400, 20, 50), new Vector3(400, -20, 50));
+            Check(terrainHit == "countryside-terrain"
+                    && bridgeHit == "countryside-bridge-3-deck",
+                $"Rolling terrain and compact bridge decks publish aligned physical landing/driving surfaces. terrain={terrainHit}; bridge={bridgeHit}.", failures);
+
+            TrafficRoadGraphSnapshot roads = session.LivingTraffic!.RoadGraph.Snapshot();
+            PedestrianSidewalkGraphSnapshot sidewalks = session.LivingPedestrians!.SidewalkGraph.Snapshot();
+            bool roadCrossing = roads.Edges.Any(edge =>
+                roads.Nodes.Single(node => node.Id == edge.FromNodeId).Position.X < 380
+                && roads.Nodes.Single(node => node.Id == edge.ToNodeId).Position.X > 420);
+            bool pedestrianCrossing = sidewalks.Nodes.Any(node =>
+                node.Position.X == 319
+                && node.NextNodeIds.Any(id => sidewalks.Nodes.Single(next => next.Id == id).Position.X == 441));
+            AircraftLandingSurfaceModel landing = AircraftLandingSurfaceModel.LoadProduction();
+            AircraftLandingAssessment landingAssessment = landing.Assess(
+                new AircraftPlanarPoint(525, 25),
+                world: new AircraftLandingWorld
+                {
+                    GetTerrainHeight = session.World.Surface.GetTerrainHeight,
+                    IsInWater = point => session.World.Surface.IsWater(point.X, point.Y, point.Z),
+                    IsBridgeDeck = (x, z) => session.World.Surface.GetBridgeDeckHeight(x, z) is not null,
+                });
+            Check(roads.BaseNodeCount == 480
+                    && roadCrossing
+                    && sidewalks.Nodes.Count == 246
+                    && pedestrianCrossing
+                    && landingAssessment is { Allowed: true, Type: LandingSurfaceTypes.Countryside },
+                "Shared traffic, pedestrian, and aircraft authorities expose countryside routes, the center walkway, and safe rolling landing surfaces.", failures);
+
+            PlacementDecision occupied = session.Editor.SetAim(500, 25);
+            Check(occupied.Blockers.Any(blocker => blocker.Code == PlacementBlockerCodes.Collision),
+                "Authored suburban scenery participates in the shared placement occupancy query.", failures);
+
+            FeatureFlagSet countrysideOnly = new(new Dictionary<string, bool>
+            {
+                [FeatureIds.CountrysideExpansion] = true,
+            });
+            SessionShell restore = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(restore);
+            restore.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            restore.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, countrysideOnly);
+            BuildingDefinition roadSpec = restore.Content!.GetBuilding("ROAD_STRAIGHT")!;
+            CityEditorState legacyState = new()
+            {
+                Buildings =
+                [
+                    new WorldEditBuildingState(
+                        "legacy-countryside-road",
+                        roadSpec.Id!,
+                        new WorldEditPlot(
+                            500,
+                            restore.World!.Surface.GetTerrainHeight(500, 25),
+                            25,
+                            roadSpec.Footprint!.Width,
+                            roadSpec.Footprint.Depth),
+                        0),
+                ],
+                Zones = [],
+            };
+            int housesBeforeRestore = restore.CountrysideExpansion!.HouseCount;
+            restore.Editor!.RestoreState(legacyState);
+            Check(restore.Editor.Records.Count == 1
+                    && restore.CountrysideExpansion.HouseCount == housesBeforeRestore - 1
+                    && !restore.World.Colliders.TryGet("suburban-500-25", out _),
+                "Legacy user construction restores by clearing only its overlapping procedural countryside scenery.", failures);
+            restore.Shutdown();
+            restore.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            SessionShell unavailable = compositionRoot.SessionScene.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(unavailable);
+            unavailable.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            int unavailableBaseline = unavailable.World!.Colliders.Count;
+            unavailable.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, new FeatureFlagSet());
+            unavailable.Editor!.RestoreState(legacyState);
+            unavailable.Editor.SelectCatalog("ROAD_STRAIGHT");
+            PlacementDecision unavailableDecision = unavailable.Editor.SetAim(500, 300);
+            Check(unavailable.CountrysideExpansion is null
+                    && unavailable.Editor.Records.Count == 1
+                    && unavailable.World.Colliders.Count == unavailableBaseline + 1
+                    && unavailableDecision.Blockers.Any(blocker => blocker.Code == PlacementBlockerCodes.DistrictLocked),
+                "Countryside user-content saves remain valid without the package while new rural edits remain feature-gated.", failures);
+            unavailable.Shutdown();
+            unavailable.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            int withPackage = session.World.Colliders.Count;
+            countryside.Shutdown();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            Check(session.World.Colliders.Count == colliderBaseline
+                    && withPackage > colliderBaseline
+                    && session.GetNodeOrNull<Node3D>("WorldRoot/CountrysideExpansion") is null,
+                "Feature shutdown returns every terrain, scenery, bridge, occupancy, and collision owner to baseline.", failures);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"Countryside expansion integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 
@@ -2050,6 +2211,18 @@ public partial class IntegrationTestRunner : Node
             }
         }
         return null;
+    }
+
+    private static string? RayStableId(PhysicsDirectSpaceState3D space, Vector3 from, Vector3 to)
+    {
+        PhysicsRayQueryParameters3D query = PhysicsRayQueryParameters3D.Create(
+            from,
+            to,
+            (uint)(CollisionLayer.Surface | CollisionLayer.StaticObstacle));
+        global::Godot.Collections.Dictionary hit = space.IntersectRay(query);
+        return hit.TryGetValue("collider", out Variant collider)
+            ? StableId(collider.AsGodotObject() as Node)
+            : null;
     }
 
     private async ValueTask CheckBootActionPresentation(
