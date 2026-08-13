@@ -1820,8 +1820,17 @@ release exports using the documented
 accessibility, platform compatibility, save migration, privacy, and licensing
 signoffs.
 
+> **Status:** an evidence/owner checklist is prepared in
+> `docs/PHASE_11_RELEASE_SIGNOFF_CHECKLIST.md`. Independent approvals have not
+> been performed and are not inferred from automation.
+
 11.9 Freeze the port release candidate. Keep the browser reference and its
 fixtures until at least one released Godot version has proven save stability.
+
+> **Status:** not eligible to freeze. The target-host matrix, two-hour
+> interactive soak, signed artifacts, parity/deviation reconciliation, defect
+> disposition, and independent signoffs remain open. See
+> `docs/port_handoffs/phase-11-exit-audit.md`.
 
 ### Final exit gate
 
