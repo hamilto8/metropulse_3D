@@ -53,7 +53,8 @@ for platform in "${PLATFORMS[@]}"; do
         "${SCRIPT_DIR}/smoke-export.sh" macos release
         HOST_VALIDATION="headless-smoke-passed"
         if codesign --verify --deep --strict "${ARTIFACT_ROOT}" >/dev/null 2>&1; then
-          if codesign -dv --verbose=2 "${ARTIFACT_ROOT}" 2>&1 | grep -q '^Signature=adhoc$'; then
+          SIGNATURE_DETAILS="$(codesign -dv --verbose=2 "${ARTIFACT_ROOT}" 2>&1)"
+          if grep -q '^Signature=adhoc$' <<<"${SIGNATURE_DETAILS}"; then
             SIGNING_STATUS="verified-ad-hoc"
           else
             SIGNING_STATUS="verified-identity"
