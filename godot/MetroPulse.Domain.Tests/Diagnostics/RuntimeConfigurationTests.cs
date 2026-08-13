@@ -39,6 +39,29 @@ public sealed class RuntimeConfigurationTests
         Assert.Equal(30, configuration.PhysicsTicksPerSecond);
     }
 
+    [Theory]
+    [InlineData(60)]
+    [InlineData(90)]
+    [InlineData(120)]
+    public void Parse_AcceptsBoundedPhysicsTelemetryCadence(int ticks)
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse(
+            [$"--physics-ticks={ticks}"],
+            isDebugBuild: true);
+
+        Assert.Equal(ticks, configuration.PhysicsTicksPerSecond);
+    }
+
+    [Theory]
+    [InlineData("--physics-ticks=30")]
+    [InlineData("--physics-ticks=144")]
+    [InlineData("--physics-ticks=fast")]
+    [InlineData("--low-tick", "--physics-ticks=60")]
+    public void Parse_RejectsUnsupportedOrConflictingPhysicsTelemetryCadence(params string[] arguments)
+    {
+        Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse(arguments, isDebugBuild: true));
+    }
+
     [Fact]
     public void Parse_RejectsDebugHooksInReleaseBuilds()
     {
@@ -46,6 +69,13 @@ public sealed class RuntimeConfigurationTests
             RuntimeConfiguration.Parse(["--deterministic-test", "--seed=42"], isDebugBuild: false));
 
         Assert.Contains("disabled in release builds", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_RejectsPhysicsTelemetryCadenceInReleaseBuilds()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            RuntimeConfiguration.Parse(["--physics-ticks=60"], isDebugBuild: false));
     }
 
     [Fact]

@@ -92,6 +92,8 @@ public partial class PerformanceCaptureRunner : Node
                 version = Engine.GetVersionInfo()["string"].AsString(),
                 physicsEngine = ProjectSettings.GetSetting("physics/3d/physics_engine", "unknown").AsString(),
                 physicsTicksPerSecond = Engine.PhysicsTicksPerSecond,
+                nominalPhysicsStepMilliseconds = 1000d / Engine.PhysicsTicksPerSecond,
+                nominalInputSamplingWorstCaseMilliseconds = 1000d / Engine.PhysicsTicksPerSecond,
                 interpolation = ProjectSettings.GetSetting("physics/common/physics_interpolation", false).AsBool(),
                 renderer = RenderingServer.GetCurrentRenderingDriverName(),
             },

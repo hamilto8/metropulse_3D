@@ -1768,6 +1768,14 @@ cadence, and capped audio voices.
 input latency, vehicle behavior, bridge/terrain contacts, impacts, CPU time, and
 interpolation. Record the selected value in an ADR and update fixtures.
 
+> **Status:** matched 60/90/120 Hz M1 Pro captures and the full 179-assertion
+> contact/handling scenario support retaining fixed 120 Hz with interpolation.
+> Lower cadences reduced physics CPU/allocation but did not improve rendered
+> throughput or P99 frame time on this host; 120 Hz preserves the 8.33 ms input
+> sampling interval and accepted vehicle/contact tuning. The debug-only cadence
+> override is rejected in release builds. See
+> `docs/adr/0002-retain-120-hz-physics-cadence.md`.
+
 11.5 Run leak/resource soaks:
 
 - 50 cross-mode cycles;

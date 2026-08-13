@@ -21,6 +21,7 @@ public sealed record RuntimeConfiguration(
 {
     public const int DefaultPhysicsTicksPerSecond = 120;
     public const int LowTickPhysicsTicksPerSecond = 30;
+    public static readonly IReadOnlyList<int> PerformancePhysicsTicks = [60, 90, 120];
     public const double DefaultPerformanceWarmupSeconds = 5;
     public const double DefaultPerformanceDurationSeconds = 20;
 
@@ -32,6 +33,7 @@ public sealed record RuntimeConfiguration(
         bool smokeBoot = false;
         bool deterministicTestMode = false;
         bool lowTickProfile = false;
+        int? physicsTicksOverride = null;
         ulong? seed = null;
         string? importSavePath = null;
         bool confirmImport = false;
@@ -112,6 +114,16 @@ public sealed record RuntimeConfiguration(
                         }
                         performanceCapturePath = value;
                     }
+                    else if (argument.StartsWith("--physics-ticks=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--physics-ticks=".Length..];
+                        if (!int.TryParse(value, out int parsedTicks)
+                            || !PerformancePhysicsTicks.Contains(parsedTicks))
+                        {
+                            throw new ArgumentException("Physics telemetry cadence must be 60, 90, or 120 Hz.", nameof(arguments));
+                        }
+                        physicsTicksOverride = parsedTicks;
+                    }
                     else if (argument.StartsWith("--quality=", StringComparison.Ordinal))
                     {
                         string value = argument["--quality=".Length..].ToUpperInvariant();
@@ -144,7 +156,13 @@ public sealed record RuntimeConfiguration(
             }
         }
 
+        if (lowTickProfile && physicsTicksOverride.HasValue)
+        {
+            throw new ArgumentException("--low-tick cannot be combined with --physics-ticks.", nameof(arguments));
+        }
+
         bool debugOnlyOptionRequested = runIntegrationTests || deterministicTestMode || lowTickProfile
+            || physicsTicksOverride.HasValue
             || seed.HasValue || featureOverrides.Count > 0;
         if (debugOnlyOptionRequested && !isDebugBuild)
         {
@@ -182,7 +200,9 @@ public sealed record RuntimeConfiguration(
             smokeBoot,
             deterministicTestMode,
             seed,
-            lowTickProfile ? LowTickPhysicsTicksPerSecond : DefaultPhysicsTicksPerSecond,
+            lowTickProfile
+                ? LowTickPhysicsTicksPerSecond
+                : physicsTicksOverride ?? DefaultPhysicsTicksPerSecond,
             importSavePath,
             confirmImport,
             bootAction,
