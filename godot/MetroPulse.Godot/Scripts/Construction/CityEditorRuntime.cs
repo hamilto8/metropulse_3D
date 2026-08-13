@@ -50,6 +50,7 @@ public partial class CityEditorRuntime : Node
     private PlacementVector3 aim = new(0, 0, 0);
     private double rotationY;
     private long zoneTransactionSerial;
+    private bool eastSideDevelopmentAvailable;
 
     public bool Initialized { get; private set; }
 
@@ -177,7 +178,8 @@ public partial class CityEditorRuntime : Node
         MvpWorldGenerator worldOwner,
         PlayerControlRuntime playerControlRuntime,
         LivingTrafficRuntime trafficRuntime,
-        Node3D userWorldOwner)
+        Node3D userWorldOwner,
+        bool eastSideDevelopmentEnabled = true)
     {
         if (Initialized) throw new InvalidOperationException("The city editor runtime is already initialized.");
         content = contentRegistry ?? throw new ArgumentNullException(nameof(contentRegistry));
@@ -186,6 +188,7 @@ public partial class CityEditorRuntime : Node
         playerControl = playerControlRuntime ?? throw new ArgumentNullException(nameof(playerControlRuntime));
         traffic = trafficRuntime ?? throw new ArgumentNullException(nameof(trafficRuntime));
         userWorld = userWorldOwner ?? throw new ArgumentNullException(nameof(userWorldOwner));
+        eastSideDevelopmentAvailable = eastSideDevelopmentEnabled;
 
         presentation = new Node3D { Name = "EditorPresentation" };
         userWorld.AddChild(presentation);
@@ -469,6 +472,7 @@ public partial class CityEditorRuntime : Node
                 ? null
                 : new PlacementVector3(target.Position.X, target.Position.Y, target.Position.Z),
             IgnoreOccupantId = ignoreOccupantId,
+            EastSideDevelopmentAvailable = eastSideDevelopmentAvailable,
         });
     }
 

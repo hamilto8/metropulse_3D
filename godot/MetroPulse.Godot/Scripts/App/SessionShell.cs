@@ -8,6 +8,7 @@ using MetroPulse.Godot.Audio;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
 using MetroPulse.Godot.Diagnostics;
+using MetroPulse.Godot.EastSide;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
@@ -73,6 +74,8 @@ public partial class SessionShell : Node
     public CityEconomyRuntime? Economy { get; private set; }
 
     public CityEditorRuntime? Editor { get; private set; }
+
+    public EastSideDevelopmentRuntime? EastSideDevelopment { get; private set; }
 
     public CityServicesRuntime? Services { get; private set; }
 
@@ -185,7 +188,14 @@ public partial class SessionShell : Node
             World ?? throw new InvalidOperationException("The world must exist before the editor is initialized."),
             PlayerControl,
             LivingTraffic,
-            GetNode<Node3D>("WorldRoot/UserWorld"));
+            GetNode<Node3D>("WorldRoot/UserWorld"),
+            Features.IsEnabled(FeatureIds.EastSideDevelopment));
+        if (Features.IsEnabled(FeatureIds.EastSideDevelopment))
+        {
+            EastSideDevelopment = new EastSideDevelopmentRuntime { Name = "EastSideDevelopmentRuntime" };
+            runtimeServices.AddChild(EastSideDevelopment);
+            EastSideDevelopment.Initialize(Economy, Editor, Interface);
+        }
         VehicleInteractions = new PlayerVehicleInteractionPublisher { Name = "VehicleInteractions" };
         runtimeServices.AddChild(VehicleInteractions);
         VehicleInteractions.Initialize(PlayerControl, RuntimeHost, InputHost);
@@ -345,6 +355,7 @@ public partial class SessionShell : Node
         Modals?.Shutdown();
         TemporaryMayhem?.Shutdown();
         RocketLaunch?.Shutdown();
+        EastSideDevelopment?.Shutdown();
         MinimapUi?.Shutdown();
         GameplayUi?.Shutdown();
         Missions?.Shutdown();
@@ -394,6 +405,7 @@ public partial class SessionShell : Node
             || (Features.IsEnabled(FeatureIds.Aircraft) && Aircraft?.Initialized != true)
             || (Features.IsEnabled(FeatureIds.TemporaryMayhem) && TemporaryMayhem?.Initialized != true)
             || (Features.IsEnabled(FeatureIds.RocketLaunch) && RocketLaunch?.Initialized != true)
+            || (Features.IsEnabled(FeatureIds.EastSideDevelopment) && EastSideDevelopment?.Initialized != true)
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true

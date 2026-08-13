@@ -30,6 +30,7 @@ using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
+using MetroPulse.Godot.EastSide;
 using MetroPulse.Godot.Economy;
 using MetroPulse.Godot.Effects;
 using MetroPulse.Godot.Enforcement;
@@ -217,6 +218,7 @@ public partial class IntegrationTestRunner : Node
         await CheckAircraft(compositionRoot, failures);
         await CheckTemporaryMayhem(compositionRoot, failures);
         await CheckRocketLaunch(compositionRoot, failures);
+        await CheckEastSideDevelopment(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -269,6 +271,19 @@ public partial class IntegrationTestRunner : Node
                     {
                         ["launches"] = session.RocketLaunch?.Snapshot.LaunchCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                         ["vapors"] = session.RocketLaunch?.VaporCount.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    }));
+            }
+            if (session.Features.IsEnabled(FeatureIds.EastSideDevelopment))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.east-side-development.passed",
+                    "Phase 10 gated East-side unlock, economy, construction, mission condition, save isolation, UI, and cleanup contracts passed.",
+                    new Dictionary<string, string>
+                    {
+                        ["district"] = EconomyDistrictIds.EastCyberMetropolis,
+                        ["unlocked"] = (session.EastSideDevelopment?.Snapshot.Unlocked == true).ToString(),
                     }));
             }
             AppLog.Write(new StructuredLogEvent(
@@ -976,6 +991,97 @@ public partial class IntegrationTestRunner : Node
         catch (Exception error)
         {
             failures.Add($"Rocket launch integration threw {error.GetType().Name}: {error.Message}");
+        }
+    }
+
+    private async ValueTask CheckEastSideDevelopment(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for East-side verification.");
+        bool enabled = session.Features.IsEnabled(FeatureIds.EastSideDevelopment);
+        session.Editor!.SelectCatalog("ROAD_STRAIGHT");
+        PlacementDecision scopedDecision = session.Editor.SetAim(400, 300);
+        if (!enabled)
+        {
+            Check(session.EastSideDevelopment is null
+                    && session.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/EastSideDevelopmentControl") is null
+                    && scopedDecision.Blockers.Any(blocker =>
+                        blocker.Code == PlacementBlockerCodes.DistrictLocked
+                        && blocker.Message.Contains("unavailable", StringComparison.Ordinal)),
+                "Feature-off East-side development creates no runtime or UI and rejects East-bank construction even for an unlocked save.", failures);
+            return;
+        }
+
+        EastSideDevelopmentRuntime east = session.EastSideDevelopment
+            ?? throw new InvalidOperationException("Enabled East-side development runtime is unavailable.");
+        try
+        {
+            double cost = east.Snapshot.UnlockCost;
+            Check(east is { Initialized: true, Snapshot.Unlocked: false }
+                    && east.Control.Initialized
+                    && east.Control.StatusText == "DISTRICT LOCKED"
+                    && !east.Control.UnlockEnabled
+                    && scopedDecision.Blockers.Any(blocker => blocker.Code == PlacementBlockerCodes.DistrictLocked),
+                "A fresh enabled East-side package exposes one accessible locked control and keeps construction closed.", failures);
+
+            double capitalNeeded = Math.Max(0, cost - session.Economy!.Ledger.Treasury + 100_000);
+            session.Economy.Ledger.Earn(capitalNeeded, "phase10-east-unlock-capital");
+            double treasuryBefore = session.Economy.Ledger.Treasury;
+            Check(east.Control.UnlockEnabled && east.TryUnlock(),
+                "The canonical economy decision enables the district transaction once sufficient Capital is available.", failures);
+            double treasuryAfter = session.Economy.Ledger.Treasury;
+            bool duplicate = east.TryUnlock();
+            PlacementDecision openedDecision = session.Editor.SetAim(400, 300);
+            CityConditionResult district = session.Missions!.Conditions.GetDistrict(EconomyDistrictIds.EastCyberMetropolis);
+            Check(east.Snapshot.Unlocked
+                    && east.Control.StatusText == "OPEN FOR DEVELOPMENT"
+                    && Math.Abs(treasuryAfter - (treasuryBefore - cost)) < 0.001
+                    && !duplicate
+                    && session.Economy.Ledger.Treasury == treasuryAfter
+                    && openedDecision.Blockers.All(blocker => blocker.Code != PlacementBlockerCodes.DistrictLocked)
+                    && district.Value.GetProperty("unlocked").GetBoolean(),
+                "Unlock charges exactly $1,000,000 once and opens construction plus the shared mission district condition.", failures);
+
+            EconomyLedgerState unlockedSave = session.Economy.Ledger.Serialize();
+            FeatureFlagSet eastOnly = new(new Dictionary<string, bool>
+            {
+                [FeatureIds.EastSideDevelopment] = true,
+            });
+            SessionShell fresh = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(fresh);
+            fresh.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            int freshColliderBaseline = fresh.World!.Colliders.Count;
+            fresh.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, eastOnly);
+            Check(fresh.EastSideDevelopment is { Initialized: true, Snapshot.Unlocked: false }
+                    && fresh.World.Colliders.Count == freshColliderBaseline,
+                "A new enabled game returns to the locked economy baseline without adding district collision owners.", failures);
+            fresh.Shutdown();
+            fresh.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+            SessionShell unavailable = compositionRoot.SessionScene.Instantiate<SessionShell>();
+            compositionRoot.GetParent().AddChild(unavailable);
+            unavailable.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+            int unavailableColliderBaseline = unavailable.World!.Colliders.Count;
+            unavailable.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, new FeatureFlagSet());
+            unavailable.Economy!.Ledger.Restore(unlockedSave);
+            unavailable.Editor!.SelectCatalog("ROAD_STRAIGHT");
+            PlacementDecision unavailableDecision = unavailable.Editor.SetAim(400, 300);
+            Check(unavailable.Economy.Ledger.IsDistrictUnlocked(EconomyDistrictIds.EastCyberMetropolis)
+                    && unavailable.EastSideDevelopment is null
+                    && unavailable.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/EastSideDevelopmentControl") is null
+                    && unavailable.World.Colliders.Count == unavailableColliderBaseline
+                    && unavailableDecision.Blockers.Any(blocker =>
+                        blocker.Code == PlacementBlockerCodes.DistrictLocked
+                        && blocker.Message.Contains("unavailable", StringComparison.Ordinal)),
+                "An unlocked economy save remains valid when the package is unavailable, while UI, nodes, and construction access stay inert.", failures);
+            unavailable.Shutdown();
+            unavailable.QueueFree();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        catch (Exception error)
+        {
+            failures.Add($"East-side development integration threw {error.GetType().Name}: {error.Message}");
         }
     }
 

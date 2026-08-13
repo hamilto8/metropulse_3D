@@ -39,12 +39,15 @@ public sealed record PlacementWorldEvaluationInput
     public PlacementVector3? PlayerPosition { get; init; }
     public string? IgnoreOccupantId { get; init; }
     public bool IgnorePlayer { get; init; }
+    public bool EastSideDevelopmentAvailable { get; init; } = true;
 }
 
 /// <summary>Canonical world-query adapter that feeds the single PlacementIntelligence authority.</summary>
 public static class PlacementWorldRules
 {
     public const double GridSnapSize = 10;
+    public const double EastSideDevelopmentMinX = 185;
+    public const double EastSideDevelopmentMaxX = 420;
 
     public static readonly IReadOnlyList<ProtectedLandmarkEnvelope> ProtectedLandmarks = Array.AsReadOnly<ProtectedLandmarkEnvelope>([
         new("Central Park", new PlacementRect(-96, -54, -96, -54)),
@@ -120,8 +123,10 @@ public static class PlacementWorldRules
             RecurringCostRate = recurringCost,
         });
 
-        bool eastLocked = input.Position.X >= 185
-            && input.Position.X <= 420
+        bool eastSide = IsEastSideDevelopmentPosition(input.Position.X);
+        bool eastUnavailable = eastSide && !input.EastSideDevelopmentAvailable;
+        bool eastLocked = eastSide
+            && input.EastSideDevelopmentAvailable
             && !input.Economy.IsDistrictUnlocked(EconomyDistrictIds.EastCyberMetropolis);
         return PlacementIntelligence.Evaluate(new PlacementEvaluationInput
         {
@@ -131,7 +136,13 @@ public static class PlacementWorldRules
                 input.CatalogAccess.Unlocked,
                 input.CatalogAccess.RequiredTier,
                 input.CatalogAccess.Reason),
-            District = eastLocked
+            District = eastUnavailable
+                ? new PlacementDistrictAccess(
+                    false,
+                    EconomyDistrictIds.EastCyberMetropolis,
+                    "East-side development is unavailable in this session.",
+                    "Enable the East-side development feature or choose a West Core parcel.")
+                : eastLocked
                 ? new PlacementDistrictAccess(
                     false,
                     EconomyDistrictIds.EastCyberMetropolis,
@@ -163,6 +174,9 @@ public static class PlacementWorldRules
             SpendingDecision = spending,
         });
     }
+
+    public static bool IsEastSideDevelopmentPosition(double x) =>
+        double.IsFinite(x) && x >= EastSideDevelopmentMinX && x <= EastSideDevelopmentMaxX;
 
     public static bool IsZoneCompatible(string? category, string? zoneType)
     {

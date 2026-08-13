@@ -129,6 +129,43 @@ public sealed class PlacementWorldRulesTests
         Assert.Contains(roadDecision.Blockers, blocker => blocker.Code == PlacementBlockerCodes.Water);
     }
 
+    [Fact]
+    public void EastSideRequiresBothFeatureAvailabilityAndPersistentDistrictUnlock()
+    {
+        GameContentRegistry content = GameContentRegistry.LoadProduction();
+        BuildingDefinition road = content.GetBuilding("ROAD_STRAIGHT")!;
+        CatalogAccess access = ConstructionVocabulary.GetCatalogAccess(road, [ProgressionTiers.Operator]);
+        WorldSurfaceModel surface = new();
+        EconomyLedger unlocked = CreateEconomy(content, eastUnlocked: true);
+
+        PlacementDecision unavailable = PlacementWorldRules.Evaluate(new PlacementWorldEvaluationInput
+        {
+            Spec = PlacementSpec.FromBuilding(road),
+            Position = PlacementWorldRules.SnapAim(400, 300, surface),
+            CatalogAccess = access,
+            Economy = unlocked,
+            Surface = surface,
+            EastSideDevelopmentAvailable = false,
+        });
+        PlacementDecision available = PlacementWorldRules.Evaluate(new PlacementWorldEvaluationInput
+        {
+            Spec = PlacementSpec.FromBuilding(road),
+            Position = PlacementWorldRules.SnapAim(400, 300, surface),
+            CatalogAccess = access,
+            Economy = unlocked,
+            Surface = surface,
+            EastSideDevelopmentAvailable = true,
+        });
+
+        Assert.Contains(unavailable.Blockers, blocker =>
+            blocker.Code == PlacementBlockerCodes.DistrictLocked
+            && blocker.Message.Contains("unavailable", StringComparison.Ordinal));
+        Assert.DoesNotContain(available.Blockers, blocker => blocker.Code == PlacementBlockerCodes.DistrictLocked);
+        Assert.True(PlacementWorldRules.IsEastSideDevelopmentPosition(185));
+        Assert.True(PlacementWorldRules.IsEastSideDevelopmentPosition(420));
+        Assert.False(PlacementWorldRules.IsEastSideDevelopmentPosition(421));
+    }
+
     private static EconomyLedger CreateEconomy(GameContentRegistry content, bool eastUnlocked = false) => new(
         content.EconomyBalance,
         content.EconomyBalance.StartingTreasury,
