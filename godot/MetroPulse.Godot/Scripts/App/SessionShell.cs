@@ -304,6 +304,16 @@ public partial class SessionShell : Node
                 Audio,
                 Interface,
                 GetNode<Node3D>("WorldRoot"));
+            if (Features.IsEnabled(FeatureIds.EastSideDevelopment))
+            {
+                RocketLaunch.Control.Position = new Vector2(
+                    18,
+                    EastSideDevelopment!.Control.Position.Y
+                        + Math.Max(
+                            EastSideDevelopment.Control.Size.Y,
+                            EastSideDevelopment.Control.GetCombinedMinimumSize().Y)
+                        + 7);
+            }
         }
         GameplayUi = new GameplayHud { Name = "GameplayHud" };
         Interface.Chrome.AddChild(GameplayUi);

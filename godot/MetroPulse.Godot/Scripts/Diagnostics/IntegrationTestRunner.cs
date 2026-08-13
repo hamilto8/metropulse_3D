@@ -51,6 +51,14 @@ namespace MetroPulse.Godot.Diagnostics;
 
 public partial class IntegrationTestRunner : Node
 {
+    private static readonly string[] Phase10FeatureIds =
+    [
+        FeatureIds.Aircraft,
+        FeatureIds.TemporaryMayhem,
+        FeatureIds.RocketLaunch,
+        FeatureIds.EastSideDevelopment,
+        FeatureIds.CountrysideExpansion,
+    ];
     private CompositionRoot? _compositionRoot;
     private DiagnosticsOverlay? _diagnostics;
     private IReadOnlyList<VehiclePhysicsSpikeTelemetry> _vehicleSpikeTelemetry = Array.Empty<VehiclePhysicsSpikeTelemetry>();
@@ -216,6 +224,7 @@ public partial class IntegrationTestRunner : Node
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
         await CheckLivingEnforcement(compositionRoot, failures);
         await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
+        await CheckPhase10FeatureComposition(compositionRoot, failures);
         await CheckAircraft(compositionRoot, failures);
         await CheckTemporaryMayhem(compositionRoot, failures);
         await CheckRocketLaunch(compositionRoot, failures);
@@ -300,6 +309,19 @@ public partial class IntegrationTestRunner : Node
                         ["houses"] = session.CountrysideExpansion?.Plan.Houses.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                         ["trees"] = session.CountrysideExpansion?.Plan.Trees.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
                         ["bridges"] = "5",
+                    }));
+            }
+            if (Phase10FeatureIds.All(featureId => session.Features.IsEnabled(featureId)))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.exit.passed",
+                    "All five Phase 10 packages compose, forbidden Mayhem variants remain inert, and combined teardown/new-game baselines pass.",
+                    new Dictionary<string, string>
+                    {
+                        ["packages"] = Phase10FeatureIds.Length.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["deferredMayhemPackages"] = "0",
                     }));
             }
             AppLog.Write(new StructuredLogEvent(
@@ -680,6 +702,80 @@ public partial class IntegrationTestRunner : Node
         }
     }
 
+    private async ValueTask CheckPhase10FeatureComposition(
+        CompositionRoot compositionRoot,
+        ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for Phase 10 composition verification.");
+        bool deferredInert = GetTree().GetNodesInGroup("mayhem_variants").Count == 0
+            && GetTree().GetNodesInGroup("persistent_mayhem").Count == 0
+            && session.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/MayhemVariantsControl") is null
+            && session.Interface?.GetNodeOrNull<Control>("SafeArea/Chrome/PersistentMayhemControl") is null
+            && session.RuntimeHost?.Scheduler.TaskIds.All(id =>
+                !id.Contains("variant", StringComparison.OrdinalIgnoreCase)
+                && !id.Contains("persistent-mayhem", StringComparison.OrdinalIgnoreCase)) == true
+            && !InputMap.HasAction("MAYHEM_VARIANT")
+            && !InputMap.HasAction("PERSISTENT_MAYHEM");
+        Check(deferredInert,
+            "Mayhem variants and Persistent Mayhem remain inert: no nodes, tasks, input actions, UI, or runtime owner exists.", failures);
+
+        if (!Phase10FeatureIds.All(featureId => session.Features.IsEnabled(featureId))) return;
+        Check(session.Aircraft?.Initialized == true
+                && session.TemporaryMayhem?.Initialized == true
+                && session.RocketLaunch?.Initialized == true
+                && session.EastSideDevelopment?.Initialized == true
+                && session.CountrysideExpansion?.Initialized == true,
+            "All five independently gated Phase 10 packages initialize in one session.", failures);
+        Rect2 eastRect = session.EastSideDevelopment!.Control.GetRect();
+        Rect2 rocketRect = session.RocketLaunch!.Control.GetRect();
+        Check(!eastRect.Intersects(rocketRect)
+                && eastRect.Position.Y >= 215
+                && rocketRect.Position.Y >= eastRect.End.Y,
+            $"Composed East-side and Rocket controls occupy separate accessible panels. east={eastRect}; rocket={rocketRect}.", failures);
+
+        SessionShell teardown = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+        compositionRoot.GetParent().AddChild(teardown);
+        teardown.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+        int authoredColliders = teardown.World!.Colliders.Count;
+        teardown.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, compositionRoot.Configuration!.Features);
+        int taskCountWithPackages = teardown.RuntimeHost!.Scheduler.TaskCount;
+        int colliderCountWithPackages = teardown.World.Colliders.Count;
+        teardown.TemporaryMayhem!.Shutdown();
+        teardown.RocketLaunch!.Shutdown();
+        teardown.Aircraft!.Shutdown();
+        teardown.EastSideDevelopment!.Shutdown();
+        teardown.CountrysideExpansion!.Shutdown();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        Check(teardown.World.Colliders.Count == authoredColliders
+                && colliderCountWithPackages > authoredColliders
+                && teardown.RuntimeHost.Scheduler.TaskCount == taskCountWithPackages - 2
+                && teardown.Interface!.GetNodeOrNull<Control>("SafeArea/Chrome/TemporaryMayhemControl") is null
+                && teardown.Interface.GetNodeOrNull<Control>("SafeArea/Chrome/RocketLaunchControl") is null
+                && teardown.Interface.GetNodeOrNull<Control>("SafeArea/Chrome/EastSideDevelopmentControl") is null
+                && teardown.GetNodeOrNull<Node3D>("WorldRoot/CountrysideExpansion") is null,
+            "Combined feature teardown returns collider, scheduler-task, world-node, and UI counts to the authored/core baseline.", failures);
+        teardown.Shutdown();
+        teardown.QueueFree();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        SessionShell newGame = compositionRoot.SessionScene.Instantiate<SessionShell>();
+        compositionRoot.GetParent().AddChild(newGame);
+        newGame.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+        int newGameColliders = newGame.World!.Colliders.Count;
+        newGame.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, new FeatureFlagSet());
+        Check(newGame.World.Colliders.Count == newGameColliders
+                && newGame.Aircraft is null
+                && newGame.TemporaryMayhem is null
+                && newGame.RocketLaunch is null
+                && newGame.EastSideDevelopment is null
+                && newGame.CountrysideExpansion is null,
+            "A default-off new game after combined enablement returns all feature owners and collision state to baseline.", failures);
+        newGame.Shutdown();
+        newGame.QueueFree();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
     private async ValueTask CheckAircraft(CompositionRoot compositionRoot, ICollection<string> failures)
     {
         SessionShell session = compositionRoot.CurrentSession
@@ -701,7 +797,8 @@ public partial class IntegrationTestRunner : Node
         Check(aircraftRuntime.Initialized
                 && aircraft.Initialized
                 && GetTree().GetNodesInGroup("aircraft").Count == 1
-                && session.World!.Colliders.Count == aircraftRuntime.BaselineColliderCount + 6,
+                && aircraftRuntime.OwnedColliderCount == 6
+                && session.World!.Colliders.Count >= aircraftRuntime.BaselineColliderCount + aircraftRuntime.OwnedColliderCount,
             "Aircraft-on creates exactly one actor plus six owned airfield colliders.", failures);
 
         if (runtime.StateMachine.State != GameState.Management)

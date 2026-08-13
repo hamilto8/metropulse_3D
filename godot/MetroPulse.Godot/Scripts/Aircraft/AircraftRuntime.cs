@@ -28,6 +28,7 @@ public partial class AircraftRuntime : Node
     public bool Initialized { get; private set; }
     public AircraftActor Aircraft { get; private set; } = null!;
     public int BaselineColliderCount { get; private set; }
+    public int OwnedColliderCount => colliderIds.Count;
     public int OwnedNodeCount => featureRoot.GetChildCount() + 1;
 
     public void Initialize(

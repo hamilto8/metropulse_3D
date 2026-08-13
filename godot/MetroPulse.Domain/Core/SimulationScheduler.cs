@@ -216,6 +216,10 @@ public sealed class SimulationScheduler
 
     public bool CityActive => ActiveCityPolicies.Contains(ClockPolicy);
 
+    public int TaskCount => taskIds.Count;
+
+    public IReadOnlyList<string> TaskIds => Array.AsReadOnly(taskIds.Order(StringComparer.Ordinal).ToArray());
+
     public SimulationFrameStats LastFrame { get; private set; } =
         new() { PhysicsSteps = 0, CityTicks = 0, CityTimeScale = 0 };
 

@@ -1712,6 +1712,17 @@ without weakening the core architecture.
 - Save compatibility and content references remain valid when the feature is
   unavailable.
 
+**Status: complete.** Five independently committed feature slices now deliver
+Aircraft, bounded Temporary Mayhem, Rocket Launch, East-side development, and
+Countryside expansion behind their existing default-off flags. The combined
+exit audit runs all five packages together, proves feature-owned collider/task/
+UI/world cleanup and a subsequent default-off new-game baseline, and preserves
+the clean/import/recovery save matrix. Mayhem variants and Persistent Mayhem
+remain deliberately unimplemented and inert even when their latent flags are
+supplied. Counts, source mappings, save/cleanup policies, verification commands,
+and the retained-scenery boundary are recorded in
+`docs/port_handoffs/phase-10-complete.md`.
+
 ## 19. Phase 11 — Optimization, compatibility, migration, and release
 
 ### Objective
