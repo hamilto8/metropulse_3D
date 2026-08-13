@@ -76,6 +76,31 @@ The overlay and scenario hooks are debug-only. Release parsing rejects
 Release-safe recovery options such as `--boot-action`, `--import-save`, and
 `--confirm-import` remain available.
 
+### Godot Phase 11 native performance capture
+
+Run an uncapped, native-window capture after closing unrelated GPU-heavy work:
+
+```bash
+GODOT_BIN=/Applications/Godot_mono.app/Contents/MacOS/Godot \
+  ./godot/scripts/capture-performance.sh \
+  "$PWD/godot/artifacts/performance/native-high-debug.json" 20 5
+```
+
+The final arguments are measured duration and warmup seconds. The output path
+must be absolute. Capture mode hides the debug overlay to avoid measuring its
+scene-tree traversal and JSON serialization. It samples at 10 Hz and exits
+automatically, writing through a temporary file before atomically replacing the
+requested JSON report.
+
+The report contains boot-to-interactive time; average and tail frame, process,
+physics, navigation, CPU-render, and GPU-render timing; FPS; render counts;
+Godot/static/managed/video memory; live objects/resources/nodes/orphans;
+physics activity; audio voices; and GC collection deltas. A backend that cannot
+publish measured GPU timestamps reports zero values with
+`availability.gpuTiming=false`; consumers must not interpret those zeros as
+free GPU work. Host data is limited to OS/runtime/hardware descriptors and does
+not include user names, host names, paths, saves, dialogue, or device serials.
+
 Run the Phase 3 native scenarios with:
 
 ```bash

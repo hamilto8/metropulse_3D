@@ -44,9 +44,28 @@ public sealed record DiagnosticCounts(
 public sealed record DiagnosticPerformance(
     double Fps,
     double FrameMilliseconds,
+    double ProcessMilliseconds,
+    double PhysicsMilliseconds,
+    double NavigationMilliseconds,
+    double RenderCpuMilliseconds,
+    double RenderGpuMilliseconds,
     ulong DrawCalls,
     ulong Primitives,
-    ulong VideoMemoryBytes);
+    ulong RenderedObjects,
+    ulong VideoMemoryBytes,
+    ulong StaticMemoryBytes,
+    long ManagedMemoryBytes,
+    ulong GodotObjectCount,
+    ulong ResourceCount,
+    ulong NodeCount,
+    ulong OrphanNodeCount,
+    ulong PhysicsActiveObjects,
+    ulong PhysicsCollisionPairs,
+    ulong PhysicsIslandCount,
+    int ActiveAudioVoices,
+    int Gen0Collections,
+    int Gen1Collections,
+    int Gen2Collections);
 
 public sealed record DiagnosticScenarioMetadata(
     bool Deterministic,

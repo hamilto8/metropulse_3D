@@ -12,10 +12,15 @@ public sealed record RuntimeConfiguration(
     string? ImportSavePath,
     bool ConfirmImport,
     string? BootAction,
+    string? PerformanceCapturePath,
+    double PerformanceWarmupSeconds,
+    double PerformanceDurationSeconds,
     FeatureFlagSet Features)
 {
     public const int DefaultPhysicsTicksPerSecond = 120;
     public const int LowTickPhysicsTicksPerSecond = 30;
+    public const double DefaultPerformanceWarmupSeconds = 5;
+    public const double DefaultPerformanceDurationSeconds = 20;
 
     public static RuntimeConfiguration Parse(IEnumerable<string> arguments, bool isDebugBuild)
     {
@@ -29,6 +34,10 @@ public sealed record RuntimeConfiguration(
         string? importSavePath = null;
         bool confirmImport = false;
         string? bootAction = null;
+        string? performanceCapturePath = null;
+        double performanceWarmupSeconds = DefaultPerformanceWarmupSeconds;
+        double performanceDurationSeconds = DefaultPerformanceDurationSeconds;
+        bool customPerformanceTiming = false;
         var featureOverrides = new Dictionary<string, bool>(StringComparer.Ordinal);
 
         foreach (string argument in arguments)
@@ -91,6 +100,33 @@ public sealed record RuntimeConfiguration(
                             featureOverrides[featureId] = true;
                         }
                     }
+                    else if (argument.StartsWith("--performance-capture=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--performance-capture=".Length..];
+                        if (string.IsNullOrWhiteSpace(value) || !Path.IsPathFullyQualified(value))
+                        {
+                            throw new ArgumentException("The performance capture path must be an absolute file path.", nameof(arguments));
+                        }
+                        performanceCapturePath = value;
+                    }
+                    else if (argument.StartsWith("--performance-warmup=", StringComparison.Ordinal))
+                    {
+                        performanceWarmupSeconds = ParseSeconds(
+                            argument["--performance-warmup=".Length..],
+                            minimum: 0,
+                            maximum: 300,
+                            "performance warmup");
+                        customPerformanceTiming = true;
+                    }
+                    else if (argument.StartsWith("--performance-duration=", StringComparison.Ordinal))
+                    {
+                        performanceDurationSeconds = ParseSeconds(
+                            argument["--performance-duration=".Length..],
+                            minimum: 1,
+                            maximum: 7_200,
+                            "performance duration");
+                        customPerformanceTiming = true;
+                    }
 
                     break;
             }
@@ -119,6 +155,16 @@ public sealed record RuntimeConfiguration(
             throw new ArgumentException("--confirm-import requires --import-save=<absolute-path>.", nameof(arguments));
         }
 
+        if (customPerformanceTiming && performanceCapturePath is null)
+        {
+            throw new ArgumentException("Performance timing options require --performance-capture=<absolute-path>.", nameof(arguments));
+        }
+
+        if (performanceCapturePath is not null && (runIntegrationTests || smokeBoot))
+        {
+            throw new ArgumentException("Performance capture cannot be combined with integration tests or smoke boot.", nameof(arguments));
+        }
+
         return new RuntimeConfiguration(
             runIntegrationTests,
             smokeBoot,
@@ -128,6 +174,27 @@ public sealed record RuntimeConfiguration(
             importSavePath,
             confirmImport,
             bootAction,
+            performanceCapturePath,
+            performanceWarmupSeconds,
+            performanceDurationSeconds,
             new FeatureFlagSet(featureOverrides));
+    }
+
+    private static double ParseSeconds(string value, double minimum, double maximum, string label)
+    {
+        if (!double.TryParse(
+                value,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out double parsed)
+            || !double.IsFinite(parsed)
+            || parsed < minimum
+            || parsed > maximum)
+        {
+            throw new ArgumentException(
+                $"The {label} must be a finite number from {minimum} through {maximum} seconds.",
+                nameof(value));
+        }
+        return parsed;
     }
 }

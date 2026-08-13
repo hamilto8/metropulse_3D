@@ -15,6 +15,7 @@ public partial class CompositionRoot : Node
 {
     private readonly List<BootProgress> bootProgress = [];
     private ReadOnlyCollection<BootProgress>? publishedBootProgress;
+    private ulong bootStartedUsec;
 
     [Export]
     public PackedScene? SessionScene { get; set; }
@@ -60,6 +61,8 @@ public partial class CompositionRoot : Node
     public IReadOnlyList<BootProgress> BootProgressEvents =>
         publishedBootProgress ??= bootProgress.AsReadOnly();
 
+    public double BootToInteractiveMilliseconds { get; private set; }
+
     public override void _Ready()
     {
         CallDeferred(nameof(Initialize));
@@ -67,6 +70,7 @@ public partial class CompositionRoot : Node
 
     private async void Initialize()
     {
+        bootStartedUsec = Time.GetTicksUsec();
         BootStatusPresenter boot = GetNode<BootStatusPresenter>("../BootLayer");
         DiagnosticsOverlay diagnostics = GetNode<DiagnosticsOverlay>("../DiagnosticsLayer");
 
@@ -93,6 +97,7 @@ public partial class CompositionRoot : Node
             });
 
             LastBootResults = await pipeline.RunAsync();
+            BootToInteractiveMilliseconds = (Time.GetTicksUsec() - bootStartedUsec) / 1000.0;
             diagnostics.Initialize(Configuration, CurrentSession?.IsInteractiveReleased == true, this);
             boot.ShowReady();
 
@@ -113,6 +118,12 @@ public partial class CompositionRoot : Node
                 IntegrationTestRunner runner = new();
                 AddChild(runner);
                 runner.Begin(this, diagnostics);
+            }
+            else if (Configuration.PerformanceCapturePath is not null)
+            {
+                PerformanceCaptureRunner runner = new();
+                AddChild(runner);
+                runner.Begin(this, diagnostics, Configuration);
             }
             else if (CaptureOutputPath(OS.GetCmdlineUserArgs()) is string captureOutputPath)
             {

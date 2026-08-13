@@ -19,6 +19,9 @@ public sealed class RuntimeConfigurationTests
         Assert.Null(configuration.ImportSavePath);
         Assert.False(configuration.ConfirmImport);
         Assert.Null(configuration.BootAction);
+        Assert.Null(configuration.PerformanceCapturePath);
+        Assert.Equal(5, configuration.PerformanceWarmupSeconds);
+        Assert.Equal(20, configuration.PerformanceDurationSeconds);
         Assert.All(configuration.Features.Snapshot(), pair => Assert.False(pair.Value));
     }
 
@@ -133,5 +136,39 @@ public sealed class RuntimeConfigurationTests
     {
         Assert.Throws<InvalidOperationException>(() =>
             RuntimeConfiguration.Parse(["--features=aircraft"], isDebugBuild: false));
+    }
+
+    [Fact]
+    public void Parse_AcceptsReleaseSafePerformanceCapture()
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse(
+            [
+                "--performance-capture=/tmp/metropulse-performance.json",
+                "--performance-warmup=2.5",
+                "--performance-duration=30",
+            ],
+            isDebugBuild: false);
+
+        Assert.Equal("/tmp/metropulse-performance.json", configuration.PerformanceCapturePath);
+        Assert.Equal(2.5, configuration.PerformanceWarmupSeconds);
+        Assert.Equal(30, configuration.PerformanceDurationSeconds);
+    }
+
+    [Theory]
+    [InlineData("--performance-capture=relative.json")]
+    [InlineData("--performance-warmup=-1")]
+    [InlineData("--performance-duration=0")]
+    [InlineData("--performance-duration=7201")]
+    public void Parse_RejectsAmbiguousPerformanceCapture(string argument)
+    {
+        Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse([argument], isDebugBuild: true));
+    }
+
+    [Fact]
+    public void Parse_RejectsPerformanceCaptureCombinedWithOtherExitOwners()
+    {
+        Assert.Throws<ArgumentException>(() => RuntimeConfiguration.Parse(
+            ["--performance-capture=/tmp/result.json", "--smoke-boot"],
+            isDebugBuild: true));
     }
 }

@@ -46,6 +46,12 @@ public partial class SessionAudioRuntime : Node
 
     public int SpatialVoiceCount => spatialVoices.Count;
 
+    public int ActiveVoiceCount => spatialVoices.Count(voice => voice.Playing)
+        + (music?.Playing == true ? 1 : 0)
+        + (ambience?.Playing == true ? 1 : 0)
+        + (rain?.Playing == true ? 1 : 0)
+        + (ui?.Playing == true ? 1 : 0);
+
     public IReadOnlyDictionary<string, AudioGainState> Gains => gains;
 
     public void Initialize(SettingsStore settingsAuthority, PlayerInterface interfaceOwner)

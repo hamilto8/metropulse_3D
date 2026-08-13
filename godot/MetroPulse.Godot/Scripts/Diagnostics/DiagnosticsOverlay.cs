@@ -25,19 +25,23 @@ public partial class DiagnosticsOverlay : CanvasLayer
     private Label? _snapshotLabel;
     private double _frameMilliseconds;
     private double _renderCountdown;
+    private bool _performanceCaptureActive;
 
     public DiagnosticSnapshot CurrentSnapshot => CaptureSnapshot();
+
+    public DiagnosticPerformance CurrentPerformance => CapturePerformance();
 
     public override void _Ready()
     {
         _snapshotLabel = GetNode<Label>("Panel/Snapshot");
         Visible = OS.IsDebugBuild();
+        RenderingServer.ViewportSetMeasureRenderTime(GetViewport().GetViewportRid(), true);
     }
 
     public override void _Process(double delta)
     {
         _frameMilliseconds = Math.Max(0, delta) * 1000;
-        if (!OS.IsDebugBuild()) return;
+        if (!OS.IsDebugBuild() || _performanceCaptureActive) return;
         _renderCountdown -= delta;
         if (_renderCountdown <= 0)
         {
@@ -61,6 +65,12 @@ public partial class DiagnosticsOverlay : CanvasLayer
     {
         _fatalErrorCode = errorCode;
         RenderSnapshot();
+    }
+
+    public void BeginPerformanceCapture()
+    {
+        _performanceCaptureActive = true;
+        Visible = false;
     }
 
     private DiagnosticSnapshot CaptureSnapshot()
@@ -119,12 +129,7 @@ public partial class DiagnosticsOverlay : CanvasLayer
                 _compositionRoot?.PreparedSave?.SaveDocument?.SavedAt,
                 _fatalErrorCode),
             CaptureCounts(saveData),
-            new DiagnosticPerformance(
-                Engine.GetFramesPerSecond(),
-                _frameMilliseconds,
-                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame),
-                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame),
-                RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.VideoMemUsed)),
+            CapturePerformance(),
             _configuration?.Features.Snapshot() ?? new FeatureFlagSet().Snapshot(),
             new DiagnosticScenarioMetadata(
                 _configuration?.DeterministicTestMode ?? false,
@@ -241,6 +246,39 @@ public partial class DiagnosticsOverlay : CanvasLayer
 
     private static int CountNodes<T>(Node node) where T : Node =>
         (node is T ? 1 : 0) + node.GetChildren().Sum(CountNodes<T>);
+
+    private DiagnosticPerformance CapturePerformance() => new(
+        Engine.GetFramesPerSecond(),
+        _frameMilliseconds,
+        MonitorMilliseconds(Performance.Monitor.TimeProcess),
+        MonitorMilliseconds(Performance.Monitor.TimePhysicsProcess),
+        MonitorMilliseconds(Performance.Monitor.TimeNavigationProcess),
+        RenderingServer.ViewportGetMeasuredRenderTimeCpu(GetViewport().GetViewportRid())
+            + RenderingServer.GetFrameSetupTimeCpu(),
+        RenderingServer.ViewportGetMeasuredRenderTimeGpu(GetViewport().GetViewportRid()),
+        RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame),
+        RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame),
+        RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalObjectsInFrame),
+        RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.VideoMemUsed),
+        MonitorUnsigned(Performance.Monitor.MemoryStatic),
+        GC.GetTotalMemory(forceFullCollection: false),
+        MonitorUnsigned(Performance.Monitor.ObjectCount),
+        MonitorUnsigned(Performance.Monitor.ObjectResourceCount),
+        MonitorUnsigned(Performance.Monitor.ObjectNodeCount),
+        MonitorUnsigned(Performance.Monitor.ObjectOrphanNodeCount),
+        MonitorUnsigned(Performance.Monitor.Physics3DActiveObjects),
+        MonitorUnsigned(Performance.Monitor.Physics3DCollisionPairs),
+        MonitorUnsigned(Performance.Monitor.Physics3DIslandCount),
+        _compositionRoot?.CurrentSession?.Audio?.ActiveVoiceCount ?? 0,
+        GC.CollectionCount(0),
+        GC.CollectionCount(1),
+        GC.CollectionCount(2));
+
+    private static double MonitorMilliseconds(Performance.Monitor monitor) =>
+        Math.Max(0, Performance.GetMonitor(monitor)) * 1000;
+
+    private static ulong MonitorUnsigned(Performance.Monitor monitor) =>
+        (ulong)Math.Max(0, Performance.GetMonitor(monitor));
 
     private void RenderSnapshot()
     {
