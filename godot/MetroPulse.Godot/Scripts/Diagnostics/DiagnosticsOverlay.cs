@@ -125,7 +125,7 @@ public partial class DiagnosticsOverlay : CanvasLayer
                 RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalDrawCallsInFrame),
                 RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.TotalPrimitivesInFrame),
                 RenderingServer.GetRenderingInfo(RenderingServer.RenderingInfo.VideoMemUsed)),
-            new FeatureFlagSet().Snapshot(),
+            _configuration?.Features.Snapshot() ?? new FeatureFlagSet().Snapshot(),
             new DiagnosticScenarioMetadata(
                 _configuration?.DeterministicTestMode ?? false,
                 _configuration?.ScenarioSeed,

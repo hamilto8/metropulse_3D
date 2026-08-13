@@ -25,6 +25,11 @@ public partial class GameplayHud : Control
     private PanelContainer speedometer = null!;
     private Label vehicleType = null!;
     private Label speed = null!;
+    private PanelContainer? flightPanel;
+    private Label? flightSpeed;
+    private Label? flightAltitude;
+    private Label? flightThrottle;
+    private Label? flightMode;
     private Label heat = null!;
     private Label arrest = null!;
     private VBoxContainer news = null!;
@@ -84,6 +89,7 @@ public partial class GameplayHud : Control
     {
         EnsureInitialized();
         var controlledVehicle = player.ControlledVehicle;
+        var controlledAircraft = player.ControlledAircraft;
         double vehicleSpeed = controlledVehicle is null
             ? 0
             : new Vector2(controlledVehicle.LinearVelocity.X, controlledVehicle.LinearVelocity.Z).Length();
@@ -93,7 +99,11 @@ public partial class GameplayHud : Control
             player.ControlledKind,
             vehicleSpeed,
             controlledVehicle?.TypeId,
-            null,
+            controlledAircraft is null ? null : new FlightTelemetryView(
+                controlledAircraft.State.Speed,
+                controlledAircraft.State.Position?.Y ?? 0,
+                controlledAircraft.State.Throttle,
+                controlledAircraft.State.StallWarning ? $"{controlledAircraft.State.Mode} · STALL" : controlledAircraft.State.Mode ?? "PARKED"),
             enforcement.State,
             enforcement.Response,
             enforcement.LastOutcome,
@@ -119,6 +129,15 @@ public partial class GameplayHud : Control
         speed.Text = CurrentView.Vehicle.Speed;
         speed.AccessibilityName = $"Speed {CurrentView.Vehicle.Speed} kilometres per hour";
         speed.AccessibilityDescription = CurrentView.Vehicle.SpeedDescription;
+        if (flightPanel is not null)
+        {
+            flightPanel.Visible = CurrentView.Flight.Visible;
+            flightSpeed!.Text = CurrentView.Flight.Speed;
+            flightAltitude!.Text = CurrentView.Flight.Altitude;
+            flightThrottle!.Text = CurrentView.Flight.Throttle;
+            flightMode!.Text = CurrentView.Flight.Mode;
+            flightPanel.AccessibilityName = $"Flight instruments. Speed {CurrentView.Flight.Speed}. Altitude {CurrentView.Flight.Altitude}. Throttle {CurrentView.Flight.Throttle}. Mode {CurrentView.Flight.Mode}.";
+        }
         heat.Visible = CurrentView.Heat.Visible;
         heat.Text = $"{CurrentView.Heat.Tier} · {CurrentView.Heat.Heat}\n{CurrentView.Heat.Detail}";
         heat.AccessibilityName = CurrentView.Heat.Tier;
@@ -164,6 +183,28 @@ public partial class GameplayHud : Control
         speedStack.AddChild(unit);
         speedometer.AddChild(speedStack);
         AddChild(speedometer);
+
+        if (player.Aircraft is not null)
+        {
+            flightPanel = new PanelContainer
+            {
+                ThemeTypeVariation = "GlassPanelStrong",
+                MouseFilter = MouseFilterEnum.Ignore,
+                Visible = false,
+                AccessibilityDescription = "Northwind Sparrow speed, altitude, throttle, and flight mode",
+            };
+            var instruments = new GridContainer { Columns = 2 };
+            AddInstrument(instruments, "SPD", out Label speedValue);
+            AddInstrument(instruments, "ALT", out Label altitudeValue);
+            AddInstrument(instruments, "PWR", out Label throttleValue);
+            AddInstrument(instruments, "MODE", out Label modeValue);
+            flightSpeed = speedValue;
+            flightAltitude = altitudeValue;
+            flightThrottle = throttleValue;
+            flightMode = modeValue;
+            flightPanel.AddChild(instruments);
+            AddChild(flightPanel);
+        }
 
         heat = new Label
         {
@@ -277,6 +318,14 @@ public partial class GameplayHud : Control
         speedometer.OffsetTop = -160;
         speedometer.OffsetRight = -16;
         speedometer.OffsetBottom = -16;
+        if (flightPanel is not null)
+        {
+            flightPanel.SetAnchorsPreset(LayoutPreset.BottomRight);
+            flightPanel.OffsetLeft = -300;
+            flightPanel.OffsetTop = -145;
+            flightPanel.OffsetRight = -16;
+            flightPanel.OffsetBottom = -16;
+        }
         heat.SetAnchorsPreset(LayoutPreset.CenterTop);
         heat.OffsetLeft = -190;
         heat.OffsetTop = 16;
@@ -313,6 +362,13 @@ public partial class GameplayHud : Control
     private static void Clear(Node node)
     {
         foreach (Node child in node.GetChildren()) child.Free();
+    }
+
+    private static void AddInstrument(GridContainer grid, string label, out Label value)
+    {
+        grid.AddChild(new Label { Text = label, ThemeTypeVariation = "Muted" });
+        value = new Label { Text = "—", ThemeTypeVariation = "Metric", HorizontalAlignment = HorizontalAlignment.Right };
+        grid.AddChild(value);
     }
 
     private void EnsureInitialized()

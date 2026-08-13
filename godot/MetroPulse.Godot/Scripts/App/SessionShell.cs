@@ -3,6 +3,7 @@ using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Diagnostics;
 using MetroPulse.Domain.Settings;
+using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.Audio;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
@@ -31,6 +32,8 @@ public partial class SessionShell : Node
 
     public RuntimeInputHost? InputHost { get; private set; }
 
+    public FeatureFlagSet Features { get; private set; } = new();
+
     public SessionAudioRuntime? Audio { get; private set; }
 
     public SessionEffectRuntime? Effects { get; private set; }
@@ -50,6 +53,8 @@ public partial class SessionShell : Node
     public GameplayCameraRig? GameplayCamera { get; private set; }
 
     public PlayerControlRuntime? PlayerControl { get; private set; }
+
+    public AircraftRuntime? Aircraft { get; private set; }
 
     public PlayerVehicleInteractionPublisher? VehicleInteractions { get; private set; }
 
@@ -86,13 +91,14 @@ public partial class SessionShell : Node
             "An empty disposable session shell was created."));
     }
 
-    public void InitializeRuntimeInput(SettingsStore settings)
+    public void InitializeRuntimeInput(SettingsStore settings, FeatureFlagSet features)
     {
         if (InputHost is not null)
         {
             throw new InvalidOperationException("The session runtime input owner already exists.");
         }
 
+        Features = features ?? throw new ArgumentNullException(nameof(features));
         Node runtimeServices = GetNode<Node>("RuntimeServices");
         Interface = new PlayerInterface { Name = "PlayerInterface" };
         GetNode<CanvasLayer>("HUD").AddChild(Interface);
@@ -139,6 +145,20 @@ public partial class SessionShell : Node
         RuntimeHost.Initialize(InputHost, GameplayCamera);
         Environment?.StartClock(RuntimeHost.Scheduler);
         RuntimeHost.SetControlBridge(PlayerControl);
+        if (Features.IsEnabled(FeatureIds.Aircraft))
+        {
+            Aircraft = new AircraftRuntime { Name = "AircraftRuntime" };
+            runtimeServices.AddChild(Aircraft);
+            Aircraft.Initialize(
+                World ?? throw new InvalidOperationException("The world must exist before aircraft are initialized."),
+                Content,
+                PlayerControl,
+                RuntimeHost,
+                InputHost,
+                Audio,
+                Interface,
+                GetNode<Node3D>("WorldRoot/AgentRoot"));
+        }
         Economy = new CityEconomyRuntime { Name = "CityEconomy" };
         runtimeServices.AddChild(Economy);
         Economy.Initialize(
@@ -293,6 +313,7 @@ public partial class SessionShell : Node
         ManagementUi?.Shutdown();
         Interface?.Shutdown();
         Effects?.Shutdown();
+        Aircraft?.Shutdown();
         Services?.Shutdown();
         VehicleInteractions?.Shutdown();
         Enforcement?.Shutdown();
@@ -332,6 +353,7 @@ public partial class SessionShell : Node
             || InputHost?.Initialized != true
             || GameplayCamera?.Initialized != true
             || PlayerControl?.Initialized != true
+            || (Features.IsEnabled(FeatureIds.Aircraft) && Aircraft?.Initialized != true)
             || LivingTraffic?.Initialized != true
             || LivingPedestrians?.Initialized != true
             || Enforcement?.Initialized != true

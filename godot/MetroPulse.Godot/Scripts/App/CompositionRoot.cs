@@ -27,6 +27,8 @@ public partial class CompositionRoot : Node
 
     public GameContentRegistry? ContentRegistry { get; private set; }
 
+    public FeatureFlagSet? Features => Configuration?.Features;
+
     public GameSaveDocumentValidator? SaveValidator { get; private set; }
 
     public GodotGameSaveRepository? SaveRepository { get; private set; }
@@ -306,7 +308,7 @@ public partial class CompositionRoot : Node
                         warning));
                 }
 
-                InputMapAdapter = new GodotInputMapAdapter(SettingsAuthority);
+                InputMapAdapter = new GodotInputMapAdapter(SettingsAuthority, configuration.Features);
                 InputMapAdapter.Start();
                 return ValueTask.FromResult<object?>(result);
             }),
@@ -380,7 +382,9 @@ public partial class CompositionRoot : Node
                     ContentRegistry ?? throw new InvalidOperationException("Content validation must precede session construction."),
                     SettingsAuthority ?? throw new InvalidOperationException("Settings authority must precede session construction."));
                 session.InitializeRuntimeInput(SettingsAuthority
-                    ?? throw new InvalidOperationException("Settings authority must precede session construction."));
+                    ?? throw new InvalidOperationException("Settings authority must precede session construction."),
+                    Configuration?.Features
+                    ?? throw new InvalidOperationException("Feature configuration must precede session construction."));
                 return ValueTask.FromResult<object?>(session);
             }),
             new(BootStageIds.SaveApplication, "Preparing validated city state", (results, _) =>

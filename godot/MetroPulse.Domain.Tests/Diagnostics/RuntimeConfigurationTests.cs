@@ -1,3 +1,4 @@
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Diagnostics;
 using Xunit;
 
@@ -18,6 +19,7 @@ public sealed class RuntimeConfigurationTests
         Assert.Null(configuration.ImportSavePath);
         Assert.False(configuration.ConfirmImport);
         Assert.Null(configuration.BootAction);
+        Assert.All(configuration.Features.Snapshot(), pair => Assert.False(pair.Value));
     }
 
     [Fact]
@@ -103,5 +105,33 @@ public sealed class RuntimeConfigurationTests
     {
         Assert.Throws<ArgumentException>(() =>
             RuntimeConfiguration.Parse(["--boot-action=LOAD_WHATEVER"], isDebugBuild: false));
+    }
+
+    [Fact]
+    public void Parse_AcceptsValidatedDebugFeatureOverrides()
+    {
+        RuntimeConfiguration configuration = RuntimeConfiguration.Parse(
+            ["--features=aircraft,temporaryMayhem"],
+            isDebugBuild: true);
+
+        Assert.True(configuration.Features.IsEnabled(FeatureIds.Aircraft));
+        Assert.True(configuration.Features.IsEnabled(FeatureIds.TemporaryMayhem));
+        Assert.False(configuration.Features.IsEnabled(FeatureIds.RocketLaunch));
+    }
+
+    [Theory]
+    [InlineData("--features=unknown")]
+    [InlineData("--features=")]
+    public void Parse_RejectsInvalidFeatureOverrides(string argument)
+    {
+        Assert.ThrowsAny<ArgumentException>(() =>
+            RuntimeConfiguration.Parse([argument], isDebugBuild: true));
+    }
+
+    [Fact]
+    public void Parse_RejectsFeatureOverridesInReleaseBuilds()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            RuntimeConfiguration.Parse(["--features=aircraft"], isDebugBuild: false));
     }
 }

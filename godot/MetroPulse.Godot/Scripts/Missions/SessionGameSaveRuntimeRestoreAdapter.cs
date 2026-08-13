@@ -1,10 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Godot;
+using MetroPulse.Domain.Aircraft;
 using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Missions;
 using MetroPulse.Domain.Persistence;
+using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Player;
 using MetroPulse.Godot.Runtime;
@@ -53,24 +55,53 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
             : serviceRollback.Alerts;
         var servicesState = new CityServicesRuntimeState { Outcomes = outcomes, Alerts = alerts };
 
-        SavedControlledVehicle? savedVehicle = ReadSavedVehicle(data[GameSaveDomainIds.Player] as JsonObject);
+        SavedControlledEntity? savedEntity = ReadSavedEntity(data[GameSaveDomainIds.Player] as JsonObject);
         GameState savedGameState = ReadGameState(data[GameSaveDomainIds.Game] as JsonObject);
-        ValidateCrossDomain(missionState, savedVehicle, savedGameState, outcomes);
+        ValidateCrossDomain(missionState, savedEntity, savedGameState, outcomes);
 
-        bool vehicleExisted = savedVehicle is not null
-            && player.Vehicles.Any(vehicle => vehicle.StableId == savedVehicle.StableId);
-        bool vehiclePrepared = false;
-        bool vehicleControlled = false;
+        bool vehicleExisted = savedEntity?.Kind == ControlKind.Vehicle
+            && player.Vehicles.Any(vehicle => vehicle.StableId == savedEntity.StableId);
+        bool entityPrepared = false;
+        bool entityControlled = false;
         try
         {
             _ = services.RestoreState(servicesState);
             if (savedGameState == GameState.StreetVehicle)
             {
-                SavedControlledVehicle vehicle = savedVehicle!;
-                player.PrepareRestoredVehicleControl(vehicle.StableId, vehicle.TypeId, vehicle.Position, vehicle.Yaw);
-                vehiclePrepared = true;
-                runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("save-restore:vehicle", nameof(SessionGameSaveRuntimeRestoreAdapter)));
-                vehicleControlled = true;
+                SavedControlledEntity entity = savedEntity!;
+                if (entity.Kind == ControlKind.Aircraft && session.Aircraft is null)
+                {
+                    // A default-off post-MVP package never makes the save invalid. It degrades to
+                    // safe Management ownership until an authorized build enables the package.
+                    savedGameState = GameState.Management;
+                }
+                else
+                {
+                    if (entity.Kind == ControlKind.Aircraft)
+                    {
+                        double terrain = session.World!.Surface.GetTerrainHeight(entity.Position.X, entity.Position.Z);
+                        bool grounded = entity.Position.Y <= terrain + AircraftFlightModel.DefaultConfig.GearHeight + 0.5;
+                        var state = new AircraftActorSnapshot(
+                            AircraftFlightModel.CreateState(new AircraftFlightState
+                            {
+                                Position = new AircraftVector3(entity.Position.X, entity.Position.Y, entity.Position.Z),
+                                Heading = entity.Yaw,
+                                Speed = entity.Speed,
+                                Grounded = grounded,
+                                Mode = grounded ? AircraftModes.Taxi : AircraftModes.Airborne,
+                            }),
+                            false, false, 0, 0, 0, 0, 0);
+                        if (!player.PrepareRestoredAircraftControl(state))
+                            throw new InvalidDataException("Saved aircraft control could not be prepared.");
+                    }
+                    else
+                    {
+                        player.PrepareRestoredVehicleControl(entity.StableId, entity.TypeId, entity.Position, entity.Yaw);
+                    }
+                    entityPrepared = true;
+                    runtime.TransitionTo(GameState.StreetVehicle, new TransitionRequestOptions("save-restore:controlled-entity", nameof(SessionGameSaveRuntimeRestoreAdapter)));
+                    entityControlled = true;
+                }
             }
             if (missionState is not null) _ = missions.RestoreState(missionState);
             if (missionState?.Lifecycle.Phase == MissionPhases.Result)
@@ -81,12 +112,12 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
         }
         catch
         {
-            if (vehicleControlled && runtime.StateMachine.State == GameState.StreetVehicle && missions.Lifecycle.Phase == MissionPhases.Idle)
+            if (entityControlled && runtime.StateMachine.State == GameState.StreetVehicle && missions.Lifecycle.Phase == MissionPhases.Idle)
                 runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("save-restore:rollback", nameof(SessionGameSaveRuntimeRestoreAdapter)));
-            else if (vehiclePrepared && savedVehicle is not null)
-                _ = player.CancelPreparedVehicleControl(savedVehicle.StableId, removeVehicle: !vehicleExisted);
-            if (!vehicleExisted && savedVehicle is not null && player.ControlledKind == ControlKind.None)
-                _ = player.RemoveVehicle(savedVehicle.StableId);
+            else if (entityPrepared && savedEntity?.Kind == ControlKind.Vehicle)
+                _ = player.CancelPreparedVehicleControl(savedEntity.StableId, removeVehicle: !vehicleExisted);
+            if (!vehicleExisted && savedEntity?.Kind == ControlKind.Vehicle && player.ControlledKind == ControlKind.None)
+                _ = player.RemoveVehicle(savedEntity.StableId);
             _ = services.RestoreState(serviceRollback);
             throw;
         }
@@ -94,20 +125,20 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
 
     private static void ValidateCrossDomain(
         MissionRuntimeState? mission,
-        SavedControlledVehicle? vehicle,
+        SavedControlledEntity? entity,
         GameState gameState,
         MissionOutcomeStateDocument outcomes)
     {
-        if (gameState == GameState.StreetVehicle && vehicle is null)
-            throw new InvalidDataException("STREET_VEHICLE restore requires a saved controlled vehicle record.");
+        if (gameState == GameState.StreetVehicle && entity is null)
+            throw new InvalidDataException("STREET_VEHICLE restore requires a saved controlled vehicle or aircraft record.");
         if (mission is null) return;
         if (mission.Lifecycle.Phase is MissionPhases.Active or MissionPhases.Checkpoint)
         {
             MissionExecutionState execution = mission.Execution!;
             if (gameState != GameState.StreetVehicle
-                || vehicle is null
-                || vehicle.StableId != execution.VehicleId
-                || vehicle.TypeId != execution.VehicleType)
+                || entity?.Kind != ControlKind.Vehicle
+                || entity.StableId != execution.VehicleId
+                || entity.TypeId != execution.VehicleType)
             {
                 throw new InvalidDataException("Active mission restore requires the matching saved STREET_VEHICLE control record.");
             }
@@ -122,15 +153,23 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
         }
     }
 
-    private static SavedControlledVehicle? ReadSavedVehicle(JsonObject? player)
+    private static SavedControlledEntity? ReadSavedEntity(JsonObject? player)
     {
         if (player?["controlled"] is not JsonObject controlled) return null;
-        if (controlled["kind"]?.GetValue<string>() != ControlKind.Vehicle.ToToken()) return null;
+        string? kindToken = controlled["kind"]?.GetValue<string>();
+        ControlKind kind = kindToken switch
+        {
+            "VEHICLE" => ControlKind.Vehicle,
+            "AIRCRAFT" => ControlKind.Aircraft,
+            _ => ControlKind.None,
+        };
+        if (kind == ControlKind.None) return null;
         JsonArray position = controlled["position"]?.AsArray()
             ?? throw new InvalidDataException("Saved controlled vehicle position is unavailable.");
         JsonArray rotation = controlled["rotation"]?.AsArray()
             ?? throw new InvalidDataException("Saved controlled vehicle rotation is unavailable.");
-        return new SavedControlledVehicle(
+        return new SavedControlledEntity(
+            kind,
             controlled["contentId"]?.GetValue<string>()
                 ?? throw new InvalidDataException("Saved controlled vehicle ID is unavailable."),
             controlled["typeId"]?.GetValue<string>()
@@ -139,7 +178,8 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
                 position[0]!.GetValue<float>(),
                 position[1]!.GetValue<float>(),
                 position[2]!.GetValue<float>()),
-            rotation[1]!.GetValue<float>());
+            rotation[1]!.GetValue<float>(),
+            controlled["speed"]?.GetValue<double>() ?? 0);
     }
 
     private static GameState ReadGameState(JsonObject? game)
@@ -148,5 +188,11 @@ public sealed class SessionGameSaveRuntimeRestoreAdapter : IGameSaveRuntimeResto
         return StableTokens.TryParseGameState(token, out GameState state) ? state : GameState.Management;
     }
 
-    private sealed record SavedControlledVehicle(string StableId, string TypeId, Vector3 Position, float Yaw);
+    private sealed record SavedControlledEntity(
+        ControlKind Kind,
+        string StableId,
+        string TypeId,
+        Vector3 Position,
+        float Yaw,
+        double Speed);
 }

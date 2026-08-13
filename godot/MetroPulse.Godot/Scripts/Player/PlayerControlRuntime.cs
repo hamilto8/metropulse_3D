@@ -3,6 +3,7 @@ using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Core;
 using MetroPulse.Domain.Settings;
 using MetroPulse.Domain.Vehicles;
+using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Runtime;
 using MetroPulse.Godot.Vehicles;
@@ -20,6 +21,8 @@ public sealed record PlayerControlSnapshot(
     Vector3? PendingExitPose,
     Vector3? PendingEjectionDirection,
     double? PendingEjectionSpeed,
+    bool AircraftEntryPending,
+    AircraftActorSnapshot? AircraftState,
     IReadOnlyDictionary<string, PlayerVehicleSnapshot> VehicleStates,
     long AuthorityGeneration);
 
@@ -50,6 +53,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     private Vector3? pendingEjectionDirection;
     private double? pendingEjectionSpeed;
     private (PlayerVehicleController Vehicle, VehicleHijackProgress Progress)? hijack;
+    private AircraftActor? aircraft;
+    private bool aircraftEntryPending;
 
     public bool Initialized { get; private set; }
 
@@ -65,6 +70,10 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
 
     public PlayerVehicleController? ControlledVehicle => controlledVehicle;
 
+    public AircraftActor? Aircraft => aircraft;
+
+    public AircraftActor? ControlledAircraft => ControlledKind == ControlKind.Aircraft ? aircraft : null;
+
     public IReadOnlyCollection<PlayerVehicleController> Vehicles => Array.AsReadOnly(vehicles.Values.ToArray());
 
     public VehicleHijackProgress? HijackProgress => hijack?.Progress;
@@ -79,8 +88,45 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
     {
         ControlKind.Pedestrian => pedestrian,
         ControlKind.Vehicle => controlledVehicle,
+        ControlKind.Aircraft => aircraft,
         _ => null,
     };
+
+    public void AttachAircraft(AircraftActor aircraftOwner)
+    {
+        EnsureInitialized();
+        if (aircraft is not null) throw new InvalidOperationException("An aircraft authority is already attached.");
+        aircraft = aircraftOwner ?? throw new ArgumentNullException(nameof(aircraftOwner));
+    }
+
+    public bool PrepareAircraftEntry()
+    {
+        EnsureInitialized();
+        if (aircraft is null || ControlledKind != ControlKind.Pedestrian || pedestrian is null) return false;
+        if (!aircraft.CanBoard(pedestrian.GlobalPosition)) return false;
+        aircraftEntryPending = true;
+        return true;
+    }
+
+    public bool PrepareRestoredAircraftControl(AircraftActorSnapshot state)
+    {
+        EnsureInitialized();
+        if (aircraft is null || ControlledKind != ControlKind.None || pendingVehicle is not null || hijack is not null) return false;
+        aircraft.RestoreState(state with { Controlled = false, SimulationSuspended = false });
+        aircraftEntryPending = true;
+        return true;
+    }
+
+    public VehicleExitRequestResult RequestAircraftExit()
+    {
+        EnsureInitialized();
+        if (ControlledKind != ControlKind.Aircraft || aircraft is null)
+            return new VehicleExitRequestResult(false, Code: "AIRCRAFT_CONTROL_REQUIRED");
+        if (!aircraft.TryGetExitPose(out Vector3 pose))
+            return new VehicleExitRequestResult(false, Code: "AIRCRAFT_NOT_STOPPED");
+        pendingExitPose = pose;
+        return new VehicleExitRequestResult(true, pose);
+    }
 
     public void Initialize(
         RuntimeInputHost inputHost,
@@ -277,6 +323,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         pendingExitPose,
         pendingEjectionDirection,
         pendingEjectionSpeed,
+        aircraftEntryPending,
+        aircraft?.CaptureState(),
         vehicles.ToDictionary(pair => pair.Key, pair => pair.Value.CaptureState(), StringComparer.Ordinal),
         AuthorityGeneration);
 
@@ -298,10 +346,17 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
                     if (controlledVehicle.SetControlled(false)) AuthorityGeneration++;
                     controlledVehicle = null;
                 }
+                if (aircraft?.Controlled == true)
+                {
+                    aircraft.SetSimulationSuspended(false);
+                    if (aircraft.SetControlled(false)) AuthorityGeneration++;
+                }
+                aircraftEntryPending = false;
                 ControlledKind = ControlKind.None;
                 break;
             case ControlPolicy.Suspend:
                 controlledVehicle?.SetSimulationSuspended(true);
+                aircraft?.SetSimulationSuspended(true);
                 break;
             case ControlPolicy.Preserve:
                 break;
@@ -344,6 +399,8 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         pendingExitPose = snapshot.PendingExitPose;
         pendingEjectionDirection = snapshot.PendingEjectionDirection;
         pendingEjectionSpeed = snapshot.PendingEjectionSpeed;
+        aircraftEntryPending = snapshot.AircraftEntryPending;
+        if (snapshot.AircraftState is not null) aircraft?.RestoreState(snapshot.AircraftState);
         AuthorityGeneration = snapshot.AuthorityGeneration;
         RestoreCount++;
     }
@@ -369,6 +426,9 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
         pendingEjectionDirection = null;
         pendingEjectionSpeed = null;
         hijack = null;
+        if (aircraft?.Controlled == true) aircraft.SetControlled(false);
+        aircraft = null;
+        aircraftEntryPending = false;
         ControlledKind = ControlKind.None;
         input = null;
         settings = null;
@@ -404,6 +464,17 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
             pendingEjectionDirection = null;
             pendingEjectionSpeed = null;
         }
+        else if (ControlledKind == ControlKind.Aircraft)
+        {
+            if (aircraft is null || pendingExitPose is not Vector3 aircraftExitPose)
+                return new TransitionPhaseResult(false, "AIRCRAFT_EXIT_NOT_PREPARED", "The aircraft must be landed and stopped before returning on foot.");
+            if (aircraft.SetControlled(false)) AuthorityGeneration++;
+            aircraft.SetSimulationSuspended(false);
+            if (suspendedPedestrianState is not null) avatar.RestoreState(suspendedPedestrianState);
+            avatar.SpawnAt(aircraftExitPose, suspendedPedestrianState?.Heading ?? 0);
+            suspendedPedestrianState = null;
+            pendingExitPose = null;
+        }
         avatar.SetControlled(true);
         ControlledKind = ControlKind.Pedestrian;
         HandoffCount++;
@@ -412,9 +483,27 @@ public partial class PlayerControlRuntime : Node, IPlayerControlTransitionBridge
 
     private TransitionPhaseResult HandoffToVehicle()
     {
+        if (aircraft is not null && ControlledKind == ControlKind.Aircraft)
+        {
+            aircraft.SetSimulationSuspended(false);
+            HandoffCount++;
+            return new TransitionPhaseResult();
+        }
         if (controlledVehicle is not null && ControlledKind == ControlKind.Vehicle)
         {
             controlledVehicle.SetSimulationSuspended(false);
+            HandoffCount++;
+            return new TransitionPhaseResult();
+        }
+        if (aircraftEntryPending && aircraft is not null)
+        {
+            PlayerPedestrianController aircraftPilot = EnsurePedestrian();
+            suspendedPedestrianState = aircraftPilot.CaptureState();
+            aircraftPilot.SetControlled(false);
+            aircraftEntryPending = false;
+            aircraft.SetSimulationSuspended(false);
+            if (aircraft.SetControlled(true)) AuthorityGeneration++;
+            ControlledKind = ControlKind.Aircraft;
             HandoffCount++;
             return new TransitionPhaseResult();
         }

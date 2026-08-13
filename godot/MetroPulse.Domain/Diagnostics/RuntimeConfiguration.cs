@@ -1,3 +1,4 @@
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Persistence;
 
 namespace MetroPulse.Domain.Diagnostics;
@@ -10,7 +11,8 @@ public sealed record RuntimeConfiguration(
     int PhysicsTicksPerSecond,
     string? ImportSavePath,
     bool ConfirmImport,
-    string? BootAction)
+    string? BootAction,
+    FeatureFlagSet Features)
 {
     public const int DefaultPhysicsTicksPerSecond = 120;
     public const int LowTickPhysicsTicksPerSecond = 30;
@@ -27,6 +29,7 @@ public sealed record RuntimeConfiguration(
         string? importSavePath = null;
         bool confirmImport = false;
         string? bootAction = null;
+        var featureOverrides = new Dictionary<string, bool>(StringComparer.Ordinal);
 
         foreach (string argument in arguments)
         {
@@ -76,12 +79,25 @@ public sealed record RuntimeConfiguration(
                         }
                         bootAction = value;
                     }
+                    else if (argument.StartsWith("--features=", StringComparison.Ordinal))
+                    {
+                        string value = argument["--features=".Length..];
+                        if (string.IsNullOrWhiteSpace(value))
+                        {
+                            throw new ArgumentException("Feature overrides require at least one stable feature ID.", nameof(arguments));
+                        }
+                        foreach (string featureId in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        {
+                            featureOverrides[featureId] = true;
+                        }
+                    }
 
                     break;
             }
         }
 
-        bool debugOnlyOptionRequested = runIntegrationTests || deterministicTestMode || lowTickProfile || seed.HasValue;
+        bool debugOnlyOptionRequested = runIntegrationTests || deterministicTestMode || lowTickProfile
+            || seed.HasValue || featureOverrides.Count > 0;
         if (debugOnlyOptionRequested && !isDebugBuild)
         {
             throw new InvalidOperationException("Test and low-tick runtime options are disabled in release builds.");
@@ -111,6 +127,7 @@ public sealed record RuntimeConfiguration(
             lowTickProfile ? LowTickPhysicsTicksPerSecond : DefaultPhysicsTicksPerSecond,
             importSavePath,
             confirmImport,
-            bootAction);
+            bootAction,
+            new FeatureFlagSet(featureOverrides));
     }
 }

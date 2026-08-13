@@ -66,6 +66,7 @@ public static class AudioPresentationModel
         new("city-ambience", AudioBusIds.Ambience, 54, 3, 0.05, true, false, 10, 1, "[city ambience]"),
         new("rain", AudioBusIds.Ambience, 180, 2, 0.035, true, false, 15, 1, "[rain falling]"),
         new("vehicle-engine", AudioBusIds.Vehicle, 68, 2, 0.09, true, true, 30, 48, "[engine revving]"),
+        new("aircraft-propeller", AudioBusIds.Vehicle, 82, 2, 0.08, true, true, 35, 1, "[propeller engine running]"),
         new("vehicle-impact", AudioBusIds.Vehicle, 46, 0.35, 0.18, false, true, 80, 8, "[vehicle impact]"),
         new("horn", AudioBusIds.Vehicle, 360, 0.25, 0.12, false, true, 55, 12, "[vehicle horn]"),
         new("police-siren", AudioBusIds.Emergency, 720, 1.2, 0.09, true, true, 90, 8, "[police siren approaching]"),

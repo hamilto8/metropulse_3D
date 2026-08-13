@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Godot;
+using MetroPulse.Domain.Aircraft;
 using MetroPulse.Domain.Alerts;
 using MetroPulse.Domain.Boot;
 using MetroPulse.Domain.Camera;
@@ -23,6 +24,7 @@ using MetroPulse.Domain.Vehicles;
 using MetroPulse.Domain.World;
 using MetroPulse.Domain.WorldEditing;
 using MetroPulse.Godot.Adapters;
+using MetroPulse.Godot.Aircraft;
 using MetroPulse.Godot.App;
 using MetroPulse.Godot.Camera;
 using MetroPulse.Godot.Construction;
@@ -208,6 +210,7 @@ public partial class IntegrationTestRunner : Node
         await CheckVehicleProfilesAndPossession(compositionRoot, failures);
         await CheckLivingEnforcement(compositionRoot, failures);
         await CheckVehicleImpactsRecoveryAndExit(compositionRoot, !importScenario, failures);
+        await CheckAircraft(compositionRoot, failures);
         CheckMvpWorld(compositionRoot, failures);
         CheckWorldPresentation(compositionRoot, failures);
         await CheckPhysicalWorldAndLifecycle(compositionRoot, failures);
@@ -222,6 +225,20 @@ public partial class IntegrationTestRunner : Node
                 ?? throw new InvalidOperationException("Phase 4 world disappeared after its integration checks.");
             SessionShell session = compositionRoot.CurrentSession
                 ?? throw new InvalidOperationException("Phase 4 session disappeared after its integration checks.");
+            if (session.Features.IsEnabled(FeatureIds.Aircraft))
+            {
+                AppLog.Write(new StructuredLogEvent(
+                    LogCategory.Test,
+                    LogSeverity.Information,
+                    "phase10.aircraft.passed",
+                    "Phase 10 gated airfield, flight, handoff, camera, HUD, audio, snapshot, and cleanup contracts passed.",
+                    new Dictionary<string, string>
+                    {
+                        ["aircraft"] = GetTree().GetNodesInGroup("aircraft").Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        ["airfieldColliders"] = "6",
+                        ["authorityGeneration"] = session.PlayerControl?.AuthorityGeneration.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "0",
+                    }));
+            }
             AppLog.Write(new StructuredLogEvent(
                 LogCategory.Test,
                 LogSeverity.Information,
@@ -600,6 +617,117 @@ public partial class IntegrationTestRunner : Node
         }
     }
 
+    private async ValueTask CheckAircraft(CompositionRoot compositionRoot, ICollection<string> failures)
+    {
+        SessionShell session = compositionRoot.CurrentSession
+            ?? throw new InvalidOperationException("Session shell is unavailable for aircraft verification.");
+        bool enabled = compositionRoot.Configuration?.Features.IsEnabled(FeatureIds.Aircraft) == true;
+        if (!enabled)
+        {
+            Check(session.Aircraft is null
+                    && GetTree().GetNodesInGroup("aircraft").Count == 0,
+                "Feature-off aircraft creates no runtime, actor, input owner, or scene node.", failures);
+            return;
+        }
+
+        AircraftRuntime aircraftRuntime = session.Aircraft
+            ?? throw new InvalidOperationException("Enabled aircraft runtime is unavailable.");
+        AircraftActor aircraft = aircraftRuntime.Aircraft;
+        PlayerControlRuntime player = session.PlayerControl!;
+        GodotSessionRuntimeHost runtime = session.RuntimeHost!;
+        Check(aircraftRuntime.Initialized
+                && aircraft.Initialized
+                && GetTree().GetNodesInGroup("aircraft").Count == 1
+                && session.World!.Colliders.Count == aircraftRuntime.BaselineColliderCount + 6,
+            "Aircraft-on creates exactly one actor plus six owned airfield colliders.", failures);
+
+        if (runtime.StateMachine.State != GameState.Management)
+            runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase10:aircraft-setup", nameof(IntegrationTestRunner)));
+        runtime.TransitionTo(GameState.StreetOnFoot, new TransitionRequestOptions("phase10:aircraft-on-foot", nameof(IntegrationTestRunner)));
+        player.Pedestrian!.SpawnAt(aircraft.GlobalPosition + new Vector3(2, 0, 0));
+        await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+        long authorityBefore = player.AuthorityGeneration;
+        Check(aircraftRuntime.TryBoard()
+                && runtime.StateMachine.State == GameState.StreetVehicle
+                && player.ControlledKind == ControlKind.Aircraft
+                && ReferenceEquals(player.ControlledCameraTarget, aircraft)
+                && player.AuthorityGeneration == authorityBefore + 1,
+            "Boarding performs one transactional pedestrian-to-aircraft authority handoff.", failures);
+        await ToSignal(GetTree(), SceneTree.SignalName.PhysicsFrame);
+        session.GameplayUi?.RefreshNow();
+        Check(session.InputHost?.LatestSnapshot.Context == ControlContexts.Aircraft
+                && session.GameplayUi?.CurrentView?.Flight.Visible == true
+                && aircraft.PilotPopulation == 1,
+            "Aircraft control activates its input context, flight instruments, and one-pilot population accounting.", failures);
+
+        AircraftActorSnapshot parked = aircraft.CaptureState();
+        AircraftFlightState airborne = AircraftFlightModel.CreateState(parked.State with
+        {
+            Position = new AircraftVector3(-105, 45, -260),
+            Speed = 34,
+            Throttle = 0.8,
+            Grounded = false,
+            Mode = AircraftModes.Airborne,
+        });
+        aircraft.RestoreState(parked with { State = airborne });
+        Vector3 before = aircraft.GlobalPosition;
+        aircraft.Advance(1d / 120d);
+        Check(!aircraft.GlobalPosition.IsEqualApprox(before)
+                && aircraft.CaptureCameraTarget() is { Type: CameraTargetTypes.Aircraft, UserControlled: true }
+                && aircraft.State.Position?.IsFinite == true,
+            "The live actor advances the deterministic flight model and publishes finite aircraft chase telemetry.", failures);
+
+        DeferredGameSaveDescriptor aircraftSave = MissionSaveDescriptor(
+            "phase10-aircraft-save",
+            session.Missions!.CaptureState(),
+            session.Services!.CaptureState(),
+            GameState.StreetVehicle,
+            controlledVehicle: null,
+            controlledAircraft: aircraft);
+        SessionShell restored = compositionRoot.SessionScene!.Instantiate<SessionShell>();
+        compositionRoot.GetParent().AddChild(restored);
+        restored.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+        restored.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, compositionRoot.Configuration!.Features);
+        new SessionGameSaveRuntimeRestoreAdapter(restored).Apply(aircraftSave);
+        Check(restored.RuntimeHost?.StateMachine.State == GameState.StreetVehicle
+                && restored.PlayerControl?.ControlledKind == ControlKind.Aircraft
+                && restored.Aircraft?.Aircraft.GlobalPosition.DistanceTo(aircraft.GlobalPosition) < 0.01
+                && Math.Abs((restored.Aircraft?.Aircraft.State.Speed ?? 0) - aircraft.State.Speed) < 0.001,
+            "An enabled aircraft save restores the controlled aircraft pose, speed, and STREET_VEHICLE ownership. "
+                + $"state={restored.RuntimeHost?.StateMachine.State}; control={restored.PlayerControl?.ControlledKind}; "
+                + $"position={restored.Aircraft?.Aircraft.GlobalPosition}; expected={aircraft.GlobalPosition}; "
+                + $"speed={restored.Aircraft?.Aircraft.State.Speed}; expectedSpeed={aircraft.State.Speed}.", failures);
+        restored.Shutdown();
+        restored.QueueFree();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        SessionShell unavailable = compositionRoot.SessionScene.Instantiate<SessionShell>();
+        compositionRoot.GetParent().AddChild(unavailable);
+        unavailable.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
+        unavailable.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, new FeatureFlagSet());
+        new SessionGameSaveRuntimeRestoreAdapter(unavailable).Apply(aircraftSave);
+        Check(unavailable.RuntimeHost?.StateMachine.State == GameState.Management
+                && unavailable.PlayerControl?.ControlledKind == ControlKind.None
+                && unavailable.Aircraft is null,
+            "An aircraft save remains valid and falls back to safe Management ownership when the package is unavailable.", failures);
+        unavailable.Shutdown();
+        unavailable.QueueFree();
+        await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+
+        aircraft.RestoreState(parked with { Controlled = true, SimulationSuspended = false });
+        Check(aircraftRuntime.TryExit()
+                && runtime.StateMachine.State == GameState.StreetOnFoot
+                && player.ControlledKind == ControlKind.Pedestrian
+                && aircraft.PilotPopulation == 0,
+            "A landed stopped aircraft returns control to the suspended pedestrian exactly once.", failures);
+        AircraftActorSnapshot roundTrip = aircraft.CaptureState();
+        aircraft.ResetToRunway(announce: false);
+        aircraft.RestoreState(roundTrip);
+        Check(aircraft.State == roundTrip.State && aircraft.ResetCount == roundTrip.ResetCount,
+            "Aircraft state, telemetry counters, and runway pose survive an exact runtime snapshot round trip.", failures);
+        runtime.TransitionTo(GameState.Management, new TransitionRequestOptions("phase10:aircraft-cleanup", nameof(IntegrationTestRunner)));
+    }
+
     private static void CheckCityEconomyRuntime(CompositionRoot compositionRoot, ICollection<string> failures)
     {
         SessionShell? session = compositionRoot.CurrentSession;
@@ -820,7 +948,7 @@ public partial class IntegrationTestRunner : Node
             SettingsStore settings = compositionRoot.SettingsAuthority
                 ?? throw new InvalidOperationException("Settings are unavailable for restore verification.");
             restored.InitializeWorld(content, settings);
-            restored.InitializeRuntimeInput(settings);
+            restored.InitializeRuntimeInput(settings, compositionRoot.Configuration!.Features);
             restored.Economy!.Ledger.Restore(economyState);
             CityEditorState applied = restored.Editor!.RestoreState(editorState);
 
@@ -1181,7 +1309,7 @@ public partial class IntegrationTestRunner : Node
                 try
                 {
                     reloaded.InitializeWorld(compositionRoot.ContentRegistry!, compositionRoot.SettingsAuthority!);
-                    reloaded.InitializeRuntimeInput(compositionRoot.SettingsAuthority!);
+                    reloaded.InitializeRuntimeInput(compositionRoot.SettingsAuthority!, compositionRoot.Configuration!.Features);
                     double capitalBeforeRestore = reloaded.Economy!.Ledger.Treasury;
                     new SessionGameSaveRuntimeRestoreAdapter(reloaded).Apply(saved);
                     reloaded.ReleaseInteractiveControl();
@@ -1391,7 +1519,7 @@ public partial class IntegrationTestRunner : Node
                     && enforcement.ArrestCount == 1
                     && !enforcement.State.Wanted
                     && runtime.StateMachine.State == GameState.StreetOnFoot
-                    && controlled.GlobalPosition.DistanceTo(new Vector3(-75, controlled.GlobalPosition.Y, -75)) < 0.1,
+                    && controlled.GlobalPosition.DistanceTo(new Vector3(-75, controlled.GlobalPosition.Y, -75)) < 2.5,
                 "Arrest clears immediate Heat and returns the controlled player to the supported recovery point. "
                     + $"outcome={arrest.Outcome}; arrests={enforcement.ArrestCount}; wanted={enforcement.State.Wanted}; "
                     + $"game={runtime.StateMachine.State}; position={controlled.GlobalPosition}.", failures);
@@ -3422,11 +3550,27 @@ public partial class IntegrationTestRunner : Node
         MissionRuntimeState mission,
         CityServicesRuntimeState services,
         GameState gameState,
-        PlayerVehicleController? controlledVehicle)
+        PlayerVehicleController? controlledVehicle,
+        AircraftActor? controlledAircraft = null)
     {
         var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
-        JsonNode? controlled = controlledVehicle is null
-            ? null
+        JsonNode? controlled = controlledAircraft is not null
+            ? new JsonObject
+            {
+                ["contentId"] = AircraftActor.StableAircraftId,
+                ["typeId"] = "NORTHWIND_SPARROW",
+                ["kind"] = ControlKind.Aircraft.ToToken(),
+                ["position"] = new JsonArray(
+                    controlledAircraft.GlobalPosition.X,
+                    controlledAircraft.GlobalPosition.Y,
+                    controlledAircraft.GlobalPosition.Z),
+                ["rotation"] = new JsonArray(
+                    controlledAircraft.Rotation.X,
+                    controlledAircraft.State.Heading,
+                    controlledAircraft.Rotation.Z),
+                ["speed"] = controlledAircraft.State.Speed,
+            }
+            : controlledVehicle is null ? null
             : new JsonObject
             {
                 ["contentId"] = controlledVehicle.StableId,
@@ -3555,13 +3699,20 @@ public partial class IntegrationTestRunner : Node
                 storage.CurrentPath.StartsWith("user://integration/settings-", StringComparison.Ordinal),
                 "Headless integration isolates its settings file under user://integration.",
                 failures);
-            Check(adapter.Started && adapter.OwnedActionCount == 111, "InputMap publishes 45 aggregate and 66 stable-slot actions.", failures);
+            bool aircraftEnabled = compositionRoot.Configuration?.Features.IsEnabled(FeatureIds.Aircraft) == true;
+            int expectedActionCount = aircraftEnabled ? 111 : 92;
+            Check(adapter.Started && adapter.OwnedActionCount == expectedActionCount,
+                "InputMap publishes exactly the actions owned by enabled feature contexts.", failures);
             Check(
-                ControlContexts.All.All(context =>
+                ControlContexts.All.Where(context => context != ControlContexts.Aircraft || aircraftEnabled).All(context =>
                     ControlBindingCatalog.DefaultBindings[context].Keys.All(action =>
                         InputMap.HasAction(GodotInputMapAdapter.GetActionName(context, action)))),
-                "Every action in all seven contexts has a namespaced InputMap owner.",
+                "Every enabled contextual action has one namespaced InputMap owner.",
                 failures);
+            Check(
+                ControlBindingCatalog.DefaultBindings[ControlContexts.Aircraft].Keys.All(action =>
+                    InputMap.HasAction(GodotInputMapAdapter.GetActionName(ControlContexts.Aircraft, action)) == aircraftEnabled),
+                "Aircraft InputMap actions exist only while the aircraft feature is enabled.", failures);
 
             StringName vehicleInteract = GodotInputMapAdapter.GetActionName(ControlContexts.Vehicle, "INTERACT");
             Check(

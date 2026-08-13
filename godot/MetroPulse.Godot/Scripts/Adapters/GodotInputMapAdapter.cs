@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Godot;
+using MetroPulse.Domain.Content;
 using MetroPulse.Domain.Settings;
 
 namespace MetroPulse.Godot.Adapters;
@@ -14,12 +15,14 @@ public sealed class GodotInputMapAdapter : IDisposable
         CreateGamepadBindings();
 
     private readonly SettingsStore store;
+    private readonly FeatureFlagSet features;
     private Func<bool>? unsubscribe;
     private bool disposed;
 
-    public GodotInputMapAdapter(SettingsStore store)
+    public GodotInputMapAdapter(SettingsStore store, FeatureFlagSet? featureFlags = null)
     {
         this.store = store ?? throw new ArgumentNullException(nameof(store));
+        features = featureFlags ?? new FeatureFlagSet();
     }
 
     public bool Started => unsubscribe is not null;
@@ -47,6 +50,7 @@ public sealed class GodotInputMapAdapter : IDisposable
 
         foreach (string context in ControlContexts.All)
         {
+            if (context == ControlContexts.Aircraft && !features.IsEnabled(FeatureIds.Aircraft)) continue;
             foreach (string action in ControlBindingCatalog.DefaultBindings[context].Keys)
             {
                 StringName aggregateName = GetActionName(context, action);
